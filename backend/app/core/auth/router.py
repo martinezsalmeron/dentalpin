@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.database import get_db
 from .dependencies import get_current_user
 from .models import User, ClinicMembership
@@ -32,7 +33,7 @@ from .service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_remote_address, enabled=not settings.TESTING)
 
 
 @router.post("/register", response_model=TokenResponse)

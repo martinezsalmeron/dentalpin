@@ -1,0 +1,142 @@
+{
+  "app": {
+    "name": "DentalPin",
+    "tagline": "Gestión de clínica dental"
+  },
+  "nav": {
+    "dashboard": "Inicio",
+    "patients": "Pacientes",
+    "appointments": "Agenda",
+    "settings": "Configuración"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "loginButton": "Entrar",
+    "invalidCredentials": "Credenciales inválidas",
+    "sessionExpired": "Tu sesión ha expirado",
+    "networkError": "Error de conexión"
+  },
+  "patients": {
+    "title": "Pacientes",
+    "create": "Nuevo paciente",
+    "edit": "Editar paciente",
+    "search": "Buscar paciente...",
+    "searchPlaceholder": "Nombre o teléfono",
+    "noResults": "No se encontraron pacientes",
+    "empty": "No hay pacientes registrados",
+    "emptyAction": "Crear primer paciente",
+    "name": "Nombre",
+    "firstName": "Nombre",
+    "lastName": "Apellidos",
+    "phone": "Teléfono",
+    "email": "Email",
+    "dateOfBirth": "Fecha de nacimiento",
+    "notes": "Notas",
+    "status": "Estado",
+    "statusActive": "Activo",
+    "statusInactive": "Inactivo",
+    "statusArchived": "Archivado",
+    "created": "Paciente creado",
+    "updated": "Paciente actualizado",
+    "archived": "Paciente archivado",
+    "notFound": "Paciente no encontrado",
+    "archiveConfirm": "¿Archivar paciente {name}?",
+    "archiveDescription": "Esta acción ocultará al paciente de las búsquedas. Las citas existentes no se eliminarán.",
+    "cancel": "Cancelar",
+    "archive": "Archivar"
+  },
+  "patientDetail": {
+    "tabs": {
+      "info": "Info",
+      "history": "Historial",
+      "appointments": "Citas"
+    },
+    "historyPlaceholder": "Notas clínicas disponibles en futura versión",
+    "noAppointments": "Este paciente no tiene citas",
+    "scheduleAppointment": "Agendar cita"
+  },
+  "appointments": {
+    "title": "Agenda",
+    "create": "Nueva cita",
+    "edit": "Editar cita",
+    "today": "Hoy",
+    "week": "Semana",
+    "selectPatient": "Seleccionar paciente",
+    "professional": "Profesional",
+    "cabinet": "Gabinete",
+    "date": "Fecha",
+    "startTime": "Hora inicio",
+    "duration": "Duración",
+    "treatmentType": "Tipo de tratamiento",
+    "notes": "Notas",
+    "status": "Estado",
+    "scheduled": "Programada",
+    "confirmed": "Confirmada",
+    "inProgress": "En curso",
+    "completed": "Completada",
+    "cancelled": "Cancelada",
+    "noShow": "No se presentó",
+    "created": "Cita creada",
+    "updated": "Cita actualizada",
+    "conflict": "Este horario ya está ocupado",
+    "cancel": "Cancelar cita",
+    "markCompleted": "Marcar como atendida",
+    "markNoShow": "No se presentó"
+  },
+  "dashboard": {
+    "title": "Inicio",
+    "todayAppointments": "Citas hoy",
+    "appointmentsCount": "{count} cita | {count} citas",
+    "nextAppointment": "Próxima",
+    "recentPatients": "Pacientes recientes",
+    "welcome": "Bienvenido a DentalPin",
+    "welcomeMessage": "Comienza creando tu primer paciente.",
+    "noAppointmentsToday": "No hay citas programadas para hoy"
+  },
+  "settings": {
+    "title": "Configuración",
+    "clinic": "Clínica",
+    "profile": "Perfil",
+    "clinicName": "Nombre de la clínica",
+    "cabinets": "Gabinetes"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Volver",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "retry": "Reintentar",
+    "confirm": "Confirmar",
+    "yes": "Sí",
+    "no": "No",
+    "actions": "Acciones",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "page": "Página {current} de {total}",
+    "noData": "Sin datos",
+    "required": "Este campo es requerido",
+    "invalidEmail": "Email inválido",
+    "networkError": "Error de conexión",
+    "serverError": "Error del servidor",
+    "notFound": "No encontrado",
+    "offline": "Sin conexión — datos pueden no estar actualizados"
+  },
+  "validation": {
+    "required": "Este campo es requerido",
+    "email": "Ingresa un email válido",
+    "minLength": "Mínimo {min} caracteres",
+    "maxLength": "Máximo {max} caracteres",
+    "phone": "Ingresa un teléfono válido"
+  },
+  "time": {
+    "minutes": "{n} min",
+    "hours": "{n} hora | {n} horas"
+  }
+}

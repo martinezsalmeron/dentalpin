@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     LOGIN_RATE_LIMIT: str = "5/minute"
     REGISTER_RATE_LIMIT: str = "3/hour"
 
+    # Testing
+    TESTING: bool = False
+
     @property
     def allowed_origins_list(self) -> list[str]:
         """Parse ALLOWED_ORIGINS as comma-separated list."""

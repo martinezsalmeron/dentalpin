@@ -1,43 +1,48 @@
 """Pytest configuration and fixtures."""
-import asyncio
+import os
 from collections.abc import AsyncGenerator
-from typing import Generator
 
-import pytest
+# Set TESTING before importing settings
+os.environ["TESTING"] = "true"
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
 from app.database import Base, get_db
+# Import all models so SQLAlchemy can configure relationships
+from app.core.auth.models import User, Clinic, ClinicMembership  # noqa: F401
+from app.modules.clinical.models import Patient, Appointment  # noqa: F401
 from app.main import app
+from app.core.plugins.loader import load_modules
+
+# Load modules manually for tests (normally done in lifespan)
+load_modules(app)
 
 # Use a separate test database
 TEST_DATABASE_URL = settings.DATABASE_URL.replace("/dental_clinic", "/dental_clinic_test")
 
-engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    """Create an event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database session for each test."""
-    async with engine.begin() as conn:
+    # Create a new engine for each test to avoid connection conflicts
+    test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    test_session_maker = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    async with async_session_maker() as session:
+    async with test_session_maker() as session:
         yield session
 
-    async with engine.begin() as conn:
+    async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+    await test_engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="function")
