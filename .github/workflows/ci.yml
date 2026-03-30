@@ -64,7 +64,7 @@ jobs:
           ENVIRONMENT: test
           TESTING: "true"
         run: |
-          pytest -v --tb=short
+          python -m pytest -v --tb=short
 
   frontend-lint:
     runs-on: ubuntu-latest
