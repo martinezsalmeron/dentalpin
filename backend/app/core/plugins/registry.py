@@ -1,4 +1,5 @@
 """Module registry for tracking loaded modules."""
+
 import logging
 from typing import TYPE_CHECKING
 

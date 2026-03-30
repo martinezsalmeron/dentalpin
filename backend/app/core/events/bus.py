@@ -1,4 +1,5 @@
 """Event bus for cross-module communication."""
+
 import logging
 from collections.abc import Callable
 from typing import Any

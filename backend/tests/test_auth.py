@@ -1,4 +1,5 @@
 """Tests for authentication endpoints."""
+
 import pytest
 from httpx import AsyncClient
 

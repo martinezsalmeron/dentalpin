@@ -1,4 +1,5 @@
 """Database configuration and session management."""
+
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 

@@ -1,4 +1,5 @@
 """Clinical module - patients and appointments management."""
+
 from fastapi import APIRouter
 
 from app.core.plugins import BaseModule

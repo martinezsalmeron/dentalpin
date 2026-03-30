@@ -1,4 +1,5 @@
 """Module loader for discovering and loading modules at startup."""
+
 import importlib
 import logging
 import pkgutil
@@ -32,7 +33,9 @@ def _resolve_load_order(modules: list[BaseModule]) -> list[BaseModule]:
             return
 
         if name not in module_map:
-            raise ValueError(f"Missing dependency: '{name}' required by '{path[-1] if path else 'root'}'")
+            raise ValueError(
+                f"Missing dependency: '{name}' required by '{path[-1] if path else 'root'}'"
+            )
 
         in_stack.add(name)
         module = module_map[name]

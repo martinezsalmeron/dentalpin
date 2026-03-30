@@ -1,4 +1,5 @@
 """Authentication service for JWT and password handling."""
+
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -16,9 +17,7 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return bcrypt.checkpw(
-        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-    )
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
 def validate_password_strength(password: str) -> tuple[bool, str]:
@@ -44,9 +43,7 @@ def create_access_token(
     token_version: int = 0,
 ) -> str:
     """Create a JWT access token."""
-    expire = datetime.now(UTC) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": str(user_id),
         "exp": expire,
@@ -61,9 +58,7 @@ def create_access_token(
 
 def create_refresh_token(user_id: UUID, token_version: int = 0) -> str:
     """Create a JWT refresh token."""
-    expire = datetime.now(UTC) + timedelta(
-        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
+    expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": str(user_id),
         "exp": expire,

@@ -1,4 +1,5 @@
 """Business logic service for clinical module."""
+
 from datetime import datetime
 from uuid import UUID
 

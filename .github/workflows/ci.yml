@@ -77,13 +77,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
-        continue-on-error: true  # Frontend not yet created
+        run: npm install
 
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint
-        continue-on-error: true  # Frontend not yet created
 
   frontend-test:
     runs-on: ubuntu-latest
@@ -97,10 +95,8 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
-        continue-on-error: true  # Frontend not yet created
+        run: npm install
 
       - name: Run tests
         working-directory: frontend
         run: npm run test
-        continue-on-error: true  # Frontend not yet created

@@ -1,4 +1,5 @@
 """Pydantic schemas for clinical module."""
+
 from datetime import date, datetime
 from typing import Generic, TypeVar
 from uuid import UUID

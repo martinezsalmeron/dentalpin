@@ -1,4 +1,5 @@
 """FastAPI router for clinical module."""
+
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
@@ -35,9 +36,7 @@ async def list_patients(
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedResponse[PatientResponse]:
     """List patients with optional search."""
-    patients, total = await PatientService.list_patients(
-        db, ctx.clinic_id, search, page, page_size
-    )
+    patients, total = await PatientService.list_patients(db, ctx.clinic_id, search, page, page_size)
     return PaginatedResponse(
         data=[PatientResponse.model_validate(p) for p in patients],
         total=total,
@@ -90,9 +89,7 @@ async def update_patient(
             detail="Patient not found",
         )
 
-    patient = await PatientService.update_patient(
-        db, patient, data.model_dump(exclude_unset=True)
-    )
+    patient = await PatientService.update_patient(db, patient, data.model_dump(exclude_unset=True))
     return PatientResponse.model_validate(patient)
 
 
@@ -159,9 +156,7 @@ async def create_appointment(
     """Create a new appointment."""
     # Validate patient access if patient_id provided
     if data.patient_id:
-        if not await AppointmentService.validate_patient_access(
-            db, ctx.clinic_id, data.patient_id
-        ):
+        if not await AppointmentService.validate_patient_access(db, ctx.clinic_id, data.patient_id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Patient not found",
@@ -187,9 +182,7 @@ async def get_appointment(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AppointmentResponse:
     """Get an appointment by ID."""
-    appointment = await AppointmentService.get_appointment(
-        db, ctx.clinic_id, appointment_id
-    )
+    appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
     if not appointment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -206,9 +199,7 @@ async def update_appointment(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AppointmentResponse:
     """Update an appointment."""
-    appointment = await AppointmentService.get_appointment(
-        db, ctx.clinic_id, appointment_id
-    )
+    appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
     if not appointment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -217,9 +208,7 @@ async def update_appointment(
 
     # Validate patient access if changing patient
     if data.patient_id:
-        if not await AppointmentService.validate_patient_access(
-            db, ctx.clinic_id, data.patient_id
-        ):
+        if not await AppointmentService.validate_patient_access(db, ctx.clinic_id, data.patient_id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Patient not found",
@@ -245,9 +234,7 @@ async def delete_appointment(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Cancel an appointment."""
-    appointment = await AppointmentService.get_appointment(
-        db, ctx.clinic_id, appointment_id
-    )
+    appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
     if not appointment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

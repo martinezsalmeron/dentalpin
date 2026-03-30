@@ -1,4 +1,5 @@
 """Core authentication and authorization models."""
+
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -66,7 +67,9 @@ class ClinicMembership(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
-    role: Mapped[str] = mapped_column(String(20))  # admin, dentist, hygienist, assistant, receptionist
+    role: Mapped[str] = mapped_column(
+        String(20)
+    )  # admin, dentist, hygienist, assistant, receptionist
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="memberships")

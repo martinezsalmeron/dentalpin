@@ -1,4 +1,5 @@
 """Clinical module database models."""
+
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4

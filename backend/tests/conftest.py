@@ -1,4 +1,5 @@
 """Pytest configuration and fixtures."""
+
 import os
 from collections.abc import AsyncGenerator
 

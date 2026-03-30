@@ -1,4 +1,5 @@
 """Authentication router with rate limiting."""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -91,9 +92,7 @@ async def login(
     """Login and get access tokens."""
     # Find user by email
     result = await db.execute(
-        select(User)
-        .options(selectinload(User.memberships))
-        .where(User.email == form_data.username)
+        select(User).options(selectinload(User.memberships)).where(User.email == form_data.username)
     )
     user = result.scalar_one_or_none()
 
@@ -157,9 +156,7 @@ async def refresh_token(
 
     # Fetch user
     result = await db.execute(
-        select(User)
-        .options(selectinload(User.memberships))
-        .where(User.id == UUID(user_id))
+        select(User).options(selectinload(User.memberships)).where(User.id == UUID(user_id))
     )
     user = result.scalar_one_or_none()
 
