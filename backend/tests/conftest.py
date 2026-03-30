@@ -22,8 +22,9 @@ from app.modules.clinical.models import Appointment, Patient  # noqa: F401
 # Load modules manually for tests (normally done in lifespan)
 load_modules(app)
 
-# Use a separate test database
-TEST_DATABASE_URL = settings.DATABASE_URL.replace("/dental_clinic", "/dental_clinic_test")
+# Use the DATABASE_URL directly - CI already provides the test database URL
+# For local development, ensure DATABASE_URL points to test database
+TEST_DATABASE_URL = settings.DATABASE_URL
 
 
 @pytest_asyncio.fixture
