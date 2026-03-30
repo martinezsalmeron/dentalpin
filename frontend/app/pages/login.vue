@@ -89,6 +89,7 @@ async function onSubmit() {
           <UInput
             v-model="formState.email"
             type="email"
+            class="w-full"
             :placeholder="t('auth.email')"
             icon="i-lucide-mail"
             autocomplete="email"
@@ -105,6 +106,7 @@ async function onSubmit() {
           <UInput
             v-model="formState.password"
             type="password"
+            class="w-full"
             :placeholder="t('auth.password')"
             icon="i-lucide-lock"
             autocomplete="current-password"
