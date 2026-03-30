@@ -78,7 +78,7 @@ export function useAuth() {
     }
 
     try {
-      const response = await $fetch<{ user: User; clinics: Array<{ id: string; name: string; role: string }> }>('/api/v1/auth/me', {
+      const response = await $fetch<{ user: User, clinics: Array<{ id: string, name: string, role: string }> }>('/api/v1/auth/me', {
         baseURL: config.public.apiBaseUrl,
         headers: {
           Authorization: `Bearer ${accessToken.value}`

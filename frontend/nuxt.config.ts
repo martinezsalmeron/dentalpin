@@ -6,6 +6,13 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n'
   ],
 
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: false
+    }
+  ],
+
   devtools: {
     enabled: true
   },

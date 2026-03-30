@@ -64,10 +64,14 @@
     "edit": "Editar cita",
     "today": "Hoy",
     "week": "Semana",
+    "prevWeek": "Semana anterior",
+    "nextWeek": "Semana siguiente",
     "selectPatient": "Seleccionar paciente",
+    "patient": "Paciente",
     "professional": "Profesional",
     "cabinet": "Gabinete",
     "date": "Fecha",
+    "time": "Hora",
     "startTime": "Hora inicio",
     "duration": "Duración",
     "treatmentType": "Tipo de tratamiento",
@@ -80,6 +84,7 @@
     "cancelled": "Cancelada",
     "noShow": "No se presentó",
     "created": "Cita creada",
+    "saved": "Cita guardada",
     "updated": "Cita actualizada",
     "conflict": "Este horario ya está ocupado",
     "cancel": "Cancelar cita",
@@ -121,6 +126,7 @@
     "next": "Siguiente",
     "page": "Página {current} de {total}",
     "noData": "Sin datos",
+    "selectAll": "Todos",
     "required": "Este campo es requerido",
     "invalidEmail": "Email inválido",
     "networkError": "Error de conexión",
@@ -138,5 +144,17 @@
   "time": {
     "minutes": "{n} min",
     "hours": "{n} hora | {n} horas"
+  },
+  "calendar": {
+    "today": "Hoy",
+    "prevWeek": "Semana anterior",
+    "nextWeek": "Semana siguiente",
+    "monday": "Lunes",
+    "tuesday": "Martes",
+    "wednesday": "Miércoles",
+    "thursday": "Jueves",
+    "friday": "Viernes",
+    "saturday": "Sábado",
+    "sunday": "Domingo"
   }
 }
