@@ -16,3 +16,13 @@
   --color-green-900: #0A5331;
   --color-green-950: #052E16;
 }
+
+/* NProgress customization */
+#nprogress .bar {
+  background: #10b981 !important;
+  height: 3px !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #10b981, 0 0 5px #10b981 !important;
+}

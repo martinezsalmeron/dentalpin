@@ -76,8 +76,18 @@ backend/app/
 **Creating a new module:**
 1. Create package under `backend/app/modules/{name}/`
 2. Implement a class inheriting from `BaseModule` in `__init__.py`
-3. Define `name`, `version`, `get_models()`, `get_router()`
-4. Module auto-discovered on startup, router mounted at `/api/v1/{name}/`
+3. Define required properties and methods:
+   - `name` - unique identifier (e.g., `"inventory"`)
+   - `version` - semver string (e.g., `"0.1.0"`)
+   - `get_models()` - return list of SQLAlchemy models
+   - `get_router()` - return FastAPI router
+4. Define optional properties:
+   - `dependencies` - list of required module names (e.g., `["clinical"]`)
+   - `get_event_handlers()` - dict of event subscriptions
+   - `get_permissions()` - list of RBAC permissions (e.g., `["inventory.read"]`)
+5. Module auto-discovered on startup, router mounted at `/api/v1/{name}/`
+
+See `docs/creating-modules.md` for detailed guide with examples.
 
 ### Database
 

@@ -18,6 +18,7 @@ const searchQuery = ref('')
 const isOpen = ref(false)
 const isLoading = ref(false)
 const patients = ref<Patient[]>([])
+const highlightedIndex = ref(-1)
 
 // Debounce search
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -86,8 +87,46 @@ function handleBlur() {
   // Delay close to allow click on results
   setTimeout(() => {
     isOpen.value = false
+    highlightedIndex.value = -1
   }, 200)
 }
+
+// Keyboard navigation
+function handleKeydown(event: KeyboardEvent) {
+  if (!isOpen.value || patients.value.length === 0) {
+    return
+  }
+
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault()
+      highlightedIndex.value = Math.min(
+        highlightedIndex.value + 1,
+        patients.value.length - 1
+      )
+      break
+    case 'ArrowUp':
+      event.preventDefault()
+      highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0)
+      break
+    case 'Enter':
+      event.preventDefault()
+      if (highlightedIndex.value >= 0 && patients.value[highlightedIndex.value]) {
+        selectPatient(patients.value[highlightedIndex.value])
+      }
+      break
+    case 'Escape':
+      event.preventDefault()
+      isOpen.value = false
+      highlightedIndex.value = -1
+      break
+  }
+}
+
+// Reset highlight when results change
+watch(patients, () => {
+  highlightedIndex.value = -1
+})
 </script>
 
 <template>
@@ -99,6 +138,7 @@ function handleBlur() {
       :loading="isLoading"
       @focus="handleFocus"
       @blur="handleBlur"
+      @keydown="handleKeydown"
     >
       <template
         v-if="modelValue"
@@ -138,10 +178,14 @@ function handleBlur() {
       </div>
 
       <div
-        v-for="patient in patients"
+        v-for="(patient, index) in patients"
         :key="patient.id"
-        class="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        class="flex items-center gap-3 p-3 cursor-pointer transition-colors"
+        :class="index === highlightedIndex
+          ? 'bg-primary-50 dark:bg-primary-900/20'
+          : 'hover:bg-gray-50 dark:hover:bg-gray-800'"
         @mousedown.prevent="selectPatient(patient)"
+        @mouseenter="highlightedIndex = index"
       >
         <UAvatar
           :alt="patient.first_name"

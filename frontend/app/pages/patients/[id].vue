@@ -49,9 +49,9 @@ const appointments = computed(() => appointmentsData.value?.data || [])
 // Tabs
 const activeTab = ref('info')
 const tabs = [
-  { key: 'info', label: t('patientDetail.tabs.info'), icon: 'i-lucide-user' },
-  { key: 'history', label: t('patientDetail.tabs.history'), icon: 'i-lucide-file-text' },
-  { key: 'appointments', label: t('patientDetail.tabs.appointments'), icon: 'i-lucide-calendar' }
+  { value: 'info', label: t('patientDetail.tabs.info'), icon: 'i-lucide-user', slot: 'info' },
+  { value: 'history', label: t('patientDetail.tabs.history'), icon: 'i-lucide-file-text', slot: 'history' },
+  { value: 'appointments', label: t('patientDetail.tabs.appointments'), icon: 'i-lucide-calendar', slot: 'appointments' }
 ]
 
 // Edit mode
@@ -228,247 +228,251 @@ function getStatusColor(status: string): BadgeColor {
         </UButton>
       </div>
 
-      <!-- Tabs -->
+      <!-- Tabs with content -->
       <UTabs
         v-model="activeTab"
         :items="tabs"
-      />
+        default-value="info"
+        class="w-full"
+      >
+        <!-- Info tab content -->
+        <template #info>
+          <UCard class="mt-4">
+            <!-- View mode -->
+            <div
+              v-if="!isEditing"
+              class="space-y-6"
+            >
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {{ t('patients.firstName') }}
+                  </label>
+                  <p class="text-gray-900 dark:text-white">
+                    {{ patient.first_name }}
+                  </p>
+                </div>
 
-      <!-- Tab content -->
-      <UCard>
-        <!-- Info tab -->
-        <div v-if="activeTab === 'info'">
-          <!-- View mode -->
-          <div
-            v-if="!isEditing"
-            class="space-y-6"
-          >
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('patients.firstName') }}
-                </label>
-                <p class="text-gray-900 dark:text-white">
-                  {{ patient.first_name }}
-                </p>
+                <div>
+                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {{ t('patients.lastName') }}
+                  </label>
+                  <p class="text-gray-900 dark:text-white">
+                    {{ patient.last_name }}
+                  </p>
+                </div>
+
+                <div>
+                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {{ t('patients.phone') }}
+                  </label>
+                  <p class="text-gray-900 dark:text-white">
+                    {{ patient.phone || '-' }}
+                  </p>
+                </div>
+
+                <div>
+                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {{ t('patients.email') }}
+                  </label>
+                  <p class="text-gray-900 dark:text-white">
+                    {{ patient.email || '-' }}
+                  </p>
+                </div>
+
+                <div>
+                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {{ t('patients.dateOfBirth') }}
+                  </label>
+                  <p class="text-gray-900 dark:text-white">
+                    {{ patient.date_of_birth ? formatDate(patient.date_of_birth) : '-' }}
+                  </p>
+                </div>
+
+                <div>
+                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {{ t('patients.status') }}
+                  </label>
+                  <p class="text-gray-900 dark:text-white">
+                    {{ t(`patients.status${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}`) }}
+                  </p>
+                </div>
               </div>
 
               <div>
                 <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('patients.lastName') }}
+                  {{ t('patients.notes') }}
                 </label>
-                <p class="text-gray-900 dark:text-white">
-                  {{ patient.last_name }}
+                <p class="text-gray-900 dark:text-white whitespace-pre-wrap">
+                  {{ patient.notes || '-' }}
                 </p>
               </div>
 
-              <div>
-                <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('patients.phone') }}
-                </label>
-                <p class="text-gray-900 dark:text-white">
-                  {{ patient.phone || '-' }}
-                </p>
-              </div>
-
-              <div>
-                <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('patients.email') }}
-                </label>
-                <p class="text-gray-900 dark:text-white">
-                  {{ patient.email || '-' }}
-                </p>
-              </div>
-
-              <div>
-                <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('patients.dateOfBirth') }}
-                </label>
-                <p class="text-gray-900 dark:text-white">
-                  {{ patient.date_of_birth ? formatDate(patient.date_of_birth) : '-' }}
-                </p>
-              </div>
-
-              <div>
-                <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('patients.status') }}
-                </label>
-                <p class="text-gray-900 dark:text-white">
-                  {{ t(`patients.status${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}`) }}
-                </p>
+              <div class="flex justify-end">
+                <UButton
+                  icon="i-lucide-pencil"
+                  @click="startEditing"
+                >
+                  {{ t('common.edit') }}
+                </UButton>
               </div>
             </div>
 
-            <div>
-              <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {{ t('patients.notes') }}
-              </label>
-              <p class="text-gray-900 dark:text-white whitespace-pre-wrap">
-                {{ patient.notes || '-' }}
+            <!-- Edit mode -->
+            <form
+              v-else
+              class="space-y-4"
+              @submit.prevent="savePatient"
+            >
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <UFormField
+                  :label="t('patients.firstName')"
+                  required
+                >
+                  <UInput
+                    v-model="editForm.first_name"
+                    required
+                  />
+                </UFormField>
+
+                <UFormField
+                  :label="t('patients.lastName')"
+                  required
+                >
+                  <UInput
+                    v-model="editForm.last_name"
+                    required
+                  />
+                </UFormField>
+
+                <UFormField :label="t('patients.phone')">
+                  <UInput
+                    v-model="editForm.phone"
+                    type="tel"
+                  />
+                </UFormField>
+
+                <UFormField :label="t('patients.email')">
+                  <UInput
+                    v-model="editForm.email"
+                    type="email"
+                  />
+                </UFormField>
+
+                <UFormField :label="t('patients.dateOfBirth')">
+                  <UInput
+                    v-model="editForm.date_of_birth"
+                    type="date"
+                  />
+                </UFormField>
+              </div>
+
+              <UFormField :label="t('patients.notes')">
+                <UTextarea
+                  v-model="editForm.notes"
+                  :rows="4"
+                />
+              </UFormField>
+
+              <div class="flex justify-end gap-3">
+                <UButton
+                  variant="outline"
+                  color="neutral"
+                  @click="cancelEditing"
+                >
+                  {{ t('common.cancel') }}
+                </UButton>
+                <UButton
+                  type="submit"
+                  :loading="isSubmitting"
+                  :disabled="!editForm.first_name || !editForm.last_name"
+                >
+                  {{ t('common.save') }}
+                </UButton>
+              </div>
+            </form>
+          </UCard>
+        </template>
+
+        <!-- History tab content -->
+        <template #history>
+          <UCard class="mt-4">
+            <div class="text-center py-12">
+              <UIcon
+                name="i-lucide-file-text"
+                class="w-12 h-12 text-gray-400 mx-auto mb-4"
+              />
+              <p class="text-gray-500 dark:text-gray-400">
+                {{ t('patientDetail.historyPlaceholder') }}
               </p>
             </div>
+          </UCard>
+        </template>
 
-            <div class="flex justify-end">
-              <UButton
-                icon="i-lucide-pencil"
-                @click="startEditing"
-              >
-                {{ t('common.edit') }}
-              </UButton>
-            </div>
-          </div>
-
-          <!-- Edit mode -->
-          <form
-            v-else
-            class="space-y-4"
-            @submit.prevent="savePatient"
-          >
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UFormField
-                :label="t('patients.firstName')"
-                required
-              >
-                <UInput
-                  v-model="editForm.first_name"
-                  required
-                />
-              </UFormField>
-
-              <UFormField
-                :label="t('patients.lastName')"
-                required
-              >
-                <UInput
-                  v-model="editForm.last_name"
-                  required
-                />
-              </UFormField>
-
-              <UFormField :label="t('patients.phone')">
-                <UInput
-                  v-model="editForm.phone"
-                  type="tel"
-                />
-              </UFormField>
-
-              <UFormField :label="t('patients.email')">
-                <UInput
-                  v-model="editForm.email"
-                  type="email"
-                />
-              </UFormField>
-
-              <UFormField :label="t('patients.dateOfBirth')">
-                <UInput
-                  v-model="editForm.date_of_birth"
-                  type="date"
-                />
-              </UFormField>
-            </div>
-
-            <UFormField :label="t('patients.notes')">
-              <UTextarea
-                v-model="editForm.notes"
-                :rows="4"
+        <!-- Appointments tab content -->
+        <template #appointments>
+          <UCard class="mt-4">
+            <!-- Loading -->
+            <div
+              v-if="appointmentsStatus === 'pending'"
+              class="space-y-3"
+            >
+              <USkeleton
+                v-for="i in 3"
+                :key="i"
+                class="h-12 w-full"
               />
-            </UFormField>
+            </div>
 
-            <div class="flex justify-end gap-3">
+            <!-- Empty state -->
+            <div
+              v-else-if="appointments.length === 0"
+              class="text-center py-12"
+            >
+              <UIcon
+                name="i-lucide-calendar"
+                class="w-12 h-12 text-gray-400 mx-auto mb-4"
+              />
+              <p class="text-gray-500 dark:text-gray-400 mb-4">
+                {{ t('patientDetail.noAppointments') }}
+              </p>
               <UButton
-                variant="outline"
-                color="neutral"
-                @click="cancelEditing"
+                to="/appointments"
+                icon="i-lucide-plus"
               >
-                {{ t('common.cancel') }}
-              </UButton>
-              <UButton
-                type="submit"
-                :loading="isSubmitting"
-                :disabled="!editForm.first_name || !editForm.last_name"
-              >
-                {{ t('common.save') }}
+                {{ t('patientDetail.scheduleAppointment') }}
               </UButton>
             </div>
-          </form>
-        </div>
 
-        <!-- History tab -->
-        <div
-          v-else-if="activeTab === 'history'"
-          class="text-center py-12"
-        >
-          <UIcon
-            name="i-lucide-file-text"
-            class="w-12 h-12 text-gray-400 mx-auto mb-4"
-          />
-          <p class="text-gray-500 dark:text-gray-400">
-            {{ t('patientDetail.historyPlaceholder') }}
-          </p>
-        </div>
-
-        <!-- Appointments tab -->
-        <div v-else-if="activeTab === 'appointments'">
-          <!-- Loading -->
-          <div
-            v-if="appointmentsStatus === 'pending'"
-            class="space-y-3"
-          >
-            <USkeleton
-              v-for="i in 3"
-              :key="i"
-              class="h-12 w-full"
-            />
-          </div>
-
-          <!-- Empty state -->
-          <div
-            v-else-if="appointments.length === 0"
-            class="text-center py-12"
-          >
-            <UIcon
-              name="i-lucide-calendar"
-              class="w-12 h-12 text-gray-400 mx-auto mb-4"
-            />
-            <p class="text-gray-500 dark:text-gray-400 mb-4">
-              {{ t('patientDetail.noAppointments') }}
-            </p>
-            <UButton
-              to="/appointments"
-              icon="i-lucide-plus"
+            <!-- Appointments list -->
+            <ul
+              v-else
+              class="divide-y divide-gray-200 dark:divide-gray-800"
             >
-              {{ t('patientDetail.scheduleAppointment') }}
-            </UButton>
-          </div>
-
-          <!-- Appointments list -->
-          <ul
-            v-else
-            class="divide-y divide-gray-200 dark:divide-gray-800"
-          >
-            <li
-              v-for="appointment in appointments"
-              :key="appointment.id"
-              class="py-4 flex items-center justify-between"
-            >
-              <div>
-                <p class="font-medium text-gray-900 dark:text-white">
-                  {{ formatDateTime(appointment.start_time) }}
-                </p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ appointment.treatment_type || '-' }}
-                </p>
-              </div>
-              <UBadge
-                :color="getStatusColor(appointment.status)"
-                variant="subtle"
+              <li
+                v-for="appointment in appointments"
+                :key="appointment.id"
+                class="py-4 flex items-center justify-between"
               >
-                {{ t(`appointments.${appointment.status}`) }}
-              </UBadge>
-            </li>
-          </ul>
-        </div>
-      </UCard>
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ formatDateTime(appointment.start_time) }}
+                  </p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ appointment.treatment_type || '-' }}
+                  </p>
+                </div>
+                <UBadge
+                  :color="getStatusColor(appointment.status)"
+                  variant="subtle"
+                >
+                  {{ t(`appointments.${appointment.status}`) }}
+                </UBadge>
+              </li>
+            </ul>
+          </UCard>
+        </template>
+      </UTabs>
     </template>
 
     <!-- Archive confirmation modal -->

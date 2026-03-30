@@ -18,6 +18,8 @@
     "@iconify-json/lucide": "^1.2.98",
     "@nuxt/ui": "^4.5.1",
     "@nuxtjs/i18n": "^9.5.0",
+    "@types/nprogress": "^0.2.3",
+    "nprogress": "^0.2.0",
     "nuxt": "^4.4.2",
     "tailwindcss": "^4.2.1"
   },
