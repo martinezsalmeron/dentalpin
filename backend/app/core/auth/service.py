@@ -1,10 +1,10 @@
 """Authentication service for JWT and password handling."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 import bcrypt
-from jose import JWTError, jwt
+from jose import jwt
 
 from app.config import settings
 
@@ -44,7 +44,7 @@ def create_access_token(
     token_version: int = 0,
 ) -> str:
     """Create a JWT access token."""
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.now(UTC) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     payload = {
@@ -61,7 +61,7 @@ def create_access_token(
 
 def create_refresh_token(user_id: UUID, token_version: int = 0) -> str:
     """Create a JWT refresh token."""
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.now(UTC) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
     payload = {

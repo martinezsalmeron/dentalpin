@@ -10,12 +10,13 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.database import Base, get_db
+
 # Import all models so SQLAlchemy can configure relationships
-from app.core.auth.models import User, Clinic, ClinicMembership  # noqa: F401
-from app.modules.clinical.models import Patient, Appointment  # noqa: F401
-from app.main import app
+from app.core.auth.models import Clinic, ClinicMembership, User  # noqa: F401
 from app.core.plugins.loader import load_modules
+from app.database import Base, get_db
+from app.main import app
+from app.modules.clinical.models import Appointment, Patient  # noqa: F401
 
 # Load modules manually for tests (normally done in lifespan)
 load_modules(app)

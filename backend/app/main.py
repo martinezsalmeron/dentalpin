@@ -1,6 +1,6 @@
 """FastAPI application entry point."""
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +10,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
-from app.core.auth.router import limiter, router as auth_router
+from app.core.auth.router import limiter
+from app.core.auth.router import router as auth_router
 from app.core.plugins.loader import ModuleLoader
 from app.database import engine
 

@@ -15,7 +15,7 @@ class ModuleRegistry:
     """
 
     def __init__(self) -> None:
-        self._modules: dict[str, "BaseModule"] = {}
+        self._modules: dict[str, BaseModule] = {}
 
     def register(self, module: "BaseModule") -> None:
         """Register a module instance."""

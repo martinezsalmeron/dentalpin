@@ -1,16 +1,15 @@
 """Core authentication and authorization models."""
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.modules.clinical.models import Patient, Appointment
+    from app.modules.clinical.models import Appointment, Patient
 
 
 class Clinic(Base, TimestampMixin):

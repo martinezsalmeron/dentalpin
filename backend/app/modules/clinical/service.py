@@ -2,13 +2,14 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.events import event_bus, EventType
-from .models import Patient, Appointment
+from app.core.events import EventType, event_bus
+
+from .models import Appointment, Patient
 
 
 class PatientService:

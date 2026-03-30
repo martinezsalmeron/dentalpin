@@ -3,7 +3,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth.models import Clinic, ClinicMembership, User
+from app.core.auth.models import Clinic, ClinicMembership
 
 
 @pytest.fixture

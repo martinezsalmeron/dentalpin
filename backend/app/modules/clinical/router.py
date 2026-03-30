@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.dependencies import ClinicContext, get_clinic_context
 from app.database import get_db
+
 from .schemas import (
     AppointmentCreate,
     AppointmentResponse,

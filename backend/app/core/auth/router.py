@@ -13,15 +13,16 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import get_db
+
 from .dependencies import get_current_user
-from .models import User, ClinicMembership
+from .models import ClinicMembership, User
 from .schemas import (
+    ClinicResponse,
     MeResponse,
     TokenRefresh,
     TokenResponse,
     UserRegister,
     UserResponse,
-    ClinicResponse,
 )
 from .service import (
     create_access_token,

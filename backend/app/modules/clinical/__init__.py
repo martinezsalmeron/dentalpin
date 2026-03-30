@@ -1,8 +1,9 @@
 """Clinical module - patients and appointments management."""
-from app.core.plugins import BaseModule
 from fastapi import APIRouter
 
-from .models import Patient, Appointment
+from app.core.plugins import BaseModule
+
+from .models import Appointment, Patient
 from .router import router
 
 
