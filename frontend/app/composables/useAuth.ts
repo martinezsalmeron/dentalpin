@@ -22,15 +22,25 @@ export function useAuth() {
 
   // Actions
   async function login(credentials: LoginCredentials): Promise<void> {
+    // OAuth2PasswordRequestForm expects form data with 'username' field
+    const formData = new URLSearchParams()
+    formData.append('username', credentials.email)
+    formData.append('password', credentials.password)
+
     const response = await $fetch<AuthResponse>('/api/v1/auth/login', {
       baseURL: config.public.apiBaseUrl,
       method: 'POST',
-      body: credentials
+      body: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
     })
 
     accessToken.value = response.access_token
     refreshToken.value = response.refresh_token
-    user.value = response.user
+
+    // Fetch user info after login
+    await fetchUser()
   }
 
   async function logout(): Promise<void> {
@@ -68,13 +78,13 @@ export function useAuth() {
     }
 
     try {
-      const response = await $fetch<{ data: User }>('/api/v1/auth/me', {
+      const response = await $fetch<{ user: User; clinics: Array<{ id: string; name: string; role: string }> }>('/api/v1/auth/me', {
         baseURL: config.public.apiBaseUrl,
         headers: {
           Authorization: `Bearer ${accessToken.value}`
         }
       })
-      user.value = response.data
+      user.value = response.user
     } catch {
       // Token might be expired, try to refresh
       const refreshed = await refresh()

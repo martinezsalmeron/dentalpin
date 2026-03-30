@@ -36,6 +36,7 @@ app = FastAPI(
     description="Open source dental clinic management software",
     version="0.1.0",
     lifespan=lifespan,
+    redirect_slashes=False,
     docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
 )

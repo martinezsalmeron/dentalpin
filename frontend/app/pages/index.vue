@@ -14,7 +14,7 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
 
     try {
       return await api.get<PaginatedResponse<Appointment>>(
-        `/api/v1/clinical/appointments/?start_date=${startOfDay}&end_date=${endOfDay}`
+        `/api/v1/clinical/appointments?start_date=${startOfDay}&end_date=${endOfDay}`
       )
     } catch {
       return { data: [], total: 0, page: 1, page_size: 20 }
@@ -28,7 +28,7 @@ const { data: patientsData, status: patientsStatus } = await useAsyncData(
   async () => {
     try {
       return await api.get<PaginatedResponse<Patient>>(
-        '/api/v1/clinical/patients/?page_size=5&sort=-created_at'
+        '/api/v1/clinical/patients?page_size=5&sort=-created_at'
       )
     } catch {
       return { data: [], total: 0, page: 1, page_size: 5 }

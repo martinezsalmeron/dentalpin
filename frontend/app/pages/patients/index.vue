@@ -38,7 +38,7 @@ const { data: patientsData, status, refresh } = await useAsyncData(
 
     try {
       return await api.get<PaginatedResponse<Patient>>(
-        `/api/v1/clinical/patients/?${params.toString()}`
+        `/api/v1/clinical/patients?${params.toString()}`
       )
     } catch {
       return { data: [], total: 0, page: 1, page_size: pageSize }
@@ -78,8 +78,8 @@ async function createPatient() {
   isSubmitting.value = true
 
   try {
-    const response = await api.post<{ data: Patient }>(
-      '/api/v1/clinical/patients/',
+    const response = await api.post<Patient>(
+      '/api/v1/clinical/patients',
       {
         first_name: newPatient.first_name,
         last_name: newPatient.last_name,
@@ -101,7 +101,7 @@ async function createPatient() {
     await refresh()
 
     // Navigate to patient detail
-    await router.push(`/patients/${response.data.id}`)
+    await router.push(`/patients/${response.id}`)
   } catch (error: unknown) {
     const fetchError = error as { statusCode?: number, data?: { message?: string } }
 

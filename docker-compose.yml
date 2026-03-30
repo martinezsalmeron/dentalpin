@@ -32,11 +32,14 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        API_BASE_URL: http://localhost:8000
     environment:
-      API_BASE_URL: ${API_BASE_URL:-http://backend:8000}
       NITRO_HOST: 0.0.0.0
       NITRO_PORT: 3000
+      NUXT_PUBLIC_API_BASE_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:

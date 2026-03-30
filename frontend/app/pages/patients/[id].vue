@@ -14,10 +14,9 @@ const { data: patient, status, refresh } = await useAsyncData(
   `patient:${patientId}`,
   async () => {
     try {
-      const response = await api.get<{ data: Patient }>(
+      return await api.get<Patient>(
         `/api/v1/clinical/patients/${patientId}`
       )
-      return response.data
     } catch (error: unknown) {
       const fetchError = error as { statusCode?: number }
       if (fetchError.statusCode === 404) {
@@ -37,7 +36,7 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
   async () => {
     try {
       return await api.get<PaginatedResponse<Appointment>>(
-        `/api/v1/clinical/appointments/?patient_id=${patientId}`
+        `/api/v1/clinical/appointments?patient_id=${patientId}`
       )
     } catch {
       return { data: [], total: 0, page: 1, page_size: 20 }
