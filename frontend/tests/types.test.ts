@@ -96,7 +96,7 @@ describe('Type definitions', () => {
         'no_show'
       ]
 
-      statuses.forEach(status => {
+      statuses.forEach((status) => {
         const appointment: Appointment = {
           id: '123',
           clinic_id: '123',

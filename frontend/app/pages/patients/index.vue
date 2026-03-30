@@ -40,8 +40,7 @@ const { data: patientsData, status, refresh } = await useAsyncData(
       return await api.get<PaginatedResponse<Patient>>(
         `/api/v1/clinical/patients/?${params.toString()}`
       )
-    }
-    catch {
+    } catch {
       return { data: [], total: 0, page: 1, page_size: pageSize }
     }
   },
@@ -103,17 +102,15 @@ async function createPatient() {
 
     // Navigate to patient detail
     await router.push(`/patients/${response.data.id}`)
-  }
-  catch (error: unknown) {
-    const fetchError = error as { statusCode?: number; data?: { message?: string } }
+  } catch (error: unknown) {
+    const fetchError = error as { statusCode?: number, data?: { message?: string } }
 
     toast.add({
       title: t('common.error'),
       description: fetchError.data?.message || t('common.serverError'),
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     isSubmitting.value = false
   }
 }
@@ -167,8 +164,15 @@ function getStatusColor(status: string): BadgeColor {
     <!-- Patients table -->
     <UCard>
       <!-- Loading state -->
-      <div v-if="status === 'pending'" class="space-y-3">
-        <USkeleton v-for="i in 5" :key="i" class="h-12 w-full" />
+      <div
+        v-if="status === 'pending'"
+        class="space-y-3"
+      >
+        <USkeleton
+          v-for="i in 5"
+          :key="i"
+          class="h-12 w-full"
+        />
       </div>
 
       <!-- Empty state -->
@@ -199,7 +203,10 @@ function getStatusColor(status: string): BadgeColor {
       </div>
 
       <!-- Patient list -->
-      <div v-else class="divide-y divide-gray-200 dark:divide-gray-800">
+      <div
+        v-else
+        class="divide-y divide-gray-200 dark:divide-gray-800"
+      >
         <div
           v-for="patient in patients"
           :key="patient.id"
@@ -207,7 +214,10 @@ function getStatusColor(status: string): BadgeColor {
           @click="goToPatient(patient)"
         >
           <div class="flex items-center gap-3 flex-1">
-            <UAvatar :alt="patient.first_name" size="sm" />
+            <UAvatar
+              :alt="patient.first_name"
+              size="sm"
+            />
             <div class="min-w-0 flex-1">
               <p class="font-medium text-gray-900 dark:text-white truncate">
                 {{ patient.last_name }}, {{ patient.first_name }}
@@ -217,7 +227,11 @@ function getStatusColor(status: string): BadgeColor {
               </p>
             </div>
           </div>
-          <UBadge :color="getStatusColor(patient.status)" variant="subtle" class="mr-4">
+          <UBadge
+            :color="getStatusColor(patient.status)"
+            variant="subtle"
+            class="mr-4"
+          >
             {{ t(`patients.status${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}`) }}
           </UBadge>
           <UIcon
@@ -276,9 +290,15 @@ function getStatusColor(status: string): BadgeColor {
             </div>
           </template>
 
-          <form class="space-y-4" @submit.prevent="createPatient">
+          <form
+            class="space-y-4"
+            @submit.prevent="createPatient"
+          >
             <div class="grid grid-cols-2 gap-4">
-              <UFormField :label="t('patients.firstName')" required>
+              <UFormField
+                :label="t('patients.firstName')"
+                required
+              >
                 <UInput
                   v-model="newPatient.first_name"
                   :placeholder="t('patients.firstName')"
@@ -286,7 +306,10 @@ function getStatusColor(status: string): BadgeColor {
                 />
               </UFormField>
 
-              <UFormField :label="t('patients.lastName')" required>
+              <UFormField
+                :label="t('patients.lastName')"
+                required
+              >
                 <UInput
                   v-model="newPatient.last_name"
                   :placeholder="t('patients.lastName')"

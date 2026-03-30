@@ -18,16 +18,6 @@ export default defineNuxtConfig({
     }
   },
 
-  i18n: {
-    locales: [
-      { code: 'es', name: 'Español', file: 'es.json' }
-    ],
-    defaultLocale: 'es',
-    lazy: true,
-    langDir: 'locales',
-    strategy: 'no_prefix'
-  },
-
   compatibilityDate: '2025-01-15',
 
   eslint: {
@@ -37,5 +27,15 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+
+  i18n: {
+    locales: [
+      { code: 'es', name: 'Español', file: 'es.json' }
+    ],
+    defaultLocale: 'es',
+    lazy: true,
+    langDir: 'locales',
+    strategy: 'no_prefix'
   }
 })

@@ -45,8 +45,14 @@ function isActive(to: string): boolean {
     >
       <!-- Logo -->
       <div class="flex items-center h-16 px-4 border-b border-gray-200 dark:border-gray-800">
-        <NuxtLink to="/" class="flex items-center gap-2 overflow-hidden">
-          <UIcon name="i-lucide-smile" class="w-8 h-8 text-primary-500 shrink-0" />
+        <NuxtLink
+          to="/"
+          class="flex items-center gap-2 overflow-hidden"
+        >
+          <UIcon
+            name="i-lucide-smile"
+            class="w-8 h-8 text-primary-500 shrink-0"
+          />
           <span
             v-if="!isSidebarCollapsed"
             class="font-semibold text-lg text-gray-900 dark:text-white truncate"
@@ -69,7 +75,10 @@ function isActive(to: string): boolean {
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
           ]"
         >
-          <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
+          <UIcon
+            :name="item.icon"
+            class="w-5 h-5 shrink-0"
+          />
           <span
             v-if="!isSidebarCollapsed"
             class="truncate"
@@ -90,7 +99,10 @@ function isActive(to: string): boolean {
             size="sm"
             class="shrink-0"
           />
-          <div v-if="!isSidebarCollapsed" class="flex-1 min-w-0">
+          <div
+            v-if="!isSidebarCollapsed"
+            class="flex-1 min-w-0"
+          >
             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
               {{ auth.user.value.first_name }} {{ auth.user.value.last_name }}
             </p>
@@ -120,7 +132,10 @@ function isActive(to: string): boolean {
 
         <!-- Clinic name -->
         <div class="ml-4 flex items-center gap-2">
-          <UIcon name="i-lucide-building-2" class="w-4 h-4 text-gray-500" />
+          <UIcon
+            name="i-lucide-building-2"
+            class="w-4 h-4 text-gray-500"
+          />
           <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
             {{ clinic.clinicName.value || 'Clínica' }}
           </span>

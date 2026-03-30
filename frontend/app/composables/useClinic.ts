@@ -27,11 +27,9 @@ export function useClinic() {
       if (response.data.length > 0) {
         currentClinic.value = response.data[0] ?? null
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Failed to fetch clinic:', error)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
   }
@@ -40,8 +38,7 @@ export function useClinic() {
   watch(() => auth.isAuthenticated.value, async (isAuth) => {
     if (isAuth && !currentClinic.value) {
       await fetchClinic()
-    }
-    else if (!isAuth) {
+    } else if (!isAuth) {
       currentClinic.value = null
       membership.value = null
     }

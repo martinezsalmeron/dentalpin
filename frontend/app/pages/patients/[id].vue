@@ -18,8 +18,7 @@ const { data: patient, status, refresh } = await useAsyncData(
         `/api/v1/clinical/patients/${patientId}`
       )
       return response.data
-    }
-    catch (error: unknown) {
+    } catch (error: unknown) {
       const fetchError = error as { statusCode?: number }
       if (fetchError.statusCode === 404) {
         throw createError({
@@ -40,8 +39,7 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
       return await api.get<PaginatedResponse<Appointment>>(
         `/api/v1/clinical/appointments/?patient_id=${patientId}`
       )
-    }
-    catch {
+    } catch {
       return { data: [], total: 0, page: 1, page_size: 20 }
     }
   }
@@ -109,17 +107,15 @@ async function savePatient() {
 
     isEditing.value = false
     await refresh()
-  }
-  catch (error: unknown) {
-    const fetchError = error as { statusCode?: number; data?: { message?: string } }
+  } catch (error: unknown) {
+    const fetchError = error as { statusCode?: number, data?: { message?: string } }
 
     toast.add({
       title: t('common.error'),
       description: fetchError.data?.message || t('common.serverError'),
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     isSubmitting.value = false
   }
 }
@@ -140,17 +136,15 @@ async function archivePatient() {
     })
 
     await router.push('/patients')
-  }
-  catch (error: unknown) {
-    const fetchError = error as { statusCode?: number; data?: { message?: string } }
+  } catch (error: unknown) {
+    const fetchError = error as { statusCode?: number, data?: { message?: string } }
 
     toast.add({
       title: t('common.error'),
       description: fetchError.data?.message || t('common.serverError'),
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     isSubmitting.value = false
     isArchiveModalOpen.value = false
   }
@@ -201,7 +195,10 @@ function getStatusColor(status: string): BadgeColor {
 <template>
   <div class="space-y-6">
     <!-- Loading state -->
-    <div v-if="status === 'pending'" class="space-y-4">
+    <div
+      v-if="status === 'pending'"
+      class="space-y-4"
+    >
       <USkeleton class="h-8 w-48" />
       <USkeleton class="h-64 w-full" />
     </div>
@@ -243,7 +240,10 @@ function getStatusColor(status: string): BadgeColor {
         <!-- Info tab -->
         <div v-if="activeTab === 'info'">
           <!-- View mode -->
-          <div v-if="!isEditing" class="space-y-6">
+          <div
+            v-if="!isEditing"
+            class="space-y-6"
+          >
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -320,16 +320,26 @@ function getStatusColor(status: string): BadgeColor {
           </div>
 
           <!-- Edit mode -->
-          <form v-else class="space-y-4" @submit.prevent="savePatient">
+          <form
+            v-else
+            class="space-y-4"
+            @submit.prevent="savePatient"
+          >
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UFormField :label="t('patients.firstName')" required>
+              <UFormField
+                :label="t('patients.firstName')"
+                required
+              >
                 <UInput
                   v-model="editForm.first_name"
                   required
                 />
               </UFormField>
 
-              <UFormField :label="t('patients.lastName')" required>
+              <UFormField
+                :label="t('patients.lastName')"
+                required
+              >
                 <UInput
                   v-model="editForm.last_name"
                   required
@@ -385,7 +395,10 @@ function getStatusColor(status: string): BadgeColor {
         </div>
 
         <!-- History tab -->
-        <div v-else-if="activeTab === 'history'" class="text-center py-12">
+        <div
+          v-else-if="activeTab === 'history'"
+          class="text-center py-12"
+        >
           <UIcon
             name="i-lucide-file-text"
             class="w-12 h-12 text-gray-400 mx-auto mb-4"
@@ -398,8 +411,15 @@ function getStatusColor(status: string): BadgeColor {
         <!-- Appointments tab -->
         <div v-else-if="activeTab === 'appointments'">
           <!-- Loading -->
-          <div v-if="appointmentsStatus === 'pending'" class="space-y-3">
-            <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
+          <div
+            v-if="appointmentsStatus === 'pending'"
+            class="space-y-3"
+          >
+            <USkeleton
+              v-for="i in 3"
+              :key="i"
+              class="h-12 w-full"
+            />
           </div>
 
           <!-- Empty state -->
@@ -423,7 +443,10 @@ function getStatusColor(status: string): BadgeColor {
           </div>
 
           <!-- Appointments list -->
-          <ul v-else class="divide-y divide-gray-200 dark:divide-gray-800">
+          <ul
+            v-else
+            class="divide-y divide-gray-200 dark:divide-gray-800"
+          >
             <li
               v-for="appointment in appointments"
               :key="appointment.id"
@@ -437,7 +460,10 @@ function getStatusColor(status: string): BadgeColor {
                   {{ appointment.treatment_type || '-' }}
                 </p>
               </div>
-              <UBadge :color="getStatusColor(appointment.status)" variant="subtle">
+              <UBadge
+                :color="getStatusColor(appointment.status)"
+                variant="subtle"
+              >
                 {{ t(`appointments.${appointment.status}`) }}
               </UBadge>
             </li>

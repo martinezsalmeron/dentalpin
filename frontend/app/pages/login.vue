@@ -33,18 +33,15 @@ async function onSubmit() {
     })
 
     await router.push('/')
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     const fetchError = error as { statusCode?: number }
 
     if (fetchError.statusCode === 401) {
       errorMessage.value = t('auth.invalidCredentials')
-    }
-    else {
+    } else {
       errorMessage.value = t('auth.networkError')
     }
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -55,7 +52,10 @@ async function onSubmit() {
     <!-- Logo -->
     <div class="text-center mb-8">
       <div class="flex items-center justify-center gap-2 mb-2">
-        <UIcon name="i-lucide-smile" class="w-10 h-10 text-primary-500" />
+        <UIcon
+          name="i-lucide-smile"
+          class="w-10 h-10 text-primary-500"
+        />
       </div>
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
         DentalPin

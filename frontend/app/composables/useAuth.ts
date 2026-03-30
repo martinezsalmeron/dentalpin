@@ -56,8 +56,7 @@ export function useAuth() {
       refreshToken.value = response.refresh_token
       user.value = response.user
       return true
-    }
-    catch {
+    } catch {
       await logout()
       return false
     }
@@ -76,8 +75,7 @@ export function useAuth() {
         }
       })
       user.value = response.data
-    }
-    catch {
+    } catch {
       // Token might be expired, try to refresh
       const refreshed = await refresh()
       if (!refreshed) {

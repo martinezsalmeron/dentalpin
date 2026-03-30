@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 // We need to test the module registry logic without side effects from the actual registration
 // So we'll test the logic in isolation

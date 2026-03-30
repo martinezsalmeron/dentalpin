@@ -38,9 +38,8 @@ export function useApi() {
         body,
         headers
       })
-    }
-    catch (error: unknown) {
-      const fetchError = error as { statusCode?: number; data?: { message?: string } }
+    } catch (error: unknown) {
+      const fetchError = error as { statusCode?: number, data?: { message?: string } }
 
       // Handle specific error codes
       if (fetchError.statusCode === 401) {
