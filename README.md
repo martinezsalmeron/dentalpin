@@ -2,6 +2,32 @@
 
 Open source dental clinic management software. Built with modular architecture for extensibility.
 
+## Why DentalPin?
+
+Dental clinics around the world share the same fundamental needs: managing patients, scheduling appointments, tracking treatments, and running their practice efficiently. Yet the software landscape is fragmented into dozens of localized, closed-source solutions that lock clinics into expensive contracts and outdated technology.
+
+**We believe it's time for a change.**
+
+DentalPin is built on a simple premise: **one open platform for dental clinics everywhere**. Not another regional solution, but a global foundation that any clinic can adopt, any developer can extend, and any community can localize.
+
+### Why now?
+
+AI has fundamentally changed what small teams can build. Features that once required large development departments can now be implemented in days. This is our window to create the open source dental software that should have existed years ago—before clinics got locked into legacy systems they can't escape.
+
+### Our principles
+
+- **Open Source** — Your clinic data belongs to you. Your software should too.
+- **Modular** — Start simple, add what you need. Don't pay for features you'll never use.
+- **Global by Design** — Built for localization from day one. Same core, any language, any country.
+- **API-First** — Every feature is an API. Integrate with anything, automate everything.
+- **AI-Ready** — Structured for the AI era. Ready for intelligent scheduling, clinical decision support, and workflow automation.
+
+### The vision
+
+We're not just building software—we're building the foundation for an ecosystem. A platform where developers contribute modules, clinics share improvements, and the entire dental community benefits from collective innovation.
+
+Clinics deserve better than closed, expensive software from the last decade. DentalPin is the open alternative.
+
 ## Quick Start
 
 ```bash
