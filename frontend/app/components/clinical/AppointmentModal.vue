@@ -20,6 +20,14 @@ const auth = useAuth()
 const clinic = useClinic()
 const { createAppointment, updateAppointment, cancelAppointment } = useAppointments()
 
+// Format date as YYYY-MM-DD in local timezone (not UTC)
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Form state
 const isSubmitting = ref(false)
 const selectedPatient = ref<Patient | null>(null)
@@ -86,9 +94,9 @@ watch(() => props.open, (isOpen) => {
     } else {
       // Create mode - use initial values
       if (props.initialDate) {
-        formData.date = props.initialDate.toISOString().split('T')[0] ?? ''
+        formData.date = formatLocalDate(props.initialDate)
       } else {
-        formData.date = new Date().toISOString().split('T')[0] ?? ''
+        formData.date = formatLocalDate(new Date())
       }
 
       if (props.initialTime) {
