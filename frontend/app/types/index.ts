@@ -17,6 +17,25 @@ export interface ClinicMembership {
   role: 'admin' | 'dentist' | 'hygienist' | 'assistant' | 'receptionist'
 }
 
+export interface Cabinet {
+  name: string
+  color: string
+}
+
+export interface CabinetCreate {
+  name: string
+  color: string
+}
+
+export interface CabinetUpdate {
+  name?: string
+  color?: string
+}
+
+export interface ClinicUpdate {
+  name?: string
+}
+
 export interface Clinic {
   id: string
   name: string
@@ -29,10 +48,7 @@ export interface Clinic {
     currency?: string
     timezone?: string
   }
-  cabinets: Array<{
-    name: string
-    color: string
-  }>
+  cabinets: Cabinet[]
   created_at: string
   updated_at: string
 }
@@ -62,6 +78,15 @@ export interface MeResponse {
 
 export type UserRole = 'admin' | 'dentist' | 'hygienist' | 'assistant' | 'receptionist'
 
+// Professional type (dentists and hygienists)
+export interface Professional {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  role: 'dentist' | 'hygienist'
+}
+
 export interface UserCreate {
   email: string
   password: string
@@ -69,6 +94,14 @@ export interface UserCreate {
   last_name: string
   role: UserRole
   clinic_id?: string
+}
+
+export interface UserUpdate {
+  first_name?: string
+  last_name?: string
+  email?: string
+  role?: UserRole
+  is_active?: boolean
 }
 
 // Patient types

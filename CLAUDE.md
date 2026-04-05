@@ -238,14 +238,16 @@ if (can('clinical.patients.write')) {
 | `useClinic` | Current clinic state | `currentClinic`, `cabinets` |
 | `useModules` | Navigation items | `navigationItems` (filtered by permissions) |
 | `useUsers` | User management | `users`, `createUser()`, `fetchUsers()` |
+| `useProfessionals` | Professionals (dentists/hygienists) | `professionals`, `fetchProfessionals()`, `getProfessionalColor()` |
 
 ### Component Organization
 
 ```
 components/
 ├── clinical/           # Domain-specific
-│   ├── AppointmentCalendar.vue
-│   └── AppointmentModal.vue
+│   ├── AppointmentCalendar.vue   # Weekly view with drag & drop
+│   ├── AppointmentDailyView.vue  # Daily view with columns per professional
+│   └── AppointmentModal.vue      # Create/edit appointment form
 └── shared/             # Reusable
     ├── ActionButton.vue    # Permission-aware button
     └── PatientSearch.vue   # Autocomplete search
@@ -484,6 +486,146 @@ def get_event_handlers(self) -> dict:
 | 404 | Not Found |
 | 409 | Conflict (duplicate) |
 | 422 | Validation Error |
+
+---
+
+## Professionals & Appointments System
+
+### Overview
+
+Appointments are associated with professionals (users with role `dentist` or `hygienist`). The system provides:
+- Endpoint to list professionals for a clinic
+- Validation that appointments can only be assigned to valid professionals
+- Professional info included in appointment responses
+- Calendar views (weekly/daily) with professional visualization
+
+### Backend: Professionals Endpoint
+
+**Endpoint:** `GET /api/v1/auth/professionals`
+**Permission:** `clinical.appointments.read`
+**Returns:** List of active dentists and hygienists in the clinic
+
+```python
+# Response schema
+class ProfessionalResponse(BaseModel):
+    id: UUID
+    email: str
+    first_name: str
+    last_name: str
+    role: str  # "dentist" or "hygienist"
+```
+
+### Backend: Professional Validation in Appointments
+
+When creating or updating appointments, the `professional_id` is validated:
+
+```python
+# In AppointmentService
+@staticmethod
+async def validate_professional_access(
+    db: AsyncSession, clinic_id: UUID, professional_id: UUID
+) -> bool:
+    """Check if professional exists, belongs to clinic, and has valid role."""
+    result = await db.execute(
+        select(ClinicMembership.id).where(
+            ClinicMembership.user_id == professional_id,
+            ClinicMembership.clinic_id == clinic_id,
+            ClinicMembership.role.in_(["dentist", "hygienist"]),
+        )
+    )
+    return result.scalar_one_or_none() is not None
+```
+
+**Error response (400):** `"Invalid professional: must be a dentist or hygienist in this clinic"`
+
+### Backend: Appointment Response with Professional
+
+Appointments include the professional info:
+
+```python
+class AppointmentResponse(BaseModel):
+    # ... other fields ...
+    professional_id: UUID
+    professional: ProfessionalBrief | None  # Eager loaded
+
+class ProfessionalBrief(BaseModel):
+    id: UUID
+    first_name: str
+    last_name: str
+```
+
+### Frontend: useProfessionals Composable
+
+```typescript
+const {
+  professionals,           // Ref<Professional[]>
+  fetchProfessionals,      // () => Promise<void>
+  getProfessionalById,     // (id: string) => Professional | undefined
+  getProfessionalColor,    // (id: string) => string (hex color)
+  getProfessionalInitials, // (prof: Professional) => string (e.g., "JD")
+  getProfessionalFullName  // (prof: Professional) => string
+} = useProfessionals()
+```
+
+Colors are auto-assigned from a predefined palette based on order.
+
+### Frontend: Appointment Modal
+
+The `AppointmentModal` component accepts:
+- `initialProfessionalId?: string` - Pre-select a professional (used in daily view)
+
+Default behavior:
+1. If `initialProfessionalId` provided → use it
+2. Else if current user is a professional → use their ID
+3. Else → use first professional in list
+
+### Frontend: Calendar Views
+
+**Weekly View (`AppointmentCalendar.vue`):**
+- Shows professional badge (initials + color) in top-right of appointments
+- Hover shows full name tooltip
+- Drag & drop to move/resize appointments
+
+**Daily View (`AppointmentDailyView.vue`):**
+- Columns per professional
+- Click slot → opens modal with professional pre-selected
+- Drag appointment horizontally → change professional
+- Supports same drag & drop features
+
+**View Toggle:**
+```vue
+<UButton @click="viewMode = 'week'">{{ t('appointments.weeklyView') }}</UButton>
+<UButton @click="viewMode = 'day'">{{ t('appointments.dailyView') }}</UButton>
+```
+
+### Frontend: Professional Filter
+
+On appointments page, filter by professional (similar to cabinet filter):
+
+```typescript
+const selectedProfessionals = ref<string[]>([])
+
+const filteredAppointments = computed(() => {
+  let result = appointments.value
+  if (selectedProfessionals.value.length > 0) {
+    result = result.filter(apt => selectedProfessionals.value.includes(apt.professional_id))
+  }
+  return result
+})
+```
+
+### Testing Professionals Feature
+
+```bash
+# Run all professionals tests
+docker-compose exec backend python -m pytest tests/test_professionals.py -v
+```
+
+Key test cases:
+- `test_list_professionals` - Returns only dentists/hygienists
+- `test_list_professionals_excludes_inactive` - Inactive users excluded
+- `test_create_appointment_with_invalid_professional_role` - Rejects receptionist
+- `test_appointment_response_includes_professional` - Professional info in response
 
 ---
 

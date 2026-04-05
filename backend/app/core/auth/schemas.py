@@ -104,3 +104,28 @@ class UserWithRoleResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating a user."""
+
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    email: EmailStr | None = None
+    role: str | None = Field(
+        default=None, description="Role: admin, dentist, hygienist, assistant, receptionist"
+    )
+    is_active: bool | None = None
+
+
+class ProfessionalResponse(BaseModel):
+    """Schema for professional response (dentists and hygienists)."""
+
+    id: UUID
+    email: str
+    first_name: str
+    last_name: str
+    role: str
+
+    class Config:
+        from_attributes = True

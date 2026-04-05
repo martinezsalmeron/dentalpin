@@ -1,34 +1,28 @@
 <script setup lang="ts">
 import type { Appointment, Professional } from '~/types'
 
-interface Cabinet {
-  name: string
-  color: string
-}
-
 interface ProfessionalWithColor extends Professional {
   color: string
 }
 
 const props = defineProps<{
   appointments: Appointment[]
-  cabinets?: Cabinet[]
-  professionals?: ProfessionalWithColor[]
-  currentWeekStart: Date
+  professionals: ProfessionalWithColor[]
+  currentDate: Date
   isLoading?: boolean
 }>()
 
 const emit = defineEmits<{
-  'slot-click': [date: Date, time: string]
+  'slot-click': [professionalId: string, time: string]
   'appointment-click': [appointment: Appointment]
-  'week-change': [weekStart: Date]
-  'appointment-move': [appointmentId: string, newDate: string, newStartTime: string, newEndTime: string]
+  'date-change': [date: Date]
+  'appointment-move': [appointmentId: string, newProfessionalId: string, newStartTime: string, newEndTime: string]
   'appointment-resize': [appointmentId: string, newEndTime: string]
 }>()
 
 const { t, locale } = useI18n()
 
-// Format date as YYYY-MM-DD in local timezone (not UTC)
+// Format date as YYYY-MM-DD in local timezone
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -36,12 +30,12 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-// Time slots configuration
+// Time slots configuration (same as weekly view)
 const START_HOUR = 8
 const END_HOUR = 21
 const SLOT_MINUTES = 15
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES
-const SLOT_HEIGHT = 24 // pixels per slot (h-6)
+const SLOT_HEIGHT = 24
 
 // Drag state
 const dragState = ref<{
@@ -51,8 +45,8 @@ const dragState = ref<{
   startX: number
   originalTop: number
   originalHeight: number
-  originalDayIndex: number
-  currentDayIndex: number
+  originalProfessionalIndex: number
+  currentProfessionalIndex: number
   currentTop: number
   currentHeight: number
 } | null>(null)
@@ -73,54 +67,40 @@ const timeSlots = computed(() => {
   return slots
 })
 
-// Generate days of the week
-const weekDays = computed(() => {
-  const days: Date[] = []
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(props.currentWeekStart)
-    day.setDate(day.getDate() + i)
-    days.push(day)
-  }
-  return days
+// Format date for header
+const formattedDate = computed(() => {
+  return props.currentDate.toLocaleDateString(locale.value, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
 })
 
-// Format day header
-function formatDayHeader(date: Date): string {
-  const dayName = date.toLocaleDateString(locale.value, { weekday: 'short' })
-  const dayNum = date.getDate()
-  return `${dayName} ${dayNum}`
-}
-
-// Check if date is today
-function isToday(date: Date): boolean {
+// Check if current date is today
+const isToday = computed(() => {
   const today = new Date()
-  return date.toDateString() === today.toDateString()
+  return props.currentDate.toDateString() === today.toDateString()
+})
+
+// Navigate days
+function prevDay() {
+  const newDate = new Date(props.currentDate)
+  newDate.setDate(newDate.getDate() - 1)
+  emit('date-change', newDate)
 }
 
-// Navigate weeks
-function prevWeek() {
-  const newStart = new Date(props.currentWeekStart)
-  newStart.setDate(newStart.getDate() - 7)
-  emit('week-change', newStart)
-}
-
-function nextWeek() {
-  const newStart = new Date(props.currentWeekStart)
-  newStart.setDate(newStart.getDate() + 7)
-  emit('week-change', newStart)
+function nextDay() {
+  const newDate = new Date(props.currentDate)
+  newDate.setDate(newDate.getDate() + 1)
+  emit('date-change', newDate)
 }
 
 function goToToday() {
-  const today = new Date()
-  const dayOfWeek = today.getDay()
-  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Monday as start
-  const monday = new Date(today)
-  monday.setDate(today.getDate() + diff)
-  monday.setHours(0, 0, 0, 0)
-  emit('week-change', monday)
+  emit('date-change', new Date())
 }
 
-// Calculate appointment position and height
+// Calculate slot index from time string
 function getSlotIndex(timeStr: string): number {
   const parts = timeStr.split(':').map(Number)
   const hours = parts[0] ?? 0
@@ -135,8 +115,8 @@ function slotIndexToTime(slotIndex: number): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
 }
 
+// Get appointment style
 function getAppointmentStyle(appointment: Appointment): Record<string, string> {
-  // Check if this appointment is being dragged
   if (dragState.value?.appointmentId === appointment.id) {
     return {
       top: `${dragState.value.currentTop}px`,
@@ -164,65 +144,19 @@ function getAppointmentStyle(appointment: Appointment): Record<string, string> {
   }
 }
 
-// Get the day index for drag preview
-function getAppointmentDayIndex(appointment: Appointment): number {
+// Get professional index for appointment (considering drag)
+function getAppointmentProfessionalIndex(appointment: Appointment): number {
   if (dragState.value?.appointmentId === appointment.id && dragState.value.type === 'move') {
-    return dragState.value.currentDayIndex
+    return dragState.value.currentProfessionalIndex
   }
-  const aptDate = appointment.start_time.split('T')[0]
-  return weekDays.value.findIndex(d => formatLocalDate(d) === aptDate)
+  return props.professionals.findIndex(p => p.id === appointment.professional_id)
 }
 
-// Get cabinet color
-function getCabinetColor(cabinetName: string): string {
-  const cabinet = props.cabinets?.find(c => c.name === cabinetName)
-  return cabinet?.color || '#6B7280' // Default gray
-}
-
-// Get professional by ID
-function getProfessional(professionalId: string): ProfessionalWithColor | undefined {
-  return props.professionals?.find(p => p.id === professionalId)
-}
-
-// Get professional initials
-function getProfessionalInitials(professionalId: string): string {
-  const prof = getProfessional(professionalId)
-  if (!prof) return '?'
-  const first = prof.first_name.charAt(0).toUpperCase()
-  const last = prof.last_name.charAt(0).toUpperCase()
-  return `${first}${last}`
-}
-
-// Get professional color
-function getProfessionalColor(professionalId: string): string {
-  const prof = getProfessional(professionalId)
-  return prof?.color || '#6B7280'
-}
-
-// Get professional full name
-function getProfessionalFullName(professionalId: string): string {
-  const prof = getProfessional(professionalId)
-  if (!prof) return 'Desconocido'
-  return `${prof.first_name} ${prof.last_name}`
-}
-
-// Get appointment style with cabinet color
-function getAppointmentColorStyle(appointment: Appointment): Record<string, string> {
-  const color = getCabinetColor(appointment.cabinet)
-  return {
-    '--cabinet-color': color,
-    'borderLeftColor': color,
-    'borderLeftWidth': '4px'
-  }
-}
-
-// Get status-based styling
+// Status styling
 function getStatusClass(status: Appointment['status']): string {
   const baseClass = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700'
-
   switch (status) {
     case 'scheduled':
-      return `${baseClass} text-gray-800 dark:text-gray-200`
     case 'confirmed':
       return `${baseClass} text-gray-800 dark:text-gray-200`
     case 'in_progress':
@@ -240,30 +174,24 @@ function getStatusClass(status: Appointment['status']): string {
 
 function getStatusIcon(status: Appointment['status']): string {
   switch (status) {
-    case 'confirmed':
-      return 'i-lucide-check'
-    case 'in_progress':
-      return 'i-lucide-play'
-    case 'completed':
-      return 'i-lucide-check-check'
-    case 'cancelled':
-      return 'i-lucide-x'
-    case 'no_show':
-      return 'i-lucide-user-x'
-    default:
-      return ''
+    case 'confirmed': return 'i-lucide-check'
+    case 'in_progress': return 'i-lucide-play'
+    case 'completed': return 'i-lucide-check-check'
+    case 'cancelled': return 'i-lucide-x'
+    case 'no_show': return 'i-lucide-user-x'
+    default: return ''
   }
 }
 
 // Handle slot click
-function handleSlotClick(date: Date, timeSlot: string) {
-  if (dragState.value) return // Don't trigger click during drag
-  emit('slot-click', date, timeSlot)
+function handleSlotClick(professionalId: string, timeSlot: string) {
+  if (dragState.value) return
+  emit('slot-click', professionalId, timeSlot)
 }
 
 // Handle appointment click
 function handleAppointmentClick(appointment: Appointment, event: Event) {
-  if (dragState.value || wasDragging.value) return // Don't trigger click during/after drag
+  if (dragState.value || wasDragging.value) return
   event.stopPropagation()
   emit('appointment-click', appointment)
 }
@@ -277,8 +205,7 @@ function startDrag(appointment: Appointment, event: MouseEvent, type: 'move' | '
   const endTime = appointment.end_time.split('T')[1]?.substring(0, 5) ?? '08:15'
   const startSlot = getSlotIndex(startTime)
   const endSlot = getSlotIndex(endTime)
-  const aptDate = appointment.start_time.split('T')[0]
-  const dayIndex = weekDays.value.findIndex(d => formatLocalDate(d) === aptDate)
+  const professionalIndex = props.professionals.findIndex(p => p.id === appointment.professional_id)
 
   dragState.value = {
     type,
@@ -287,8 +214,8 @@ function startDrag(appointment: Appointment, event: MouseEvent, type: 'move' | '
     startX: event.clientX,
     originalTop: startSlot * SLOT_HEIGHT,
     originalHeight: Math.max(1, endSlot - startSlot) * SLOT_HEIGHT,
-    originalDayIndex: dayIndex,
-    currentDayIndex: dayIndex,
+    originalProfessionalIndex: professionalIndex,
+    currentProfessionalIndex: professionalIndex,
     currentTop: startSlot * SLOT_HEIGHT,
     currentHeight: Math.max(1, endSlot - startSlot) * SLOT_HEIGHT
   }
@@ -303,33 +230,27 @@ function handleDragMove(event: MouseEvent) {
   const deltaY = event.clientY - dragState.value.startY
   const deltaX = event.clientX - dragState.value.startX
 
-  // Detect if there was significant movement (more than 5 pixels)
   if (Math.abs(deltaY) > 5 || Math.abs(deltaX) > 5) {
     hasMoved.value = true
   }
 
   if (dragState.value.type === 'resize') {
-    // Resize: change height
     const newHeight = Math.max(SLOT_HEIGHT, dragState.value.originalHeight + deltaY)
-    // Snap to slot boundaries
     const slots = Math.round(newHeight / SLOT_HEIGHT)
     dragState.value.currentHeight = slots * SLOT_HEIGHT
   } else if (dragState.value.type === 'move') {
-    // Move: change position and potentially day
     const newTop = Math.max(0, dragState.value.originalTop + deltaY)
-    // Snap to slot boundaries
     const slots = Math.round(newTop / SLOT_HEIGHT)
     const maxSlots = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - Math.round(dragState.value.currentHeight / SLOT_HEIGHT)
     dragState.value.currentTop = Math.min(slots, maxSlots) * SLOT_HEIGHT
 
-    // Calculate day change based on horizontal movement
-    // Estimate column width (calendar width / 8 columns, first is time)
-    if (calendarRef.value) {
+    // Calculate professional change
+    if (calendarRef.value && props.professionals.length > 1) {
       const calendarWidth = calendarRef.value.offsetWidth
-      const columnWidth = calendarWidth / 8
-      const dayDelta = Math.round(deltaX / columnWidth)
-      const newDayIndex = Math.max(0, Math.min(6, dragState.value.originalDayIndex + dayDelta))
-      dragState.value.currentDayIndex = newDayIndex
+      const columnWidth = calendarWidth / (props.professionals.length + 1) // +1 for time column
+      const profDelta = Math.round(deltaX / columnWidth)
+      const newProfIndex = Math.max(0, Math.min(props.professionals.length - 1, dragState.value.originalProfessionalIndex + profDelta))
+      dragState.value.currentProfessionalIndex = newProfIndex
     }
   }
 }
@@ -338,7 +259,6 @@ function handleDragEnd() {
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
 
-  // Only set flag if there was actual movement
   if (hasMoved.value) {
     wasDragging.value = true
     setTimeout(() => {
@@ -359,51 +279,34 @@ function handleDragEnd() {
   }
 
   if (dragState.value.type === 'resize') {
-    // Calculate new end time
     const startTime = appointment.start_time.split('T')[1]?.substring(0, 5) ?? '08:00'
     const startSlot = getSlotIndex(startTime)
     const newEndSlot = startSlot + Math.round(dragState.value.currentHeight / SLOT_HEIGHT)
     const newEndTime = slotIndexToTime(newEndSlot)
 
-    // Only emit if changed
     const oldEndTime = appointment.end_time.split('T')[1]?.substring(0, 5) ?? ''
     if (newEndTime !== oldEndTime) {
       emit('appointment-resize', dragState.value.appointmentId, newEndTime)
     }
   } else if (dragState.value.type === 'move') {
-    // Calculate new date and times
     const newStartSlot = Math.round(dragState.value.currentTop / SLOT_HEIGHT)
     const durationSlots = Math.round(dragState.value.currentHeight / SLOT_HEIGHT)
     const newEndSlot = newStartSlot + durationSlots
 
     const newStartTime = slotIndexToTime(newStartSlot)
     const newEndTime = slotIndexToTime(newEndSlot)
-    const dayAtIndex = weekDays.value[dragState.value.currentDayIndex]
-    const newDate = dayAtIndex ? formatLocalDate(dayAtIndex) : ''
+    const newProfessional = props.professionals[dragState.value.currentProfessionalIndex]
 
-    // Only emit if changed
-    const oldDate = appointment.start_time.split('T')[0]
     const oldStartTime = appointment.start_time.split('T')[1]?.substring(0, 5) ?? ''
+    const oldProfessionalId = appointment.professional_id
 
-    if (newDate !== oldDate || newStartTime !== oldStartTime) {
-      emit('appointment-move', dragState.value.appointmentId, newDate, newStartTime, newEndTime)
+    if (newProfessional && (newStartTime !== oldStartTime || newProfessional.id !== oldProfessionalId)) {
+      emit('appointment-move', dragState.value.appointmentId, newProfessional.id, newStartTime, newEndTime)
     }
   }
 
   dragState.value = null
 }
-
-// Format week range for header
-const weekRangeText = computed(() => {
-  const start = props.currentWeekStart
-  const end = new Date(start)
-  end.setDate(end.getDate() + 6)
-
-  const startStr = start.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' })
-  const endStr = end.toLocaleDateString(locale.value, { month: 'short', day: 'numeric', year: 'numeric' })
-
-  return `${startStr} - ${endStr}`
-})
 
 // Check if two appointments overlap in time
 function appointmentsOverlap(apt1: Appointment, apt2: Appointment): boolean {
@@ -416,25 +319,21 @@ function appointmentsOverlap(apt1: Appointment, apt2: Appointment): boolean {
 }
 
 // Group overlapping appointments and calculate their positions
-function calculateOverlapGroups(dayAppointments: Appointment[]): Map<string, { index: number, total: number }> {
+function calculateOverlapGroups(profAppointments: Appointment[]): Map<string, { index: number, total: number }> {
   const result = new Map<string, { index: number, total: number }>()
 
-  if (dayAppointments.length === 0) return result
+  if (profAppointments.length === 0) return result
 
-  // Sort by start time
-  const sorted = [...dayAppointments].sort((a, b) =>
+  const sorted = [...profAppointments].sort((a, b) =>
     new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   )
 
-  // Find all overlapping groups
   const groups: Appointment[][] = []
 
   for (const apt of sorted) {
-    // Find a group this appointment overlaps with
     let addedToGroup = false
 
     for (const group of groups) {
-      // Check if this appointment overlaps with any in the group
       const overlapsWithGroup = group.some(existing => appointmentsOverlap(apt, existing))
 
       if (overlapsWithGroup) {
@@ -455,7 +354,6 @@ function calculateOverlapGroups(dayAppointments: Appointment[]): Map<string, { i
     merged = false
     for (let i = 0; i < groups.length; i++) {
       for (let j = i + 1; j < groups.length; j++) {
-        // Check if any appointment in group i overlaps with any in group j
         const shouldMerge = groups[i]!.some(apt1 =>
           groups[j]!.some(apt2 => appointmentsOverlap(apt1, apt2))
         )
@@ -471,10 +369,8 @@ function calculateOverlapGroups(dayAppointments: Appointment[]): Map<string, { i
     }
   }
 
-  // Assign positions within each group
   for (const group of groups) {
     const total = group.length
-    // Sort by start time within group for consistent positioning
     group.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
 
     group.forEach((apt, index) => {
@@ -485,23 +381,20 @@ function calculateOverlapGroups(dayAppointments: Appointment[]): Map<string, { i
   return result
 }
 
-// Computed overlap positions for all days
+// Computed overlap positions for each professional
 const overlapPositions = computed(() => {
   const positions = new Map<string, { index: number, total: number }>()
+  const dateStr = formatLocalDate(props.currentDate)
 
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    const day = weekDays.value[dayIndex]
-    if (!day) continue
-
-    const dateStr = formatLocalDate(day)
-    const dayAppointments = props.appointments.filter(apt => {
+  for (const prof of props.professionals) {
+    const profAppointments = props.appointments.filter(apt => {
       if (apt.status === 'cancelled') return false
       const aptDate = apt.start_time.split('T')[0]
-      return aptDate === dateStr
+      return aptDate === dateStr && apt.professional_id === prof.id
     })
 
-    const dayPositions = calculateOverlapGroups(dayAppointments)
-    dayPositions.forEach((pos, id) => positions.set(id, pos))
+    const profPositions = calculateOverlapGroups(profAppointments)
+    profPositions.forEach((pos, id) => positions.set(id, pos))
   }
 
   return positions
@@ -524,28 +417,32 @@ function getOverlapStyle(appointment: Appointment): Record<string, string> {
   }
 }
 
-// All appointments flat for drag preview rendering
-const allAppointmentsWithDayIndex = computed(() => {
+// All appointments for current date
+const allAppointmentsWithProfIndex = computed(() => {
+  const dateStr = formatLocalDate(props.currentDate)
   return props.appointments
-    .filter(apt => apt.status !== 'cancelled')
+    .filter((apt) => {
+      const aptDate = apt.start_time.split('T')[0]
+      return aptDate === dateStr && apt.status !== 'cancelled'
+    })
     .map(apt => ({
       appointment: apt,
-      dayIndex: getAppointmentDayIndex(apt)
+      profIndex: getAppointmentProfessionalIndex(apt)
     }))
-    .filter(item => item.dayIndex >= 0 && item.dayIndex < 7)
+    .filter(item => item.profIndex >= 0)
 })
 </script>
 
 <template>
   <div class="flex flex-col h-full">
-    <!-- Calendar header -->
+    <!-- Header -->
     <div class="flex items-center justify-between mb-4 flex-shrink-0">
       <div class="flex items-center gap-2">
         <UButton
           variant="outline"
           color="neutral"
           icon="i-lucide-chevron-left"
-          @click="prevWeek"
+          @click="prevDay"
         />
         <UButton
           variant="outline"
@@ -558,16 +455,19 @@ const allAppointmentsWithDayIndex = computed(() => {
           variant="outline"
           color="neutral"
           icon="i-lucide-chevron-right"
-          @click="nextWeek"
+          @click="nextDay"
         />
       </div>
 
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-        {{ weekRangeText }}
+      <h2
+        class="text-lg font-semibold capitalize"
+        :class="isToday ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'"
+      >
+        {{ formattedDate }}
       </h2>
     </div>
 
-    <!-- Loading overlay -->
+    <!-- Loading -->
     <div
       v-if="isLoading"
       class="flex items-center justify-center py-12"
@@ -578,46 +478,63 @@ const allAppointmentsWithDayIndex = computed(() => {
       />
     </div>
 
+    <!-- No professionals message -->
+    <div
+      v-else-if="professionals.length === 0"
+      class="flex items-center justify-center py-12 text-gray-500"
+    >
+      {{ t('appointments.noProfessionals') }}
+    </div>
+
     <!-- Calendar grid -->
     <div
       v-else
       ref="calendarRef"
       class="flex-1 overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg"
     >
-      <div class="min-w-[800px]">
-        <!-- Day headers -->
-        <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+      <div
+        class="min-w-[600px]"
+        :style="{ minWidth: `${200 * professionals.length + 80}px` }"
+      >
+        <!-- Professional headers -->
+        <div
+          class="grid border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 sticky top-0 z-10"
+          :style="{ gridTemplateColumns: `80px repeat(${professionals.length}, 1fr)` }"
+        >
           <!-- Time column header -->
-          <div class="p-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
-            <!-- Empty -->
-          </div>
+          <div class="p-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700" />
 
-          <!-- Day headers -->
+          <!-- Professional headers -->
           <div
-            v-for="day in weekDays"
-            :key="day.toISOString()"
+            v-for="prof in professionals"
+            :key="prof.id"
             class="p-2 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0"
-            :class="{ 'bg-primary-50 dark:bg-primary-900/20': isToday(day) }"
           >
-            <span
-              class="text-sm font-medium"
-              :class="isToday(day) ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'"
-            >
-              {{ formatDayHeader(day) }}
-            </span>
+            <div class="flex items-center justify-center gap-2">
+              <span
+                class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                :style="{ backgroundColor: prof.color }"
+              >
+                {{ prof.first_name.charAt(0) }}{{ prof.last_name.charAt(0) }}
+              </span>
+              <span class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ prof.first_name }} {{ prof.last_name }}
+              </span>
+            </div>
           </div>
         </div>
 
         <!-- Time rows -->
         <div class="relative">
-          <!-- Hour markers and grid -->
+          <!-- Grid -->
           <div
             v-for="(slot, slotIndex) in timeSlots"
             :key="slot"
-            class="grid grid-cols-8 border-b border-gray-100 dark:border-gray-800"
+            class="grid border-b border-gray-100 dark:border-gray-800"
             :class="{ 'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0 }"
+            :style="{ gridTemplateColumns: `80px repeat(${professionals.length}, 1fr)` }"
           >
-            <!-- Time label (only show on hour marks) -->
+            <!-- Time label -->
             <div class="p-1 text-right border-r border-gray-200 dark:border-gray-700 h-6 flex items-center justify-end pr-2">
               <span
                 v-if="slotIndex % SLOTS_PER_HOUR === 0"
@@ -627,69 +544,60 @@ const allAppointmentsWithDayIndex = computed(() => {
               </span>
             </div>
 
-            <!-- Day columns -->
+            <!-- Professional columns -->
             <div
-              v-for="day in weekDays"
-              :key="`${day.toISOString()}-${slot}`"
+              v-for="prof in professionals"
+              :key="`${prof.id}-${slot}`"
               class="h-6 border-r border-gray-100 dark:border-gray-800 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors relative"
-              :class="{
-                'bg-primary-50/30 dark:bg-primary-900/10': isToday(day),
-                'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0
-              }"
-              @click="handleSlotClick(day, slot)"
+              :class="{ 'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0 }"
+              @click="handleSlotClick(prof.id, slot)"
             />
           </div>
 
           <!-- Appointments overlay -->
           <div class="absolute inset-0 pointer-events-none">
-            <div class="grid grid-cols-8 h-full">
+            <div
+              class="grid h-full"
+              :style="{ gridTemplateColumns: `80px repeat(${professionals.length}, 1fr)` }"
+            >
               <!-- Time column spacer -->
               <div class="border-r border-gray-200 dark:border-gray-700" />
 
-              <!-- Day columns with appointments -->
+              <!-- Professional columns -->
               <div
-                v-for="(day, dayIndex) in weekDays"
-                :key="`appointments-${day.toISOString()}`"
+                v-for="(prof, profIndex) in professionals"
+                :key="`appointments-${prof.id}`"
                 class="relative border-r border-gray-100 dark:border-gray-800 last:border-r-0"
               >
                 <div
-                  v-for="{ appointment } in allAppointmentsWithDayIndex.filter(a => a.dayIndex === dayIndex)"
+                  v-for="{ appointment } in allAppointmentsWithProfIndex.filter(a => a.profIndex === profIndex)"
                   :key="appointment.id"
-                  class="absolute rounded overflow-hidden pointer-events-auto select-none shadow-sm"
+                  class="absolute rounded overflow-hidden pointer-events-auto select-none shadow-sm border-l-4"
                   :class="[
                     getStatusClass(appointment.status),
                     dragState?.appointmentId === appointment.id ? 'cursor-grabbing ring-2 ring-primary-500' : 'cursor-grab hover:ring-2 hover:ring-primary-500'
                   ]"
-                  :style="{ ...getAppointmentStyle(appointment), ...getAppointmentColorStyle(appointment), ...getOverlapStyle(appointment) }"
+                  :style="{ ...getAppointmentStyle(appointment), ...getOverlapStyle(appointment), borderLeftColor: prof.color }"
                   @click="handleAppointmentClick(appointment, $event)"
                   @mousedown="startDrag(appointment, $event, 'move')"
                 >
                   <!-- Content -->
-                  <div class="px-1.5 h-full flex flex-col py-0.5 relative">
-                    <!-- Professional badge -->
-                    <div
-                      v-if="professionals && professionals.length > 0"
-                      class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-sm"
-                      :style="{ backgroundColor: getProfessionalColor(appointment.professional_id) }"
-                      :title="getProfessionalFullName(appointment.professional_id)"
-                    >
-                      {{ getProfessionalInitials(appointment.professional_id) }}
-                    </div>
-                    <div class="flex items-center gap-1 min-h-[18px] pr-5">
+                  <div class="px-1.5 h-full flex flex-col py-0.5">
+                    <div class="flex items-center gap-1 min-h-[18px]">
                       <UIcon
                         v-if="getStatusIcon(appointment.status)"
                         :name="getStatusIcon(appointment.status)"
                         class="w-3 h-3 flex-shrink-0"
                       />
                       <span class="text-xs font-medium truncate">
-                        {{ appointment.patient ? `${appointment.patient.last_name}` : 'Sin paciente' }}
+                        {{ appointment.patient ? `${appointment.patient.first_name} ${appointment.patient.last_name}` : 'Sin paciente' }}
                       </span>
                     </div>
                     <div
-                      v-if="appointment.treatment_type || appointment.cabinet"
+                      v-if="appointment.treatment_type"
                       class="text-xs opacity-60 truncate"
                     >
-                      {{ appointment.cabinet }}{{ appointment.treatment_type ? ` · ${appointment.treatment_type}` : '' }}
+                      {{ appointment.treatment_type }}
                     </div>
                   </div>
 

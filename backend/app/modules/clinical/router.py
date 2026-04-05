@@ -15,7 +15,11 @@ from .schemas import (
     AppointmentCreate,
     AppointmentResponse,
     AppointmentUpdate,
+    CabinetCreate,
+    CabinetResponse,
+    CabinetUpdate,
     ClinicResponse,
+    ClinicUpdate,
     PaginatedResponse,
     PatientCreate,
     PatientResponse,
@@ -169,6 +173,15 @@ async def create_appointment(
                 detail="Patient not found",
             )
 
+    # Validate professional access
+    if not await AppointmentService.validate_professional_access(
+        db, ctx.clinic_id, data.professional_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid professional: must be a dentist or hygienist in this clinic",
+        )
+
     try:
         appointment = await AppointmentService.create_appointment(
             db, ctx.clinic_id, data.model_dump(exclude_unset=True)
@@ -223,6 +236,16 @@ async def update_appointment(
                 detail="Patient not found",
             )
 
+    # Validate professional access if changing professional
+    if data.professional_id:
+        if not await AppointmentService.validate_professional_access(
+            db, ctx.clinic_id, data.professional_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid professional: must be a dentist or hygienist in this clinic",
+            )
+
     try:
         appointment = await AppointmentService.update_appointment(
             db, appointment, data.model_dump(exclude_unset=True)
@@ -275,3 +298,121 @@ async def get_clinic(
             detail="Access denied to this clinic",
         )
     return ClinicResponse.model_validate(ctx.clinic)
+
+
+@router.put("/clinics", response_model=ClinicResponse)
+async def update_clinic(
+    data: ClinicUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ClinicResponse:
+    """Update clinic info (admin only)."""
+    clinic = ctx.clinic
+
+    if data.name is not None:
+        clinic.name = data.name
+
+    await db.commit()
+    await db.refresh(clinic)
+
+    return ClinicResponse.model_validate(clinic)
+
+
+# Cabinet endpoints
+@router.post("/cabinets", response_model=CabinetResponse, status_code=status.HTTP_201_CREATED)
+async def create_cabinet(
+    data: CabinetCreate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CabinetResponse:
+    """Create a new cabinet in the clinic."""
+    clinic = ctx.clinic
+    cabinets = list(clinic.cabinets) if clinic.cabinets else []
+
+    # Check if cabinet name already exists
+    if any(c.get("name") == data.name for c in cabinets):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cabinet name already exists",
+        )
+
+    new_cabinet = {"name": data.name, "color": data.color}
+    cabinets.append(new_cabinet)
+    clinic.cabinets = cabinets
+    await db.commit()
+    await db.refresh(clinic)
+
+    return CabinetResponse(**new_cabinet)
+
+
+@router.put("/cabinets/{cabinet_name}", response_model=CabinetResponse)
+async def update_cabinet(
+    cabinet_name: str,
+    data: CabinetUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CabinetResponse:
+    """Update a cabinet in the clinic."""
+    clinic = ctx.clinic
+    cabinets = list(clinic.cabinets) if clinic.cabinets else []
+
+    # Find the cabinet
+    cabinet_index = None
+    for i, c in enumerate(cabinets):
+        if c.get("name") == cabinet_name:
+            cabinet_index = i
+            break
+
+    if cabinet_index is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cabinet not found",
+        )
+
+    # Check if new name already exists (if changing name)
+    if data.name and data.name != cabinet_name:
+        if any(c.get("name") == data.name for c in cabinets):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cabinet name already exists",
+            )
+
+    # Update cabinet
+    if data.name:
+        cabinets[cabinet_index]["name"] = data.name
+    if data.color:
+        cabinets[cabinet_index]["color"] = data.color
+
+    clinic.cabinets = cabinets
+    await db.commit()
+    await db.refresh(clinic)
+
+    return CabinetResponse(**cabinets[cabinet_index])
+
+
+@router.delete("/cabinets/{cabinet_name}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_cabinet(
+    cabinet_name: str,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Delete a cabinet from the clinic."""
+    clinic = ctx.clinic
+    cabinets = list(clinic.cabinets) if clinic.cabinets else []
+
+    # Find and remove the cabinet
+    original_length = len(cabinets)
+    cabinets = [c for c in cabinets if c.get("name") != cabinet_name]
+
+    if len(cabinets) == original_length:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cabinet not found",
+        )
+
+    clinic.cabinets = cabinets
+    await db.commit()

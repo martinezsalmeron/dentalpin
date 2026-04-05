@@ -73,6 +73,17 @@ class PatientBrief(BaseModel):
         from_attributes = True
 
 
+class ProfessionalBrief(BaseModel):
+    """Brief professional info for appointment references."""
+
+    id: UUID
+    first_name: str
+    last_name: str
+
+    class Config:
+        from_attributes = True
+
+
 # Appointment schemas
 class AppointmentCreate(BaseModel):
     """Schema for creating an appointment."""
@@ -118,9 +129,46 @@ class AppointmentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     patient: PatientBrief | None = None
+    professional: ProfessionalBrief | None = None
 
     class Config:
         from_attributes = True
+
+
+# Clinic update schema
+class ClinicUpdate(BaseModel):
+    """Schema for updating clinic info."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+# Cabinet schemas
+class CabinetBase(BaseModel):
+    """Base schema for cabinet."""
+
+    name: str = Field(min_length=1, max_length=50)
+    color: str = Field(min_length=4, max_length=7, pattern=r"^#[0-9A-Fa-f]{3,6}$")
+
+
+class CabinetCreate(CabinetBase):
+    """Schema for creating a cabinet."""
+
+    pass
+
+
+class CabinetUpdate(BaseModel):
+    """Schema for updating a cabinet."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    color: str | None = Field(
+        default=None, min_length=4, max_length=7, pattern=r"^#[0-9A-Fa-f]{3,6}$"
+    )
+
+
+class CabinetResponse(CabinetBase):
+    """Schema for cabinet response."""
+
+    pass
 
 
 # Clinic schemas
@@ -134,7 +182,7 @@ class ClinicResponse(BaseModel):
     phone: str | None
     email: str | None
     settings: dict
-    cabinets: list
+    cabinets: list[CabinetResponse]
 
     class Config:
         from_attributes = True

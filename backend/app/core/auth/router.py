@@ -23,11 +23,13 @@ from .schemas import (
     AuthResponse,
     ClinicResponse,
     MeResponse,
+    ProfessionalResponse,
     TokenRefresh,
     TokenResponse,
     UserCreate,
     UserRegister,
     UserResponse,
+    UserUpdate,
     UserWithRoleResponse,
 )
 from .service import (
@@ -336,3 +338,150 @@ async def create_user(
     await db.commit()
 
     return UserResponse.model_validate(user)
+
+
+@router.put("/users/{user_id}", response_model=UserWithRoleResponse)
+async def update_user(
+    user_id: UUID,
+    data: UserUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.users.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserWithRoleResponse:
+    """Update a user in the current clinic (admin only)."""
+    # Verify user belongs to this clinic
+    result = await db.execute(
+        select(ClinicMembership)
+        .options(selectinload(ClinicMembership.user))
+        .where(ClinicMembership.user_id == user_id)
+        .where(ClinicMembership.clinic_id == ctx.clinic_id)
+    )
+    membership = result.scalar_one_or_none()
+
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in this clinic",
+        )
+
+    user = membership.user
+
+    # Prevent admin from deactivating themselves
+    if data.is_active is False and user.id == ctx.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate your own account",
+        )
+
+    # Validate role if provided
+    if data.role is not None and data.role not in ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid role. Must be one of: {', '.join(ROLES)}",
+        )
+
+    # Check email uniqueness if changing email
+    if data.email is not None and data.email != user.email:
+        email_check = await db.execute(select(User).where(User.email == data.email))
+        if email_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+        user.email = data.email
+
+    # Update user fields
+    if data.first_name is not None:
+        user.first_name = data.first_name
+    if data.last_name is not None:
+        user.last_name = data.last_name
+    if data.is_active is not None:
+        user.is_active = data.is_active
+        # Increment token version to invalidate existing tokens when deactivating
+        if not data.is_active:
+            user.token_version += 1
+
+    # Update role in membership
+    if data.role is not None:
+        membership.role = data.role
+
+    await db.commit()
+    await db.refresh(user)
+    await db.refresh(membership)
+
+    return UserWithRoleResponse(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        is_active=user.is_active,
+        role=membership.role,
+        created_at=user.created_at.isoformat(),
+    )
+
+
+@router.get("/professionals", response_model=list[ProfessionalResponse])
+async def list_professionals(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.appointments.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ProfessionalResponse]:
+    """List professionals (dentists and hygienists) in the current clinic."""
+    # Fetch memberships with dentist/hygienist role and active users
+    result = await db.execute(
+        select(ClinicMembership)
+        .options(selectinload(ClinicMembership.user))
+        .where(
+            ClinicMembership.clinic_id == ctx.clinic_id,
+            ClinicMembership.role.in_(["dentist", "hygienist"]),
+        )
+    )
+    memberships = result.scalars().all()
+
+    return [
+        ProfessionalResponse(
+            id=m.user.id,
+            email=m.user.email,
+            first_name=m.user.first_name,
+            last_name=m.user.last_name,
+            role=m.role,
+        )
+        for m in memberships
+        if m.user.is_active
+    ]
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.users.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Remove a user from the current clinic (admin only).
+
+    This removes the clinic membership but does not delete the user account.
+    """
+    # Prevent admin from removing themselves
+    if user_id == ctx.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove yourself from the clinic",
+        )
+
+    # Verify user belongs to this clinic
+    result = await db.execute(
+        select(ClinicMembership)
+        .where(ClinicMembership.user_id == user_id)
+        .where(ClinicMembership.clinic_id == ctx.clinic_id)
+    )
+    membership = result.scalar_one_or_none()
+
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in this clinic",
+        )
+
+    await db.delete(membership)
+    await db.commit()

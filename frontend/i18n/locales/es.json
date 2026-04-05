@@ -67,6 +67,7 @@
     "prevWeek": "Semana anterior",
     "nextWeek": "Semana siguiente",
     "selectPatient": "Seleccionar paciente",
+    "selectProfessional": "Seleccionar profesional",
     "patient": "Paciente",
     "professional": "Profesional",
     "cabinet": "Gabinete",
@@ -89,7 +90,13 @@
     "conflict": "Este horario ya está ocupado",
     "cancel": "Cancelar cita",
     "markCompleted": "Marcar como atendida",
-    "markNoShow": "No se presentó"
+    "markNoShow": "No se presentó",
+    "dailyView": "Día",
+    "weeklyView": "Semana",
+    "noProfessionals": "No hay profesionales configurados",
+    "overlapWarning": "Se detectaron solapamientos",
+    "overlapProfessional": "El profesional tiene {count} cita(s) en este horario",
+    "overlapCabinet": "El gabinete tiene {count} cita(s) en este horario"
   },
   "dashboard": {
     "title": "Inicio",

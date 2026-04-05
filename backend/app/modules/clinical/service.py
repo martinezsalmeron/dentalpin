@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.auth.models import ClinicMembership
 from app.core.events import EventType, event_bus
 
 from .models import Appointment, Patient
@@ -152,7 +153,7 @@ class AppointmentService:
 
         query = (
             select(Appointment)
-            .options(selectinload(Appointment.patient))
+            .options(selectinload(Appointment.patient), selectinload(Appointment.professional))
             .where(Appointment.clinic_id == clinic_id)
         )
 
@@ -188,7 +189,7 @@ class AppointmentService:
         """Get an appointment by ID."""
         result = await db.execute(
             select(Appointment)
-            .options(selectinload(Appointment.patient))
+            .options(selectinload(Appointment.patient), selectinload(Appointment.professional))
             .where(
                 Appointment.id == appointment_id,
                 Appointment.clinic_id == clinic_id,
@@ -208,6 +209,22 @@ class AppointmentService:
                 Patient.id == patient_id,
                 Patient.clinic_id == clinic_id,
                 Patient.status != "archived",
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def validate_professional_access(
+        db: AsyncSession,
+        clinic_id: UUID,
+        professional_id: UUID,
+    ) -> bool:
+        """Check if professional exists, belongs to clinic, and has valid role."""
+        result = await db.execute(
+            select(ClinicMembership.id).where(
+                ClinicMembership.user_id == professional_id,
+                ClinicMembership.clinic_id == clinic_id,
+                ClinicMembership.role.in_(["dentist", "hygienist"]),
             )
         )
         return result.scalar_one_or_none() is not None
@@ -239,7 +256,7 @@ class AppointmentService:
         )
 
         # Refresh to load relationships
-        await db.refresh(appointment, ["patient"])
+        await db.refresh(appointment, ["patient", "professional"])
 
         return appointment
 

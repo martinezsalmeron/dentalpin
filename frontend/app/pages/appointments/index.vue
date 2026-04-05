@@ -5,12 +5,22 @@ const { t } = useI18n()
 const toast = useToast()
 const clinic = useClinic()
 const { appointments, isLoading, fetchAppointments, updateAppointment } = useAppointments()
+const { professionals, fetchProfessionals, getProfessionalColor } = useProfessionals()
 
-// Week state
+// View mode state
+const viewMode = ref<'week' | 'day'>('week')
+
+// Week state (for weekly view)
 const currentWeekStart = ref<Date>(getMonday(new Date()))
+
+// Day state (for daily view)
+const currentDate = ref<Date>(new Date())
 
 // Cabinet filter state
 const selectedCabinets = ref<string[]>([])
+
+// Professional filter state
+const selectedProfessionals = ref<string[]>([])
 
 // Initialize selected cabinets when clinic loads
 watch(() => clinic.cabinets.value, (cabinets) => {
@@ -19,10 +29,28 @@ watch(() => clinic.cabinets.value, (cabinets) => {
   }
 }, { immediate: true })
 
-// Filtered appointments based on selected cabinets
+// Initialize selected professionals when professionals load
+watch(professionals, (profs) => {
+  if (profs.length > 0 && selectedProfessionals.value.length === 0) {
+    selectedProfessionals.value = profs.map(p => p.id)
+  }
+}, { immediate: true })
+
+// Filtered appointments based on selected cabinets and professionals
 const filteredAppointments = computed(() => {
-  if (selectedCabinets.value.length === 0) return appointments.value
-  return appointments.value.filter(apt => selectedCabinets.value.includes(apt.cabinet))
+  let result = appointments.value
+
+  // Filter by cabinet
+  if (selectedCabinets.value.length > 0) {
+    result = result.filter(apt => selectedCabinets.value.includes(apt.cabinet))
+  }
+
+  // Filter by professional
+  if (selectedProfessionals.value.length > 0) {
+    result = result.filter(apt => selectedProfessionals.value.includes(apt.professional_id))
+  }
+
+  return result
 })
 
 // Cabinet filter options
@@ -31,6 +59,23 @@ const cabinetFilterOptions = computed(() => {
     label: cab.name,
     value: cab.name,
     color: cab.color
+  }))
+})
+
+// Professional filter options
+const professionalFilterOptions = computed(() => {
+  return professionals.value.map(prof => ({
+    label: `${prof.first_name} ${prof.last_name}`,
+    value: prof.id,
+    color: getProfessionalColor(prof.id)
+  }))
+})
+
+// Professionals with colors for calendar
+const professionalsWithColors = computed(() => {
+  return professionals.value.map(prof => ({
+    ...prof,
+    color: getProfessionalColor(prof.id)
   }))
 })
 
@@ -49,11 +94,27 @@ function selectAllCabinets() {
   selectedCabinets.value = clinic.cabinets.value.map(c => c.name)
 }
 
+// Toggle professional filter
+function toggleProfessional(professionalId: string) {
+  const index = selectedProfessionals.value.indexOf(professionalId)
+  if (index === -1) {
+    selectedProfessionals.value.push(professionalId)
+  } else {
+    selectedProfessionals.value.splice(index, 1)
+  }
+}
+
+// Select all professionals
+function selectAllProfessionals() {
+  selectedProfessionals.value = professionals.value.map(p => p.id)
+}
+
 // Modal state
 const isModalOpen = ref(false)
 const selectedAppointment = ref<Appointment | null>(null)
 const initialDate = ref<Date | undefined>()
 const initialTime = ref<string | undefined>()
+const initialProfessionalId = ref<string | undefined>()
 
 // Get Monday of the current week
 function getMonday(date: Date): Date {
@@ -86,12 +147,190 @@ async function handleWeekChange(newStart: Date) {
   await loadWeekAppointments()
 }
 
-// Handle slot click - open modal for new appointment
+// Handle slot click from weekly view - open modal for new appointment
 function handleSlotClick(date: Date, time: string) {
   selectedAppointment.value = null
   initialDate.value = date
   initialTime.value = time
+  initialProfessionalId.value = undefined
   isModalOpen.value = true
+}
+
+// Handle slot click from daily view - open modal with professional pre-selected
+function handleDailySlotClick(professionalId: string, time: string) {
+  selectedAppointment.value = null
+  initialDate.value = currentDate.value
+  initialTime.value = time
+  initialProfessionalId.value = professionalId
+  isModalOpen.value = true
+}
+
+// Handle date change in daily view
+function handleDateChange(newDate: Date) {
+  currentDate.value = newDate
+  loadDayAppointments()
+}
+
+// Load appointments for current day (daily view)
+async function loadDayAppointments() {
+  const start = new Date(currentDate.value)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(currentDate.value)
+  end.setHours(23, 59, 59, 999)
+  await fetchAppointments(start, end)
+}
+
+// Handle appointment move in daily view (changes professional)
+async function handleDailyAppointmentMove(appointmentId: string, newProfessionalId: string, newStartTime: string, newEndTime: string) {
+  const date = formatLocalDate(currentDate.value)
+
+  // Check for overlaps and show warning (with new professional)
+  checkAndWarnOverlaps(appointmentId, date, newStartTime, newEndTime, newProfessionalId)
+
+  try {
+    await updateAppointment(appointmentId, {
+      professional_id: newProfessionalId,
+      start_time: `${date}T${newStartTime}:00`,
+      end_time: `${date}T${newEndTime}:00`
+    })
+    toast.add({
+      title: t('common.success'),
+      description: t('appointments.updated'),
+      color: 'success'
+    })
+    await loadDayAppointments()
+  } catch (error: unknown) {
+    const fetchError = error as { statusCode?: number }
+    if (fetchError.statusCode === 409) {
+      toast.add({
+        title: t('common.error'),
+        description: t('appointments.conflict'),
+        color: 'error'
+      })
+    } else {
+      toast.add({
+        title: t('common.error'),
+        description: t('common.serverError'),
+        color: 'error'
+      })
+    }
+    await loadDayAppointments()
+  }
+}
+
+// Handle appointment resize in daily view
+async function handleDailyAppointmentResize(appointmentId: string, newEndTime: string) {
+  const date = formatLocalDate(currentDate.value)
+  const appointment = appointments.value.find(a => a.id === appointmentId)
+  const startTime = appointment?.start_time.split('T')[1]?.substring(0, 5) ?? '00:00'
+
+  // Check for overlaps and show warning
+  checkAndWarnOverlaps(appointmentId, date, startTime, newEndTime)
+
+  try {
+    await updateAppointment(appointmentId, {
+      end_time: `${date}T${newEndTime}:00`
+    })
+    toast.add({
+      title: t('common.success'),
+      description: t('appointments.updated'),
+      color: 'success'
+    })
+    await loadDayAppointments()
+  } catch (error: unknown) {
+    const fetchError = error as { statusCode?: number }
+    if (fetchError.statusCode === 409) {
+      toast.add({
+        title: t('common.error'),
+        description: t('appointments.conflict'),
+        color: 'error'
+      })
+    } else {
+      toast.add({
+        title: t('common.error'),
+        description: t('common.serverError'),
+        color: 'error'
+      })
+    }
+    await loadDayAppointments()
+  }
+}
+
+// Format date for daily view
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Check for overlaps and show warning toast
+function checkAndWarnOverlaps(
+  appointmentId: string,
+  newDate: string,
+  newStartTime: string,
+  newEndTime: string,
+  professionalId?: string,
+  cabinet?: string
+) {
+  const appointment = appointments.value.find(a => a.id === appointmentId)
+  if (!appointment) return
+
+  const effectiveProfessionalId = professionalId ?? appointment.professional_id
+  const effectiveCabinet = cabinet ?? appointment.cabinet
+
+  // Parse times as minutes from midnight
+  const startParts = newStartTime.split(':').map(Number)
+  const endParts = newEndTime.split(':').map(Number)
+  const newStartMinutes = (startParts[0] ?? 0) * 60 + (startParts[1] ?? 0)
+  const newEndMinutes = (endParts[0] ?? 0) * 60 + (endParts[1] ?? 0)
+
+  let sameProfessionalCount = 0
+  let sameCabinetCount = 0
+
+  for (const apt of appointments.value) {
+    if (apt.id === appointmentId) continue
+    if (apt.status === 'cancelled') continue
+
+    const aptDate = apt.start_time.split('T')[0]
+    if (aptDate !== newDate) continue
+
+    const aptStartTime = apt.start_time.split('T')[1]?.substring(0, 5) ?? '00:00'
+    const aptEndTime = apt.end_time.split('T')[1]?.substring(0, 5) ?? '00:00'
+
+    const aptStartParts = aptStartTime.split(':').map(Number)
+    const aptEndParts = aptEndTime.split(':').map(Number)
+    const aptStartMinutes = (aptStartParts[0] ?? 0) * 60 + (aptStartParts[1] ?? 0)
+    const aptEndMinutes = (aptEndParts[0] ?? 0) * 60 + (aptEndParts[1] ?? 0)
+
+    const overlaps = newStartMinutes < aptEndMinutes && newEndMinutes > aptStartMinutes
+
+    if (overlaps) {
+      if (apt.professional_id === effectiveProfessionalId) {
+        sameProfessionalCount++
+      }
+      if (apt.cabinet === effectiveCabinet) {
+        sameCabinetCount++
+      }
+    }
+  }
+
+  if (sameProfessionalCount > 0 || sameCabinetCount > 0) {
+    const warnings: string[] = []
+    if (sameProfessionalCount > 0) {
+      warnings.push(t('appointments.overlapProfessional', { count: sameProfessionalCount }))
+    }
+    if (sameCabinetCount > 0) {
+      warnings.push(t('appointments.overlapCabinet', { count: sameCabinetCount }))
+    }
+
+    toast.add({
+      title: t('appointments.overlapWarning'),
+      description: warnings.join('. '),
+      color: 'warning',
+      icon: 'i-lucide-alert-triangle'
+    })
+  }
 }
 
 // Handle appointment click - open modal for edit
@@ -99,21 +338,33 @@ function handleAppointmentClick(appointment: Appointment) {
   selectedAppointment.value = appointment
   initialDate.value = undefined
   initialTime.value = undefined
+  initialProfessionalId.value = undefined
   isModalOpen.value = true
 }
 
 // Handle modal save
 async function handleSaved() {
-  await loadWeekAppointments()
+  if (viewMode.value === 'week') {
+    await loadWeekAppointments()
+  } else {
+    await loadDayAppointments()
+  }
 }
 
 // Handle appointment cancelled
 async function handleCancelled() {
-  await loadWeekAppointments()
+  if (viewMode.value === 'week') {
+    await loadWeekAppointments()
+  } else {
+    await loadDayAppointments()
+  }
 }
 
 // Handle appointment move (drag to different day/time)
 async function handleAppointmentMove(appointmentId: string, newDate: string, newStartTime: string, newEndTime: string) {
+  // Check for overlaps and show warning
+  checkAndWarnOverlaps(appointmentId, newDate, newStartTime, newEndTime)
+
   try {
     await updateAppointment(appointmentId, {
       start_time: `${newDate}T${newStartTime}:00`,
@@ -149,7 +400,11 @@ async function handleAppointmentResize(appointmentId: string, newEndTime: string
   const appointment = appointments.value.find(a => a.id === appointmentId)
   if (!appointment) return
 
-  const date = appointment.start_time.split('T')[0]
+  const date = appointment.start_time.split('T')[0] ?? ''
+  const startTime = appointment.start_time.split('T')[1]?.substring(0, 5) ?? '00:00'
+
+  // Check for overlaps and show warning
+  checkAndWarnOverlaps(appointmentId, date, startTime, newEndTime)
 
   try {
     await updateAppointment(appointmentId, {
@@ -183,14 +438,27 @@ async function handleAppointmentResize(appointmentId: string, newEndTime: string
 // Open create modal from header button
 function openCreateModal() {
   selectedAppointment.value = null
-  initialDate.value = new Date()
+  initialDate.value = viewMode.value === 'day' ? currentDate.value : new Date()
   initialTime.value = '09:00'
+  initialProfessionalId.value = undefined
   isModalOpen.value = true
 }
 
+// Watch view mode changes to load appropriate data
+watch(viewMode, async (mode) => {
+  if (mode === 'week') {
+    await loadWeekAppointments()
+  } else {
+    await loadDayAppointments()
+  }
+})
+
 // Load initial data
 onMounted(async () => {
-  await loadWeekAppointments()
+  await Promise.all([
+    loadWeekAppointments(),
+    fetchProfessionals()
+  ])
 })
 </script>
 
@@ -201,55 +469,122 @@ onMounted(async () => {
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
         {{ t('appointments.title') }}
       </h1>
-      <UButton
-        icon="i-lucide-plus"
-        @click="openCreateModal"
-      >
-        {{ t('appointments.create') }}
-      </UButton>
+      <div class="flex items-center gap-3">
+        <!-- View toggle -->
+        <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <UButton
+            :variant="viewMode === 'week' ? 'solid' : 'ghost'"
+            :color="viewMode === 'week' ? 'primary' : 'neutral'"
+            size="sm"
+            icon="i-lucide-calendar-days"
+            @click="viewMode = 'week'"
+          >
+            {{ t('appointments.weeklyView') }}
+          </UButton>
+          <UButton
+            :variant="viewMode === 'day' ? 'solid' : 'ghost'"
+            :color="viewMode === 'day' ? 'primary' : 'neutral'"
+            size="sm"
+            icon="i-lucide-calendar"
+            @click="viewMode = 'day'"
+          >
+            {{ t('appointments.dailyView') }}
+          </UButton>
+        </div>
+        <UButton
+          icon="i-lucide-plus"
+          @click="openCreateModal"
+        >
+          {{ t('appointments.create') }}
+        </UButton>
+      </div>
     </div>
 
-    <!-- Cabinet filters -->
-    <div
-      v-if="cabinetFilterOptions.length > 0"
-      class="flex items-center gap-2 flex-shrink-0"
-    >
-      <span class="text-sm text-gray-500 dark:text-gray-400">
-        {{ t('appointments.cabinet') }}:
-      </span>
-      <div class="flex items-center gap-2">
-        <button
-          v-for="cabinet in cabinetFilterOptions"
-          :key="cabinet.value"
-          class="flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium transition-all"
-          :class="selectedCabinets.includes(cabinet.value)
-            ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500'
-            : 'opacity-40 hover:opacity-70'"
-          @click="toggleCabinet(cabinet.value)"
-        >
-          <span
-            class="w-3 h-3 rounded-full"
-            :style="{ backgroundColor: cabinet.color }"
-          />
-          {{ cabinet.label }}
-        </button>
-      </div>
-      <UButton
-        v-if="selectedCabinets.length < cabinetFilterOptions.length"
-        variant="ghost"
-        color="neutral"
-        size="xs"
-        @click="selectAllCabinets"
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-4 flex-shrink-0">
+      <!-- Cabinet filters -->
+      <div
+        v-if="cabinetFilterOptions.length > 0"
+        class="flex items-center gap-2"
       >
-        {{ t('common.selectAll') }}
-      </UButton>
+        <span class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('appointments.cabinet') }}:
+        </span>
+        <div class="flex items-center gap-2">
+          <button
+            v-for="cabinet in cabinetFilterOptions"
+            :key="cabinet.value"
+            class="flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium transition-all"
+            :class="selectedCabinets.includes(cabinet.value)
+              ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500'
+              : 'opacity-40 hover:opacity-70'"
+            @click="toggleCabinet(cabinet.value)"
+          >
+            <span
+              class="w-3 h-3 rounded-full"
+              :style="{ backgroundColor: cabinet.color }"
+            />
+            {{ cabinet.label }}
+          </button>
+        </div>
+        <UButton
+          v-if="selectedCabinets.length < cabinetFilterOptions.length"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          @click="selectAllCabinets"
+        >
+          {{ t('common.selectAll') }}
+        </UButton>
+      </div>
+
+      <!-- Professional filters -->
+      <div
+        v-if="professionalFilterOptions.length > 0"
+        class="flex items-center gap-2"
+      >
+        <span class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('appointments.professional') }}:
+        </span>
+        <div class="flex items-center gap-2">
+          <button
+            v-for="prof in professionalFilterOptions"
+            :key="prof.value"
+            class="flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium transition-all"
+            :class="selectedProfessionals.includes(prof.value)
+              ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500'
+              : 'opacity-40 hover:opacity-70'"
+            @click="toggleProfessional(prof.value)"
+          >
+            <span
+              class="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+              :style="{ backgroundColor: prof.color }"
+            >
+              {{ prof.label.split(' ').map((n: string) => n.charAt(0)).join('').substring(0, 2).toUpperCase() }}
+            </span>
+            {{ prof.label }}
+          </button>
+        </div>
+        <UButton
+          v-if="selectedProfessionals.length < professionalFilterOptions.length"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          @click="selectAllProfessionals"
+        >
+          {{ t('common.selectAll') }}
+        </UButton>
+      </div>
     </div>
 
     <!-- Calendar -->
     <div class="flex-1 min-h-0">
+      <!-- Weekly view -->
       <AppointmentCalendar
+        v-if="viewMode === 'week'"
         :appointments="filteredAppointments"
         :cabinets="clinic.cabinets.value"
+        :professionals="professionalsWithColors"
         :current-week-start="currentWeekStart"
         :is-loading="isLoading"
         @slot-click="handleSlotClick"
@@ -257,6 +592,20 @@ onMounted(async () => {
         @week-change="handleWeekChange"
         @appointment-move="handleAppointmentMove"
         @appointment-resize="handleAppointmentResize"
+      />
+
+      <!-- Daily view -->
+      <AppointmentDailyView
+        v-else
+        :appointments="filteredAppointments"
+        :professionals="professionalsWithColors"
+        :current-date="currentDate"
+        :is-loading="isLoading"
+        @slot-click="handleDailySlotClick"
+        @appointment-click="handleAppointmentClick"
+        @date-change="handleDateChange"
+        @appointment-move="handleDailyAppointmentMove"
+        @appointment-resize="handleDailyAppointmentResize"
       />
     </div>
 
@@ -266,6 +615,8 @@ onMounted(async () => {
       :appointment="selectedAppointment"
       :initial-date="initialDate"
       :initial-time="initialTime"
+      :initial-professional-id="initialProfessionalId"
+      :existing-appointments="appointments"
       @saved="handleSaved"
       @cancelled="handleCancelled"
     />

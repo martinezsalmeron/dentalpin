@@ -1,19 +1,20 @@
 """Tests for clinical module endpoints."""
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth.models import Clinic, ClinicMembership
+from app.core.auth.models import Clinic, ClinicMembership, User
+from app.core.auth.service import hash_password
 
 
 @pytest.fixture
 async def clinic_setup(
     db_session: AsyncSession, auth_headers: dict[str, str], client: AsyncClient
 ) -> dict:
-    """Set up a clinic with the test user as admin."""
-    from uuid import uuid4
-
+    """Set up a clinic with the test user as admin and a dentist for appointments."""
     # Get user from /me endpoint
     response = await client.get("/api/v1/auth/me", headers=auth_headers)
     user_id = response.json()["user"]["id"]
@@ -30,7 +31,7 @@ async def clinic_setup(
     db_session.add(clinic)
     await db_session.flush()
 
-    # Create membership
+    # Create admin membership
     membership = ClinicMembership(
         id=uuid4(),
         user_id=user_id,
@@ -38,9 +39,33 @@ async def clinic_setup(
         role="admin",
     )
     db_session.add(membership)
+
+    # Create dentist user for appointments
+    dentist = User(
+        id=uuid4(),
+        email="dentist@test.clinic",
+        password_hash=hash_password("TestPass123"),
+        first_name="Test",
+        last_name="Dentist",
+        is_active=True,
+    )
+    db_session.add(dentist)
+    await db_session.flush()
+
+    dentist_membership = ClinicMembership(
+        id=uuid4(),
+        user_id=dentist.id,
+        clinic_id=clinic.id,
+        role="dentist",
+    )
+    db_session.add(dentist_membership)
     await db_session.commit()
 
-    return {"clinic_id": str(clinic.id), "user_id": user_id}
+    return {
+        "clinic_id": str(clinic.id),
+        "user_id": user_id,
+        "dentist_id": str(dentist.id),
+    }
 
 
 @pytest.mark.asyncio
@@ -150,13 +175,13 @@ async def test_create_appointment(
     )
     patient_id = patient_response.json()["id"]
 
-    # Create appointment
+    # Create appointment (must use dentist, not admin)
     response = await client.post(
         "/api/v1/clinical/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
-            "professional_id": clinic_setup["user_id"],
+            "professional_id": clinic_setup["dentist_id"],
             "cabinet": "Gabinete 1",
             "start_time": "2026-04-01T10:00:00Z",
             "end_time": "2026-04-01T10:30:00Z",
@@ -184,7 +209,7 @@ async def test_appointment_time_conflict(
 
     appointment_data = {
         "patient_id": patient_id,
-        "professional_id": clinic_setup["user_id"],
+        "professional_id": clinic_setup["dentist_id"],
         "cabinet": "Gabinete 1",
         "start_time": "2026-04-02T10:00:00Z",
         "end_time": "2026-04-02T10:30:00Z",
