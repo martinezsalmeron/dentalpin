@@ -49,12 +49,14 @@ app.add_middleware(SlowAPIMiddleware)
 # Configure CORS
 allowed_origins = settings.allowed_origins_list.copy()
 if settings.ENVIRONMENT == "development":
-    allowed_origins.extend([
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ])
+    allowed_origins.extend(
+        [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+        ]
+    )
 
 app.add_middleware(
     CORSMiddleware,
