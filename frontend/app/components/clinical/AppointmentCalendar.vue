@@ -494,7 +494,7 @@ const overlapPositions = computed(() => {
     if (!day) continue
 
     const dateStr = formatLocalDate(day)
-    const dayAppointments = props.appointments.filter(apt => {
+    const dayAppointments = props.appointments.filter((apt) => {
       if (apt.status === 'cancelled') return false
       const aptDate = apt.start_time.split('T')[0]
       return aptDate === dateStr

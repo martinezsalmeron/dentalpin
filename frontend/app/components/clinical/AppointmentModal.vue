@@ -131,12 +131,6 @@ const overlappingAppointments = computed(() => {
   return { sameProfessional, sameCabinet }
 })
 
-// Check if there are any overlaps
-const hasOverlap = computed(() => {
-  return overlappingAppointments.value.sameProfessional.length > 0 ||
-         overlappingAppointments.value.sameCabinet.length > 0
-})
-
 // Track if we've already shown the overlap warning for current config
 const lastOverlapWarningKey = ref('')
 
