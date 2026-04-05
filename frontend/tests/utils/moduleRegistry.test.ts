@@ -22,7 +22,7 @@ describe('moduleRegistry', () => {
       const clinical = modules.find(m => m.name === 'clinical')
 
       expect(clinical).toBeDefined()
-      expect(clinical?.label).toBe('Clínico')
+      expect(clinical?.label).toBe('Clinical')
       expect(clinical?.navigation.length).toBeGreaterThan(0)
     })
 
@@ -33,7 +33,7 @@ describe('moduleRegistry', () => {
       const settings = modules.find(m => m.name === 'settings')
 
       expect(settings).toBeDefined()
-      expect(settings?.label).toBe('Configuración')
+      expect(settings?.label).toBe('Settings')
     })
   })
 
