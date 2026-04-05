@@ -1,4 +1,5 @@
 import type { ModuleDefinition, NavigationItem } from '~/types'
+import { PERMISSIONS } from '~/config/permissions'
 
 const modules: ModuleDefinition[] = []
 
@@ -21,37 +22,41 @@ export function getNavigationItems(): NavigationItem[] {
 // Register the clinical module
 registerModule({
   name: 'clinical',
-  label: 'Clínico',
+  label: 'Clinical',
   icon: 'i-lucide-stethoscope',
   navigation: [
     {
       label: 'nav.dashboard',
       icon: 'i-lucide-home',
       to: '/'
+      // Dashboard accessible to all authenticated users
     },
     {
       label: 'nav.patients',
       icon: 'i-lucide-users',
-      to: '/patients'
+      to: '/patients',
+      permission: PERMISSIONS.patients.read
     },
     {
       label: 'nav.appointments',
       icon: 'i-lucide-calendar',
-      to: '/appointments'
+      to: '/appointments',
+      permission: PERMISSIONS.appointments.read
     }
   ]
 })
 
-// Settings is always available
+// Settings module
 registerModule({
   name: 'settings',
-  label: 'Configuración',
+  label: 'Settings',
   icon: 'i-lucide-settings',
   navigation: [
     {
       label: 'nav.settings',
       icon: 'i-lucide-settings',
       to: '/settings'
+      // Settings accessible to all authenticated users
     }
   ]
 })

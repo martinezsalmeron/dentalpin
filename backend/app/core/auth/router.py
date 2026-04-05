@@ -28,6 +28,7 @@ from .schemas import (
     UserCreate,
     UserRegister,
     UserResponse,
+    UserWithRoleResponse,
 )
 from .service import (
     create_access_token,
@@ -251,6 +252,35 @@ async def get_me(
         clinics=clinics,
         permissions=permissions,
     )
+
+
+@router.get("/users", response_model=list[UserWithRoleResponse])
+async def list_users(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.users.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[UserWithRoleResponse]:
+    """List all users in the current clinic (admin only)."""
+    # Fetch all memberships for this clinic with user data
+    result = await db.execute(
+        select(ClinicMembership)
+        .options(selectinload(ClinicMembership.user))
+        .where(ClinicMembership.clinic_id == ctx.clinic_id)
+    )
+    memberships = result.scalars().all()
+
+    return [
+        UserWithRoleResponse(
+            id=m.user.id,
+            email=m.user.email,
+            first_name=m.user.first_name,
+            last_name=m.user.last_name,
+            is_active=m.user.is_active,
+            role=m.role,
+            created_at=m.user.created_at.isoformat(),
+        )
+        for m in memberships
+    ]
 
 
 @router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

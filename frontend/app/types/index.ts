@@ -152,6 +152,7 @@ export interface NavigationItem {
   label: string
   icon: string
   to: string
+  permission?: string // Required permission to see this item
 }
 
 export interface ModuleDefinition {
@@ -159,4 +160,15 @@ export interface ModuleDefinition {
   label: string
   icon: string
   navigation: NavigationItem[]
+}
+
+// Permission config for centralized management
+export interface PermissionConfig {
+  routes: Record<string, string> // path -> permission
+  actions: Record<string, Record<string, string>> // resource -> action -> permission
+}
+
+// User list response (for admin)
+export interface UserWithRole extends User {
+  role?: UserRole
 }

@@ -89,3 +89,18 @@ class UserCreate(BaseModel):
     clinic_id: UUID | None = Field(
         default=None, description="Clinic ID. If not provided, uses admin's current clinic"
     )
+
+
+class UserWithRoleResponse(BaseModel):
+    """Schema for user with their clinic role."""
+
+    id: UUID
+    email: str
+    first_name: str
+    last_name: str
+    is_active: bool
+    role: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
