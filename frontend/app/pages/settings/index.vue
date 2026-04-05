@@ -10,13 +10,13 @@ const { users, isLoading: usersLoading, availableRoles, fetchUsers, createUser }
 // User creation modal state
 const showCreateUserModal = ref(false)
 const isCreatingUser = ref(false)
-const newUser = ref<UserCreate>({
+const newUser = ref({
   email: '',
   password: '',
   first_name: '',
-  last_name: '',
-  role: 'receptionist'
+  last_name: ''
 })
+const selectedRole = ref<UserRole>('receptionist')
 
 // Fetch users when admin visits the page
 onMounted(() => {
@@ -37,15 +37,19 @@ function openCreateUserModal() {
     email: '',
     password: '',
     first_name: '',
-    last_name: '',
-    role: 'receptionist'
+    last_name: ''
   }
+  selectedRole.value = 'receptionist'
   showCreateUserModal.value = true
 }
 
 async function handleCreateUser() {
   isCreatingUser.value = true
-  const result = await createUser(newUser.value)
+  const userData: UserCreate = {
+    ...newUser.value,
+    role: selectedRole.value
+  }
+  const result = await createUser(userData)
   isCreatingUser.value = false
   if (result) {
     showCreateUserModal.value = false
@@ -325,7 +329,7 @@ function getRoleLabel(role: UserRole): string {
 
             <UFormField label="Rol">
               <USelect
-                v-model="newUser.role"
+                v-model="selectedRole"
                 :items="availableRoles"
                 value-key="value"
                 label-key="label"
