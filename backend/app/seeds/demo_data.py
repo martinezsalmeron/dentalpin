@@ -297,7 +297,18 @@ TREATMENT_TYPES = [
 PAST_STATUSES = ["completed", "completed", "completed", "completed", "no_show"]
 
 # Time slots (morning and afternoon)
-MORNING_SLOTS = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30"]
+MORNING_SLOTS = [
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:00",
+    "12:30",
+    "13:00",
+    "13:30",
+]
 AFTERNOON_SLOTS = ["16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"]
 
 
@@ -355,10 +366,7 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
                 time_str = random.choice(AFTERNOON_SLOTS)
 
             hour, minute = map(int, time_str.split(":"))
-            start_time = datetime(
-                appt_date.year, appt_date.month, appt_date.day,
-                hour, minute, 0
-            )
+            start_time = datetime(appt_date.year, appt_date.month, appt_date.day, hour, minute, 0)
 
             # Pick treatment type
             treatment = random.choice(TREATMENT_TYPES)
@@ -385,19 +393,21 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
             else:  # future
                 status = random.choice(["scheduled", "scheduled", "confirmed"])
 
-            appointments.append({
-                "id": uuid4(),
-                "clinic_id": CLINIC_ID,
-                "patient_id": patient_id,
-                "professional_id": professional_id,
-                "cabinet": cabinet,
-                "start_time": start_time,
-                "end_time": end_time,
-                "treatment_type": treatment["name"],
-                "status": status,
-                "notes": None,
-                "color": treatment["color"],
-            })
+            appointments.append(
+                {
+                    "id": uuid4(),
+                    "clinic_id": CLINIC_ID,
+                    "patient_id": patient_id,
+                    "professional_id": professional_id,
+                    "cabinet": cabinet,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "treatment_type": treatment["name"],
+                    "status": status,
+                    "notes": None,
+                    "color": treatment["color"],
+                }
+            )
             appointment_counter += 1
 
     return appointments
