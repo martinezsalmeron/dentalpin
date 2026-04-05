@@ -23,6 +23,14 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 
+// Format date as YYYY-MM-DD in local timezone (not UTC)
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Time slots configuration
 const START_HOUR = 8
 const END_HOUR = 21
@@ -157,7 +165,7 @@ function getAppointmentDayIndex(appointment: Appointment): number {
     return dragState.value.currentDayIndex
   }
   const aptDate = appointment.start_time.split('T')[0]
-  return weekDays.value.findIndex(d => d.toISOString().split('T')[0] === aptDate)
+  return weekDays.value.findIndex(d => formatLocalDate(d) === aptDate)
 }
 
 // Get cabinet color
@@ -238,7 +246,7 @@ function startDrag(appointment: Appointment, event: MouseEvent, type: 'move' | '
   const startSlot = getSlotIndex(startTime)
   const endSlot = getSlotIndex(endTime)
   const aptDate = appointment.start_time.split('T')[0]
-  const dayIndex = weekDays.value.findIndex(d => d.toISOString().split('T')[0] === aptDate)
+  const dayIndex = weekDays.value.findIndex(d => formatLocalDate(d) === aptDate)
 
   dragState.value = {
     type,
@@ -338,7 +346,8 @@ function handleDragEnd() {
 
     const newStartTime = slotIndexToTime(newStartSlot)
     const newEndTime = slotIndexToTime(newEndSlot)
-    const newDate = weekDays.value[dragState.value.currentDayIndex]?.toISOString().split('T')[0] ?? ''
+    const dayAtIndex = weekDays.value[dragState.value.currentDayIndex]
+    const newDate = dayAtIndex ? formatLocalDate(dayAtIndex) : ''
 
     // Only emit if changed
     const oldDate = appointment.start_time.split('T')[0]
