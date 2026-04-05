@@ -39,7 +39,6 @@ describe('Type definitions', () => {
         first_name: 'Maria',
         last_name: 'Garcia',
         status: 'active',
-        consent_signed: false,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z'
       }
@@ -48,25 +47,23 @@ describe('Type definitions', () => {
       expect(patient.status).toBe('active')
     })
 
-    it('should allow medical history', () => {
+    it('should allow optional fields', () => {
       const patient: Patient = {
         id: '123e4567-e89b-12d3-a456-426614174000',
         clinic_id: '123e4567-e89b-12d3-a456-426614174001',
         first_name: 'Juan',
         last_name: 'Lopez',
         status: 'active',
-        consent_signed: true,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
-        medical_history: {
-          allergies: ['penicillin'],
-          medications: ['aspirin'],
-          conditions: ['diabetes'],
-          notes: 'Patient has controlled diabetes'
-        }
+        phone: '+34612345678',
+        email: 'juan@example.com',
+        date_of_birth: '1990-05-15',
+        notes: 'Patient notes'
       }
 
-      expect(patient.medical_history?.allergies).toContain('penicillin')
+      expect(patient.phone).toBe('+34612345678')
+      expect(patient.email).toBe('juan@example.com')
     })
   })
 
@@ -79,7 +76,9 @@ describe('Type definitions', () => {
         cabinet: 'Gabinete 1',
         start_time: '2026-04-01T10:00:00Z',
         end_time: '2026-04-01T10:30:00Z',
-        status: 'scheduled'
+        status: 'scheduled',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z'
       }
 
       expect(appointment.cabinet).toBe('Gabinete 1')
@@ -104,7 +103,9 @@ describe('Type definitions', () => {
           cabinet: 'Gabinete 1',
           start_time: '2026-04-01T10:00:00Z',
           end_time: '2026-04-01T10:30:00Z',
-          status
+          status,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
         }
         expect(appointment.status).toBe(status)
       })

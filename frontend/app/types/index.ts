@@ -60,18 +60,11 @@ export interface Patient {
   clinic_id: string
   first_name: string
   last_name: string
-  national_id?: string
-  date_of_birth?: string
-  gender?: 'male' | 'female' | 'other'
   phone?: string
   email?: string
-  address?: Record<string, string>
-  medical_history?: Record<string, unknown>
-  insurance?: Record<string, string>
+  date_of_birth?: string
   notes?: string
-  consent_signed: boolean
-  consent_date?: string
-  status: 'active' | 'inactive' | 'archived'
+  status: 'active' | 'archived'
   created_at: string
   updated_at: string
 }
@@ -86,7 +79,7 @@ export interface PatientCreate {
 }
 
 export interface PatientUpdate extends Partial<PatientCreate> {
-  status?: 'active' | 'inactive' | 'archived'
+  status?: 'active' | 'archived'
 }
 
 // Appointment types
