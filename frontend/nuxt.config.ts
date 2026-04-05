@@ -1,6 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  srcDir: 'app',
 
   modules: [
     '@nuxt/eslint',
@@ -34,6 +33,7 @@ export default defineNuxtConfig({
       apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000'
     }
   },
+  srcDir: 'app',
 
   compatibilityDate: '2025-01-15',
 
