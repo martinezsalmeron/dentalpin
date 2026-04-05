@@ -5,12 +5,28 @@ Open source dental clinic management software. Built with modular architecture f
 ## Quick Start
 
 ```bash
-docker-compose up
+# Start services
+docker-compose up -d
+
+# Seed demo data
+./scripts/seed-demo.sh
 ```
 
 Open http://localhost:3000
 
-**Demo credentials:** `admin@demo.clinic` / `demo1234`
+### Demo Credentials
+
+All users have password: `demo1234`
+
+| Email | Role | Name |
+|-------|------|------|
+| admin@demo.clinic | admin | Admin Demo |
+| dentist@demo.clinic | dentist | Dra. María García López |
+| hygienist@demo.clinic | hygienist | Carlos López Martínez |
+| assistant@demo.clinic | assistant | Ana Martínez Ruiz |
+| receptionist@demo.clinic | receptionist | Laura Sánchez Pérez |
+
+See [docs/DEMO.md](docs/DEMO.md) for full details on demo data.
 
 ## Tech Stack
 
@@ -24,8 +40,8 @@ Open http://localhost:3000
 ## Features (MVP)
 
 - Patient management (create, search, view, edit)
-- Appointment calendar (weekly view, conflict detection)
-- Single clinic, admin role
+- Appointment calendar (weekly/daily view, drag & drop, conflict detection)
+- Multi-role support (admin, dentist, hygienist, assistant, receptionist)
 - Spanish localization
 
 ## Development
@@ -53,12 +69,24 @@ npm install
 npm run dev
 ```
 
+### Database Management
+
+```bash
+# Reset database and run migrations
+./scripts/reset-db.sh
+
+# Seed demo data (after reset or fresh install)
+./scripts/seed-demo.sh
+
+# Full setup (reset + seed in one command)
+./scripts/setup-demo.sh
+```
+
 ### Running tests
 
 ```bash
-# Backend
-cd backend
-pytest tests/ -v
+# Backend (in Docker)
+docker-compose exec backend python -m pytest -v
 
 # Frontend
 cd frontend
@@ -72,7 +100,7 @@ DentalPin uses a modular plugin architecture. Each feature is a self-contained m
 - Provides a FastAPI router
 - Can subscribe to events from other modules
 
-See [docs/architecture.md](docs/docs/architecture.md) for details.
+See [docs/architecture.md](docs/architecture.md) for details.
 
 ## License
 
