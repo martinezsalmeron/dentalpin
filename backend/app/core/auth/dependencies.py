@@ -1,5 +1,6 @@
 """Authentication dependencies for FastAPI."""
 
+from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 
 from .models import Clinic, ClinicMembership, User
+from .permissions import has_permission
 from .service import decode_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -115,3 +117,27 @@ async def get_clinic_context(
         clinic=membership.clinic,
         role=membership.role,
     )
+
+
+def require_permission(permission: str) -> Callable:
+    """FastAPI dependency factory that requires a specific permission.
+
+    Usage:
+        @router.get("/patients")
+        async def list_patients(
+            ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+            _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+        ):
+            ...
+    """
+
+    async def permission_checker(
+        ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    ) -> None:
+        if not has_permission(ctx.role, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: {permission}",
+            )
+
+    return permission_checker

@@ -38,10 +38,15 @@ class ModuleRegistry:
         return list(self._modules.values())
 
     def get_all_permissions(self) -> list[str]:
-        """Return all permissions from all loaded modules."""
+        """Return all permissions from all loaded modules, fully namespaced.
+
+        Each permission is prefixed with the module name:
+        'patients.read' from 'clinical' module becomes 'clinical.patients.read'
+        """
         permissions: list[str] = []
         for module in self._modules.values():
-            permissions.extend(module.get_permissions())
+            for perm in module.get_permissions():
+                permissions.append(f"{module.name}.{perm}")
         return permissions
 
 

@@ -13,16 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
+from app.core.plugins import module_registry
 from app.database import get_db
 
-from .dependencies import get_current_user
+from .dependencies import ClinicContext, get_clinic_context, get_current_user, require_permission
 from .models import ClinicMembership, User
+from .permissions import ROLES, expand_permissions, get_role_permissions
 from .schemas import (
     AuthResponse,
     ClinicResponse,
     MeResponse,
     TokenRefresh,
     TokenResponse,
+    UserCreate,
     UserRegister,
     UserResponse,
 )
@@ -217,7 +220,7 @@ async def get_me(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MeResponse:
-    """Get current user info and their clinics."""
+    """Get current user info, clinics, and permissions."""
     # Fetch memberships with clinics
     result = await db.execute(
         select(ClinicMembership)
@@ -235,7 +238,70 @@ async def get_me(
         for m in memberships
     ]
 
+    # Compute effective permissions (use first clinic's role for MVP)
+    permissions: list[str] = []
+    if memberships:
+        role = memberships[0].role
+        role_perms = get_role_permissions(role)
+        all_perms = module_registry.get_all_permissions()
+        permissions = expand_permissions(role_perms, all_perms)
+
     return MeResponse(
         user=UserResponse.model_validate(current_user),
         clinics=clinics,
+        permissions=permissions,
     )
+
+
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    data: UserCreate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.users.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserResponse:
+    """Create a new user (admin only)."""
+    # Validate role
+    if data.role not in ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid role. Must be one of: {', '.join(ROLES)}",
+        )
+
+    # Validate password strength
+    is_valid, error_msg = validate_password_strength(data.password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=error_msg,
+        )
+
+    # Check if email already exists
+    result = await db.execute(select(User).where(User.email == data.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    # Create user
+    user = User(
+        email=data.email,
+        password_hash=hash_password(data.password),
+        first_name=data.first_name,
+        last_name=data.last_name,
+    )
+    db.add(user)
+    await db.flush()
+
+    # Create clinic membership
+    clinic_id = data.clinic_id if data.clinic_id else ctx.clinic_id
+    membership = ClinicMembership(
+        user_id=user.id,
+        clinic_id=clinic_id,
+        role=data.role,
+    )
+    db.add(membership)
+    await db.commit()
+
+    return UserResponse.model_validate(user)

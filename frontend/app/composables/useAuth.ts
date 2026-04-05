@@ -1,4 +1,4 @@
-import type { User, LoginCredentials, AuthResponse } from '~/types'
+import type { User, LoginCredentials, AuthResponse, MeResponse } from '~/types'
 
 export function useAuth() {
   const config = useRuntimeConfig()
@@ -6,6 +6,7 @@ export function useAuth() {
 
   // State
   const user = useState<User | null>('auth:user', () => null)
+  const permissions = useState<string[]>('auth:permissions', () => [])
   const accessToken = useCookie('access_token', {
     maxAge: 60 * 15, // 15 minutes
     secure: import.meta.env.PROD,
@@ -47,6 +48,7 @@ export function useAuth() {
     accessToken.value = null
     refreshToken.value = null
     user.value = null
+    permissions.value = []
     await router.push('/login')
   }
 
@@ -78,13 +80,14 @@ export function useAuth() {
     }
 
     try {
-      const response = await $fetch<{ user: User, clinics: Array<{ id: string, name: string, role: string }> }>('/api/v1/auth/me', {
+      const response = await $fetch<MeResponse>('/api/v1/auth/me', {
         baseURL: config.public.apiBaseUrl,
         headers: {
           Authorization: `Bearer ${accessToken.value}`
         }
       })
       user.value = response.user
+      permissions.value = response.permissions
     } catch {
       // Token might be expired, try to refresh
       const refreshed = await refresh()
@@ -103,6 +106,7 @@ export function useAuth() {
 
   return {
     user: readonly(user),
+    permissions: readonly(permissions),
     accessToken: readonly(accessToken),
     isAuthenticated,
     login,

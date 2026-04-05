@@ -54,6 +54,23 @@ export interface AuthResponse extends AuthTokens {
   clinics: Array<{ id: string, name: string, role: string }>
 }
 
+export interface MeResponse {
+  user: User
+  clinics: Array<{ id: string, name: string, role: string }>
+  permissions: string[]
+}
+
+export type UserRole = 'admin' | 'dentist' | 'hygienist' | 'assistant' | 'receptionist'
+
+export interface UserCreate {
+  email: string
+  password: string
+  first_name: string
+  last_name: string
+  role: UserRole
+  clinic_id?: string
+}
+
 // Patient types
 export interface Patient {
   id: string

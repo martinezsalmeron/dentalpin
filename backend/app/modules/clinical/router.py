@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth.dependencies import ClinicContext, get_clinic_context
+from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
 from app.database import get_db
 
 from .schemas import (
@@ -30,6 +30,7 @@ router = APIRouter()
 @router.get("/patients", response_model=PaginatedResponse[PatientResponse])
 async def list_patients(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     search: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1),
@@ -49,6 +50,7 @@ async def list_patients(
 async def create_patient(
     data: PatientCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PatientResponse:
     """Create a new patient."""
@@ -62,6 +64,7 @@ async def create_patient(
 async def get_patient(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PatientResponse:
     """Get a patient by ID."""
@@ -79,6 +82,7 @@ async def update_patient(
     patient_id: UUID,
     data: PatientUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PatientResponse:
     """Update a patient."""
@@ -97,6 +101,7 @@ async def update_patient(
 async def delete_patient(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Soft delete (archive) a patient."""
@@ -114,6 +119,7 @@ async def delete_patient(
 @router.get("/appointments", response_model=PaginatedResponse[AppointmentResponse])
 async def list_appointments(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.appointments.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     start_date: datetime | None = None,
     end_date: datetime | None = None,
@@ -151,6 +157,7 @@ async def list_appointments(
 async def create_appointment(
     data: AppointmentCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.appointments.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AppointmentResponse:
     """Create a new appointment."""
@@ -179,6 +186,7 @@ async def create_appointment(
 async def get_appointment(
     appointment_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.appointments.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AppointmentResponse:
     """Get an appointment by ID."""
@@ -196,6 +204,7 @@ async def update_appointment(
     appointment_id: UUID,
     data: AppointmentUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.appointments.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AppointmentResponse:
     """Update an appointment."""
@@ -231,6 +240,7 @@ async def update_appointment(
 async def delete_appointment(
     appointment_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.appointments.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Cancel an appointment."""

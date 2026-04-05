@@ -65,6 +65,7 @@ class MeResponse(BaseModel):
 
     user: UserResponse
     clinics: list[ClinicResponse]
+    permissions: list[str]
 
 
 class AuthResponse(BaseModel):
@@ -75,3 +76,16 @@ class AuthResponse(BaseModel):
     token_type: str = "bearer"
     user: UserResponse
     clinics: list[ClinicResponse]
+
+
+class UserCreate(BaseModel):
+    """Schema for admin creating a new user."""
+
+    email: EmailStr
+    password: str = Field(min_length=8)
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    role: str = Field(description="Role: admin, dentist, hygienist, assistant, receptionist")
+    clinic_id: UUID | None = Field(
+        default=None, description="Clinic ID. If not provided, uses admin's current clinic"
+    )
