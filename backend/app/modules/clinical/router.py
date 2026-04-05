@@ -50,7 +50,9 @@ async def list_patients(
     )
 
 
-@router.post("/patients", response_model=ApiResponse[PatientResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/patients", response_model=ApiResponse[PatientResponse], status_code=status.HTTP_201_CREATED
+)
 async def create_patient(
     data: PatientCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
@@ -326,7 +328,9 @@ async def update_clinic(
 
 
 # Cabinet endpoints
-@router.post("/cabinets", response_model=ApiResponse[CabinetResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/cabinets", response_model=ApiResponse[CabinetResponse], status_code=status.HTTP_201_CREATED
+)
 async def create_cabinet(
     data: CabinetCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],

@@ -296,7 +296,9 @@ async def list_users(
     )
 
 
-@router.post("/users", response_model=ApiResponse[UserResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/users", response_model=ApiResponse[UserResponse], status_code=status.HTTP_201_CREATED
+)
 async def create_user(
     data: UserCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],

@@ -372,7 +372,10 @@ async def test_update_appointment_professional(
         json={"professional_id": clinic_with_professionals["hygienist_id"]},
     )
     assert update_response.status_code == 200
-    assert update_response.json()["data"]["professional_id"] == clinic_with_professionals["hygienist_id"]
+    assert (
+        update_response.json()["data"]["professional_id"]
+        == clinic_with_professionals["hygienist_id"]
+    )
 
 
 @pytest.mark.asyncio
