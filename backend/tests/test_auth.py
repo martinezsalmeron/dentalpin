@@ -48,7 +48,7 @@ async def test_register_duplicate_email(client: AsyncClient) -> None:
     # Second registration should fail
     response = await client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 409
-    assert "already registered" in response.json()["detail"]
+    assert "already registered" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -102,12 +102,14 @@ async def test_login_invalid_credentials(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_me_endpoint(client: AsyncClient, auth_headers: dict[str, str]) -> None:
-    """Test /me endpoint returns current user."""
+    """Test /me endpoint returns current user wrapped in ApiResponse."""
     response = await client.get("/api/v1/auth/me", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["user"]["email"] == "test@example.com"
-    assert data["user"]["first_name"] == "Test"
+    # Response is wrapped in ApiResponse: {data: {user, clinics, permissions}, message}
+    assert data["data"]["user"]["email"] == "test@example.com"
+    assert data["data"]["user"]["first_name"] == "Test"
+    assert "message" in data  # message field is present (may be null)
 
 
 @pytest.mark.asyncio

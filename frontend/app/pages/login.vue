@@ -5,7 +5,6 @@ definePageMeta({
 
 const { t } = useI18n()
 const auth = useAuth()
-const router = useRouter()
 const toast = useToast()
 
 // Form state
@@ -32,14 +31,17 @@ async function onSubmit() {
       color: 'success'
     })
 
-    await router.push('/')
+    // Navigate to home - user data is already loaded by login()
+    await navigateTo('/')
   } catch (error: unknown) {
-    const fetchError = error as { statusCode?: number }
+    console.error('Login error:', error)
+    const fetchError = error as { statusCode?: number, message?: string, data?: { message?: string } }
 
     if (fetchError.statusCode === 401) {
       errorMessage.value = t('auth.invalidCredentials')
     } else {
-      errorMessage.value = t('auth.networkError')
+      // Show actual error message for debugging
+      errorMessage.value = fetchError.data?.message || fetchError.message || t('auth.networkError')
     }
   } finally {
     isLoading.value = false

@@ -1,4 +1,4 @@
-import type { Appointment, AppointmentCreate, AppointmentUpdate, PaginatedResponse } from '~/types'
+import type { Appointment, AppointmentCreate, AppointmentUpdate, PaginatedResponse, ApiResponse } from '~/types'
 
 export function useAppointments() {
   const api = useApi()
@@ -36,29 +36,29 @@ export function useAppointments() {
   }
 
   async function createAppointment(data: AppointmentCreate): Promise<Appointment> {
-    const response = await api.post<Appointment>(
+    const response = await api.post<ApiResponse<Appointment>>(
       '/api/v1/clinical/appointments',
       data as unknown as Record<string, unknown>
     )
 
     // Add to local state
-    appointments.value = [...appointments.value, response]
+    appointments.value = [...appointments.value, response.data]
 
-    return response
+    return response.data
   }
 
   async function updateAppointment(id: string, data: AppointmentUpdate): Promise<Appointment> {
-    const response = await api.put<Appointment>(
+    const response = await api.put<ApiResponse<Appointment>>(
       `/api/v1/clinical/appointments/${id}`,
       data as unknown as Record<string, unknown>
     )
 
     // Update local state
     appointments.value = appointments.value.map(apt =>
-      apt.id === id ? response : apt
+      apt.id === id ? response.data : apt
     )
 
-    return response
+    return response.data
   }
 
   async function cancelAppointment(id: string): Promise<void> {

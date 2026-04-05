@@ -1,8 +1,13 @@
-import type { User, LoginCredentials, AuthResponse, MeResponse } from '~/types'
+import type { User, LoginCredentials, AuthResponse, MeResponse, ApiResponse } from '~/types'
 
 export function useAuth() {
   const config = useRuntimeConfig()
   const router = useRouter()
+
+  // Use different API URL for server (Docker internal) vs client (browser)
+  const apiBaseUrl = computed(() =>
+    import.meta.server ? config.apiBaseUrlServer : config.public.apiBaseUrl
+  )
 
   // State
   const user = useState<User | null>('auth:user', () => null)
@@ -29,7 +34,7 @@ export function useAuth() {
     formData.append('password', credentials.password)
 
     const response = await $fetch<AuthResponse>('/api/v1/auth/login', {
-      baseURL: config.public.apiBaseUrl,
+      baseURL: apiBaseUrl.value,
       method: 'POST',
       body: formData,
       headers: {
@@ -59,7 +64,7 @@ export function useAuth() {
 
     try {
       const response = await $fetch<AuthResponse>('/api/v1/auth/refresh', {
-        baseURL: config.public.apiBaseUrl,
+        baseURL: apiBaseUrl.value,
         method: 'POST',
         body: { refresh_token: refreshToken.value }
       })
@@ -80,26 +85,33 @@ export function useAuth() {
     }
 
     try {
-      const response = await $fetch<MeResponse>('/api/v1/auth/me', {
-        baseURL: config.public.apiBaseUrl,
+      const response = await $fetch<ApiResponse<MeResponse>>('/api/v1/auth/me', {
+        baseURL: apiBaseUrl.value,
         headers: {
           Authorization: `Bearer ${accessToken.value}`
         }
       })
-      user.value = response.user
-      permissions.value = response.permissions
-    } catch {
-      // Token might be expired, try to refresh
-      const refreshed = await refresh()
-      if (!refreshed) {
-        await logout()
+      user.value = response.data.user
+      permissions.value = response.data.permissions
+    } catch (error: unknown) {
+      const fetchError = error as { statusCode?: number }
+      // Only try refresh on 401 (expired token), not on other errors
+      if (fetchError.statusCode === 401) {
+        const refreshed = await refresh()
+        if (!refreshed) {
+          await logout()
+        }
+      } else {
+        // Log the error but don't logout on non-401 errors
+        console.error('Failed to fetch user:', error)
+        throw error
       }
     }
   }
 
-  // Initialize user on client side if token exists
+  // Initialize user if token exists (works on both server and client)
   async function init(): Promise<void> {
-    if (import.meta.client && accessToken.value && !user.value) {
+    if (accessToken.value && !user.value) {
       await fetchUser()
     }
   }

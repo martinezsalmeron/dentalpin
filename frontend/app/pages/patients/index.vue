@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Patient, PatientCreate, PaginatedResponse } from '~/types'
+import type { Patient, PatientCreate, PaginatedResponse, ApiResponse } from '~/types'
 
 const { t } = useI18n()
 const api = useApi()
@@ -78,7 +78,7 @@ async function createPatient() {
   isSubmitting.value = true
 
   try {
-    const response = await api.post<Patient>(
+    const response = await api.post<ApiResponse<Patient>>(
       '/api/v1/clinical/patients',
       {
         first_name: newPatient.first_name,
@@ -101,7 +101,7 @@ async function createPatient() {
     await refresh()
 
     // Navigate to patient detail
-    await router.push(`/patients/${response.id}`)
+    await router.push(`/patients/${response.data.id}`)
   } catch (error: unknown) {
     const fetchError = error as { statusCode?: number, data?: { message?: string } }
 

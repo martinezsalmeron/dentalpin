@@ -15,9 +15,9 @@ async def clinic_setup(
     db_session: AsyncSession, auth_headers: dict[str, str], client: AsyncClient
 ) -> dict:
     """Set up a clinic with the test user as admin and a dentist for appointments."""
-    # Get user from /me endpoint
+    # Get user from /me endpoint (wrapped in ApiResponse)
     response = await client.get("/api/v1/auth/me", headers=auth_headers)
-    user_id = response.json()["user"]["id"]
+    user_id = response.json()["data"]["user"]["id"]
 
     # Create clinic
     clinic = Clinic(
@@ -72,19 +72,19 @@ async def clinic_setup(
 async def test_list_clinics(
     client: AsyncClient, auth_headers: dict[str, str], clinic_setup: dict
 ) -> None:
-    """Test listing clinics."""
+    """Test listing clinics (wrapped in PaginatedApiResponse)."""
     response = await client.get("/api/v1/clinical/clinics", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["name"] == "Test Clinic"
+    assert len(data["data"]) == 1
+    assert data["data"][0]["name"] == "Test Clinic"
 
 
 @pytest.mark.asyncio
 async def test_create_patient(
     client: AsyncClient, auth_headers: dict[str, str], clinic_setup: dict
 ) -> None:
-    """Test creating a patient."""
+    """Test creating a patient (wrapped in ApiResponse)."""
     response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
@@ -96,7 +96,7 @@ async def test_create_patient(
         },
     )
     assert response.status_code == 201
-    data = response.json()
+    data = response.json()["data"]
     assert data["first_name"] == "Juan"
     assert data["last_name"] == "Garcia"
     assert data["status"] == "active"
@@ -166,14 +166,14 @@ async def test_get_patient_not_found(
 async def test_create_appointment(
     client: AsyncClient, auth_headers: dict[str, str], clinic_setup: dict
 ) -> None:
-    """Test creating an appointment."""
+    """Test creating an appointment (wrapped in ApiResponse)."""
     # Create patient first
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
     # Create appointment (must use dentist, not admin)
     response = await client.post(
@@ -189,7 +189,7 @@ async def test_create_appointment(
         },
     )
     assert response.status_code == 201
-    data = response.json()
+    data = response.json()["data"]
     assert data["status"] == "scheduled"
     assert data["patient"]["first_name"] == "Test"
 
@@ -205,7 +205,7 @@ async def test_appointment_time_conflict(
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
     appointment_data = {
         "patient_id": patient_id,
@@ -230,4 +230,4 @@ async def test_appointment_time_conflict(
         json=appointment_data,
     )
     assert response.status_code == 409
-    assert "occupied" in response.json()["detail"]
+    assert "occupied" in response.json()["message"]

@@ -1,21 +1,9 @@
 """Pydantic schemas for clinical module."""
 
 from datetime import date, datetime
-from typing import Generic, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
-
-T = TypeVar("T")
-
-
-class PaginatedResponse(BaseModel, Generic[T]):
-    """Generic paginated response."""
-
-    data: list[T]
-    total: int
-    page: int
-    page_size: int
 
 
 # Patient schemas

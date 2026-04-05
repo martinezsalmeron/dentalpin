@@ -3,7 +3,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -14,6 +14,7 @@ from app.config import settings
 from app.core.auth.router import limiter
 from app.core.auth.router import router as auth_router
 from app.core.plugins.loader import ModuleLoader
+from app.core.schemas import ErrorResponse
 from app.database import engine
 
 
@@ -67,25 +68,39 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Handler for HTTP exceptions using standard ErrorResponse format."""
+    error_response = ErrorResponse(
+        message=str(exc.detail),
+        errors=[str(exc.detail)] if exc.detail else [],
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response.model_dump(),
+        headers=exc.headers,
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler for unhandled errors."""
     if settings.ENVIRONMENT == "development":
+        error_response = ErrorResponse(
+            message=str(exc),
+            errors=[str(exc)],
+        )
         return JSONResponse(
             status_code=500,
-            content={
-                "data": None,
-                "message": str(exc),
-                "errors": [str(exc)],
-            },
+            content=error_response.model_dump(),
         )
+    error_response = ErrorResponse(
+        message="Internal server error",
+        errors=[],
+    )
     return JSONResponse(
         status_code=500,
-        content={
-            "data": None,
-            "message": "Internal server error",
-            "errors": [],
-        },
+        content=error_response.model_dump(),
     )
 
 

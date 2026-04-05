@@ -29,7 +29,10 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
+    // Server-side only (for SSR inside Docker)
+    apiBaseUrlServer: process.env.API_BASE_URL_SERVER || 'http://backend:8000',
     public: {
+      // Client-side (browser)
       apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000'
     }
   },

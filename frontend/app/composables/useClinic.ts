@@ -1,8 +1,10 @@
-import type { Clinic, ClinicMembership } from '~/types'
+import type { Cabinet, CabinetCreate, CabinetUpdate, Clinic, ClinicMembership, ClinicUpdate, PaginatedResponse, ApiResponse } from '~/types'
 
 export function useClinic() {
   const api = useApi()
   const auth = useAuth()
+  const toast = useToast()
+  const { t } = useI18n()
 
   // State
   const currentClinic = useState<Clinic | null>('clinic:current', () => null)
@@ -23,14 +25,131 @@ export function useClinic() {
     isLoading.value = true
     try {
       // Get user's clinics (for MVP, we just use the first one)
-      const clinics = await api.get<Clinic[]>('/api/v1/clinical/clinics')
-      if (clinics.length > 0) {
-        currentClinic.value = clinics[0] ?? null
+      const response = await api.get<PaginatedResponse<Clinic>>('/api/v1/clinical/clinics')
+      if (response.data.length > 0) {
+        currentClinic.value = response.data[0] ?? null
       }
     } catch (error) {
       console.error('Failed to fetch clinic:', error)
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function updateClinic(data: ClinicUpdate): Promise<Clinic | null> {
+    try {
+      const response = await api.put<ApiResponse<Clinic>>('/api/v1/clinical/clinics', data as unknown as Record<string, unknown>)
+      toast.add({
+        title: t('common.success', 'Success'),
+        description: 'Clinica actualizada correctamente',
+        color: 'success'
+      })
+      await fetchClinic()
+      return response.data
+    } catch (e: unknown) {
+      toast.add({
+        title: t('common.error'),
+        description: 'Error al actualizar la clinica',
+        color: 'error'
+      })
+      console.error('Failed to update clinic:', e)
+      return null
+    }
+  }
+
+  async function createCabinet(data: CabinetCreate): Promise<Cabinet | null> {
+    try {
+      const response = await api.post<ApiResponse<Cabinet>>('/api/v1/clinical/cabinets', data as unknown as Record<string, unknown>)
+      toast.add({
+        title: t('common.success', 'Success'),
+        description: 'Gabinete creado correctamente',
+        color: 'success'
+      })
+      await fetchClinic()
+      return response.data
+    } catch (e: unknown) {
+      const fetchError = e as { statusCode?: number }
+      if (fetchError.statusCode === 409) {
+        toast.add({
+          title: t('common.error'),
+          description: 'Ya existe un gabinete con ese nombre',
+          color: 'error'
+        })
+      } else {
+        toast.add({
+          title: t('common.error'),
+          description: 'Error al crear gabinete',
+          color: 'error'
+        })
+      }
+      console.error('Failed to create cabinet:', e)
+      return null
+    }
+  }
+
+  async function updateCabinet(cabinetName: string, data: CabinetUpdate): Promise<Cabinet | null> {
+    try {
+      const response = await api.put<ApiResponse<Cabinet>>(`/api/v1/clinical/cabinets/${encodeURIComponent(cabinetName)}`, data as unknown as Record<string, unknown>)
+      toast.add({
+        title: t('common.success', 'Success'),
+        description: 'Gabinete actualizado correctamente',
+        color: 'success'
+      })
+      await fetchClinic()
+      return response.data
+    } catch (e: unknown) {
+      const fetchError = e as { statusCode?: number }
+      if (fetchError.statusCode === 409) {
+        toast.add({
+          title: t('common.error'),
+          description: 'Ya existe un gabinete con ese nombre',
+          color: 'error'
+        })
+      } else if (fetchError.statusCode === 404) {
+        toast.add({
+          title: t('common.error'),
+          description: 'Gabinete no encontrado',
+          color: 'error'
+        })
+      } else {
+        toast.add({
+          title: t('common.error'),
+          description: 'Error al actualizar gabinete',
+          color: 'error'
+        })
+      }
+      console.error('Failed to update cabinet:', e)
+      return null
+    }
+  }
+
+  async function deleteCabinet(cabinetName: string): Promise<boolean> {
+    try {
+      await api.del(`/api/v1/clinical/cabinets/${encodeURIComponent(cabinetName)}`)
+      toast.add({
+        title: t('common.success', 'Success'),
+        description: 'Gabinete eliminado correctamente',
+        color: 'success'
+      })
+      await fetchClinic()
+      return true
+    } catch (e: unknown) {
+      const fetchError = e as { statusCode?: number }
+      if (fetchError.statusCode === 404) {
+        toast.add({
+          title: t('common.error'),
+          description: 'Gabinete no encontrado',
+          color: 'error'
+        })
+      } else {
+        toast.add({
+          title: t('common.error'),
+          description: 'Error al eliminar gabinete',
+          color: 'error'
+        })
+      }
+      console.error('Failed to delete cabinet:', e)
+      return false
     }
   }
 
@@ -51,6 +170,10 @@ export function useClinic() {
     clinicName,
     cabinets,
     slotDuration,
-    fetchClinic
+    fetchClinic,
+    updateClinic,
+    createCabinet,
+    updateCabinet,
+    deleteCabinet
   }
 }

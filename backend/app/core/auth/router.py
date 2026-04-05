@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.core.plugins import module_registry
+from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
 from .dependencies import ClinicContext, get_clinic_context, get_current_user, require_permission
@@ -218,11 +219,11 @@ async def refresh_token(
     )
 
 
-@router.get("/me", response_model=MeResponse)
+@router.get("/me", response_model=ApiResponse[MeResponse])
 async def get_me(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> MeResponse:
+) -> ApiResponse[MeResponse]:
     """Get current user info, clinics, and permissions."""
     # Fetch memberships with clinics
     result = await db.execute(
@@ -250,19 +251,21 @@ async def get_me(
         all_perms = module_registry.get_all_permissions() + CORE_PERMISSIONS
         permissions = expand_permissions(role_perms, all_perms)
 
-    return MeResponse(
-        user=UserResponse.model_validate(current_user),
-        clinics=clinics,
-        permissions=permissions,
+    return ApiResponse(
+        data=MeResponse(
+            user=UserResponse.model_validate(current_user),
+            clinics=clinics,
+            permissions=permissions,
+        )
     )
 
 
-@router.get("/users", response_model=list[UserWithRoleResponse])
+@router.get("/users", response_model=PaginatedApiResponse[UserWithRoleResponse])
 async def list_users(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("admin.users.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[UserWithRoleResponse]:
+) -> PaginatedApiResponse[UserWithRoleResponse]:
     """List all users in the current clinic (admin only)."""
     # Fetch all memberships for this clinic with user data
     result = await db.execute(
@@ -272,7 +275,7 @@ async def list_users(
     )
     memberships = result.scalars().all()
 
-    return [
+    users = [
         UserWithRoleResponse(
             id=m.user.id,
             email=m.user.email,
@@ -285,14 +288,21 @@ async def list_users(
         for m in memberships
     ]
 
+    return PaginatedApiResponse(
+        data=users,
+        total=len(users),
+        page=1,
+        page_size=len(users),
+    )
 
-@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post("/users", response_model=ApiResponse[UserResponse], status_code=status.HTTP_201_CREATED)
 async def create_user(
     data: UserCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("admin.users.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> UserResponse:
+) -> ApiResponse[UserResponse]:
     """Create a new user (admin only)."""
     # Validate role
     if data.role not in ROLES:
@@ -337,17 +347,17 @@ async def create_user(
     db.add(membership)
     await db.commit()
 
-    return UserResponse.model_validate(user)
+    return ApiResponse(data=UserResponse.model_validate(user))
 
 
-@router.put("/users/{user_id}", response_model=UserWithRoleResponse)
+@router.put("/users/{user_id}", response_model=ApiResponse[UserWithRoleResponse])
 async def update_user(
     user_id: UUID,
     data: UserUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("admin.users.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> UserWithRoleResponse:
+) -> ApiResponse[UserWithRoleResponse]:
     """Update a user in the current clinic (admin only)."""
     # Verify user belongs to this clinic
     result = await db.execute(
@@ -409,23 +419,25 @@ async def update_user(
     await db.refresh(user)
     await db.refresh(membership)
 
-    return UserWithRoleResponse(
-        id=user.id,
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        is_active=user.is_active,
-        role=membership.role,
-        created_at=user.created_at.isoformat(),
+    return ApiResponse(
+        data=UserWithRoleResponse(
+            id=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            is_active=user.is_active,
+            role=membership.role,
+            created_at=user.created_at.isoformat(),
+        )
     )
 
 
-@router.get("/professionals", response_model=list[ProfessionalResponse])
+@router.get("/professionals", response_model=PaginatedApiResponse[ProfessionalResponse])
 async def list_professionals(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("clinical.appointments.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[ProfessionalResponse]:
+) -> PaginatedApiResponse[ProfessionalResponse]:
     """List professionals (dentists and hygienists) in the current clinic."""
     # Fetch memberships with dentist/hygienist role and active users
     result = await db.execute(
@@ -438,7 +450,7 @@ async def list_professionals(
     )
     memberships = result.scalars().all()
 
-    return [
+    professionals = [
         ProfessionalResponse(
             id=m.user.id,
             email=m.user.email,
@@ -449,6 +461,13 @@ async def list_professionals(
         for m in memberships
         if m.user.is_active
     ]
+
+    return PaginatedApiResponse(
+        data=professionals,
+        total=len(professionals),
+        page=1,
+        page_size=len(professionals),
+    )
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

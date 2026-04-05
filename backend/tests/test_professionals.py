@@ -15,9 +15,9 @@ async def clinic_with_professionals(
     db_session: AsyncSession, auth_headers: dict[str, str], client: AsyncClient
 ) -> dict:
     """Set up a clinic with admin, dentist, and hygienist users."""
-    # Get admin user from /me endpoint
+    # Get admin user from /me endpoint (wrapped in ApiResponse)
     response = await client.get("/api/v1/auth/me", headers=auth_headers)
-    admin_user_id = response.json()["user"]["id"]
+    admin_user_id = response.json()["data"]["user"]["id"]
 
     # Create clinic
     clinic = Clinic(
@@ -143,11 +143,11 @@ async def test_list_professionals(
     auth_headers: dict[str, str],
     clinic_with_professionals: dict,
 ) -> None:
-    """Test that professionals endpoint returns only dentists and hygienists."""
+    """Test that professionals endpoint returns only dentists and hygienists (PaginatedApiResponse)."""
     response = await client.get("/api/v1/auth/professionals", headers=auth_headers)
     assert response.status_code == 200
 
-    data = response.json()
+    data = response.json()["data"]
     assert len(data) == 2  # Only dentist and hygienist
 
     # Check that all returned professionals have valid roles
@@ -173,7 +173,7 @@ async def test_list_professionals_excludes_inactive(
     response = await client.get("/api/v1/auth/professionals", headers=auth_headers)
     assert response.status_code == 200
 
-    data = response.json()
+    data = response.json()["data"]
     professional_ids = {p["id"] for p in data}
 
     # Inactive dentist should not be in the list
@@ -190,7 +190,7 @@ async def test_list_professionals_excludes_non_professionals(
     response = await client.get("/api/v1/auth/professionals", headers=auth_headers)
     assert response.status_code == 200
 
-    data = response.json()
+    data = response.json()["data"]
     professional_ids = {p["id"] for p in data}
 
     # Receptionist and admin should not be in the list
@@ -217,15 +217,15 @@ async def test_create_appointment_with_valid_professional(
     clinic_with_professionals: dict,
 ) -> None:
     """Test creating appointment with a valid professional (dentist)."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
-    # Create appointment with dentist
+    # Create appointment with dentist (wrapped in ApiResponse)
     response = await client.post(
         "/api/v1/clinical/appointments",
         headers=auth_headers,
@@ -238,7 +238,7 @@ async def test_create_appointment_with_valid_professional(
         },
     )
     assert response.status_code == 201
-    data = response.json()
+    data = response.json()["data"]
     assert data["professional_id"] == clinic_with_professionals["dentist_id"]
 
 
@@ -249,15 +249,15 @@ async def test_create_appointment_with_hygienist(
     clinic_with_professionals: dict,
 ) -> None:
     """Test creating appointment with a hygienist."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
-    # Create appointment with hygienist
+    # Create appointment with hygienist (wrapped in ApiResponse)
     response = await client.post(
         "/api/v1/clinical/appointments",
         headers=auth_headers,
@@ -270,7 +270,7 @@ async def test_create_appointment_with_hygienist(
         },
     )
     assert response.status_code == 201
-    data = response.json()
+    data = response.json()["data"]
     assert data["professional_id"] == clinic_with_professionals["hygienist_id"]
 
 
@@ -281,13 +281,13 @@ async def test_create_appointment_with_invalid_professional_role(
     clinic_with_professionals: dict,
 ) -> None:
     """Test that creating appointment with non-professional role fails."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
     # Try to create appointment with receptionist (should fail)
     response = await client.post(
@@ -302,7 +302,7 @@ async def test_create_appointment_with_invalid_professional_role(
         },
     )
     assert response.status_code == 400
-    assert "Invalid professional" in response.json()["detail"]
+    assert "Invalid professional" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -312,13 +312,13 @@ async def test_create_appointment_with_nonexistent_professional(
     clinic_with_professionals: dict,
 ) -> None:
     """Test that creating appointment with non-existent professional fails."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
     # Try to create appointment with non-existent professional
     response = await client.post(
@@ -333,7 +333,7 @@ async def test_create_appointment_with_nonexistent_professional(
         },
     )
     assert response.status_code == 400
-    assert "Invalid professional" in response.json()["detail"]
+    assert "Invalid professional" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -343,15 +343,15 @@ async def test_update_appointment_professional(
     clinic_with_professionals: dict,
 ) -> None:
     """Test updating appointment to a different professional."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
-    # Create appointment with dentist
+    # Create appointment with dentist (wrapped in ApiResponse)
     create_response = await client.post(
         "/api/v1/clinical/appointments",
         headers=auth_headers,
@@ -363,16 +363,16 @@ async def test_update_appointment_professional(
             "end_time": "2026-05-02T10:30:00Z",
         },
     )
-    appointment_id = create_response.json()["id"]
+    appointment_id = create_response.json()["data"]["id"]
 
-    # Update to hygienist
+    # Update to hygienist (wrapped in ApiResponse)
     update_response = await client.put(
         f"/api/v1/clinical/appointments/{appointment_id}",
         headers=auth_headers,
         json={"professional_id": clinic_with_professionals["hygienist_id"]},
     )
     assert update_response.status_code == 200
-    assert update_response.json()["professional_id"] == clinic_with_professionals["hygienist_id"]
+    assert update_response.json()["data"]["professional_id"] == clinic_with_professionals["hygienist_id"]
 
 
 @pytest.mark.asyncio
@@ -382,15 +382,15 @@ async def test_update_appointment_to_invalid_professional(
     clinic_with_professionals: dict,
 ) -> None:
     """Test that updating appointment to invalid professional fails."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
-    # Create appointment with dentist
+    # Create appointment with dentist (wrapped in ApiResponse)
     create_response = await client.post(
         "/api/v1/clinical/appointments",
         headers=auth_headers,
@@ -402,7 +402,7 @@ async def test_update_appointment_to_invalid_professional(
             "end_time": "2026-05-03T10:30:00Z",
         },
     )
-    appointment_id = create_response.json()["id"]
+    appointment_id = create_response.json()["data"]["id"]
 
     # Try to update to receptionist (should fail)
     update_response = await client.put(
@@ -411,7 +411,7 @@ async def test_update_appointment_to_invalid_professional(
         json={"professional_id": clinic_with_professionals["receptionist_id"]},
     )
     assert update_response.status_code == 400
-    assert "Invalid professional" in update_response.json()["detail"]
+    assert "Invalid professional" in update_response.json()["message"]
 
 
 # =============================================================================
@@ -426,15 +426,15 @@ async def test_appointment_response_includes_professional(
     clinic_with_professionals: dict,
 ) -> None:
     """Test that appointment response includes professional info."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
-    # Create appointment
+    # Create appointment (wrapped in ApiResponse)
     create_response = await client.post(
         "/api/v1/clinical/appointments",
         headers=auth_headers,
@@ -447,7 +447,7 @@ async def test_appointment_response_includes_professional(
         },
     )
     assert create_response.status_code == 201
-    data = create_response.json()
+    data = create_response.json()["data"]
 
     # Check professional is included
     assert "professional" in data
@@ -464,13 +464,13 @@ async def test_list_appointments_includes_professional(
     clinic_with_professionals: dict,
 ) -> None:
     """Test that listing appointments includes professional info."""
-    # Create patient first
+    # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
         "/api/v1/clinical/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
-    patient_id = patient_response.json()["id"]
+    patient_id = patient_response.json()["data"]["id"]
 
     # Create appointment
     await client.post(
@@ -485,7 +485,7 @@ async def test_list_appointments_includes_professional(
         },
     )
 
-    # List appointments
+    # List appointments (PaginatedApiResponse)
     response = await client.get(
         "/api/v1/clinical/appointments",
         headers=auth_headers,

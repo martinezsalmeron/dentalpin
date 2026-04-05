@@ -1,4 +1,4 @@
-import type { Professional } from '~/types'
+import type { Professional, PaginatedResponse } from '~/types'
 
 // Predefined color palette for professionals
 const PROFESSIONAL_COLORS = [
@@ -27,12 +27,12 @@ export function useProfessionals() {
     error.value = null
 
     try {
-      const response = await api.get<Professional[]>('/api/v1/auth/professionals')
-      professionals.value = response
+      const response = await api.get<PaginatedResponse<Professional>>('/api/v1/auth/professionals')
+      professionals.value = response.data
 
       // Assign colors to professionals
       professionalColors.value = new Map()
-      response.forEach((prof, index) => {
+      response.data.forEach((prof, index) => {
         const color = PROFESSIONAL_COLORS[index % PROFESSIONAL_COLORS.length]
         if (color) {
           professionalColors.value.set(prof.id, color)

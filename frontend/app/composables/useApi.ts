@@ -15,6 +15,11 @@ export function useApi() {
   const { t } = useI18n()
   const toast = useToast()
 
+  // Use different API URL for server (Docker internal) vs client (browser)
+  const apiBaseUrl = computed(() =>
+    import.meta.server ? config.apiBaseUrlServer : config.public.apiBaseUrl
+  )
+
   async function $api<T>(
     path: string,
     options: UseApiOptions = {}
@@ -32,7 +37,7 @@ export function useApi() {
 
     try {
       return await $fetch<T>(path, {
-        baseURL: config.public.apiBaseUrl,
+        baseURL: apiBaseUrl.value,
         timeout: 10000, // 10 seconds
         method,
         body,
@@ -49,7 +54,7 @@ export function useApi() {
           // Retry the request with new token
           headers.Authorization = `Bearer ${auth.accessToken.value}`
           return await $fetch<T>(path, {
-            baseURL: config.public.apiBaseUrl,
+            baseURL: apiBaseUrl.value,
             method,
             body,
             headers

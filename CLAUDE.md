@@ -267,16 +267,23 @@ const user = useState<User | null>('auth:user', () => null)
 ### API Calls
 
 ```typescript
+import type { ApiResponse, PaginatedResponse, Patient } from '~/types'
 const api = useApi()
 
-// GET
-const patients = await api.get<PaginatedResponse<Patient>>('/api/v1/clinical/patients')
+// GET paginated list (data is in response.data array)
+const response = await api.get<PaginatedResponse<Patient>>('/api/v1/clinical/patients')
+const patients = response.data  // Patient[]
 
-// POST
-const patient = await api.post<Patient>('/api/v1/clinical/patients', {
+// GET single item (wrapped in ApiResponse)
+const response = await api.get<ApiResponse<Patient>>('/api/v1/clinical/patients/123')
+const patient = response.data  // Patient
+
+// POST (wrapped in ApiResponse)
+const response = await api.post<ApiResponse<Patient>>('/api/v1/clinical/patients', {
   first_name: 'John',
   last_name: 'Doe'
 })
+const newPatient = response.data  // Patient
 
 // Auto-handles: auth headers, token refresh, error toasts
 ```
@@ -297,22 +304,51 @@ Uses **Nuxt UI** (built on Radix Vue):
 ### Endpoint Structure
 
 ```python
-@router.get("/resource", response_model=PaginatedResponse[ResourceResponse])
+from app.core.schemas import ApiResponse, PaginatedApiResponse
+
+# For paginated lists
+@router.get("/resources", response_model=PaginatedApiResponse[ResourceResponse])
 async def list_resources(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("module.resource.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-) -> PaginatedResponse[ResourceResponse]:
+) -> PaginatedApiResponse[ResourceResponse]:
     """List resources with pagination."""
     items, total = await ResourceService.list(db, ctx.clinic_id, page, page_size)
-    return PaginatedResponse(
+    return PaginatedApiResponse(
         data=[ResourceResponse.model_validate(i) for i in items],
         total=total,
         page=page,
         page_size=page_size,
     )
+
+# For single item
+@router.get("/resources/{id}", response_model=ApiResponse[ResourceResponse])
+async def get_resource(
+    id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("module.resource.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[ResourceResponse]:
+    """Get a resource by ID."""
+    resource = await ResourceService.get(db, ctx.clinic_id, id)
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    return ApiResponse(data=ResourceResponse.model_validate(resource))
+
+# For create
+@router.post("/resources", response_model=ApiResponse[ResourceResponse], status_code=201)
+async def create_resource(
+    data: ResourceCreate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("module.resource.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[ResourceResponse]:
+    """Create a resource."""
+    resource = await ResourceService.create(db, ctx.clinic_id, data.model_dump())
+    return ApiResponse(data=ResourceResponse.model_validate(resource))
 ```
 
 ### Service Layer
@@ -445,14 +481,29 @@ def get_event_handlers(self) -> dict:
 
 ## API Conventions
 
+### API Response Schemas
+
+All endpoints (except auth tokens) use standardized wrappers defined in `backend/app/core/schemas.py`:
+
+| Case | Schema | Importar de |
+|------|--------|-------------|
+| Item individual | `ApiResponse[T]` | `app.core.schemas` |
+| Lista paginada | `PaginatedApiResponse[T]` | `app.core.schemas` |
+| Error | `ErrorResponse` | `app.core.schemas` |
+
+**IMPORTANT:** Auth token endpoints (`/login`, `/register`, `/refresh`) do NOT use wrappers because they return tokens, not data.
+
 ### Response Formats
 
-**Single item:**
+**Single item (wrapped):**
 ```json
 {
-  "id": "uuid",
-  "field": "value",
-  "created_at": "2024-01-01T00:00:00Z"
+  "data": {
+    "id": "uuid",
+    "field": "value",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "message": null
 }
 ```
 
@@ -462,14 +513,26 @@ def get_event_handlers(self) -> dict:
   "data": [...],
   "total": 100,
   "page": 1,
-  "page_size": 20
+  "page_size": 20,
+  "message": null
 }
 ```
 
 **Error:**
 ```json
 {
-  "detail": "Error message"
+  "data": null,
+  "message": "Error description",
+  "errors": ["Error description"]
+}
+```
+
+**Auth tokens (exception - NOT wrapped):**
+```json
+{
+  "access_token": "jwt...",
+  "refresh_token": "jwt...",
+  "token_type": "bearer"
 }
 ```
 

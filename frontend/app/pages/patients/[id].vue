@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Patient, PatientUpdate, Appointment, PaginatedResponse } from '~/types'
+import type { Patient, PatientUpdate, Appointment, PaginatedResponse, ApiResponse } from '~/types'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -14,9 +14,10 @@ const { data: patient, status, refresh } = await useAsyncData(
   `patient:${patientId}`,
   async () => {
     try {
-      return await api.get<Patient>(
+      const response = await api.get<ApiResponse<Patient>>(
         `/api/v1/clinical/patients/${patientId}`
       )
+      return response.data
     } catch (error: unknown) {
       const fetchError = error as { statusCode?: number }
       if (fetchError.statusCode === 404) {

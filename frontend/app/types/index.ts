@@ -169,8 +169,7 @@ export interface AppointmentUpdate extends Partial<AppointmentCreate> {
 // API Response types
 export interface ApiResponse<T> {
   data: T
-  message: string
-  errors: string[]
+  message: string | null
 }
 
 export interface PaginatedResponse<T> {
@@ -178,6 +177,13 @@ export interface PaginatedResponse<T> {
   total: number
   page: number
   page_size: number
+  message?: string | null
+}
+
+export interface ErrorResponse {
+  data: null
+  message: string
+  errors: string[]
 }
 
 // Module registry types
