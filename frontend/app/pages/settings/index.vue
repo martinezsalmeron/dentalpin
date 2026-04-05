@@ -7,6 +7,15 @@ const auth = useAuth()
 const clinic = useClinic()
 const { isAdmin } = usePermissions()
 const { users, isLoading: usersLoading, availableRoles, fetchUsers, createUser, updateUser, deleteUser } = useUsers()
+const { currentLocale, availableLocales, changeLocale } = useLocale()
+
+// Translated role options for USelect
+const translatedRoles = computed(() =>
+  availableRoles.map(role => ({
+    value: role.value,
+    label: t(`settings.roles.${role.value}`)
+  }))
+)
 
 // User creation modal state
 const showCreateUserModal = ref(false)
@@ -175,14 +184,7 @@ function getRoleBadgeColor(role: UserRole): string {
 }
 
 function getRoleLabel(role: UserRole): string {
-  const labels: Record<UserRole, string> = {
-    admin: 'Administrador',
-    dentist: 'Odontólogo',
-    hygienist: 'Higienista',
-    assistant: 'Auxiliar',
-    receptionist: 'Recepcionista'
-  }
-  return labels[role] || role
+  return t(`settings.roles.${role}`)
 }
 
 // Clinic name functions
@@ -366,7 +368,7 @@ async function handleDeleteCabinet() {
                 variant="ghost"
                 @click="openCreateCabinetModal"
               >
-                Añadir
+                {{ t('settings.addCabinet') }}
               </UButton>
             </div>
             <div class="space-y-2">
@@ -406,7 +408,7 @@ async function handleDeleteCabinet() {
                 v-if="clinic.cabinets.value.length === 0"
                 class="text-gray-500 dark:text-gray-400"
               >
-                No hay gabinetes configurados
+                {{ t('settings.noCabinets') }}
               </span>
             </div>
           </div>
@@ -454,6 +456,36 @@ async function handleDeleteCabinet() {
           </div>
         </div>
       </UCard>
+
+      <!-- Language settings -->
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-lucide-languages"
+              class="w-5 h-5 text-primary-500"
+            />
+            <h2 class="font-semibold text-gray-900 dark:text-white">
+              {{ t('settings.language') }}
+            </h2>
+          </div>
+        </template>
+
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          {{ t('settings.languageDescription') }}
+        </p>
+
+        <div class="flex gap-2">
+          <UButton
+            v-for="loc in availableLocales"
+            :key="loc.code"
+            :variant="currentLocale === loc.code ? 'solid' : 'outline'"
+            @click="changeLocale(loc.code)"
+          >
+            {{ loc.name }}
+          </UButton>
+        </div>
+      </UCard>
     </div>
 
     <!-- User Management (Admin only) -->
@@ -466,7 +498,7 @@ async function handleDeleteCabinet() {
               class="w-5 h-5 text-primary-500"
             />
             <h2 class="font-semibold text-gray-900 dark:text-white">
-              Usuarios de la Clínica
+              {{ t('settings.users') }}
             </h2>
           </div>
           <UButton
@@ -474,7 +506,7 @@ async function handleDeleteCabinet() {
             size="sm"
             @click="openCreateUserModal"
           >
-            Nuevo Usuario
+            {{ t('settings.newUser') }}
           </UButton>
         </div>
       </template>
@@ -492,7 +524,7 @@ async function handleDeleteCabinet() {
         v-else-if="users.length === 0"
         class="text-center py-8 text-gray-500 dark:text-gray-400"
       >
-        No hay usuarios registrados
+        {{ t('settings.noUsers') }}
       </div>
 
       <div
@@ -515,7 +547,7 @@ async function handleDeleteCabinet() {
                 <span
                   v-if="isCurrentUser(user.id)"
                   class="text-xs text-gray-500 dark:text-gray-400"
-                >(tu)</span>
+                >{{ t('settings.youTag') }}</span>
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400">
                 {{ user.email }}
@@ -534,7 +566,7 @@ async function handleDeleteCabinet() {
               color="red"
               variant="subtle"
             >
-              Inactivo
+              {{ t('common.inactive') }}
             </UBadge>
             <UButton
               icon="i-lucide-pencil"
@@ -567,7 +599,7 @@ async function handleDeleteCabinet() {
                 class="w-5 h-5 text-primary-500"
               />
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                Crear Nuevo Usuario
+                {{ t('settings.createUser') }}
               </h3>
             </div>
           </template>
@@ -577,44 +609,41 @@ async function handleDeleteCabinet() {
             @submit.prevent="handleCreateUser"
           >
             <div class="grid grid-cols-2 gap-4">
-              <UFormField label="Nombre">
+              <UFormField :label="t('common.firstName')">
                 <UInput
                   v-model="newUser.first_name"
-                  placeholder="Juan"
                   required
                 />
               </UFormField>
-              <UFormField label="Apellidos">
+              <UFormField :label="t('common.lastName')">
                 <UInput
                   v-model="newUser.last_name"
-                  placeholder="Garcia"
                   required
                 />
               </UFormField>
             </div>
 
-            <UFormField label="Email">
+            <UFormField :label="t('common.email')">
               <UInput
                 v-model="newUser.email"
                 type="email"
-                placeholder="usuario@ejemplo.com"
                 required
               />
             </UFormField>
 
-            <UFormField label="Contrasena">
+            <UFormField :label="t('common.password')">
               <UInput
                 v-model="newUser.password"
                 type="password"
-                placeholder="Minimo 8 caracteres"
+                :placeholder="t('common.passwordPlaceholder')"
                 required
               />
             </UFormField>
 
-            <UFormField label="Rol">
+            <UFormField :label="t('common.role')">
               <USelect
                 v-model="selectedRole"
-                :items="availableRoles"
+                :items="translatedRoles"
                 value-key="value"
                 label-key="label"
               />
@@ -625,13 +654,13 @@ async function handleDeleteCabinet() {
                 variant="ghost"
                 @click="showCreateUserModal = false"
               >
-                Cancelar
+                {{ t('common.cancel') }}
               </UButton>
               <UButton
                 type="submit"
                 :loading="isCreatingUser"
               >
-                Crear Usuario
+                {{ t('settings.createUser') }}
               </UButton>
             </div>
           </form>
@@ -650,7 +679,7 @@ async function handleDeleteCabinet() {
                 class="w-5 h-5 text-primary-500"
               />
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                Editar Usuario
+                {{ t('settings.editUser') }}
               </h3>
             </div>
           </template>
@@ -660,35 +689,32 @@ async function handleDeleteCabinet() {
             @submit.prevent="handleUpdateUser"
           >
             <div class="grid grid-cols-2 gap-4">
-              <UFormField label="Nombre">
+              <UFormField :label="t('common.firstName')">
                 <UInput
                   v-model="editUserData.first_name"
-                  placeholder="Juan"
                   required
                 />
               </UFormField>
-              <UFormField label="Apellidos">
+              <UFormField :label="t('common.lastName')">
                 <UInput
                   v-model="editUserData.last_name"
-                  placeholder="Garcia"
                   required
                 />
               </UFormField>
             </div>
 
-            <UFormField label="Email">
+            <UFormField :label="t('common.email')">
               <UInput
                 v-model="editUserData.email"
                 type="email"
-                placeholder="usuario@ejemplo.com"
                 required
               />
             </UFormField>
 
-            <UFormField label="Rol">
+            <UFormField :label="t('common.role')">
               <USelect
                 v-model="editSelectedRole"
-                :items="availableRoles"
+                :items="translatedRoles"
                 value-key="value"
                 label-key="label"
               />
@@ -700,13 +726,13 @@ async function handleDeleteCabinet() {
             >
               <USwitch v-model="editUserData.is_active" />
               <span class="text-sm text-gray-700 dark:text-gray-300">
-                Usuario activo
+                {{ t('settings.userActive') }}
               </span>
               <span
                 v-if="!editUserData.is_active"
                 class="text-xs text-red-500"
               >
-                (No podra iniciar sesion)
+                {{ t('settings.userInactiveNote') }}
               </span>
             </div>
 
@@ -715,13 +741,13 @@ async function handleDeleteCabinet() {
                 variant="ghost"
                 @click="showEditUserModal = false"
               >
-                Cancelar
+                {{ t('common.cancel') }}
               </UButton>
               <UButton
                 type="submit"
                 :loading="isEditingUser"
               >
-                Guardar Cambios
+                {{ t('settings.saveChanges') }}
               </UButton>
             </div>
           </form>
@@ -740,20 +766,19 @@ async function handleDeleteCabinet() {
                 class="w-5 h-5 text-red-500"
               />
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                Eliminar Usuario
+                {{ t('settings.deleteUser') }}
               </h3>
             </div>
           </template>
 
           <p class="text-gray-600 dark:text-gray-400">
-            Estas seguro de que deseas eliminar a
+            {{ t('settings.deleteUserConfirm') }}
             <strong class="text-gray-900 dark:text-white">
               {{ userToDelete?.first_name }} {{ userToDelete?.last_name }}
-            </strong>
-            de la clinica?
+            </strong>?
           </p>
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            El usuario perdera acceso a esta clinica pero su cuenta no sera eliminada.
+            {{ t('settings.deleteUserNote') }}
           </p>
 
           <div class="flex justify-end gap-2 pt-6">
@@ -761,14 +786,14 @@ async function handleDeleteCabinet() {
               variant="ghost"
               @click="showDeleteModal = false"
             >
-              Cancelar
+              {{ t('common.cancel') }}
             </UButton>
             <UButton
               color="error"
               :loading="isDeletingUser"
               @click="handleDeleteUser"
             >
-              Eliminar
+              {{ t('common.delete') }}
             </UButton>
           </div>
         </UCard>
@@ -786,7 +811,7 @@ async function handleDeleteCabinet() {
                 class="w-5 h-5 text-primary-500"
               />
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                Nuevo Gabinete
+                {{ t('settings.newCabinet') }}
               </h3>
             </div>
           </template>
@@ -795,15 +820,14 @@ async function handleDeleteCabinet() {
             class="space-y-4"
             @submit.prevent="handleCreateCabinet"
           >
-            <UFormField label="Nombre">
+            <UFormField :label="t('common.name')">
               <UInput
                 v-model="newCabinet.name"
-                placeholder="Gabinete 1"
                 required
               />
             </UFormField>
 
-            <UFormField label="Color">
+            <UFormField :label="t('common.color')">
               <div class="flex flex-wrap gap-2">
                 <button
                   v-for="color in cabinetColors"
@@ -822,13 +846,13 @@ async function handleDeleteCabinet() {
                 variant="ghost"
                 @click="showCreateCabinetModal = false"
               >
-                Cancelar
+                {{ t('common.cancel') }}
               </UButton>
               <UButton
                 type="submit"
                 :loading="isCreatingCabinet"
               >
-                Crear Gabinete
+                {{ t('settings.createCabinet') }}
               </UButton>
             </div>
           </form>
@@ -847,7 +871,7 @@ async function handleDeleteCabinet() {
                 class="w-5 h-5 text-primary-500"
               />
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                Editar Gabinete
+                {{ t('settings.editCabinet') }}
               </h3>
             </div>
           </template>
@@ -856,15 +880,14 @@ async function handleDeleteCabinet() {
             class="space-y-4"
             @submit.prevent="handleUpdateCabinet"
           >
-            <UFormField label="Nombre">
+            <UFormField :label="t('common.name')">
               <UInput
                 v-model="editCabinetData.name"
-                placeholder="Gabinete 1"
                 required
               />
             </UFormField>
 
-            <UFormField label="Color">
+            <UFormField :label="t('common.color')">
               <div class="flex flex-wrap gap-2">
                 <button
                   v-for="color in cabinetColors"
@@ -883,13 +906,13 @@ async function handleDeleteCabinet() {
                 variant="ghost"
                 @click="showEditCabinetModal = false"
               >
-                Cancelar
+                {{ t('common.cancel') }}
               </UButton>
               <UButton
                 type="submit"
                 :loading="isEditingCabinet"
               >
-                Guardar Cambios
+                {{ t('settings.saveChanges') }}
               </UButton>
             </div>
           </form>
@@ -908,19 +931,19 @@ async function handleDeleteCabinet() {
                 class="w-5 h-5 text-red-500"
               />
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                Eliminar Gabinete
+                {{ t('settings.deleteCabinet') }}
               </h3>
             </div>
           </template>
 
           <p class="text-gray-600 dark:text-gray-400">
-            Estas seguro de que deseas eliminar el gabinete
+            {{ t('settings.deleteCabinetConfirm') }}
             <strong class="text-gray-900 dark:text-white">
               {{ cabinetToDelete?.name }}
             </strong>?
           </p>
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Las citas existentes en este gabinete no seran afectadas.
+            {{ t('settings.deleteCabinetNote') }}
           </p>
 
           <div class="flex justify-end gap-2 pt-6">
@@ -928,14 +951,14 @@ async function handleDeleteCabinet() {
               variant="ghost"
               @click="showDeleteCabinetModal = false"
             >
-              Cancelar
+              {{ t('common.cancel') }}
             </UButton>
             <UButton
               color="error"
               :loading="isDeletingCabinet"
               @click="handleDeleteCabinet"
             >
-              Eliminar
+              {{ t('common.delete') }}
             </UButton>
           </div>
         </UCard>

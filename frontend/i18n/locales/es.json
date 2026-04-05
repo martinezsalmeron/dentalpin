@@ -113,7 +113,51 @@
     "clinic": "Clínica",
     "profile": "Perfil",
     "clinicName": "Nombre de la clínica",
-    "cabinets": "Gabinetes"
+    "cabinets": "Gabinetes",
+    "language": "Idioma",
+    "languageDescription": "Selecciona tu idioma preferido",
+    "users": "Usuarios de la Clínica",
+    "newUser": "Nuevo Usuario",
+    "createUser": "Crear Usuario",
+    "editUser": "Editar Usuario",
+    "deleteUser": "Eliminar Usuario",
+    "deleteUserConfirm": "¿Estás seguro de que deseas eliminar a",
+    "deleteUserNote": "El usuario perderá acceso a esta clínica pero su cuenta no será eliminada.",
+    "noUsers": "No hay usuarios registrados",
+    "youTag": "(tú)",
+    "userActive": "Usuario activo",
+    "userInactiveNote": "(No podrá iniciar sesión)",
+    "saveChanges": "Guardar Cambios",
+    "noCabinets": "No hay gabinetes configurados",
+    "addCabinet": "Añadir",
+    "newCabinet": "Nuevo Gabinete",
+    "editCabinet": "Editar Gabinete",
+    "deleteCabinet": "Eliminar Gabinete",
+    "deleteCabinetConfirm": "¿Estás seguro de que deseas eliminar el gabinete",
+    "deleteCabinetNote": "Las citas existentes en este gabinete no serán afectadas.",
+    "createCabinet": "Crear Gabinete",
+    "roles": {
+      "admin": "Administrador",
+      "dentist": "Odontólogo",
+      "hygienist": "Higienista",
+      "assistant": "Auxiliar",
+      "receptionist": "Recepcionista"
+    },
+    "errors": {
+      "loadUsers": "Error al cargar usuarios",
+      "createUser": "Error al crear usuario",
+      "updateUser": "Error al actualizar usuario",
+      "deleteUser": "Error al eliminar usuario",
+      "emailExists": "El email ya existe",
+      "userNotFound": "Usuario no encontrado",
+      "operationNotAllowed": "Operación no permitida",
+      "invalidData": "Datos incorrectos"
+    },
+    "messages": {
+      "userCreated": "Usuario creado correctamente",
+      "userUpdated": "Usuario actualizado correctamente",
+      "userDeleted": "Usuario eliminado de la clínica"
+    }
   },
   "common": {
     "save": "Guardar",
@@ -139,7 +183,16 @@
     "networkError": "Error de conexión",
     "serverError": "Error del servidor",
     "notFound": "No encontrado",
-    "offline": "Sin conexión — datos pueden no estar actualizados"
+    "offline": "Sin conexión — datos pueden no estar actualizados",
+    "inactive": "Inactivo",
+    "name": "Nombre",
+    "color": "Color",
+    "firstName": "Nombre",
+    "lastName": "Apellidos",
+    "email": "Email",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Mínimo 8 caracteres",
+    "role": "Rol"
   },
   "validation": {
     "required": "Este campo es requerido",

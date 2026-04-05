@@ -20,12 +20,13 @@ export function useUsers() {
   const error = ref<string | null>(null)
 
   // Available roles for user creation
+  // Note: Labels are role codes - use t(`settings.roles.${role}`) in templates for translation
   const availableRoles: { value: UserRole, label: string }[] = [
-    { value: 'admin', label: 'Administrador' },
-    { value: 'dentist', label: 'Odontólogo' },
-    { value: 'hygienist', label: 'Higienista' },
-    { value: 'assistant', label: 'Auxiliar' },
-    { value: 'receptionist', label: 'Recepcionista' }
+    { value: 'admin', label: 'admin' },
+    { value: 'dentist', label: 'dentist' },
+    { value: 'hygienist', label: 'hygienist' },
+    { value: 'assistant', label: 'assistant' },
+    { value: 'receptionist', label: 'receptionist' }
   ]
 
   async function fetchUsers(): Promise<void> {
@@ -37,7 +38,7 @@ export function useUsers() {
       const response = await api.get<PaginatedResponse<ClinicUser>>('/api/v1/auth/users')
       users.value = response.data
     } catch (e) {
-      error.value = 'Error al cargar usuarios'
+      error.value = t('settings.errors.loadUsers')
       console.error('Failed to fetch users:', e)
     } finally {
       isLoading.value = false
@@ -51,8 +52,8 @@ export function useUsers() {
     try {
       const response = await api.post<ApiResponse<User>>('/api/v1/auth/users', data as unknown as Record<string, unknown>)
       toast.add({
-        title: t('common.success', 'Success'),
-        description: 'Usuario creado correctamente',
+        title: t('common.success'),
+        description: t('settings.messages.userCreated'),
         color: 'success'
       })
       // Refresh the user list
@@ -61,24 +62,24 @@ export function useUsers() {
     } catch (e: unknown) {
       const fetchError = e as { statusCode?: number, data?: { message?: string, detail?: string } }
       if (fetchError.statusCode === 409) {
-        error.value = 'El email ya existe'
+        error.value = t('settings.errors.emailExists')
         toast.add({
           title: t('common.error'),
-          description: 'El email ya existe',
+          description: t('settings.errors.emailExists'),
           color: 'error'
         })
       } else if (fetchError.statusCode === 422) {
-        error.value = fetchError.data?.message || fetchError.data?.detail || 'Datos incorrectos'
+        error.value = fetchError.data?.message || fetchError.data?.detail || t('settings.errors.invalidData')
         toast.add({
           title: t('common.error'),
           description: error.value,
           color: 'error'
         })
       } else {
-        error.value = 'Error al crear usuario'
+        error.value = t('settings.errors.createUser')
         toast.add({
           title: t('common.error'),
-          description: 'Error al crear usuario',
+          description: t('settings.errors.createUser'),
           color: 'error'
         })
       }
@@ -96,8 +97,8 @@ export function useUsers() {
     try {
       const response = await api.put<ApiResponse<ClinicUser>>(`/api/v1/auth/users/${userId}`, data as unknown as Record<string, unknown>)
       toast.add({
-        title: t('common.success', 'Success'),
-        description: 'Usuario actualizado correctamente',
+        title: t('common.success'),
+        description: t('settings.messages.userUpdated'),
         color: 'success'
       })
       // Refresh the user list
@@ -106,31 +107,31 @@ export function useUsers() {
     } catch (e: unknown) {
       const fetchError = e as { statusCode?: number, data?: { message?: string, detail?: string } }
       if (fetchError.statusCode === 409) {
-        error.value = 'El email ya existe'
+        error.value = t('settings.errors.emailExists')
         toast.add({
           title: t('common.error'),
-          description: 'El email ya existe',
+          description: t('settings.errors.emailExists'),
           color: 'error'
         })
       } else if (fetchError.statusCode === 400) {
-        error.value = fetchError.data?.message || fetchError.data?.detail || 'Operacion no permitida'
+        error.value = fetchError.data?.message || fetchError.data?.detail || t('settings.errors.operationNotAllowed')
         toast.add({
           title: t('common.error'),
           description: error.value,
           color: 'error'
         })
       } else if (fetchError.statusCode === 404) {
-        error.value = 'Usuario no encontrado'
+        error.value = t('settings.errors.userNotFound')
         toast.add({
           title: t('common.error'),
-          description: 'Usuario no encontrado',
+          description: t('settings.errors.userNotFound'),
           color: 'error'
         })
       } else {
-        error.value = 'Error al actualizar usuario'
+        error.value = t('settings.errors.updateUser')
         toast.add({
           title: t('common.error'),
-          description: 'Error al actualizar usuario',
+          description: t('settings.errors.updateUser'),
           color: 'error'
         })
       }
@@ -148,8 +149,8 @@ export function useUsers() {
     try {
       await api.del(`/api/v1/auth/users/${userId}`)
       toast.add({
-        title: t('common.success', 'Success'),
-        description: 'Usuario eliminado de la clinica',
+        title: t('common.success'),
+        description: t('settings.messages.userDeleted'),
         color: 'success'
       })
       // Refresh the user list
@@ -158,24 +159,24 @@ export function useUsers() {
     } catch (e: unknown) {
       const fetchError = e as { statusCode?: number, data?: { message?: string, detail?: string } }
       if (fetchError.statusCode === 400) {
-        error.value = fetchError.data?.message || fetchError.data?.detail || 'Operacion no permitida'
+        error.value = fetchError.data?.message || fetchError.data?.detail || t('settings.errors.operationNotAllowed')
         toast.add({
           title: t('common.error'),
           description: error.value,
           color: 'error'
         })
       } else if (fetchError.statusCode === 404) {
-        error.value = 'Usuario no encontrado'
+        error.value = t('settings.errors.userNotFound')
         toast.add({
           title: t('common.error'),
-          description: 'Usuario no encontrado',
+          description: t('settings.errors.userNotFound'),
           color: 'error'
         })
       } else {
-        error.value = 'Error al eliminar usuario'
+        error.value = t('settings.errors.deleteUser')
         toast.add({
           title: t('common.error'),
-          description: 'Error al eliminar usuario',
+          description: t('settings.errors.deleteUser'),
           color: 'error'
         })
       }

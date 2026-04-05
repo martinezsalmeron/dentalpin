@@ -1,7 +1,7 @@
 <script setup lang="ts">
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-useHead({
+useHead(() => ({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' }
   ],
@@ -9,9 +9,9 @@ useHead({
     { rel: 'icon', href: '/favicon.ico' }
   ],
   htmlAttrs: {
-    lang: 'es'
+    lang: locale.value
   }
-})
+}))
 
 useSeoMeta({
   title: 'DentalPin',
