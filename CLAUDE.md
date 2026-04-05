@@ -577,10 +577,17 @@ TESTING=false           # Set true in test runner
 
 ### "relation does not exist" error
 
+This happens when backend tests run (they drop all tables). Use the reset script:
+
 ```bash
-# Reset migrations
+./scripts/reset-db.sh
+```
+
+Or manually:
+```bash
 docker-compose exec db psql -U dental -d dental_clinic -c "DELETE FROM alembic_version;"
 docker-compose exec backend alembic upgrade head
+# Then recreate demo data (see script)
 ```
 
 ### Login returns "Invalid email or password"
