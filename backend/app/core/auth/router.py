@@ -18,6 +18,7 @@ from app.database import get_db
 from .dependencies import get_current_user
 from .models import ClinicMembership, User
 from .schemas import (
+    AuthResponse,
     ClinicResponse,
     MeResponse,
     TokenRefresh,
@@ -128,13 +129,13 @@ async def login(
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=AuthResponse)
 @limiter.limit("10/minute")
 async def refresh_token(
     request: Request,
     data: TokenRefresh,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> TokenResponse:
+) -> AuthResponse:
     """Refresh access token using refresh token."""
     try:
         payload = decode_token(data.refresh_token)
@@ -154,7 +155,7 @@ async def refresh_token(
             detail="Invalid or expired refresh token",
         )
 
-    # Fetch user
+    # Fetch user with memberships and clinics
     result = await db.execute(
         select(User).options(selectinload(User.memberships)).where(User.id == UUID(user_id))
     )
@@ -173,10 +174,27 @@ async def refresh_token(
             detail="Token has been revoked",
         )
 
-    # Get first clinic ID
+    # Fetch memberships with clinics for response
+    memberships_result = await db.execute(
+        select(ClinicMembership)
+        .options(selectinload(ClinicMembership.clinic))
+        .where(ClinicMembership.user_id == user.id)
+    )
+    memberships = memberships_result.scalars().all()
+
+    clinics = [
+        ClinicResponse(
+            id=m.clinic.id,
+            name=m.clinic.name,
+            role=m.role,
+        )
+        for m in memberships
+    ]
+
+    # Get first clinic ID for token
     clinic_id = None
-    if user.memberships:
-        clinic_id = user.memberships[0].clinic_id
+    if memberships:
+        clinic_id = memberships[0].clinic_id
 
     # Generate new tokens
     access_token = create_access_token(
@@ -186,9 +204,11 @@ async def refresh_token(
     )
     new_refresh_token = create_refresh_token(user.id, token_version=user.token_version)
 
-    return TokenResponse(
+    return AuthResponse(
         access_token=access_token,
         refresh_token=new_refresh_token,
+        user=UserResponse.model_validate(user),
+        clinics=clinics,
     )
 
 

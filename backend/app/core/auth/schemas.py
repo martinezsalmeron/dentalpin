@@ -65,3 +65,13 @@ class MeResponse(BaseModel):
 
     user: UserResponse
     clinics: list[ClinicResponse]
+
+
+class AuthResponse(BaseModel):
+    """Schema for auth response with user info (login/refresh)."""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+    clinics: list[ClinicResponse]

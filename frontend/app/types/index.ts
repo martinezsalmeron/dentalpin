@@ -51,6 +51,7 @@ export interface AuthTokens {
 
 export interface AuthResponse extends AuthTokens {
   user: User
+  clinics: Array<{ id: string, name: string, role: string }>
 }
 
 // Patient types
