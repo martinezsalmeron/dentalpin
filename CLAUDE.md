@@ -1,126 +1,618 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Comprehensive documentation for AI coding agents working on DentalPin.
 
 ## Project Overview
 
-Open source dental clinic management software with modular plugin architecture.
+**DentalPin** - Open source dental clinic management software with modular plugin architecture.
 
-**Stack:** FastAPI (Python 3.11+) backend, Vue 3/Nuxt 3 frontend, PostgreSQL, Docker
-**License:** BSL 1.1 (commercial SaaS use restricted, converts to Apache 2.0 after 4 years)
+| Component | Technology |
+|-----------|------------|
+| Backend | FastAPI (Python 3.11+), SQLAlchemy 2.0, Alembic |
+| Frontend | Vue 3, Nuxt 3, Nuxt UI, TypeScript |
+| Database | PostgreSQL with asyncpg |
+| Auth | JWT (access + refresh tokens) |
+| Container | Docker Compose |
 
-## Development Commands
+**License:** BSL 1.1 (commercial SaaS restricted, converts to Apache 2.0 after 4 years)
 
-### Docker (recommended)
+---
+
+## Quick Start
+
 ```bash
-docker-compose up                    # Start all services (db, backend, frontend)
-docker-compose up -d db backend      # Start only backend services
-docker-compose down -v               # Stop and remove volumes
+# Start all services
+docker-compose up
+
+# Run backend tests (inside container)
+docker-compose exec backend python -m pytest -v
+
+# Run linters
+cd backend && ruff check . && ruff format --check .
+cd frontend && npm run lint
+
+# Demo login
+# Email: admin@demo.clinic
+# Password: demo1234
 ```
 
-### Backend
+---
+
+## Directory Structure
+
+```
+dentalpin/
+├── backend/
+│   ├── app/
+│   │   ├── core/
+│   │   │   ├── auth/           # Authentication & RBAC
+│   │   │   │   ├── dependencies.py  # get_clinic_context, require_permission
+│   │   │   │   ├── models.py        # User, Clinic, ClinicMembership
+│   │   │   │   ├── permissions.py   # ROLE_PERMISSIONS, has_permission()
+│   │   │   │   ├── router.py        # /auth/* endpoints
+│   │   │   │   ├── schemas.py       # Pydantic models
+│   │   │   │   └── service.py       # JWT, password hashing
+│   │   │   ├── plugins/        # Module system
+│   │   │   │   ├── base.py          # BaseModule abstract class
+│   │   │   │   ├── registry.py      # Module registration
+│   │   │   │   └── loader.py        # Auto-discovery
+│   │   │   └── events/         # Event bus
+│   │   ├── modules/
+│   │   │   └── clinical/       # First module
+│   │   │       ├── __init__.py      # ClinicalModule class
+│   │   │       ├── models.py        # Patient, Appointment
+│   │   │       ├── router.py        # /clinical/* endpoints
+│   │   │       ├── schemas.py
+│   │   │       └── service.py
+│   │   ├── config.py           # Settings from env
+│   │   ├── database.py         # DB connection, Base
+│   │   └── main.py             # FastAPI app
+│   ├── tests/
+│   └── alembic/                # Migrations
+├── frontend/
+│   ├── app/
+│   │   ├── components/
+│   │   │   ├── clinical/       # Domain components
+│   │   │   └── shared/         # Reusable (ActionButton, PatientSearch)
+│   │   ├── composables/        # Vue composables
+│   │   │   ├── useAuth.ts           # Authentication state
+│   │   │   ├── usePermissions.ts    # Permission checks
+│   │   │   ├── useApi.ts            # HTTP client
+│   │   │   ├── useClinic.ts         # Clinic state
+│   │   │   ├── useModules.ts        # Navigation (filtered by permissions)
+│   │   │   └── useUsers.ts          # User management (admin)
+│   │   ├── config/
+│   │   │   └── permissions.ts  # SINGLE SOURCE OF TRUTH for permissions
+│   │   ├── layouts/
+│   │   ├── middleware/
+│   │   ├── pages/
+│   │   ├── types/
+│   │   │   └── index.ts        # All TypeScript interfaces
+│   │   └── utils/
+│   │       └── moduleRegistry.ts    # Navigation registration
+│   └── nuxt.config.ts
+└── docs/
+    └── creating-modules.md
+```
+
+---
+
+## RBAC System (Role-Based Access Control)
+
+### Architecture Overview
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Backend         │     │ API Response     │     │ Frontend        │
+│ permissions.py  │────▶│ /me.permissions  │────▶│ usePermissions  │
+│ (source)        │     │ (expanded list)  │     │ (checks)        │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+### Backend: Permission Definition
+
+**File:** `backend/app/core/auth/permissions.py`
+
+```python
+ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
+    "admin": ["*"],                    # Wildcard = all permissions
+    "dentist": ["clinical.*"],         # All clinical permissions
+    "hygienist": ["clinical.patients.read", "clinical.appointments.*"],
+    "assistant": ["clinical.patients.*", "clinical.appointments.*"],
+    "receptionist": ["clinical.patients.*", "clinical.appointments.*"],
+}
+```
+
+**Wildcards:**
+- `*` → matches everything (admin gets all current and future permissions)
+- `module.*` → matches all permissions in that module
+
+### Backend: Protecting Endpoints
+
+**File:** `backend/app/modules/clinical/router.py`
+
+```python
+from app.core.auth.dependencies import get_clinic_context, require_permission
+
+@router.get("/patients")
+async def list_patients(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    # Only users with clinical.patients.read can access
+    ...
+```
+
+### Backend: Adding Permissions to a Module
+
+**File:** `backend/app/modules/{module}/__init__.py`
+
+```python
+class MyModule(BaseModule):
+    def get_permissions(self) -> list[str]:
+        return [
+            "resource.read",   # Will become "mymodule.resource.read"
+            "resource.write",
+        ]
+```
+
+The registry namespaces permissions automatically: `inventory.read` → `inventory.inventory.read`
+
+### Frontend: Permission Config (Single Source of Truth)
+
+**File:** `frontend/app/config/permissions.ts`
+
+```typescript
+export const PERMISSIONS = {
+  patients: {
+    read: 'clinical.patients.read',
+    write: 'clinical.patients.write'
+  },
+  appointments: {
+    read: 'clinical.appointments.read',
+    write: 'clinical.appointments.write'
+  },
+  users: {
+    read: 'admin.users.read',
+    write: 'admin.users.write'
+  }
+} as const
+```
+
+**IMPORTANT:** Always reference `PERMISSIONS.resource.action` instead of hardcoding strings.
+
+### Frontend: Checking Permissions
+
+**Option 1: usePermissions composable**
+```typescript
+const { can, canAny, isAdmin } = usePermissions()
+
+if (can('clinical.patients.write')) {
+  // Show edit button
+}
+```
+
+**Option 2: ActionButton component (recommended for buttons)**
+```vue
+<ActionButton
+  resource="patients"
+  action="write"
+  icon="i-lucide-plus"
+  @click="createPatient"
+>
+  New Patient
+</ActionButton>
+<!-- Button only renders if user has clinical.patients.write -->
+```
+
+**Option 3: Navigation filtering (automatic)**
+```typescript
+// In moduleRegistry.ts - items are auto-filtered by useModules
+{
+  label: 'nav.patients',
+  to: '/patients',
+  permission: PERMISSIONS.patients.read  // Only shown if user has this
+}
+```
+
+### Adding a New Permission
+
+1. **Backend:** Add to role mapping in `permissions.py`
+2. **Backend:** Add to module's `get_permissions()` if module-specific
+3. **Backend:** Use `require_permission()` on endpoints
+4. **Frontend:** Add to `config/permissions.ts`
+5. **Frontend:** Use via `ActionButton` or `usePermissions`
+
+---
+
+## Frontend Patterns
+
+### Composables
+
+| Composable | Purpose | Key exports |
+|------------|---------|-------------|
+| `useAuth` | Auth state, login/logout | `user`, `permissions`, `login()`, `logout()` |
+| `usePermissions` | Permission checks | `can()`, `canAny()`, `isAdmin` |
+| `useApi` | HTTP client with auth | `get()`, `post()`, `put()`, `del()` |
+| `useClinic` | Current clinic state | `currentClinic`, `cabinets` |
+| `useModules` | Navigation items | `navigationItems` (filtered by permissions) |
+| `useUsers` | User management | `users`, `createUser()`, `fetchUsers()` |
+
+### Component Organization
+
+```
+components/
+├── clinical/           # Domain-specific
+│   ├── AppointmentCalendar.vue
+│   └── AppointmentModal.vue
+└── shared/             # Reusable
+    ├── ActionButton.vue    # Permission-aware button
+    └── PatientSearch.vue   # Autocomplete search
+```
+
+### State Management
+
+Uses Nuxt's `useState` for SSR-compatible state:
+
+```typescript
+// In composable
+const user = useState<User | null>('auth:user', () => null)
+
+// State is shared across components via the key 'auth:user'
+```
+
+### API Calls
+
+```typescript
+const api = useApi()
+
+// GET
+const patients = await api.get<PaginatedResponse<Patient>>('/api/v1/clinical/patients')
+
+// POST
+const patient = await api.post<Patient>('/api/v1/clinical/patients', {
+  first_name: 'John',
+  last_name: 'Doe'
+})
+
+// Auto-handles: auth headers, token refresh, error toasts
+```
+
+### UI Components
+
+Uses **Nuxt UI** (built on Radix Vue):
+- `UButton`, `UInput`, `UCard`, `UModal`, `USelect`
+- `UFormField` for form labels
+- `UBadge` for status indicators
+- `UAvatar` for user avatars
+- `USkeleton` for loading states
+
+---
+
+## Backend Patterns
+
+### Endpoint Structure
+
+```python
+@router.get("/resource", response_model=PaginatedResponse[ResourceResponse])
+async def list_resources(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("module.resource.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> PaginatedResponse[ResourceResponse]:
+    """List resources with pagination."""
+    items, total = await ResourceService.list(db, ctx.clinic_id, page, page_size)
+    return PaginatedResponse(
+        data=[ResourceResponse.model_validate(i) for i in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+```
+
+### Service Layer
+
+```python
+# service.py - Business logic, no HTTP concerns
+class ResourceService:
+    @staticmethod
+    async def list(db: AsyncSession, clinic_id: UUID, page: int, page_size: int):
+        query = select(Resource).where(Resource.clinic_id == clinic_id)
+        # ... pagination logic
+        return items, total
+
+    @staticmethod
+    async def create(db: AsyncSession, clinic_id: UUID, data: dict):
+        resource = Resource(clinic_id=clinic_id, **data)
+        db.add(resource)
+        await db.commit()
+        return resource
+```
+
+### Multi-Tenancy
+
+Every query MUST filter by `clinic_id`:
+
+```python
+# CORRECT
+select(Patient).where(Patient.clinic_id == ctx.clinic_id)
+
+# WRONG - Security vulnerability!
+select(Patient).where(Patient.id == patient_id)
+```
+
+---
+
+## Database Conventions
+
+### Model Template
+
+```python
+class MyModel(Base):
+    __tablename__ = "my_models"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    clinic_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clinics.id"), nullable=False, index=True
+    )
+    # ... fields ...
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+```
+
+### Conventions
+
+- **UUIDs** for all primary keys
+- **TIMESTAMPTZ** for all timestamps (timezone-aware)
+- **JSONB** for flexible data (addresses, settings)
+- **Soft deletes** via `status` field (never hard delete patient data)
+- **Index** on `clinic_id` for multi-tenant queries
+
+### Migrations
+
 ```bash
-cd backend
-pip install -e ".[dev]"              # Install with dev dependencies
-uvicorn app.main:app --reload        # Run locally (needs PostgreSQL)
+# Create migration
+docker-compose exec backend alembic revision --autogenerate -m "description"
 
-# Linting
-ruff check .                         # Check linting errors
-ruff check --fix .                   # Auto-fix linting errors
-ruff format .                        # Format code
+# Apply migrations
+docker-compose exec backend alembic upgrade head
 
-# Testing
-pytest                               # Run all tests
-pytest tests/test_auth.py -v         # Run specific test file
-pytest -k "test_login" -v            # Run tests matching pattern
-pytest --tb=short                    # Shorter tracebacks
-
-# Database migrations
-alembic revision --autogenerate -m "description"  # Create migration
-alembic upgrade head                              # Apply migrations
+# If tables missing but version exists, reset:
+docker-compose exec db psql -U dental -d dental_clinic -c "DELETE FROM alembic_version;"
+docker-compose exec backend alembic upgrade head
 ```
 
-### Frontend (not yet implemented)
-```bash
-cd frontend
-npm install
-npm run dev                          # Start dev server
-npm run lint                         # Run ESLint
-npm run test                         # Run vitest tests
+---
+
+## Module System
+
+See `docs/creating-modules.md` for full guide.
+
+### Quick Reference
+
+```python
+# backend/app/modules/mymodule/__init__.py
+class MyModule(BaseModule):
+    @property
+    def name(self) -> str:
+        return "mymodule"  # Router mounted at /api/v1/mymodule/
+
+    @property
+    def version(self) -> str:
+        return "0.1.0"
+
+    @property
+    def dependencies(self) -> list[str]:
+        return ["clinical"]  # Loaded after clinical
+
+    def get_models(self) -> list:
+        return [MyModel]
+
+    def get_router(self) -> APIRouter:
+        return router
+
+    def get_permissions(self) -> list[str]:
+        return ["resource.read", "resource.write"]
+
+    def get_event_handlers(self) -> dict:
+        return {"patient.created": self._on_patient_created}
 ```
-
-## Architecture
-
-### Plugin/Module System
-
-The backend uses a modular architecture where each feature is a self-contained module:
-
-```
-backend/app/
-├── core/
-│   ├── auth/           # JWT auth, RBAC (always loaded)
-│   ├── plugins/        # Module system infrastructure
-│   │   ├── base.py     # BaseModule abstract class
-│   │   ├── registry.py # Module registration
-│   │   └── loader.py   # Auto-discovery and mounting
-│   └── events/         # Event bus for cross-module communication
-└── modules/
-    └── clinical/       # First module: patient/appointment management
-        ├── __init__.py # Module manifest (ClinicalModule class)
-        ├── models.py   # SQLAlchemy models
-        ├── schemas.py  # Pydantic request/response schemas
-        ├── router.py   # FastAPI endpoints
-        └── service.py  # Business logic
-```
-
-**Creating a new module:**
-1. Create package under `backend/app/modules/{name}/`
-2. Implement a class inheriting from `BaseModule` in `__init__.py`
-3. Define required properties and methods:
-   - `name` - unique identifier (e.g., `"inventory"`)
-   - `version` - semver string (e.g., `"0.1.0"`)
-   - `get_models()` - return list of SQLAlchemy models
-   - `get_router()` - return FastAPI router
-4. Define optional properties:
-   - `dependencies` - list of required module names (e.g., `["clinical"]`)
-   - `get_event_handlers()` - dict of event subscriptions
-   - `get_permissions()` - list of RBAC permissions (e.g., `["inventory.read"]`)
-5. Module auto-discovered on startup, router mounted at `/api/v1/{name}/`
-
-See `docs/creating-modules.md` for detailed guide with examples.
-
-### Database
-
-- All models use UUID primary keys
-- All timestamps are timezone-aware (TIMESTAMPTZ)
-- All models include auto-managed `created_at` and `updated_at`
-- JSONB columns for flexible data (addresses, settings, teeth data)
-- Soft deletes via status fields (never hard delete patient data)
 
 ### Event Bus
 
-Modules communicate via `app.core.events.bus.event_bus`:
 ```python
-from app.core.events.bus import event_bus
+# Publishing
+from app.core.events import event_bus
 event_bus.publish("patient.created", {"patient_id": str(patient.id)})
+
+# Subscribing (in module class)
+def get_event_handlers(self) -> dict:
+    return {"patient.created": self._handle}
 ```
 
-## Key Conventions
+---
 
-- **Code in English** - All code, variables, comments in English. UI strings in Spanish via i18n.
-- **Type everything** - Python type hints required, TypeScript strict mode
-- **API responses** - Consistent format: `{data: ..., message: "...", errors: [...]}`
-- **Pagination** - List endpoints return: `{data: [...], total: N, page: N, page_size: N}`
-- **FDI notation** - Teeth identified by FDI numbers (11-48 adult, 51-85 deciduous)
+## API Conventions
+
+### Response Formats
+
+**Single item:**
+```json
+{
+  "id": "uuid",
+  "field": "value",
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Paginated list:**
+```json
+{
+  "data": [...],
+  "total": 100,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+**Error:**
+```json
+{
+  "detail": "Error message"
+}
+```
+
+### HTTP Status Codes
+
+| Code | Usage |
+|------|-------|
+| 200 | Success (GET, PUT) |
+| 201 | Created (POST) |
+| 204 | No Content (DELETE) |
+| 400 | Bad Request |
+| 401 | Unauthorized (invalid/expired token) |
+| 403 | Forbidden (valid token, no permission) |
+| 404 | Not Found |
+| 409 | Conflict (duplicate) |
+| 422 | Validation Error |
+
+---
+
+## Testing
+
+### Running Tests
+
+```bash
+# All tests (in Docker)
+docker-compose exec backend python -m pytest -v
+
+# Specific file
+docker-compose exec backend python -m pytest tests/test_auth.py -v
+
+# With coverage
+docker-compose exec backend python -m pytest --cov=app
+```
+
+### Test Fixtures
+
+```python
+# conftest.py provides:
+@pytest.fixture
+async def db_session():  # Fresh database per test
+
+@pytest.fixture
+async def client():  # HTTP client
+
+@pytest.fixture
+async def auth_headers():  # {"Authorization": "Bearer ..."}
+```
+
+### Test Pattern
+
+```python
+@pytest.mark.asyncio
+async def test_create_patient(client: AsyncClient, auth_headers: dict):
+    response = await client.post(
+        "/api/v1/clinical/patients",
+        json={"first_name": "John", "last_name": "Doe"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    assert response.json()["first_name"] == "John"
+```
+
+---
+
+## Common Tasks
+
+### Adding a New Endpoint
+
+1. Add route in `router.py` with `require_permission()`
+2. Add service method in `service.py`
+3. Add schemas in `schemas.py`
+4. Add permission to `permissions.py` if new
+5. Update `config/permissions.ts` in frontend
+6. Write tests
+
+### Adding a New Page (Frontend)
+
+1. Create `pages/mypage/index.vue`
+2. Add to navigation in `utils/moduleRegistry.ts`
+3. Add permission to navigation item if restricted
+4. Create composable in `composables/` if needed
+
+### Adding a New Role
+
+1. Add to `ROLE_PERMISSIONS` in `backend/app/core/auth/permissions.py`
+2. Add to `ROLES` list in same file
+3. Add to `UserRole` type in `frontend/app/types/index.ts`
+4. Add label in UI where roles are displayed
+
+---
 
 ## Environment Variables
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://dental:dental_dev@localhost:5432/dental_clinic
-SECRET_KEY=your-secret-key
+# Required
+DATABASE_URL=postgresql+asyncpg://dental:dental_dev@db:5432/dental_clinic
+SECRET_KEY=your-secret-key-min-32-chars
+
+# Optional
 ENVIRONMENT=development  # development | test | production
+TESTING=false           # Set true in test runner
 ```
 
-## Demo Credentials
+---
 
-`admin@demo.clinic` / `demo1234`
+## Troubleshooting
+
+### "relation does not exist" error
+
+```bash
+# Reset migrations
+docker-compose exec db psql -U dental -d dental_clinic -c "DELETE FROM alembic_version;"
+docker-compose exec backend alembic upgrade head
+```
+
+### Login returns "Invalid email or password"
+
+```bash
+# Regenerate password hash
+docker-compose exec backend python -c "
+from app.core.auth.service import hash_password
+print(hash_password('demo1234'))
+"
+# Then update in database
+```
+
+### Frontend changes not showing
+
+```bash
+docker-compose up -d --build frontend
+```
+
+### Permission denied but should have access
+
+1. Check role in `clinic_memberships` table
+2. Verify permission string matches exactly
+3. Check `/me` response includes the permission
+4. Clear browser cookies and re-login
+
+---
+
+## Code Style
+
+- **Language:** Code in English, UI strings in Spanish (i18n)
+- **Python:** Type hints required, ruff for linting/formatting
+- **TypeScript:** Strict mode, ESLint
+- **Commits:** Conventional commits (`feat:`, `fix:`, `docs:`)
+- **No over-engineering:** Only add what's needed now
