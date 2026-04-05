@@ -18,7 +18,7 @@ from app.database import get_db
 
 from .dependencies import ClinicContext, get_clinic_context, get_current_user, require_permission
 from .models import ClinicMembership, User
-from .permissions import ROLES, expand_permissions, get_role_permissions
+from .permissions import CORE_PERMISSIONS, ROLES, expand_permissions, get_role_permissions
 from .schemas import (
     AuthResponse,
     ClinicResponse,
@@ -244,7 +244,8 @@ async def get_me(
     if memberships:
         role = memberships[0].role
         role_perms = get_role_permissions(role)
-        all_perms = module_registry.get_all_permissions()
+        # Combine module permissions with core permissions
+        all_perms = module_registry.get_all_permissions() + CORE_PERMISSIONS
         permissions = expand_permissions(role_perms, all_perms)
 
     return MeResponse(

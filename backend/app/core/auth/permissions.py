@@ -15,6 +15,14 @@ ROLES: Final[list[str]] = [
     "receptionist",
 ]
 
+# Core permissions (not from modules)
+CORE_PERMISSIONS: Final[list[str]] = [
+    "admin.users.read",
+    "admin.users.write",
+    "admin.clinic.read",
+    "admin.clinic.write",
+]
+
 # Role -> permissions mapping
 # Supports wildcards: "*" = all, "module.*" = all module permissions
 ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
