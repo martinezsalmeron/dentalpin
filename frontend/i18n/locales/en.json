@@ -51,12 +51,161 @@
   "patientDetail": {
     "tabs": {
       "info": "Info",
+      "odontogram": "Dental Chart",
       "history": "History",
       "appointments": "Appointments"
     },
     "historyPlaceholder": "Clinical notes available in future version",
     "noAppointments": "This patient has no appointments",
     "scheduleAppointment": "Schedule appointment"
+  },
+  "odontogram": {
+    "title": "Dental Chart",
+    "tooth": "Tooth",
+    "selectCondition": "Select Condition",
+    "readOnly": "View only",
+    "legend": "Legend",
+    "statusLegend": "Treatment status",
+    "toothPosition": "Tooth position",
+    "displaced": "Displaced",
+    "rotated": "Rotated",
+    "dentition": {
+      "permanent": "Permanent",
+      "deciduous": "Primary",
+      "toggle": "Toggle dentition"
+    },
+    "quadrants": {
+      "upper": "Upper Arch",
+      "lower": "Lower Arch",
+      "upperRight": "Upper Right",
+      "upperLeft": "Upper Left",
+      "lowerRight": "Lower Right",
+      "lowerLeft": "Lower Left"
+    },
+    "surfaces": {
+      "M": "Mesial",
+      "D": "Distal",
+      "O": "Occlusal",
+      "V": "Vestibular",
+      "L": "Lingual"
+    },
+    "conditions": {
+      "healthy": "Healthy",
+      "caries": "Caries",
+      "filling": "Filling",
+      "crown": "Crown",
+      "missing": "Missing",
+      "root_canal": "Root Canal",
+      "implant": "Implant",
+      "bridge_pontic": "Bridge Pontic",
+      "bridge_abutment": "Bridge Abutment",
+      "extraction_indicated": "Extraction Indicated",
+      "sealant": "Sealant",
+      "fracture": "Fracture"
+    },
+    "history": {
+      "title": "Change History",
+      "noChanges": "No changes recorded",
+      "changedBy": "Changed by",
+      "changeTypes": {
+        "created": "Created",
+        "general_condition": "General condition",
+        "surface_update": "Surface update",
+        "note": "Note"
+      }
+    },
+    "messages": {
+      "updated": "Dental chart updated",
+      "error": "Error updating dental chart"
+    },
+    "actions": {
+      "save": "Save",
+      "reset": "Reset",
+      "print": "Print"
+    },
+    "status": {
+      "preexisting": "Preexisting",
+      "planned": "Planned",
+      "performed": "Performed"
+    },
+    "treatments": {
+      "title": "Treatments",
+      "addTreatment": "Add Treatment",
+      "selectStatus": "Select Status",
+      "noTreatments": "No treatments recorded",
+      "markPerformed": "Mark as Performed",
+      "categories": {
+        "common": "Common",
+        "restorative": "Restorative",
+        "diagnostic": "Diagnostic",
+        "orthodontic": "Orthodontics",
+        "periodontic": "Periodontics",
+        "position": "Position",
+        "other": "Other"
+      },
+      "types": {
+        "caries": "Caries",
+        "filling": "Filling",
+        "sealant": "Sealant",
+        "crown": "Crown",
+        "root_canal": "Root Canal",
+        "implant": "Implant",
+        "bridge_pontic": "Bridge Pontic",
+        "bridge_abutment": "Bridge Abutment",
+        "extraction": "Extraction",
+        "missing": "Missing",
+        "fracture": "Fracture",
+        "post": "Post",
+        "veneer": "Veneer",
+        "apicoectomy": "Apicoectomy",
+        "bracket": "Bracket",
+        "band": "Band",
+        "attachment": "Attachment",
+        "retainer": "Retainer",
+        "rotate": "Rotated",
+        "displace": "Displaced"
+      },
+      "treatmentAdded": "Treatment added",
+      "treatmentPerformed": "Treatment marked as performed",
+      "treatmentDeleted": "Treatment deleted"
+    },
+    "position": {
+      "displaced": "Displaced",
+      "rotated": "Rotated",
+      "normal": "Normal"
+    },
+    "views": {
+      "occlusal": "Occlusal View",
+      "lateral": "Lateral View",
+      "dual": "Dual View"
+    },
+    "selectSurfaces": "Select Surfaces",
+    "selectedSurfaces": "Selected surfaces",
+    "surfacesSelected": "surface(s) selected",
+    "instructions": {
+      "selectTreatment": "Select a treatment to apply",
+      "clickTooth": "Click on the tooth to apply"
+    },
+    "toothNames": {
+      "centralIncisor": "Central incisor",
+      "lateralIncisor": "Lateral incisor",
+      "canine": "Canine",
+      "firstPremolar": "First premolar",
+      "secondPremolar": "Second premolar",
+      "firstMolar": "First molar",
+      "secondMolar": "Second molar",
+      "thirdMolar": "Third molar"
+    },
+    "positions": {
+      "upper": "upper",
+      "lower": "lower",
+      "left": "left",
+      "right": "right"
+    },
+    "tooltip": {
+      "clickToEdit": "Click to edit"
+    },
+    "planning": "Planning"
   },
   "appointments": {
     "title": "Schedule",
@@ -175,6 +324,8 @@
     "actions": "Actions",
     "previous": "Previous",
     "next": "Next",
+    "undo": "Undo",
+    "undone": "Undone",
     "page": "Page {current} of {total}",
     "noData": "No data",
     "selectAll": "All",

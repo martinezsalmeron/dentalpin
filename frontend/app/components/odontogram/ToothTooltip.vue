@@ -1,0 +1,368 @@
+<script setup lang="ts">
+import type { Treatment, TreatmentStatus } from '~/types'
+import { TREATMENT_COLORS } from '~/config/odontogramConstants'
+
+const props = defineProps<{
+  toothNumber: number
+  treatments: Treatment[]
+  isDisplaced?: boolean
+  isRotated?: boolean
+}>()
+
+const emit = defineEmits<{
+  editTreatment: [treatment: Treatment]
+  performTreatment: [treatment: Treatment]
+  deleteTreatment: [treatment: Treatment]
+}>()
+
+const { t } = useI18n()
+
+// Get tooth name based on number
+function getToothName(toothNumber: number): string {
+  const num = toothNumber % 10
+  const quadrant = Math.floor(toothNumber / 10)
+  const isUpper = quadrant === 1 || quadrant === 2 || quadrant === 5 || quadrant === 6
+  const isRight = quadrant === 1 || quadrant === 4 || quadrant === 5 || quadrant === 8
+
+  const names: Record<number, string> = {
+    1: t('odontogram.toothNames.centralIncisor'),
+    2: t('odontogram.toothNames.lateralIncisor'),
+    3: t('odontogram.toothNames.canine'),
+    4: t('odontogram.toothNames.firstPremolar'),
+    5: t('odontogram.toothNames.secondPremolar'),
+    6: t('odontogram.toothNames.firstMolar'),
+    7: t('odontogram.toothNames.secondMolar'),
+    8: t('odontogram.toothNames.thirdMolar')
+  }
+
+  const position = isUpper ? t('odontogram.positions.upper') : t('odontogram.positions.lower')
+  const side = isRight ? t('odontogram.positions.right') : t('odontogram.positions.left')
+
+  return `${names[num] || `#${num}`} ${position} ${side}`
+}
+
+// Group treatments by status
+const groupedTreatments = computed(() => {
+  const groups: Record<TreatmentStatus, Treatment[]> = {
+    planned: [],
+    performed: [],
+    preexisting: []
+  }
+  for (const treatment of props.treatments) {
+    groups[treatment.status]?.push(treatment)
+  }
+  return groups
+})
+
+const hasAnyTreatments = computed(() => props.treatments.length > 0)
+
+function getTreatmentLabel(type: string): string {
+  return t(`odontogram.treatments.types.${type}`, type)
+}
+
+function getStatusColor(status: TreatmentStatus): string {
+  const colorMap: Record<TreatmentStatus, string> = {
+    preexisting: 'neutral',
+    planned: 'warning',
+    performed: 'success'
+  }
+  return colorMap[status] || 'neutral'
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString()
+}
+
+function handleEditClick(event: Event, treatment: Treatment) {
+  event.stopPropagation()
+  event.preventDefault()
+  emit('editTreatment', treatment)
+}
+</script>
+
+<template>
+  <div class="tooth-tooltip">
+    <!-- Header -->
+    <div class="tooltip-header">
+      <div class="flex items-center gap-2">
+        <span class="tooth-number-badge">{{ toothNumber }}</span>
+        <span class="tooth-name">{{ getToothName(toothNumber) }}</span>
+      </div>
+      <!-- Position indicators -->
+      <div v-if="isDisplaced || isRotated" class="position-badges">
+        <UBadge v-if="isRotated" color="violet" variant="subtle" size="xs">
+          {{ t('odontogram.position.rotated') }}
+        </UBadge>
+        <UBadge v-if="isDisplaced" color="amber" variant="subtle" size="xs">
+          {{ t('odontogram.position.displaced') }}
+        </UBadge>
+      </div>
+    </div>
+
+    <!-- Treatments list -->
+    <div v-if="hasAnyTreatments" class="treatments-section">
+      <!-- Planned treatments -->
+      <div v-if="groupedTreatments.planned.length > 0" class="treatment-group">
+        <div class="group-header group-planned">
+          <UIcon name="i-lucide-clock" class="w-3 h-3" />
+          <span>{{ t('odontogram.status.planned') }}</span>
+        </div>
+        <div
+          v-for="treatment in groupedTreatments.planned"
+          :key="treatment.id"
+          class="treatment-item"
+          @click="handleEditClick($event, treatment)"
+        >
+          <div class="treatment-main">
+            <span
+              class="treatment-dot"
+              :style="{ backgroundColor: TREATMENT_COLORS[treatment.treatment_type] || '#9CA3AF' }"
+            />
+            <span class="treatment-name">{{ getTreatmentLabel(treatment.treatment_type) }}</span>
+            <UBadge
+              v-if="treatment.surfaces?.length"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            >
+              {{ treatment.surfaces.join('-') }}
+            </UBadge>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performed treatments -->
+      <div v-if="groupedTreatments.performed.length > 0" class="treatment-group">
+        <div class="group-header group-performed">
+          <UIcon name="i-lucide-check-circle" class="w-3 h-3" />
+          <span>{{ t('odontogram.status.performed') }}</span>
+        </div>
+        <div
+          v-for="treatment in groupedTreatments.performed"
+          :key="treatment.id"
+          class="treatment-item"
+          @click="handleEditClick($event, treatment)"
+        >
+          <div class="treatment-main">
+            <span
+              class="treatment-dot"
+              :style="{ backgroundColor: TREATMENT_COLORS[treatment.treatment_type] || '#9CA3AF' }"
+            />
+            <span class="treatment-name">{{ getTreatmentLabel(treatment.treatment_type) }}</span>
+            <UBadge
+              v-if="treatment.surfaces?.length"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            >
+              {{ treatment.surfaces.join('-') }}
+            </UBadge>
+          </div>
+          <div v-if="treatment.performed_at" class="treatment-date">
+            {{ formatDate(treatment.performed_at) }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Preexisting treatments -->
+      <div v-if="groupedTreatments.preexisting.length > 0" class="treatment-group">
+        <div class="group-header group-preexisting">
+          <UIcon name="i-lucide-history" class="w-3 h-3" />
+          <span>{{ t('odontogram.status.preexisting') }}</span>
+        </div>
+        <div
+          v-for="treatment in groupedTreatments.preexisting"
+          :key="treatment.id"
+          class="treatment-item treatment-preexisting"
+          @click="handleEditClick($event, treatment)"
+        >
+          <div class="treatment-main">
+            <span
+              class="treatment-dot"
+              :style="{ backgroundColor: TREATMENT_COLORS[treatment.treatment_type] || '#9CA3AF' }"
+            />
+            <span class="treatment-name">{{ getTreatmentLabel(treatment.treatment_type) }}</span>
+            <UBadge
+              v-if="treatment.surfaces?.length"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            >
+              {{ treatment.surfaces.join('-') }}
+            </UBadge>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div v-else class="empty-state">
+      <span class="text-gray-400 text-xs">{{ t('odontogram.treatments.noTreatments') }}</span>
+    </div>
+
+    <!-- Click hint -->
+    <div v-if="hasAnyTreatments" class="click-hint">
+      <UIcon name="i-lucide-mouse-pointer-click" class="w-3 h-3" />
+      <span>{{ t('odontogram.tooltip.clickToEdit') }}</span>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.tooth-tooltip {
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.tooltip-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 8px;
+}
+
+:root.dark .tooltip-header {
+  border-color: #374151;
+}
+
+.tooth-number-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  background: #3B82F6;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tooth-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+:root.dark .tooth-name {
+  color: #E5E7EB;
+}
+
+.position-badges {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.treatments-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.treatment-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.group-planned {
+  color: #D97706;
+}
+
+.group-performed {
+  color: #059669;
+}
+
+.group-preexisting {
+  color: #6B7280;
+}
+
+.treatment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  margin-left: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.treatment-item:hover {
+  background-color: #F3F4F6;
+}
+
+:root.dark .treatment-item:hover {
+  background-color: #374151;
+}
+
+.treatment-item.treatment-preexisting {
+  opacity: 0.7;
+}
+
+.treatment-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.treatment-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.treatment-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+:root.dark .treatment-name {
+  color: #E5E7EB;
+}
+
+.treatment-date {
+  font-size: 10px;
+  color: #9CA3AF;
+  margin-left: 14px;
+}
+
+.empty-state {
+  padding: 8px 0;
+  text-align: center;
+}
+
+.click-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid #E5E7EB;
+  font-size: 10px;
+  color: #9CA3AF;
+}
+
+:root.dark .click-hint {
+  border-color: #374151;
+}
+</style>

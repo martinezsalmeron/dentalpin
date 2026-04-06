@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { Patient, PatientUpdate, Appointment, PaginatedResponse, ApiResponse } from '~/types'
+import { PERMISSIONS } from '~/config/permissions'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const api = useApi()
 const toast = useToast()
+const { can } = usePermissions()
 
 const patientId = route.params.id as string
 
@@ -47,13 +49,33 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
 
 const appointments = computed(() => appointmentsData.value?.data || [])
 
-// Tabs
+// Tabs - computed to filter by permissions
 const activeTab = ref('info')
-const tabs = [
-  { value: 'info', label: t('patientDetail.tabs.info'), icon: 'i-lucide-user', slot: 'info' },
-  { value: 'history', label: t('patientDetail.tabs.history'), icon: 'i-lucide-file-text', slot: 'history' },
-  { value: 'appointments', label: t('patientDetail.tabs.appointments'), icon: 'i-lucide-calendar', slot: 'appointments' }
-]
+const tabs = computed(() => {
+  const baseTabs = [
+    { value: 'info', label: t('patientDetail.tabs.info'), icon: 'i-lucide-user', slot: 'info' }
+  ]
+
+  // Add odontogram tab if user has permission
+  if (can(PERMISSIONS.odontogram.read)) {
+    baseTabs.push({
+      value: 'odontogram',
+      label: t('patientDetail.tabs.odontogram'),
+      icon: 'i-lucide-grid-3x3',
+      slot: 'odontogram'
+    })
+  }
+
+  baseTabs.push(
+    { value: 'history', label: t('patientDetail.tabs.history'), icon: 'i-lucide-file-text', slot: 'history' },
+    { value: 'appointments', label: t('patientDetail.tabs.appointments'), icon: 'i-lucide-calendar', slot: 'appointments' }
+  )
+
+  return baseTabs
+})
+
+// Check if user can edit odontogram
+const canEditOdontogram = computed(() => can(PERMISSIONS.odontogram.write))
 
 // Edit mode
 const isEditing = ref(false)
@@ -392,6 +414,16 @@ function getStatusColor(status: string): BadgeColor {
                 </UButton>
               </div>
             </form>
+          </UCard>
+        </template>
+
+        <!-- Odontogram tab content -->
+        <template #odontogram>
+          <UCard class="mt-4">
+            <OdontogramChart
+              :patient-id="patientId"
+              :readonly="!canEditOdontogram"
+            />
           </UCard>
         </template>
 

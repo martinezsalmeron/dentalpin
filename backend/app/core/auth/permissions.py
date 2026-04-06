@@ -31,18 +31,23 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     ],
     "dentist": [
         "clinical.*",  # All clinical permissions
+        "odontogram.*",  # Full odontogram access
     ],
     "hygienist": [
         "clinical.patients.read",
         "clinical.appointments.*",
+        "odontogram.read",
+        "odontogram.write",
     ],
     "assistant": [
         "clinical.patients.*",
         "clinical.appointments.*",
+        "odontogram.read",  # Can view but not edit
     ],
     "receptionist": [
         "clinical.patients.*",
         "clinical.appointments.*",
+        # No odontogram access for receptionists
     ],
 }
 

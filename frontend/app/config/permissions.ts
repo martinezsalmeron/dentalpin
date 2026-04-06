@@ -18,6 +18,12 @@ export const PERMISSIONS = {
   users: {
     read: 'admin.users.read',
     write: 'admin.users.write'
+  },
+  odontogram: {
+    read: 'odontogram.read',
+    write: 'odontogram.write',
+    treatmentsRead: 'odontogram.treatments.read',
+    treatmentsWrite: 'odontogram.treatments.write'
   }
 } as const
 

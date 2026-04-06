@@ -211,3 +211,151 @@ export interface PermissionConfig {
 export interface UserWithRole extends User {
   role?: UserRole
 }
+
+// Odontogram types
+export type ToothCondition
+  = | 'healthy'
+    | 'caries'
+    | 'filling'
+    | 'crown'
+    | 'missing'
+    | 'root_canal'
+    | 'implant'
+    | 'bridge_pontic'
+    | 'bridge_abutment'
+    | 'extraction_indicated'
+    | 'sealant'
+    | 'fracture'
+
+export type Surface = 'M' | 'D' | 'O' | 'V' | 'L'
+export type ToothType = 'permanent' | 'deciduous'
+
+export interface SurfaceConditions {
+  M: ToothCondition
+  D: ToothCondition
+  O: ToothCondition
+  V: ToothCondition
+  L: ToothCondition
+}
+
+export interface ToothRecord {
+  id: string
+  patient_id: string
+  tooth_number: number
+  tooth_type: ToothType
+  general_condition: ToothCondition
+  surfaces: SurfaceConditions
+  notes?: string
+  // Positional markers
+  is_displaced?: boolean
+  is_rotated?: boolean
+  displacement_notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface OdontogramData {
+  patient_id: string
+  teeth: ToothRecord[]
+  condition_colors: Record<ToothCondition, string>
+  available_conditions: ToothCondition[]
+  surfaces: Surface[]
+}
+
+export interface SurfaceUpdate {
+  surface: Surface
+  condition: ToothCondition
+}
+
+export interface ToothRecordUpdate {
+  general_condition?: ToothCondition
+  surface_updates?: SurfaceUpdate[]
+  notes?: string
+  is_displaced?: boolean
+  is_rotated?: boolean
+}
+
+export interface BulkToothUpdate {
+  tooth_number: number
+  general_condition?: ToothCondition
+  surface_updates?: SurfaceUpdate[]
+  notes?: string
+}
+
+export interface OdontogramHistoryEntry {
+  id: string
+  tooth_number: number
+  change_type: string
+  surface?: Surface
+  old_condition?: ToothCondition
+  new_condition?: ToothCondition
+  notes?: string
+  changed_by: string
+  changed_by_name?: string
+  changed_at: string
+}
+
+// Treatment types (Gesdén style)
+export type TreatmentStatus = 'preexisting' | 'planned' | 'performed'
+export type TreatmentCategory = 'surface' | 'whole_tooth'
+export type TreatmentType
+  = | 'caries'
+    | 'filling'
+    | 'sealant'
+    | 'crown'
+    | 'root_canal'
+    | 'implant'
+    | 'bridge_pontic'
+    | 'bridge_abutment'
+    | 'extraction'
+    | 'missing'
+    | 'fracture'
+    | 'post'
+    | 'veneer'
+    | 'apicoectomy'
+    // Orthodontic treatments
+    | 'bracket'
+    | 'band'
+    | 'attachment'
+    | 'retainer'
+
+export interface Treatment {
+  id: string
+  tooth_record_id: string
+  tooth_number: number
+  treatment_type: TreatmentType
+  treatment_category: TreatmentCategory
+  surfaces?: Surface[]
+  status: TreatmentStatus
+  recorded_at: string
+  performed_at?: string
+  performed_by?: string
+  performed_by_name?: string
+  budget_item_id?: string
+  source_module: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TreatmentCreate {
+  treatment_type: TreatmentType
+  status?: TreatmentStatus
+  surfaces?: Surface[]
+  notes?: string
+  budget_item_id?: string
+  source_module?: string
+}
+
+export interface TreatmentUpdate {
+  status?: TreatmentStatus
+  surfaces?: Surface[]
+  notes?: string
+}
+
+export interface ToothRecordWithTreatments extends ToothRecord {
+  treatments: Treatment[]
+  is_displaced: boolean
+  is_rotated: boolean
+  displacement_notes?: string
+}

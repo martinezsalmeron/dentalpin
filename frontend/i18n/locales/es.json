@@ -51,12 +51,161 @@
   "patientDetail": {
     "tabs": {
       "info": "Info",
+      "odontogram": "Odontograma",
       "history": "Historial",
       "appointments": "Citas"
     },
     "historyPlaceholder": "Notas clínicas disponibles en futura versión",
     "noAppointments": "Este paciente no tiene citas",
     "scheduleAppointment": "Agendar cita"
+  },
+  "odontogram": {
+    "title": "Odontograma",
+    "tooth": "Diente",
+    "selectCondition": "Seleccionar Condición",
+    "readOnly": "Solo lectura",
+    "legend": "Leyenda",
+    "statusLegend": "Estado del tratamiento",
+    "toothPosition": "Posición del diente",
+    "displaced": "Desplazado",
+    "rotated": "Rotado",
+    "dentition": {
+      "permanent": "Permanente",
+      "deciduous": "Temporal",
+      "toggle": "Cambiar dentición"
+    },
+    "quadrants": {
+      "upper": "Arcada Superior",
+      "lower": "Arcada Inferior",
+      "upperRight": "Superior Derecho",
+      "upperLeft": "Superior Izquierdo",
+      "lowerRight": "Inferior Derecho",
+      "lowerLeft": "Inferior Izquierdo"
+    },
+    "surfaces": {
+      "M": "Mesial",
+      "D": "Distal",
+      "O": "Oclusal",
+      "V": "Vestibular",
+      "L": "Lingual"
+    },
+    "conditions": {
+      "healthy": "Sano",
+      "caries": "Caries",
+      "filling": "Obturación",
+      "crown": "Corona",
+      "missing": "Ausente",
+      "root_canal": "Endodoncia",
+      "implant": "Implante",
+      "bridge_pontic": "Póntico",
+      "bridge_abutment": "Pilar de Puente",
+      "extraction_indicated": "Extracción Indicada",
+      "sealant": "Sellador",
+      "fracture": "Fractura"
+    },
+    "history": {
+      "title": "Historial de Cambios",
+      "noChanges": "No hay cambios registrados",
+      "changedBy": "Modificado por",
+      "changeTypes": {
+        "created": "Creado",
+        "general_condition": "Condición general",
+        "surface_update": "Actualización de superficie",
+        "note": "Nota"
+      }
+    },
+    "messages": {
+      "updated": "Odontograma actualizado",
+      "error": "Error al actualizar odontograma"
+    },
+    "actions": {
+      "save": "Guardar",
+      "reset": "Restablecer",
+      "print": "Imprimir"
+    },
+    "status": {
+      "preexisting": "Preexistente",
+      "planned": "Planificado",
+      "performed": "Realizado"
+    },
+    "treatments": {
+      "title": "Tratamientos",
+      "addTreatment": "Añadir Tratamiento",
+      "selectStatus": "Seleccionar Estado",
+      "noTreatments": "No hay tratamientos registrados",
+      "markPerformed": "Marcar como Realizado",
+      "categories": {
+        "common": "Comunes",
+        "restorative": "Restaurador",
+        "diagnostic": "Diagnóstico",
+        "orthodontic": "Ortodoncia",
+        "periodontic": "Periodoncia",
+        "position": "Posición",
+        "other": "Varios"
+      },
+      "types": {
+        "caries": "Caries",
+        "filling": "Obturación",
+        "sealant": "Sellador",
+        "crown": "Corona",
+        "root_canal": "Endodoncia",
+        "implant": "Implante",
+        "bridge_pontic": "Póntico",
+        "bridge_abutment": "Pilar de Puente",
+        "extraction": "Exodoncia",
+        "missing": "Ausente",
+        "fracture": "Fractura",
+        "post": "Perno",
+        "veneer": "Carilla",
+        "apicoectomy": "Apicectomía",
+        "bracket": "Bracket",
+        "band": "Banda",
+        "attachment": "Atache",
+        "retainer": "Retenedor",
+        "rotate": "Rotado",
+        "displace": "Desplazado"
+      },
+      "treatmentAdded": "Tratamiento añadido",
+      "treatmentPerformed": "Tratamiento marcado como realizado",
+      "treatmentDeleted": "Tratamiento eliminado"
+    },
+    "position": {
+      "displaced": "Desplazado",
+      "rotated": "Rotado",
+      "normal": "Normal"
+    },
+    "views": {
+      "occlusal": "Vista Oclusal",
+      "lateral": "Vista Lateral",
+      "dual": "Vista Dual"
+    },
+    "selectSurfaces": "Seleccionar Superficies",
+    "selectedSurfaces": "Superficies seleccionadas",
+    "surfacesSelected": "superficie(s) seleccionada(s)",
+    "instructions": {
+      "selectTreatment": "Selecciona un tratamiento para aplicar",
+      "clickTooth": "Haz clic en el diente para aplicar"
+    },
+    "toothNames": {
+      "centralIncisor": "Incisivo central",
+      "lateralIncisor": "Incisivo lateral",
+      "canine": "Canino",
+      "firstPremolar": "Primer premolar",
+      "secondPremolar": "Segundo premolar",
+      "firstMolar": "Primer molar",
+      "secondMolar": "Segundo molar",
+      "thirdMolar": "Tercer molar"
+    },
+    "positions": {
+      "upper": "superior",
+      "lower": "inferior",
+      "left": "izquierdo",
+      "right": "derecho"
+    },
+    "tooltip": {
+      "clickToEdit": "Clic para editar"
+    },
+    "planning": "Planificando"
   },
   "appointments": {
     "title": "Agenda",
@@ -175,6 +324,8 @@
     "actions": "Acciones",
     "previous": "Anterior",
     "next": "Siguiente",
+    "undo": "Deshacer",
+    "undone": "Deshecho",
     "page": "Página {current} de {total}",
     "noData": "Sin datos",
     "selectAll": "Todos",
