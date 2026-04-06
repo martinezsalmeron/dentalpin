@@ -21,9 +21,9 @@ const emit = defineEmits<{
   'update:selectedTreatment': [treatment: TreatmentType | null]
   'update:selectedStatus': [status: TreatmentStatus]
   'update:selectedPositionAction': [action: PositionAction | null]
-  treatmentSelect: [treatment: TreatmentType]
-  positionActionSelect: [action: PositionAction]
-  cancel: []
+  'treatmentSelect': [treatment: TreatmentType]
+  'positionActionSelect': [action: PositionAction]
+  'cancel': []
 }>()
 
 const { t } = useI18n()
@@ -32,7 +32,7 @@ const { t } = useI18n()
 const activeCategory = ref('common')
 
 // All status options
-const allStatusOptions: Array<{ value: TreatmentStatus; labelKey: string; color: string }> = [
+const allStatusOptions: Array<{ value: TreatmentStatus, labelKey: string, color: string }> = [
   { value: 'planned', labelKey: 'odontogram.status.planned', color: 'red' },
   { value: 'performed', labelKey: 'odontogram.status.performed', color: 'green' },
   { value: 'preexisting', labelKey: 'odontogram.status.preexisting', color: 'gray' }
@@ -156,7 +156,10 @@ function getTreatmentLabel(treatment: string): string {
       <div class="spacer" />
 
       <!-- Cancel button (when treatment or position action is selected) -->
-      <div v-if="hasActiveMode" class="cancel-section">
+      <div
+        v-if="hasActiveMode"
+        class="cancel-section"
+      >
         <UButton
           color="neutral"
           variant="ghost"
@@ -171,11 +174,17 @@ function getTreatmentLabel(treatment: string): string {
       <!-- Instructions -->
       <div class="instructions">
         <template v-if="hasActiveMode">
-          <UIcon name="i-lucide-mouse-pointer-click" class="w-4 h-4" />
+          <UIcon
+            name="i-lucide-mouse-pointer-click"
+            class="w-4 h-4"
+          />
           <span>{{ t('odontogram.instructions.clickTooth') }}</span>
         </template>
         <template v-else>
-          <UIcon name="i-lucide-hand-pointer" class="w-4 h-4" />
+          <UIcon
+            name="i-lucide-hand-pointer"
+            class="w-4 h-4"
+          />
           <span>{{ t('odontogram.instructions.selectTreatment') }}</span>
         </template>
       </div>
@@ -189,7 +198,7 @@ function getTreatmentLabel(treatment: string): string {
         type="button"
         class="treatment-btn"
         :class="{
-          selected: isSelected(treatment),
+          'selected': isSelected(treatment),
           'is-surface': isSurfaceTreatment(treatment),
           'is-position': isPositionAction(treatment)
         }"

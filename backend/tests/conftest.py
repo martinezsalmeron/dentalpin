@@ -18,6 +18,7 @@ from app.core.plugins.loader import load_modules
 from app.database import Base, get_db
 from app.main import app
 from app.modules.clinical.models import Appointment, Patient  # noqa: F401
+from app.modules.odontogram.models import OdontogramHistory, ToothRecord  # noqa: F401
 
 # Load modules manually for tests (normally done in lifespan)
 load_modules(app)

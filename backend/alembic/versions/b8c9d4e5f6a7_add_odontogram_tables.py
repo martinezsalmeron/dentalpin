@@ -45,11 +45,13 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("patient_id", "tooth_number", name="uq_patient_tooth"),
     )
-    op.create_index(op.f("ix_tooth_records_clinic_id"), "tooth_records", ["clinic_id"], unique=False)
-    op.create_index(op.f("ix_tooth_records_patient_id"), "tooth_records", ["patient_id"], unique=False)
     op.create_index(
-        "idx_tooth_records_patient", "tooth_records", ["patient_id"], unique=False
+        op.f("ix_tooth_records_clinic_id"), "tooth_records", ["clinic_id"], unique=False
     )
+    op.create_index(
+        op.f("ix_tooth_records_patient_id"), "tooth_records", ["patient_id"], unique=False
+    )
+    op.create_index("idx_tooth_records_patient", "tooth_records", ["patient_id"], unique=False)
     op.create_index(
         "idx_tooth_records_clinic_patient",
         "tooth_records",

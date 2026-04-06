@@ -2,7 +2,7 @@
 import type { OdontogramHistoryEntry, Surface, Treatment, TreatmentStatus, TreatmentType } from '~/types'
 import { DECIDUOUS_TEETH, PERMANENT_TEETH } from '~/composables/useOdontogram'
 import { isSurfaceTreatment } from './TreatmentIcons'
-import { TREATMENT_COLORS, isPositionAction, type PositionAction } from '~/config/odontogramConstants'
+import { TREATMENT_COLORS, type PositionAction } from '~/config/odontogramConstants'
 
 export type OdontogramMode = 'full' | 'view-only' | 'planning'
 
@@ -41,7 +41,7 @@ const {
 // Local state
 const dentitionMode = ref<'permanent' | 'deciduous'>('permanent')
 const selectedTooth = ref<number | null>(null)
-const selectedSurface = ref<Surface | null>(null)
+const _selectedSurface = ref<Surface | null>(null)
 const showSurfaceSelector = ref(false)
 const showHistory = ref(false)
 const showContextMenu = ref(false)
@@ -67,7 +67,7 @@ const undoStack = ref<Array<{ treatmentId: string, tooth: number, type: string }
 const highlightedTeeth = ref<number[]>([])
 
 // Show summary panel (now controlled via tooltip hover)
-const showSummary = ref(false)
+const _showSummary = ref(false)
 
 // Treatment editing
 const showTreatmentEditModal = ref(false)
@@ -87,7 +87,7 @@ const teethLayout = computed(() => {
 })
 
 // Filter treatments by status if filter is provided
-const filteredTreatments = computed(() => {
+const _filteredTreatments = computed(() => {
   if (!props.statusFilter || props.statusFilter.length === 0) {
     return treatments.value
   }
@@ -123,14 +123,14 @@ onUnmounted(() => {
 
 // Treatment shortcuts map
 const treatmentShortcuts: Record<string, TreatmentType> = {
-  '1': 'extraction',
-  '2': 'filling',
-  '3': 'root_canal',
-  '4': 'crown',
-  '5': 'implant',
-  '6': 'veneer',
-  '7': 'sealant',
-  '8': 'caries'
+  1: 'extraction',
+  2: 'filling',
+  3: 'root_canal',
+  4: 'crown',
+  5: 'implant',
+  6: 'veneer',
+  7: 'sealant',
+  8: 'caries'
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -246,7 +246,7 @@ function handleToothContextMenu(toothNumber: number, event: MouseEvent) {
 }
 
 // Handle position update from context menu
-async function handlePositionUpdate(updates: { is_displaced?: boolean, is_rotated?: boolean }) {
+async function _handlePositionUpdate(updates: { is_displaced?: boolean, is_rotated?: boolean }) {
   if (!contextMenuTooth.value) return
 
   // Keep the menu open to allow multiple toggles
@@ -254,7 +254,7 @@ async function handlePositionUpdate(updates: { is_displaced?: boolean, is_rotate
 }
 
 // Close context menu
-function closeContextMenu() {
+function _closeContextMenu() {
   showContextMenu.value = false
   contextMenuTooth.value = null
 }
@@ -296,7 +296,7 @@ function handlePositionActionSelect(_action: PositionAction) {
 }
 
 // Cancel position action mode
-function cancelPositionActionMode() {
+function _cancelPositionActionMode() {
   selectedPositionAction.value = null
   hoveredTooth.value = null
 }
@@ -379,7 +379,7 @@ function handleTreatmentSelect(treatmentType: TreatmentType) {
 }
 
 // Handle treatment perform
-async function handlePerformTreatment(treatment: Treatment) {
+async function _handlePerformTreatment(treatment: Treatment) {
   const updated = await performTreatment(treatment.id)
   if (updated) {
     emit('treatmentPerform', treatment.id)
@@ -387,7 +387,7 @@ async function handlePerformTreatment(treatment: Treatment) {
 }
 
 // Handle treatment delete
-async function handleDeleteTreatment(treatment: Treatment) {
+async function _handleDeleteTreatment(treatment: Treatment) {
   await deleteTreatment(treatment.id)
 }
 
@@ -406,7 +406,7 @@ async function toggleHistory() {
 }
 
 // Selected tooth treatments for panel
-const selectedToothTreatments = computed(() => {
+const _selectedToothTreatments = computed(() => {
   if (!selectedTooth.value) return []
   return getToothTreatmentsFiltered(selectedTooth.value)
 })
@@ -426,16 +426,16 @@ function isToothHighlighted(toothNumber: number): boolean {
 }
 
 // Handle highlight from summary
-function handleHighlightTeeth(teeth: number[]) {
+function _handleHighlightTeeth(teeth: number[]) {
   highlightedTeeth.value = teeth
 }
 
-function handleClearHighlight() {
+function _handleClearHighlight() {
   highlightedTeeth.value = []
 }
 
 // Handle status filter from summary
-function handleStatusFilter(_status: TreatmentStatus | null) {
+function _handleStatusFilter(_status: TreatmentStatus | null) {
   // This could be used to filter the visible treatments
   // For now, just a placeholder for future enhancement
 }

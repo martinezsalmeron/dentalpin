@@ -18,17 +18,17 @@ import type {
 // FDI Notation constants
 // Visual layout: molars on edges, incisors in center (patient-facing view)
 export const PERMANENT_TEETH = {
-  upperRight: [18, 17, 16, 15, 14, 13, 12, 11],  // Molars→Incisors (left side of screen)
-  upperLeft: [21, 22, 23, 24, 25, 26, 27, 28],   // Incisors→Molars (right side of screen)
-  lowerRight: [48, 47, 46, 45, 44, 43, 42, 41],  // Molars→Incisors (left side of screen)
-  lowerLeft: [31, 32, 33, 34, 35, 36, 37, 38]    // Incisors→Molars (right side of screen)
+  upperRight: [18, 17, 16, 15, 14, 13, 12, 11], // Molars→Incisors (left side of screen)
+  upperLeft: [21, 22, 23, 24, 25, 26, 27, 28], // Incisors→Molars (right side of screen)
+  lowerRight: [48, 47, 46, 45, 44, 43, 42, 41], // Molars→Incisors (left side of screen)
+  lowerLeft: [31, 32, 33, 34, 35, 36, 37, 38] // Incisors→Molars (right side of screen)
 }
 
 export const DECIDUOUS_TEETH = {
-  upperRight: [55, 54, 53, 52, 51],  // Molars→Incisors (left side of screen)
-  upperLeft: [61, 62, 63, 64, 65],   // Incisors→Molars (right side of screen)
-  lowerRight: [85, 84, 83, 82, 81],  // Molars→Incisors (left side of screen)
-  lowerLeft: [71, 72, 73, 74, 75]    // Incisors→Molars (right side of screen)
+  upperRight: [55, 54, 53, 52, 51], // Molars→Incisors (left side of screen)
+  upperLeft: [61, 62, 63, 64, 65], // Incisors→Molars (right side of screen)
+  lowerRight: [85, 84, 83, 82, 81], // Molars→Incisors (left side of screen)
+  lowerLeft: [71, 72, 73, 74, 75] // Incisors→Molars (right side of screen)
 }
 
 // Default condition colors (fallback if not provided by API)

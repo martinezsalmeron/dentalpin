@@ -76,7 +76,9 @@ class ToothTreatment(Base, TimestampMixin):
     surfaces: Mapped[list | None] = mapped_column(JSONB)  # ["M", "O"] for MO filling
 
     # Status (key concept for Gesdén style)
-    status: Mapped[str] = mapped_column(String(20), default="performed")  # preexisting, planned, performed
+    status: Mapped[str] = mapped_column(
+        String(20), default="performed"
+    )  # preexisting, planned, performed
 
     # Audit timestamps
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -84,8 +86,12 @@ class ToothTreatment(Base, TimestampMixin):
     performed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
 
     # Integration with budget module
-    budget_item_id: Mapped[UUID | None] = mapped_column(UUID(as_uuid=True))  # FK to budget item if applicable
-    source_module: Mapped[str] = mapped_column(String(30), default="odontogram")  # Which module created this
+    budget_item_id: Mapped[UUID | None] = mapped_column(
+        UUID(as_uuid=True)
+    )  # FK to budget item if applicable
+    source_module: Mapped[str] = mapped_column(
+        String(30), default="odontogram"
+    )  # Which module created this
 
     notes: Mapped[str | None] = mapped_column(Text)
 

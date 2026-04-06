@@ -499,9 +499,7 @@ class TreatmentService:
             conditions.append(ToothTreatment.tooth_number == tooth_number)
 
         # Count query
-        count_result = await db.execute(
-            select(func.count(ToothTreatment.id)).where(*conditions)
-        )
+        count_result = await db.execute(select(func.count(ToothTreatment.id)).where(*conditions))
         total = count_result.scalar() or 0
 
         # Data query with pagination
@@ -553,7 +551,9 @@ class TreatmentService:
                     "treatment_type": treatment.treatment_type,
                     "old_status": old_status,
                     "new_status": status,
-                    "budget_item_id": str(treatment.budget_item_id) if treatment.budget_item_id else None,
+                    "budget_item_id": str(treatment.budget_item_id)
+                    if treatment.budget_item_id
+                    else None,
                     "changed_by": str(user_id),
                 },
             )
@@ -640,7 +640,9 @@ class TreatmentService:
                 "treatment_id": str(treatment_id),
                 "tooth_number": treatment.tooth_number,
                 "treatment_type": treatment.treatment_type,
-                "budget_item_id": str(treatment.budget_item_id) if treatment.budget_item_id else None,
+                "budget_item_id": str(treatment.budget_item_id)
+                if treatment.budget_item_id
+                else None,
                 "performed_by": str(user_id),
                 "performed_at": now.isoformat(),
                 "previous_status": old_status,

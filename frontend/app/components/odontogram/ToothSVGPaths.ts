@@ -22,12 +22,12 @@ export { TREATMENT_COLORS, STATUS_STYLES }
 // ============================================================================
 
 export const TOOTH_COLORS = {
-  outline: '#5D8E58',        // Sage green outline
-  outlineLight: '#7BA876',   // Lighter green for internal details
-  fill: '#FFFFFF',           // White fill
-  fillShade: '#F0F7EF',      // Very light green tint for shading
-  root: '#FEFEFE',           // Slightly off-white for roots
-  rootOutline: '#5D8E58',    // Same green for root outline
+  outline: '#5D8E58', // Sage green outline
+  outlineLight: '#7BA876', // Lighter green for internal details
+  fill: '#FFFFFF', // White fill
+  fillShade: '#F0F7EF', // Very light green tint for shading
+  root: '#FEFEFE', // Slightly off-white for roots
+  rootOutline: '#5D8E58' // Same green for root outline
 }
 
 // ============================================================================

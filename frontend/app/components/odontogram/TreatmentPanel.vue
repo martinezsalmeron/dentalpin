@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Treatment, TreatmentStatus } from '~/types'
-import { TREATMENT_COLORS, STATUS_STYLES } from './ToothSVGPaths'
+import { TREATMENT_COLORS } from './ToothSVGPaths'
 
 const props = defineProps<{
   treatments: Treatment[]
@@ -39,7 +39,7 @@ function getStatusLabel(status: TreatmentStatus): string {
   return t(`odontogram.status.${status}`, status)
 }
 
-function getStatusColor(status: TreatmentStatus): string {
+function _getStatusColor(status: TreatmentStatus): string {
   const colorMap: Record<TreatmentStatus, string> = {
     preexisting: 'neutral',
     planned: 'warning',
@@ -62,7 +62,11 @@ function formatDate(dateString: string): string {
     <div class="flex items-center justify-between mb-3">
       <h4 class="text-sm font-semibold flex items-center gap-2">
         {{ t('odontogram.treatments.title') }}
-        <UBadge color="neutral" variant="subtle" size="xs">
+        <UBadge
+          color="neutral"
+          variant="subtle"
+          size="xs"
+        >
           {{ toothNumber }}
         </UBadge>
       </h4>
@@ -78,8 +82,14 @@ function formatDate(dateString: string): string {
     </div>
 
     <!-- Loading state -->
-    <div v-if="loading" class="flex justify-center py-4">
-      <UIcon name="i-lucide-loader-2" class="w-5 h-5 animate-spin text-gray-400" />
+    <div
+      v-if="loading"
+      class="flex justify-center py-4"
+    >
+      <UIcon
+        name="i-lucide-loader-2"
+        class="w-5 h-5 animate-spin text-gray-400"
+      />
     </div>
 
     <!-- Empty state -->
@@ -91,11 +101,17 @@ function formatDate(dateString: string): string {
     </div>
 
     <!-- Treatment list by status -->
-    <div v-else class="space-y-4">
+    <div
+      v-else
+      class="space-y-4"
+    >
       <!-- Planned treatments (show first, most actionable) -->
       <div v-if="groupedTreatments.planned.length > 0">
         <div class="text-xs font-medium text-amber-600 mb-2 flex items-center gap-1">
-          <UIcon name="i-lucide-clock" class="w-3 h-3" />
+          <UIcon
+            name="i-lucide-clock"
+            class="w-3 h-3"
+          />
           {{ getStatusLabel('planned') }}
         </div>
         <div class="space-y-2">
@@ -147,7 +163,10 @@ function formatDate(dateString: string): string {
       <!-- Performed treatments -->
       <div v-if="groupedTreatments.performed.length > 0">
         <div class="text-xs font-medium text-green-600 mb-2 flex items-center gap-1">
-          <UIcon name="i-lucide-check-circle" class="w-3 h-3" />
+          <UIcon
+            name="i-lucide-check-circle"
+            class="w-3 h-3"
+          />
           {{ getStatusLabel('performed') }}
         </div>
         <div class="space-y-2">
@@ -183,7 +202,10 @@ function formatDate(dateString: string): string {
       <!-- Preexisting treatments -->
       <div v-if="groupedTreatments.preexisting.length > 0">
         <div class="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
-          <UIcon name="i-lucide-history" class="w-3 h-3" />
+          <UIcon
+            name="i-lucide-history"
+            class="w-3 h-3"
+          />
           {{ getStatusLabel('preexisting') }}
         </div>
         <div class="space-y-2">
@@ -208,7 +230,10 @@ function formatDate(dateString: string): string {
                 {{ treatment.surfaces.join('-') }}
               </UBadge>
             </div>
-            <div v-if="treatment.notes" class="text-xs text-gray-400 mt-1 truncate">
+            <div
+              v-if="treatment.notes"
+              class="text-xs text-gray-400 mt-1 truncate"
+            >
               {{ treatment.notes }}
             </div>
           </div>

@@ -9,9 +9,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  update: [treatmentId: string, data: { status?: TreatmentStatus, surfaces?: Surface[], notes?: string }]
-  delete: [treatmentId: string]
-  perform: [treatmentId: string]
+  'update': [treatmentId: string, data: { status?: TreatmentStatus, surfaces?: Surface[], notes?: string }]
+  'delete': [treatmentId: string]
+  'perform': [treatmentId: string]
 }>()
 
 const { t } = useI18n()
@@ -151,7 +151,10 @@ function handleClose() {
           </div>
         </template>
 
-        <div v-if="treatment" class="space-y-6">
+        <div
+          v-if="treatment"
+          class="space-y-6"
+        >
           <!-- Status selection -->
           <div>
             <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
@@ -188,7 +191,10 @@ function handleClose() {
                 {{ surface }} - {{ t(`odontogram.surfaces.${surface}`) }}
               </UButton>
             </div>
-            <p v-if="selectedSurfaces.length > 0" class="text-xs text-gray-500 mt-2">
+            <p
+              v-if="selectedSurfaces.length > 0"
+              class="text-xs text-gray-500 mt-2"
+            >
               {{ selectedSurfaces.length }} {{ t('odontogram.surfacesSelected') }}
             </p>
           </div>
@@ -206,7 +212,10 @@ function handleClose() {
           </div>
 
           <!-- Quick action: Mark as performed -->
-          <div v-if="treatment.status === 'planned'" class="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div
+            v-if="treatment.status === 'planned'"
+            class="pt-4 border-t border-gray-200 dark:border-gray-700"
+          >
             <UButton
               color="success"
               variant="soft"

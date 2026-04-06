@@ -51,7 +51,9 @@ def upgrade() -> None:
         sa.Column("performed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("performed_by", sa.UUID(), nullable=True),
         sa.Column("budget_item_id", sa.UUID(), nullable=True),
-        sa.Column("source_module", sa.String(length=30), nullable=False, server_default="odontogram"),
+        sa.Column(
+            "source_module", sa.String(length=30), nullable=False, server_default="odontogram"
+        ),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),

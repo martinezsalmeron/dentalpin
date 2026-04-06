@@ -2,14 +2,14 @@
 import type { Surface, TreatmentStatus, TreatmentType } from '~/types'
 import { TREATMENT_COLORS } from './ToothSVGPaths'
 
-const props = defineProps<{
+const _props = defineProps<{
   toothNumber: number
   open: boolean
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  select: [data: {
+  'select': [data: {
     treatment_type: TreatmentType
     status: TreatmentStatus
     surfaces?: Surface[]
@@ -143,9 +143,15 @@ function handleClose() {
   >
     <template #header>
       <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-plus-circle" class="w-5 h-5 text-primary-500" />
+        <UIcon
+          name="i-lucide-plus-circle"
+          class="w-5 h-5 text-primary-500"
+        />
         <span>{{ t('odontogram.treatments.addTreatment') }}</span>
-        <UBadge color="neutral" variant="subtle">
+        <UBadge
+          color="neutral"
+          variant="subtle"
+        >
           {{ t('odontogram.tooth') }} {{ toothNumber }}
         </UBadge>
       </div>
@@ -163,7 +169,9 @@ function handleClose() {
               v-for="category in treatmentCategories"
               :key="category.key"
             >
-              <div class="text-xs text-gray-500 mb-1.5">{{ category.label }}</div>
+              <div class="text-xs text-gray-500 mb-1.5">
+                {{ category.label }}
+              </div>
               <div class="flex flex-wrap gap-1.5">
                 <button
                   v-for="treatment in category.treatments"
@@ -198,7 +206,10 @@ function handleClose() {
               :class="{ selected: selectedStatus === option.value, [option.color]: true }"
               @click="selectedStatus = option.value"
             >
-              <UIcon :name="option.icon" class="w-4 h-4 mr-1" />
+              <UIcon
+                :name="option.icon"
+                class="w-4 h-4 mr-1"
+              />
               {{ option.label }}
             </button>
           </div>

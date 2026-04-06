@@ -123,14 +123,14 @@ class TreatmentStatus(StrEnum):
     """Status of a tooth treatment."""
 
     PREEXISTING = "preexisting"  # Prior treatment (before first visit)
-    PLANNED = "planned"          # Planned (in budget)
-    PERFORMED = "performed"      # Performed (in this clinic)
+    PLANNED = "planned"  # Planned (in budget)
+    PERFORMED = "performed"  # Performed (in this clinic)
 
 
 class TreatmentCategory(StrEnum):
     """Category of treatment based on what it affects."""
 
-    SURFACE = "surface"          # Affects specific surfaces
+    SURFACE = "surface"  # Affects specific surfaces
     WHOLE_TOOTH = "whole_tooth"  # Affects entire tooth
 
 

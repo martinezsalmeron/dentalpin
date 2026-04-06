@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Surface, TreatmentStatus, TreatmentType } from '~/types'
-import { getOcclusalPath, getLateralPath, isUpperTooth, TREATMENT_COLORS, PATTERN_DEFINITIONS } from './ToothSVGPaths'
+import { getOcclusalPath, getLateralPath, isUpperTooth, TREATMENT_COLORS } from './ToothSVGPaths'
 import { getToothNameKey, getToothPositionKeys } from '~/config/odontogramConstants'
 
 const props = defineProps<{
@@ -12,8 +12,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  confirm: [surfaces: Surface[]]
-  cancel: []
+  'confirm': [surfaces: Surface[]]
+  'cancel': []
 }>()
 
 const { t } = useI18n()
@@ -125,7 +125,9 @@ watch(() => props.open, (isOpen) => {
         <div class="tooth-views">
           <!-- Occlusal View -->
           <div class="view-container">
-            <div class="view-label">{{ t('odontogram.views.occlusal') }}</div>
+            <div class="view-label">
+              {{ t('odontogram.views.occlusal') }}
+            </div>
             <svg
               width="160"
               height="160"
@@ -134,8 +136,21 @@ watch(() => props.open, (isOpen) => {
             >
               <!-- Pattern definition -->
               <defs>
-                <pattern id="surface-pattern" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
-                  <line x1="0" y1="0" x2="0" y2="4" :stroke="treatmentColor" stroke-width="2" />
+                <pattern
+                  id="surface-pattern"
+                  patternUnits="userSpaceOnUse"
+                  width="4"
+                  height="4"
+                  patternTransform="rotate(45)"
+                >
+                  <line
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="4"
+                    :stroke="treatmentColor"
+                    stroke-width="2"
+                  />
                 </pattern>
               </defs>
 
@@ -161,17 +176,44 @@ watch(() => props.open, (isOpen) => {
               />
 
               <!-- Surface labels -->
-              <text x="4" y="27" class="surface-label" @click="toggleSurface('M')">M</text>
-              <text x="43" y="27" class="surface-label" @click="toggleSurface('D')">D</text>
-              <text x="24" y="8" class="surface-label" @click="toggleSurface('V')">V</text>
-              <text x="24" y="47" class="surface-label" @click="toggleSurface('L')">L</text>
-              <text x="24" y="28" class="surface-label-center" @click="toggleSurface('O')">O</text>
+              <text
+                x="4"
+                y="27"
+                class="surface-label"
+                @click="toggleSurface('M')"
+              >M</text>
+              <text
+                x="43"
+                y="27"
+                class="surface-label"
+                @click="toggleSurface('D')"
+              >D</text>
+              <text
+                x="24"
+                y="8"
+                class="surface-label"
+                @click="toggleSurface('V')"
+              >V</text>
+              <text
+                x="24"
+                y="47"
+                class="surface-label"
+                @click="toggleSurface('L')"
+              >L</text>
+              <text
+                x="24"
+                y="28"
+                class="surface-label-center"
+                @click="toggleSurface('O')"
+              >O</text>
             </svg>
           </div>
 
           <!-- Lateral View -->
           <div class="view-container">
-            <div class="view-label">{{ t('odontogram.views.lateral') }}</div>
+            <div class="view-label">
+              {{ t('odontogram.views.lateral') }}
+            </div>
             <svg
               width="160"
               height="200"
@@ -235,7 +277,10 @@ watch(() => props.open, (isOpen) => {
         </div>
 
         <!-- Selected surfaces summary -->
-        <div v-if="selectedSurfaces.length > 0" class="selected-summary">
+        <div
+          v-if="selectedSurfaces.length > 0"
+          class="selected-summary"
+        >
           <span class="summary-label">{{ t('odontogram.selectedSurfaces') }}:</span>
           <div class="summary-badges">
             <span
@@ -251,7 +296,10 @@ watch(() => props.open, (isOpen) => {
 
         <!-- Tooth info -->
         <div class="tooth-info">
-          <UIcon name="i-lucide-info" class="w-4 h-4" />
+          <UIcon
+            name="i-lucide-info"
+            class="w-4 h-4"
+          />
           <span>{{ toothName }}</span>
         </div>
       </div>

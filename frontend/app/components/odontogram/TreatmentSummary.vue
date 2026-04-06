@@ -19,7 +19,7 @@ const activeStatusFilter = ref<TreatmentStatus | null>(null)
 
 // Group treatments by type
 const treatmentsByType = computed(() => {
-  const grouped: Record<string, { count: number; teeth: number[]; treatments: Treatment[] }> = {}
+  const grouped: Record<string, { count: number, teeth: number[], treatments: Treatment[] }> = {}
 
   for (const treatment of props.treatments) {
     if (!grouped[treatment.treatment_type]) {
@@ -126,7 +126,10 @@ function getTreatmentLabel(type: string): string {
         }"
         @click="toggleStatusFilter(status)"
       >
-        <span class="status-dot" :style="{ backgroundColor: STATUS_STYLES[status].border }" />
+        <span
+          class="status-dot"
+          :style="{ backgroundColor: STATUS_STYLES[status].border }"
+        />
         <span class="status-count">{{ count }}</span>
         <span class="status-label">{{ t(`odontogram.status.${status}`) }}</span>
       </button>
@@ -158,14 +161,23 @@ function getTreatmentLabel(type: string): string {
       </div>
 
       <!-- Empty state -->
-      <div v-if="treatmentsByType.length === 0" class="empty-state">
-        <UIcon name="i-lucide-clipboard-list" class="w-8 h-8 text-gray-300" />
+      <div
+        v-if="treatmentsByType.length === 0"
+        class="empty-state"
+      >
+        <UIcon
+          name="i-lucide-clipboard-list"
+          class="w-8 h-8 text-gray-300"
+        />
         <span class="text-sm text-gray-400">{{ t('odontogram.treatments.noTreatments') }}</span>
       </div>
     </div>
 
     <!-- Footer stats -->
-    <div v-if="totalTreatments > 0" class="summary-footer">
+    <div
+      v-if="totalTreatments > 0"
+      class="summary-footer"
+    >
       <div class="stat">
         <span class="stat-value">{{ uniqueTeethCount }}</span>
         <span class="stat-label">{{ t('odontogram.tooth') }}{{ uniqueTeethCount > 1 ? 's' : '' }}</span>

@@ -328,7 +328,9 @@ async def create_treatment(
 
     response = TreatmentResponse.model_validate(treatment)
     if treatment.performer:
-        response.performed_by_name = f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        response.performed_by_name = (
+            f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        )
 
     return ApiResponse(data=response)
 
@@ -398,7 +400,9 @@ async def get_treatment(
 
     response = TreatmentResponse.model_validate(treatment)
     if treatment.performer:
-        response.performed_by_name = f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        response.performed_by_name = (
+            f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        )
 
     return ApiResponse(data=response)
 
@@ -433,7 +437,9 @@ async def update_treatment(
 
     response = TreatmentResponse.model_validate(treatment)
     if treatment.performer:
-        response.performed_by_name = f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        response.performed_by_name = (
+            f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        )
 
     return ApiResponse(data=response)
 
@@ -496,7 +502,9 @@ async def perform_treatment(
 
     response = TreatmentResponse.model_validate(treatment)
     if treatment.performer:
-        response.performed_by_name = f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        response.performed_by_name = (
+            f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        )
 
     return ApiResponse(data=response)
 

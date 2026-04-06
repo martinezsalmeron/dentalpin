@@ -60,7 +60,7 @@ function getTreatmentLabel(type: string): string {
   return t(`odontogram.treatments.types.${type}`, type)
 }
 
-function getStatusColor(status: TreatmentStatus): string {
+function _getStatusColor(status: TreatmentStatus): string {
   const colorMap: Record<TreatmentStatus, string> = {
     preexisting: 'neutral',
     planned: 'warning',
@@ -89,22 +89,44 @@ function handleEditClick(event: Event, treatment: Treatment) {
         <span class="tooth-name">{{ getToothName(toothNumber) }}</span>
       </div>
       <!-- Position indicators -->
-      <div v-if="isDisplaced || isRotated" class="position-badges">
-        <UBadge v-if="isRotated" color="violet" variant="subtle" size="xs">
+      <div
+        v-if="isDisplaced || isRotated"
+        class="position-badges"
+      >
+        <UBadge
+          v-if="isRotated"
+          color="violet"
+          variant="subtle"
+          size="xs"
+        >
           {{ t('odontogram.position.rotated') }}
         </UBadge>
-        <UBadge v-if="isDisplaced" color="amber" variant="subtle" size="xs">
+        <UBadge
+          v-if="isDisplaced"
+          color="amber"
+          variant="subtle"
+          size="xs"
+        >
           {{ t('odontogram.position.displaced') }}
         </UBadge>
       </div>
     </div>
 
     <!-- Treatments list -->
-    <div v-if="hasAnyTreatments" class="treatments-section">
+    <div
+      v-if="hasAnyTreatments"
+      class="treatments-section"
+    >
       <!-- Planned treatments -->
-      <div v-if="groupedTreatments.planned.length > 0" class="treatment-group">
+      <div
+        v-if="groupedTreatments.planned.length > 0"
+        class="treatment-group"
+      >
         <div class="group-header group-planned">
-          <UIcon name="i-lucide-clock" class="w-3 h-3" />
+          <UIcon
+            name="i-lucide-clock"
+            class="w-3 h-3"
+          />
           <span>{{ t('odontogram.status.planned') }}</span>
         </div>
         <div
@@ -132,9 +154,15 @@ function handleEditClick(event: Event, treatment: Treatment) {
       </div>
 
       <!-- Performed treatments -->
-      <div v-if="groupedTreatments.performed.length > 0" class="treatment-group">
+      <div
+        v-if="groupedTreatments.performed.length > 0"
+        class="treatment-group"
+      >
         <div class="group-header group-performed">
-          <UIcon name="i-lucide-check-circle" class="w-3 h-3" />
+          <UIcon
+            name="i-lucide-check-circle"
+            class="w-3 h-3"
+          />
           <span>{{ t('odontogram.status.performed') }}</span>
         </div>
         <div
@@ -158,16 +186,25 @@ function handleEditClick(event: Event, treatment: Treatment) {
               {{ treatment.surfaces.join('-') }}
             </UBadge>
           </div>
-          <div v-if="treatment.performed_at" class="treatment-date">
+          <div
+            v-if="treatment.performed_at"
+            class="treatment-date"
+          >
             {{ formatDate(treatment.performed_at) }}
           </div>
         </div>
       </div>
 
       <!-- Preexisting treatments -->
-      <div v-if="groupedTreatments.preexisting.length > 0" class="treatment-group">
+      <div
+        v-if="groupedTreatments.preexisting.length > 0"
+        class="treatment-group"
+      >
         <div class="group-header group-preexisting">
-          <UIcon name="i-lucide-history" class="w-3 h-3" />
+          <UIcon
+            name="i-lucide-history"
+            class="w-3 h-3"
+          />
           <span>{{ t('odontogram.status.preexisting') }}</span>
         </div>
         <div
@@ -196,13 +233,22 @@ function handleEditClick(event: Event, treatment: Treatment) {
     </div>
 
     <!-- Empty state -->
-    <div v-else class="empty-state">
+    <div
+      v-else
+      class="empty-state"
+    >
       <span class="text-gray-400 text-xs">{{ t('odontogram.treatments.noTreatments') }}</span>
     </div>
 
     <!-- Click hint -->
-    <div v-if="hasAnyTreatments" class="click-hint">
-      <UIcon name="i-lucide-mouse-pointer-click" class="w-3 h-3" />
+    <div
+      v-if="hasAnyTreatments"
+      class="click-hint"
+    >
+      <UIcon
+        name="i-lucide-mouse-pointer-click"
+        class="w-3 h-3"
+      />
       <span>{{ t('odontogram.tooltip.clickToEdit') }}</span>
     </div>
   </div>

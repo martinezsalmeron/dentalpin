@@ -7,13 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .constants import (
     CONDITION_COLORS,
-    SURFACES,
     SURFACE_TREATMENTS,
+    SURFACES,
     WHOLE_TOOTH_TREATMENTS,
     ToothCondition,
-    TreatmentCategory,
     TreatmentStatus,
-    get_treatment_category,
     is_valid_tooth_number,
     is_valid_treatment_type,
 )
@@ -202,7 +200,9 @@ class TreatmentCreate(BaseModel):
     notes: str | None = None
     # Integration with budget module
     budget_item_id: UUID | None = Field(default=None, description="Associated budget item ID")
-    source_module: str = Field(default="odontogram", description="Module that created this treatment")
+    source_module: str = Field(
+        default="odontogram", description="Module that created this treatment"
+    )
 
     @field_validator("treatment_type")
     @classmethod

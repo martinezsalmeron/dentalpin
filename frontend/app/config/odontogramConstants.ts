@@ -99,12 +99,12 @@ export const TREATMENT_COLORS: Record<string, string> = {
   veneer: '#EC4899',
   apicoectomy: '#6366F1',
   // Orthodontic treatments
-  bracket: '#6366F1',    // Indigo
-  band: '#8B5CF6',       // Violet
+  bracket: '#6366F1', // Indigo
+  band: '#8B5CF6', // Violet
   attachment: '#EC4899', // Pink
-  retainer: '#14B8A6',   // Teal
+  retainer: '#14B8A6', // Teal
   // Position actions
-  rotate: '#8B5CF6',  // Violet for rotated
+  rotate: '#8B5CF6', // Violet for rotated
   displace: '#F59E0B' // Amber for displaced
 }
 
@@ -225,7 +225,7 @@ export function getToothNameKey(toothNumber: number): string {
 /**
  * Get the i18n position keys for a tooth (upper/lower, left/right).
  */
-export function getToothPositionKeys(toothNumber: number): { vertical: string; horizontal: string } {
+export function getToothPositionKeys(toothNumber: number): { vertical: string, horizontal: string } {
   const quadrant = Math.floor(toothNumber / 10)
   const isUpper = quadrant === 1 || quadrant === 2 || quadrant === 5 || quadrant === 6
   const isRight = quadrant === 1 || quadrant === 4 || quadrant === 5 || quadrant === 8
@@ -247,9 +247,9 @@ export function getToothPositionKeys(toothNumber: number): { vertical: string; h
 export const CATEGORY_STATUS_RESTRICTIONS: Record<string, TreatmentStatus[]> = {
   common: ['planned', 'performed', 'preexisting'],
   restorative: ['planned', 'performed', 'preexisting'],
-  diagnostic: ['preexisting'],  // Only preexisting
+  diagnostic: ['preexisting'], // Only preexisting
   orthodontic: ['planned', 'performed', 'preexisting'],
-  position: ['preexisting']     // Only preexisting
+  position: ['preexisting'] // Only preexisting
 }
 
 /**

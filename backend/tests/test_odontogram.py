@@ -381,9 +381,7 @@ async def test_patient_not_found(
 
 
 @pytest.mark.asyncio
-async def test_unauthorized_access(
-    client: AsyncClient, odontogram_setup: dict
-) -> None:
+async def test_unauthorized_access(client: AsyncClient, odontogram_setup: dict) -> None:
     """Test that unauthenticated requests are rejected."""
     patient_id = odontogram_setup["patient_id"]
 

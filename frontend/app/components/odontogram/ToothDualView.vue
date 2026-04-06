@@ -39,7 +39,7 @@ const { t } = useI18n()
 const isUpper = computed(() => isUpperTooth(props.toothNumber))
 const occlusalPaths = computed(() => getOcclusalPath(props.toothNumber))
 const lateralPaths = computed(() => getLateralPath(props.toothNumber))
-const toothName = computed(() => {
+const _toothName = computed(() => {
   const nameKey = getToothNameKey(props.toothNumber)
   const positionKeys = getToothPositionKeys(props.toothNumber)
   return `${t(nameKey)} ${t(positionKeys.vertical)} ${t(positionKeys.horizontal)}`
@@ -116,9 +116,20 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
     @click="handleToothClick"
   >
     <!-- Position indicators -->
-    <div v-if="isDisplaced || isRotated" class="position-indicators">
-      <span v-if="isDisplaced" class="indicator-displaced" title="Desplazado" />
-      <span v-if="isRotated" class="indicator-rotated" title="Rotado" />
+    <div
+      v-if="isDisplaced || isRotated"
+      class="position-indicators"
+    >
+      <span
+        v-if="isDisplaced"
+        class="indicator-displaced"
+        title="Desplazado"
+      />
+      <span
+        v-if="isRotated"
+        class="indicator-rotated"
+        title="Rotado"
+      />
     </div>
 
     <!-- For UPPER teeth: Lateral first (top), then Occlusal (bottom) -->
@@ -219,7 +230,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       <!-- Treatment overlays on lateral view -->
       <g class="treatment-overlays-lateral">
         <!-- Surface treatments (filling, caries, sealant) - show as colored area on crown -->
-        <template v-for="treatment in toothTreatments" :key="`lateral-surface-${treatment.id}`">
+        <template
+          v-for="treatment in toothTreatments"
+          :key="`lateral-surface-${treatment.id}`"
+        >
           <g
             v-if="isSurfaceTreatment(treatment.treatment_type)"
             class="surface-treatment-lateral"
@@ -237,7 +251,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         </template>
 
         <!-- Crown treatment - gold crown -->
-        <g v-if="hasTreatment('crown')" class="crown-treatment">
+        <g
+          v-if="hasTreatment('crown')"
+          class="crown-treatment"
+        >
           <path
             :d="lateralPaths.crown"
             :fill="getCrownFill(getTreatmentOfType('crown')!)"
@@ -248,7 +265,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         </g>
 
         <!-- Implant treatment -->
-        <g v-if="hasTreatment('implant')" class="implant-treatment">
+        <g
+          v-if="hasTreatment('implant')"
+          class="implant-treatment"
+        >
           <path
             :d="TREATMENT_OVERLAYS.implant.fixture"
             :fill="getImplantFill(getTreatmentOfType('implant')!)"
@@ -280,7 +300,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         </g>
 
         <!-- Root canal indicator -->
-        <g v-if="hasTreatment('root_canal')" class="root-canal-treatment">
+        <g
+          v-if="hasTreatment('root_canal')"
+          class="root-canal-treatment"
+        >
           <path
             :d="TREATMENT_OVERLAYS.rootCanal.indicator"
             :fill="TREATMENT_COLORS.root_canal"
@@ -292,7 +315,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         </g>
 
         <!-- Post indicator -->
-        <g v-if="hasTreatment('post')" class="post-treatment">
+        <g
+          v-if="hasTreatment('post')"
+          class="post-treatment"
+        >
           <path
             :d="TREATMENT_OVERLAYS.post.shaft"
             :fill="TREATMENT_COLORS.post"
@@ -303,7 +329,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         </g>
 
         <!-- Veneer overlay -->
-        <g v-if="hasTreatment('veneer')" class="veneer-treatment">
+        <g
+          v-if="hasTreatment('veneer')"
+          class="veneer-treatment"
+        >
           <path
             :d="TREATMENT_OVERLAYS.veneer.surface"
             :fill="TREATMENT_COLORS.veneer"
@@ -315,16 +344,25 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         </g>
 
         <!-- Extraction indicator on lateral view -->
-        <g v-if="hasTreatment('extraction')" class="extraction-treatment-lateral">
+        <g
+          v-if="hasTreatment('extraction')"
+          class="extraction-treatment-lateral"
+        >
           <line
-            x1="12" y1="5" x2="38" y2="25"
+            x1="12"
+            y1="5"
+            x2="38"
+            y2="25"
             stroke="#DC2626"
             stroke-width="2.5"
             :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('extraction')!.status].borderDash || 'none'"
             stroke-linecap="round"
           />
           <line
-            x1="38" y1="5" x2="12" y2="25"
+            x1="38"
+            y1="5"
+            x2="12"
+            y2="25"
             stroke="#DC2626"
             stroke-width="2.5"
             :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('extraction')!.status].borderDash || 'none'"
@@ -346,7 +384,13 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       <defs v-html="PATTERN_DEFINITIONS" />
 
       <!-- Invisible background to capture all mouse events -->
-      <rect x="0" y="0" width="50" height="50" fill="transparent" />
+      <rect
+        x="0"
+        y="0"
+        width="50"
+        height="50"
+        fill="transparent"
+      />
 
       <!-- Background outline -->
       <path
@@ -390,7 +434,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 
       <!-- Treatment overlays on occlusal view -->
       <g class="treatment-overlays">
-        <template v-for="treatment in toothTreatments" :key="treatment.id">
+        <template
+          v-for="treatment in toothTreatments"
+          :key="treatment.id"
+        >
           <!-- Surface treatments with specific surfaces -->
           <template v-if="isSurfaceTreatment(treatment.treatment_type) && treatment.surfaces && treatment.surfaces.length > 0">
             <g
@@ -422,7 +469,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
           </template>
 
           <!-- Crown overlay -->
-          <g v-else-if="treatment.treatment_type === 'crown'" class="crown-overlay">
+          <g
+            v-else-if="treatment.treatment_type === 'crown'"
+            class="crown-overlay"
+          >
             <path
               :d="occlusalPaths.outline"
               :fill="getCrownFill(treatment)"
@@ -480,15 +530,24 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       </g>
 
       <!-- Missing tooth X overlay -->
-      <g v-if="generalCondition === 'missing'" class="missing-indicator">
+      <g
+        v-if="generalCondition === 'missing'"
+        class="missing-indicator"
+      >
         <line
-          x1="8" y1="8" x2="42" y2="42"
+          x1="8"
+          y1="8"
+          x2="42"
+          y2="42"
           stroke="#6B7280"
           stroke-width="3"
           stroke-linecap="round"
         />
         <line
-          x1="42" y1="8" x2="8" y2="42"
+          x1="42"
+          y1="8"
+          x2="8"
+          y2="42"
           stroke="#6B7280"
           stroke-width="3"
           stroke-linecap="round"
@@ -496,16 +555,25 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       </g>
 
       <!-- Extraction indicated marker -->
-      <g v-if="generalCondition === 'extraction_indicated'" class="extraction-indicator">
+      <g
+        v-if="generalCondition === 'extraction_indicated'"
+        class="extraction-indicator"
+      >
         <line
-          x1="10" y1="10" x2="40" y2="40"
+          x1="10"
+          y1="10"
+          x2="40"
+          y2="40"
           stroke="#DC2626"
           stroke-width="2.5"
           stroke-dasharray="5,3"
           stroke-linecap="round"
         />
         <line
-          x1="40" y1="10" x2="10" y2="40"
+          x1="40"
+          y1="10"
+          x2="10"
+          y2="40"
           stroke="#DC2626"
           stroke-width="2.5"
           stroke-dasharray="5,3"
@@ -514,7 +582,11 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       </g>
 
       <!-- Preview overlay for pending treatment -->
-      <g v-if="showingPreview" class="preview-overlay" opacity="0.5">
+      <g
+        v-if="showingPreview"
+        class="preview-overlay"
+        opacity="0.5"
+      >
         <path
           :d="occlusalPaths.outline"
           :fill="TREATMENT_COLORS[pendingTreatment!.type] || '#3B82F6'"
@@ -535,7 +607,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
     </svg>
 
     <!-- Tooth number label -->
-    <div class="tooth-number" :class="{ 'text-primary-600': selected }">
+    <div
+      class="tooth-number"
+      :class="{ 'text-primary-600': selected }"
+    >
       {{ toothNumber }}
     </div>
   </div>

@@ -30,3 +30,14 @@ class EventType:
     # Invoice events (for future use)
     INVOICE_CREATED = "invoice.created"
     INVOICE_PAID = "invoice.paid"
+
+    # Odontogram events
+    ODONTOGRAM_SURFACE_UPDATED = "odontogram.surface.updated"
+    ODONTOGRAM_TOOTH_UPDATED = "odontogram.tooth.updated"
+    ODONTOGRAM_CONDITION_CHANGED = "odontogram.condition.changed"
+
+    # Tooth treatment events (for budget module integration)
+    ODONTOGRAM_TREATMENT_ADDED = "odontogram.treatment.added"
+    ODONTOGRAM_TREATMENT_STATUS_CHANGED = "odontogram.treatment.status_changed"
+    ODONTOGRAM_TREATMENT_PERFORMED = "odontogram.treatment.performed"
+    ODONTOGRAM_TREATMENT_DELETED = "odontogram.treatment.deleted"
