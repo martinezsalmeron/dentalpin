@@ -489,6 +489,18 @@ async function handlePerformFromModal(treatmentId: string) {
     color: 'success'
   })
 }
+
+// Handle history section expand (load data on first expand)
+async function onHistoryExpanded(expanded: boolean) {
+  if (expanded && historyData.value.length === 0) {
+    historyLoading.value = true
+    const response = await fetchPatientHistory(props.patientId)
+    if (response) {
+      historyData.value = response.data
+    }
+    historyLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -806,6 +818,17 @@ async function handlePerformFromModal(treatmentId: string) {
 
       <!-- Legend (below treatment bar) -->
       <OdontogramLegend />
+
+      <!-- Treatment List Section -->
+      <TreatmentListSection :treatments="treatments" />
+
+      <!-- Change History Section (collapsed by default) -->
+      <ChangeHistorySection
+        :history="historyData"
+        :treatments="treatments"
+        :loading="historyLoading"
+        @update:expanded="onHistoryExpanded"
+      />
     </div>
 
     <!-- Surface selector popup (for surface treatments) -->
