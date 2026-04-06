@@ -207,9 +207,20 @@ function getToothTreatmentsFiltered(toothNumber: number): Treatment[] {
 function handleSurfaceClick(toothNumber: number, surface: Surface) {
   if (isReadonly.value) return
 
+  // Position action mode (rotate/displace toggle) - also works from occlusal view
+  if (isPositionActionMode.value) {
+    applyPositionAction(toothNumber)
+    return
+  }
+
   if (isClickToApplyMode.value) {
-    // Apply treatment to this surface
-    applyTreatmentToTooth(toothNumber, [surface])
+    // Check if it's a surface treatment - apply to the clicked surface
+    if (isSurfaceTreatment(selectedTreatmentType.value!)) {
+      applyTreatmentToTooth(toothNumber, [surface])
+    } else {
+      // For non-surface treatments (crown, extraction, etc.), apply to whole tooth
+      applyTreatmentToTooth(toothNumber)
+    }
   }
   // No action when no treatment is selected - use the TreatmentBar to select first
 }

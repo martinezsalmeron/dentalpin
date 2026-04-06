@@ -155,6 +155,12 @@ class TreatmentType(StrEnum):
     VENEER = "veneer"
     APICOECTOMY = "apicoectomy"
 
+    # Orthodontic treatments
+    BRACKET = "bracket"
+    BAND = "band"
+    ATTACHMENT = "attachment"
+    RETAINER = "retainer"
+
 
 # Treatment type categorization
 SURFACE_TREATMENTS: Final[set[str]] = {
@@ -175,6 +181,11 @@ WHOLE_TOOTH_TREATMENTS: Final[set[str]] = {
     TreatmentType.POST.value,
     TreatmentType.VENEER.value,
     TreatmentType.APICOECTOMY.value,
+    # Orthodontic treatments
+    TreatmentType.BRACKET.value,
+    TreatmentType.BAND.value,
+    TreatmentType.ATTACHMENT.value,
+    TreatmentType.RETAINER.value,
 }
 
 

@@ -328,7 +328,6 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
         reference_date = date.today()
 
     appointments = []
-    appointment_counter = 0
 
     # Get Monday of current week
     current_monday = reference_date - timedelta(days=reference_date.weekday())
@@ -344,6 +343,9 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
     professionals = [USER_DENTIST_ID, USER_HYGIENIST_ID]
     cabinets = ["Gabinete 1", "Gabinete 2"]
 
+    # Track used slots to avoid conflicts: (cabinet, professional_id, start_time)
+    used_slots: set[tuple[str, str, datetime]] = set()
+
     for week_type, week_start in weeks:
         # Determine number of appointments for this week
         if week_type == "past":
@@ -354,7 +356,11 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
             num_appointments = random.randint(10, 12)
 
         # Generate appointments distributed across weekdays
-        for _ in range(num_appointments):
+        attempts = 0
+        created = 0
+        while created < num_appointments and attempts < num_appointments * 10:
+            attempts += 1
+
             # Pick a random weekday (0-4 = Mon-Fri)
             day_offset = random.randint(0, 4)
             appt_date = week_start + timedelta(days=day_offset)
@@ -368,13 +374,20 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
             hour, minute = map(int, time_str.split(":"))
             start_time = datetime(appt_date.year, appt_date.month, appt_date.day, hour, minute, 0)
 
-            # Pick treatment type
-            treatment = random.choice(TREATMENT_TYPES)
-            end_time = start_time + timedelta(minutes=treatment["duration"])
-
             # Pick professional and cabinet
             professional_id = random.choice(professionals)
             cabinet = random.choice(cabinets)
+
+            # Check for slot conflict
+            slot_key = (cabinet, str(professional_id), start_time)
+            if slot_key in used_slots:
+                continue  # Try again with different slot
+
+            used_slots.add(slot_key)
+
+            # Pick treatment type
+            treatment = random.choice(TREATMENT_TYPES)
+            end_time = start_time + timedelta(minutes=treatment["duration"])
 
             # Pick patient
             patient_id = random.choice(PATIENT_IDS)
@@ -408,6 +421,6 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
                     "color": treatment["color"],
                 }
             )
-            appointment_counter += 1
+            created += 1
 
     return appointments

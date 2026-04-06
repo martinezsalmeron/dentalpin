@@ -275,13 +275,11 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             stroke="#6B7280"
             stroke-width="1"
           />
-          <line
+          <path
             v-for="(thread, idx) in TREATMENT_OVERLAYS.implant.threads"
             :key="idx"
-            :x1="thread.split(' ')[0].replace('M ', '')"
-            :y1="thread.split(',')[1].split(' ')[0]"
-            :x2="thread.split(' ')[2].replace('L ', '')"
-            :y2="thread.split(',')[1].split(' ')[0]"
+            :d="thread"
+            fill="none"
             stroke="#52525B"
             stroke-width="1"
           />
@@ -383,13 +381,14 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       <!-- SVG Patterns and Gradients Definition -->
       <defs v-html="PATTERN_DEFINITIONS" />
 
-      <!-- Invisible background to capture all mouse events -->
+      <!-- Background - pointer-events none to let clicks pass through to surfaces -->
       <rect
         x="0"
         y="0"
         width="50"
         height="50"
         fill="transparent"
+        pointer-events="none"
       />
 
       <!-- Background outline -->
@@ -398,6 +397,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         :fill="TOOTH_COLORS.fill"
         :stroke="TOOTH_COLORS.outline"
         stroke-width="1.5"
+        pointer-events="none"
       />
 
       <!-- Inner detail (characteristic shape) -->
@@ -408,6 +408,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         :stroke="TOOTH_COLORS.outlineLight"
         stroke-width="0.75"
         opacity="0.6"
+        pointer-events="none"
       />
 
       <!-- Cross pattern for molars/premolars -->
@@ -418,18 +419,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         :stroke="TOOTH_COLORS.outlineLight"
         stroke-width="0.75"
         opacity="0.5"
-      />
-
-      <!-- Surface click areas (transparent, just for interaction) -->
-      <path
-        v-for="(path, surface) in occlusalPaths.surfaces"
-        :key="surface"
-        :d="path"
-        fill="transparent"
-        stroke="none"
-        class="surface"
-        :class="{ clickable: !readonly }"
-        @click.stop="handleSurfaceClick(surface as Surface)"
+        pointer-events="none"
       />
 
       <!-- Treatment overlays on occlusal view -->
@@ -533,6 +523,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       <g
         v-if="generalCondition === 'missing'"
         class="missing-indicator"
+        pointer-events="none"
       >
         <line
           x1="8"
@@ -558,6 +549,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       <g
         v-if="generalCondition === 'extraction_indicated'"
         class="extraction-indicator"
+        pointer-events="none"
       >
         <line
           x1="10"
@@ -586,6 +578,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         v-if="showingPreview"
         class="preview-overlay"
         opacity="0.5"
+        pointer-events="none"
       >
         <path
           :d="occlusalPaths.outline"
@@ -603,7 +596,9 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         stroke="#3B82F6"
         stroke-width="2.5"
         class="selection-ring"
+        pointer-events="none"
       />
+
     </svg>
 
     <!-- Tooth number label -->
