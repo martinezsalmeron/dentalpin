@@ -60,12 +60,6 @@ const toothOpacity = computed(() => {
   return 1
 })
 
-function handleSurfaceClick(surface: Surface) {
-  if (!props.readonly) {
-    emit('surfaceClick', surface)
-  }
-}
-
 function handleToothClick() {
   emit('toothClick')
 }
