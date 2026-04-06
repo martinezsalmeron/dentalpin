@@ -291,7 +291,7 @@ async def test_invalid_tooth_number(
         json={"general_condition": "healthy"},
     )
     assert response.status_code == 400
-    assert "Invalid tooth number" in response.json()["detail"]
+    assert "Invalid tooth number" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -420,15 +420,18 @@ async def receptionist_setup(
     db_session.add(membership)
     await db_session.commit()
 
-    # Login as receptionist
+    # Login as receptionist (using form data as expected by OAuth2PasswordRequestForm)
     login_response = await client.post(
         "/api/v1/auth/login",
-        json={
-            "email": "receptionist@test.clinic",
+        data={
+            "username": "receptionist@test.clinic",
             "password": "TestPass123",
         },
     )
-    token = login_response.json()["access_token"]
+    login_data = login_response.json()
+    if "access_token" not in login_data:
+        raise ValueError(f"Login failed: {login_data}")
+    token = login_data["access_token"]
 
     return {
         "headers": {"Authorization": f"Bearer {token}"},

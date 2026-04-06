@@ -139,26 +139,12 @@ async def create_or_update_tooth(
         general_condition=data.general_condition,
         surface_updates=surface_updates,
         notes=data.notes,
+        is_displaced=data.is_displaced,
+        is_rotated=data.is_rotated,
+        displacement_notes=data.displacement_notes,
     )
 
     return ApiResponse(data=ToothRecordResponse.model_validate(tooth))
-
-
-@router.patch(
-    "/patients/{patient_id}/teeth/{tooth_number}",
-    response_model=ApiResponse[ToothRecordResponse],
-)
-async def partial_update_tooth(
-    patient_id: UUID,
-    tooth_number: int,
-    data: ToothRecordUpdate,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("odontogram.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[ToothRecordResponse]:
-    """Partial update of a tooth record."""
-    # PATCH and PUT have the same behavior for this resource
-    return await create_or_update_tooth(patient_id, tooth_number, data, ctx, _, db)
 
 
 @router.patch(
@@ -203,6 +189,23 @@ async def bulk_update_teeth(
     )
 
     return ApiResponse(data=[ToothRecordResponse.model_validate(t) for t in teeth])
+
+
+@router.patch(
+    "/patients/{patient_id}/teeth/{tooth_number}",
+    response_model=ApiResponse[ToothRecordResponse],
+)
+async def partial_update_tooth(
+    patient_id: UUID,
+    tooth_number: int,
+    data: ToothRecordUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("odontogram.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[ToothRecordResponse]:
+    """Partial update of a tooth record."""
+    # PATCH and PUT have the same behavior for this resource
+    return await create_or_update_tooth(patient_id, tooth_number, data, ctx, _, db)
 
 
 @router.get(

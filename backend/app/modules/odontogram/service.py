@@ -213,6 +213,9 @@ class OdontogramService:
                 general_condition=general_condition or ToothCondition.HEALTHY.value,
                 surfaces=default_surfaces,
                 notes=notes,
+                is_displaced=is_displaced or False,
+                is_rotated=is_rotated or False,
+                displacement_notes=displacement_notes,
             )
             db.add(record)
 
