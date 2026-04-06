@@ -146,4 +146,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Backed by
 
-[Dentaltix](https://dentaltix.com) - Dental supplies distributor
+[Dentaltix](https://www.dentaltix.com) - Dental supplies distributor
