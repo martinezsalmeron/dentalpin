@@ -52,12 +52,6 @@ const implantTransform = computed(() => {
 
 // Get status styling
 const statusStyle = computed(() => STATUS_STYLES[props.status] || STATUS_STYLES.performed)
-
-// Stroke color based on status
-const strokeColor = computed(() => {
-  if (props.status === 'planned') return '#9CA3AF'
-  return '#2E313D'
-})
 </script>
 
 <template>
@@ -65,12 +59,13 @@ const strokeColor = computed(() => {
     class="dental-implant"
     :transform="implantTransform"
   >
-    <!-- Implant screw path -->
+    <!-- Implant screw path - uses same stroke as tooth roots -->
     <path
       :d="IMPLANT_PATH"
+      class="implant-stroke"
       fill="none"
-      :stroke="strokeColor"
-      stroke-width="1.5"
+      stroke-width="0.6"
+      vector-effect="non-scaling-stroke"
       stroke-linejoin="round"
       :opacity="statusStyle.opacity"
     />
@@ -91,6 +86,13 @@ const strokeColor = computed(() => {
       :stroke="statusStyle.border"
       :stroke-width="statusStyle.borderWidth"
       :stroke-dasharray="statusStyle.borderDash || 'none'"
+      vector-effect="non-scaling-stroke"
     />
   </g>
 </template>
+
+<style scoped>
+.implant-stroke {
+  stroke: var(--odontogram-outline);
+}
+</style>
