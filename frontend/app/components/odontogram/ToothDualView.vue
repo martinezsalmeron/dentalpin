@@ -23,7 +23,8 @@ import {
   OCCLUSAL_VISUALIZATION,
   PATTERN_CONFIG,
   normalizeTreatmentType,
-  getTreatmentColor
+  getTreatmentColor,
+  PLANNED_INDICATOR_COLOR
 } from '~/config/odontogramConstants'
 // Note: Icon rendering uses inline SVG elements based on treatment type, not LATERAL_ICONS directly
 import ImplantSVG from './ImplantSVG.vue'
@@ -253,6 +254,26 @@ function _getPatternConfig(treatment: Treatment) {
 }
 
 const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
+
+// Check if there are planned treatments visible in occlusal view
+const hasPlannedOcclusalTreatments = computed(() => {
+  return toothTreatments.value.some(t =>
+    t.status === 'planned' && (
+      hasVisualizationRule(t.treatment_type, 'occlusal_surface')
+      || hasVisualizationRule(t.treatment_type, 'pattern_fill')
+    )
+  )
+})
+
+// Check if there are planned treatments visible in lateral view
+const hasPlannedLateralTreatments = computed(() => {
+  return toothTreatments.value.some(t =>
+    t.status === 'planned' && (
+      hasVisualizationRule(t.treatment_type, 'pulp_fill')
+      || hasVisualizationRule(t.treatment_type, 'lateral_icon')
+    )
+  )
+})
 </script>
 
 <template>
@@ -272,23 +293,6 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
     }"
     @click="handleToothClick"
   >
-    <!-- Position indicators -->
-    <div
-      v-if="isDisplaced || isRotated"
-      class="position-indicators"
-    >
-      <span
-        v-if="isDisplaced"
-        class="indicator-displaced"
-        title="Desplazado"
-      />
-      <span
-        v-if="isRotated"
-        class="indicator-rotated"
-        title="Rotado"
-      />
-    </div>
-
     <!-- Lateral View Container - fixed height for alignment -->
     <div
       v-if="showLateral"
@@ -434,9 +438,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
               :d="TREATMENT_OVERLAYS.rootCanal.indicator"
               :fill="TREATMENT_COLORS.root_canal"
               :opacity="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].opacity"
-              :stroke="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].border || 'none'"
-              stroke-width="1"
-              :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].borderDash || 'none'"
+              stroke="none"
             />
           </g>
 
@@ -460,17 +462,16 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             :key="`lateral-icon-${treatment.id}`"
             class="lateral-icon-treatment"
           >
-            <!-- Special case: root_canal_overfill shows line beyond apex -->
+            <!-- Special case: root_canal_overfill shows circle at apex -->
             <template v-if="treatment.treatment_type === 'root_canal_overfill' && iconAnchors">
-              <line
-                :x1="iconAnchors.apex.x"
-                :y1="iconAnchors.apex.y"
-                :x2="iconAnchors.beyondApex.x"
-                :y2="iconAnchors.beyondApex.y - 5"
+              <circle
+                :cx="iconAnchors.apex.x"
+                :cy="iconAnchors.apex.y"
+                r="6"
+                :fill="getTreatmentColor(treatment.treatment_type)"
+                :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                 :stroke="getTreatmentColor(treatment.treatment_type)"
-                stroke-width="2"
-                :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                stroke-linecap="round"
+                stroke-width="1"
               />
             </template>
 
@@ -481,23 +482,21 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                 :opacity="treatment.treatment_type === 'missing' ? 0.5 : STATUS_STYLES[treatment.status]?.opacity ?? 1"
               >
                 <line
-                  x1="-10"
-                  y1="-10"
-                  x2="10"
-                  y2="10"
+                  x1="-20"
+                  y1="-20"
+                  x2="20"
+                  y2="20"
                   :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="2.5"
-                  :stroke-dasharray="treatment.treatment_type === 'extraction' && treatment.status === 'planned' ? '4,2' : 'none'"
+                  stroke-width="5"
                   stroke-linecap="round"
                 />
                 <line
-                  x1="10"
-                  y1="-10"
-                  x2="-10"
-                  y2="10"
+                  x1="20"
+                  y1="-20"
+                  x2="-20"
+                  y2="20"
                   :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="2.5"
-                  :stroke-dasharray="treatment.treatment_type === 'extraction' && treatment.status === 'planned' ? '4,2' : 'none'"
+                  stroke-width="5"
                   stroke-linecap="round"
                 />
               </g>
@@ -507,22 +506,22 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             <template v-else-if="treatment.treatment_type.startsWith('periapical_') && iconAnchors">
               <circle
                 :cx="iconAnchors.apex.x"
-                :cy="iconAnchors.apex.y - (treatment.treatment_type === 'periapical_large' ? 6 : treatment.treatment_type === 'periapical_medium' ? 4 : 2)"
-                :r="treatment.treatment_type === 'periapical_large' ? 8 : treatment.treatment_type === 'periapical_medium' ? 5 : 3"
+                :cy="iconAnchors.apex.y - (treatment.treatment_type === 'periapical_large' ? 12 : treatment.treatment_type === 'periapical_medium' ? 8 : 4)"
+                :r="treatment.treatment_type === 'periapical_large' ? 16 : treatment.treatment_type === 'periapical_medium' ? 10 : 6"
                 :fill="getTreatmentColor(treatment.treatment_type)"
                 :fill-opacity="0.7 * (STATUS_STYLES[treatment.status]?.opacity ?? 1)"
                 :stroke="getTreatmentColor(treatment.treatment_type)"
-                stroke-width="0.5"
+                stroke-width="1"
               />
             </template>
 
             <!-- Fracture zigzag -->
             <template v-else-if="treatment.treatment_type === 'fracture' && iconAnchors">
               <path
-                :d="`M ${iconAnchors.crownCenter.x - 3},${iconAnchors.crownCenter.y - 8} L ${iconAnchors.crownCenter.x},${iconAnchors.crownCenter.y - 4} L ${iconAnchors.crownCenter.x - 2},${iconAnchors.crownCenter.y} L ${iconAnchors.crownCenter.x + 1},${iconAnchors.crownCenter.y + 4} L ${iconAnchors.crownCenter.x - 1},${iconAnchors.crownCenter.y + 8}`"
+                :d="`M ${iconAnchors.crownCenter.x - 6},${iconAnchors.crownCenter.y - 16} L ${iconAnchors.crownCenter.x},${iconAnchors.crownCenter.y - 8} L ${iconAnchors.crownCenter.x - 4},${iconAnchors.crownCenter.y} L ${iconAnchors.crownCenter.x + 2},${iconAnchors.crownCenter.y + 8} L ${iconAnchors.crownCenter.x - 2},${iconAnchors.crownCenter.y + 16}`"
                 fill="none"
                 :stroke="getTreatmentColor(treatment.treatment_type)"
-                stroke-width="1.5"
+                stroke-width="3"
                 :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -532,53 +531,59 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             <!-- Apicoectomy line at apex -->
             <template v-else-if="treatment.treatment_type === 'apicoectomy' && iconAnchors">
               <line
-                :x1="iconAnchors.apex.x - 8"
-                :y1="iconAnchors.apex.y + 2"
-                :x2="iconAnchors.apex.x + 8"
-                :y2="iconAnchors.apex.y + 2"
+                :x1="iconAnchors.apex.x - 16"
+                :y1="iconAnchors.apex.y + 4"
+                :x2="iconAnchors.apex.x + 16"
+                :y2="iconAnchors.apex.y + 4"
                 :stroke="getTreatmentColor(treatment.treatment_type)"
-                stroke-width="2"
+                stroke-width="4"
                 :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                 stroke-linecap="round"
               />
             </template>
 
-            <!-- Rotated indicator -->
+            <!-- Rotated indicator - circular arrow at crown center -->
             <template v-else-if="treatment.treatment_type === 'rotated' && iconAnchors">
-              <g :transform="`translate(${iconAnchors.aboveCrown.x}, ${iconAnchors.aboveCrown.y + 5})`">
+              <g :transform="`translate(${iconAnchors.crownCenter.x}, ${iconAnchors.crownCenter.y})`">
+                <!-- Circular arrow (270 degree arc) -->
                 <path
-                  d="M -6,0 A 6,6 0 1,1 6,0"
+                  d="M 0,-10 A 10,10 0 1,1 -10,0"
                   fill="none"
                   :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="1.5"
+                  stroke-width="2.5"
+                  :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                   stroke-linecap="round"
                 />
+                <!-- Arrowhead rotated 60° clockwise -->
                 <path
-                  d="M 3,-3 L 6,0 L 3,3"
+                  d="M -10,0 L -12,-7 M -10,0 L -3,-2"
                   fill="none"
                   :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="1.5"
+                  stroke-width="2.5"
+                  :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
               </g>
             </template>
 
-            <!-- Displaced indicator -->
+            <!-- Displaced indicator - horizontal arrow -->
             <template v-else-if="treatment.treatment_type === 'displaced' && iconAnchors">
-              <g :transform="`translate(${iconAnchors.besideCrown.x + 3}, ${iconAnchors.besideCrown.y})`">
+              <g :transform="`translate(${iconAnchors.besideCrown.x}, ${iconAnchors.besideCrown.y})`">
                 <path
-                  d="M 0,-8 L 0,8"
+                  d="M -16,0 L 16,0"
                   fill="none"
                   :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="1.5"
+                  stroke-width="3"
+                  :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                   stroke-linecap="round"
                 />
                 <path
-                  d="M -3,5 L 0,8 L 3,5"
+                  d="M 10,-6 L 16,0 L 10,6"
                   fill="none"
                   :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="1.5"
+                  stroke-width="3"
+                  :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
@@ -588,11 +593,11 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             <!-- Post in root -->
             <template v-else-if="treatment.treatment_type === 'post' && iconAnchors">
               <rect
-                :x="iconAnchors.rootCenter.x - 2"
+                :x="iconAnchors.rootCenter.x - 4"
                 :y="iconAnchors.rootCenter.y - 15"
-                width="4"
-                height="25"
-                rx="1"
+                width="8"
+                height="50"
+                rx="2"
                 :fill="getTreatmentColor(treatment.treatment_type)"
                 :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
               />
@@ -604,57 +609,57 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                 <!-- Bracket -->
                 <template v-if="treatment.treatment_type === 'bracket'">
                   <rect
-                    x="-4"
-                    y="-4"
-                    width="8"
-                    height="8"
+                    x="-8"
+                    y="-8"
+                    width="16"
+                    height="16"
                     :fill="getTreatmentColor(treatment.treatment_type)"
                     :fill-opacity="0.8 * (STATUS_STYLES[treatment.status]?.opacity ?? 1)"
                   />
                   <line
-                    x1="-6"
+                    x1="-12"
                     y1="0"
-                    x2="6"
+                    x2="12"
                     y2="0"
                     :stroke="getTreatmentColor(treatment.treatment_type)"
-                    stroke-width="1"
+                    stroke-width="2"
                   />
                 </template>
                 <!-- Tube -->
                 <template v-else-if="treatment.treatment_type === 'tube'">
                   <rect
-                    x="-5"
-                    y="-3"
-                    width="10"
-                    height="6"
-                    rx="1"
+                    x="-10"
+                    y="-6"
+                    width="20"
+                    height="12"
+                    rx="2"
                     :fill="getTreatmentColor(treatment.treatment_type)"
                     :fill-opacity="0.8 * (STATUS_STYLES[treatment.status]?.opacity ?? 1)"
                   />
                   <circle
                     cx="0"
                     cy="0"
-                    r="1.5"
+                    r="3"
                     fill="white"
                   />
                 </template>
                 <!-- Band -->
                 <template v-else-if="treatment.treatment_type === 'band'">
                   <line
-                    x1="-8"
-                    y1="-2"
-                    x2="8"
-                    y2="-2"
+                    x1="-16"
+                    y1="-4"
+                    x2="16"
+                    y2="-4"
                     :stroke="getTreatmentColor(treatment.treatment_type)"
-                    stroke-width="1.5"
+                    stroke-width="3"
                   />
                   <line
-                    x1="-8"
-                    y1="2"
-                    x2="8"
-                    y2="2"
+                    x1="-16"
+                    y1="4"
+                    x2="16"
+                    y2="4"
                     :stroke="getTreatmentColor(treatment.treatment_type)"
-                    stroke-width="1.5"
+                    stroke-width="3"
                   />
                 </template>
                 <!-- Attachment -->
@@ -662,8 +667,8 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                   <ellipse
                     cx="0"
                     cy="0"
-                    rx="4"
-                    ry="3"
+                    rx="8"
+                    ry="6"
                     :fill="getTreatmentColor(treatment.treatment_type)"
                     :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                   />
@@ -671,10 +676,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                 <!-- Retainer -->
                 <template v-else-if="treatment.treatment_type === 'retainer'">
                   <path
-                    d="M -10,0 Q -7,-3 -4,0 Q -1,3 2,0 Q 5,-3 8,0"
+                    d="M -20,0 Q -14,-6 -8,0 Q -2,6 4,0 Q 10,-6 16,0"
                     fill="none"
                     :stroke="getTreatmentColor(treatment.treatment_type)"
-                    stroke-width="1.5"
+                    stroke-width="3"
                     stroke-linecap="round"
                   />
                 </template>
@@ -682,21 +687,31 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             </template>
           </g>
         </g>
+
       </svg>
+
+      <!-- Planned indicator "P" for lateral view (outside SVG to avoid transform) -->
+      <div
+        v-if="hasPlannedLateralTreatments"
+        class="planned-indicator-lateral"
+      >
+        <span class="planned-p">P</span>
+      </div>
     </div>
 
     <!-- Occlusal View (Top-down) -->
-    <svg
-      width="55"
-      height="55"
-      viewBox="0 0 50 50"
-      class="occlusal-view"
-      :style="{
-        opacity: toothOpacity,
-        transform: toothTransform,
-        transformOrigin: 'center center'
-      }"
-    >
+    <div class="occlusal-view-container">
+      <svg
+        width="55"
+        height="55"
+        viewBox="0 0 50 50"
+        class="occlusal-view"
+        :style="{
+          opacity: toothOpacity,
+          transform: toothTransform,
+          transformOrigin: 'center center'
+        }"
+      >
       <!-- SVG Patterns and Gradients Definition -->
       <defs v-html="PATTERN_DEFINITIONS" />
 
@@ -751,9 +766,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                   :d="occlusalPaths.surfaces[surface]"
                   :fill="getTreatmentColor(treatment.treatment_type)"
                   :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                  :stroke="STATUS_STYLES[treatment.status].border || 'none'"
-                  :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
-                  :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+                  stroke="none"
                   class="treatment-surface-overlay"
                 />
               </template>
@@ -762,9 +775,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                   :d="occlusalPaths.surfaces.O"
                   :fill="getTreatmentColor(treatment.treatment_type)"
                   :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                  :stroke="STATUS_STYLES[treatment.status].border || 'none'"
-                  :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
-                  :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+                  stroke="none"
                   class="treatment-surface-overlay"
                 />
               </template>
@@ -832,9 +843,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                 :d="occlusalPaths.surfaces[surface]"
                 :fill="getTreatmentColor(treatment.treatment_type)"
                 :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                :stroke="STATUS_STYLES[treatment.status].border || 'none'"
-                :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
-                :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+                stroke="none"
                 class="treatment-surface-overlay"
               />
             </template>
@@ -843,9 +852,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
                 :d="occlusalPaths.surfaces.O"
                 :fill="getTreatmentColor(treatment.treatment_type)"
                 :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                :stroke="STATUS_STYLES[treatment.status].border || 'none'"
-                :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
-                :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+                stroke="none"
                 class="treatment-surface-overlay"
               />
             </template>
@@ -861,40 +868,10 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             :d="occlusalPaths.outline"
             :fill="getPatternId(treatment.treatment_type) ? `url(#${getPatternId(treatment.treatment_type)})` : getTreatmentColor(treatment.treatment_type)"
             :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-            :stroke="STATUS_STYLES[treatment.status].border || getTreatmentColor(treatment.treatment_type)"
-            :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.5"
-            :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+            :stroke="getTreatmentColor(treatment.treatment_type)"
+            stroke-width="1.5"
             class="pattern-fill-overlay"
           />
-        </template>
-
-        <!-- Orthodontic treatments indicator (badge in corner) -->
-        <template
-          v-for="treatment in toothTreatments.filter(t => ['bracket', 'tube', 'band', 'attachment', 'retainer'].includes(t.treatment_type))"
-          :key="`ortho-badge-${treatment.id}`"
-        >
-          <g class="orthodontic-indicator">
-            <circle
-              cx="40"
-              cy="40"
-              r="7"
-              :fill="getTreatmentColor(treatment.treatment_type)"
-              :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-              :stroke="STATUS_STYLES[treatment.status].border || '#FFFFFF'"
-              :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
-              :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
-            />
-            <text
-              x="40"
-              y="43"
-              text-anchor="middle"
-              fill="white"
-              font-size="7"
-              font-weight="bold"
-            >
-              {{ treatment.treatment_type === 'bracket' ? 'B' : treatment.treatment_type === 'tube' ? 'T' : treatment.treatment_type === 'band' ? 'Bd' : treatment.treatment_type === 'attachment' ? 'A' : 'R' }}
-            </text>
-          </g>
         </template>
 
         <!-- Whole tooth treatments not covered by other rules -->
@@ -913,9 +890,8 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
               :d="occlusalPaths.outline"
               :fill="getTreatmentColor(treatment.treatment_type)"
               :fill-opacity="(STATUS_STYLES[treatment.status]?.opacity ?? 1) * 0.4"
-              :stroke="STATUS_STYLES[treatment.status].border || getTreatmentColor(treatment.treatment_type)"
-              :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 2"
-              :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+              :stroke="getTreatmentColor(treatment.treatment_type)"
+              stroke-width="2"
             />
           </g>
         </template>
@@ -990,18 +966,27 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         />
       </g>
 
-      <!-- Selection highlight -->
-      <path
-        v-if="selected"
-        :d="occlusalPaths.outline"
-        fill="none"
-        stroke="var(--odontogram-selected)"
-        stroke-width="2.5"
-        class="selection-ring"
-        pointer-events="none"
-      />
+        <!-- Selection highlight -->
+        <path
+          v-if="selected"
+          :d="occlusalPaths.outline"
+          fill="none"
+          stroke="var(--odontogram-selected)"
+          stroke-width="2.5"
+          class="selection-ring"
+          pointer-events="none"
+        />
 
-    </svg>
+      </svg>
+
+      <!-- Planned indicator "P" for occlusal view (outside SVG to avoid transform) -->
+      <div
+        v-if="hasPlannedOcclusalTreatments"
+        class="planned-indicator-occlusal"
+      >
+        <span class="planned-p">P</span>
+      </div>
+    </div>
 
     <!-- Tooth number label -->
     <div
@@ -1076,34 +1061,6 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   stroke: none;
 }
 
-.position-indicators {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 10;
-}
-
-.indicator-displaced,
-.indicator-rotated {
-  display: block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1.5px solid white;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-.indicator-displaced {
-  background: #F59E0B;
-}
-
-.indicator-rotated {
-  background: #8B5CF6;
-}
-
 @keyframes highlight-pulse {
   0%, 100% {
     filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
@@ -1142,30 +1099,36 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 
 /* Lateral view container - fixed height for alignment across all teeth */
 .lateral-view-container {
+  position: relative;
   display: flex;
   justify-content: center;
   width: 100%;
-  height: 100px; /* Fixed height for consistent crown alignment */
+  height: 110px; /* Fixed height for consistent crown alignment + space for apex icons */
+  overflow: visible; /* Allow apex icons to be visible */
 }
 
 /* Upper teeth: align SVG to bottom so crowns line up */
 .lateral-view-container.upper {
   align-items: flex-end;
+  padding-top: 10px; /* Extra space for apex icons */
 }
 
 /* Lower teeth: align SVG to top so crowns line up (after scaleY flip) */
 .lateral-view-container.lower {
   align-items: flex-start;
+  padding-bottom: 10px; /* Extra space for apex icons */
 }
 
 .lateral-view {
   display: block;
   flex-shrink: 0;
+  overflow: visible; /* Allow icons beyond viewBox to be visible */
 }
 
 .occlusal-view {
   display: block;
   pointer-events: all;
+  margin: 5px 0; /* Vertical spacing from lateral view */
 }
 
 /* For UPPER teeth: lateral first (order 1), occlusal second (order 2) */
@@ -1174,7 +1137,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   order: 1;
 }
 
-.tooth-dual-view-wrapper.is-upper .occlusal-view {
+.tooth-dual-view-wrapper.is-upper .occlusal-view-container {
   order: 2;
 }
 
@@ -1182,7 +1145,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   order: 2;
 }
 
-.tooth-dual-view-wrapper.is-lower .occlusal-view {
+.tooth-dual-view-wrapper.is-lower .occlusal-view-container {
   order: 1;
 }
 
@@ -1228,5 +1191,53 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 
 .implant-root .dental-implant {
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+}
+
+/* Occlusal view container for positioning planned indicator */
+.occlusal-view-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Planned indicator "P" styling */
+.planned-indicator-lateral,
+.planned-indicator-occlusal {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.planned-indicator-lateral {
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.planned-indicator-occlusal {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.planned-p {
+  color: #EF4444;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: Arial, sans-serif;
+  text-shadow:
+    -1px -1px 0 white,
+    1px -1px 0 white,
+    -1px 1px 0 white,
+    1px 1px 0 white;
+}
+
+:root.dark .planned-p {
+  text-shadow:
+    -1px -1px 0 rgba(0,0,0,0.8),
+    1px -1px 0 rgba(0,0,0,0.8),
+    -1px 1px 0 rgba(0,0,0,0.8),
+    1px 1px 0 rgba(0,0,0,0.8);
 }
 </style>
