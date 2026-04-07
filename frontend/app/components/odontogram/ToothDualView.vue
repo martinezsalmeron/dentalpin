@@ -3,12 +3,14 @@ import type { Surface, Treatment, TreatmentStatus } from '~/types'
 import {
   getOcclusalPath,
   getLateralPath,
+  getToothTransform,
+  getToothDisplayConfig,
   isUpperTooth,
+  isDeciduousTooth,
   PATTERN_DEFINITIONS,
   STATUS_STYLES,
   TREATMENT_COLORS,
   TREATMENT_OVERLAYS,
-  TOOTH_COLORS,
   makesToothTransparent,
   SURFACE_TREATMENT_TYPES
 } from './ToothSVGPaths'
@@ -37,8 +39,36 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const isUpper = computed(() => isUpperTooth(props.toothNumber))
+const isDeciduous = computed(() => isDeciduousTooth(props.toothNumber))
 const occlusalPaths = computed(() => getOcclusalPath(props.toothNumber))
 const lateralPaths = computed(() => getLateralPath(props.toothNumber))
+
+// Quadrant-based transform for symmetry (napkin unfolding)
+const toothTransform = computed(() => getToothTransform(props.toothNumber))
+
+// Lateral view: use the viewBox from the tooth paths (dynamic per tooth type)
+const lateralViewBox = computed(() => lateralPaths.value.viewBox)
+
+// Get display configuration for this tooth (scale and alignment)
+const displayConfig = computed(() => getToothDisplayConfig(props.toothNumber))
+
+// Parse viewBox dimensions and calculate display size with proper scaling
+const lateralDimensions = computed(() => {
+  const vb = lateralViewBox.value.split(' ').map(Number)
+  const vbWidth = vb[2] || 60
+  const vbHeight = vb[3] || 130
+  const aspectRatio = vbWidth / vbHeight
+
+  // Base display width, adjusted by scale factor
+  const baseWidth = 55
+  const displayWidth = Math.round(baseWidth * displayConfig.value.scale)
+  const displayHeight = Math.round(displayWidth / aspectRatio)
+
+  return { displayWidth, displayHeight }
+})
+const lateralDisplayWidth = computed(() => lateralDimensions.value.displayWidth)
+const lateralDisplayHeight = computed(() => lateralDimensions.value.displayHeight)
+
 const _toothName = computed(() => {
   const nameKey = getToothNameKey(props.toothNumber)
   const positionKeys = getToothPositionKeys(props.toothNumber)
@@ -81,12 +111,10 @@ function isSurfaceTreatment(type: string): boolean {
 }
 
 function getCrownFill(_treatment: Treatment): string {
-  // Crown uses solid color from TREATMENT_COLORS
   return TREATMENT_COLORS.crown || '#F59E0B'
 }
 
 function getImplantFill(_treatment: Treatment): string {
-  // Implant uses solid color from TREATMENT_COLORS
   return TREATMENT_COLORS.implant || '#10B981'
 }
 
@@ -105,7 +133,8 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       'highlighted': isHighlighted,
       'has-preview': showingPreview,
       'is-upper': isUpper,
-      'is-lower': !isUpper
+      'is-lower': !isUpper,
+      'is-deciduous': isDeciduous
     }"
     @click="handleToothClick"
   >
@@ -126,243 +155,214 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       />
     </div>
 
-    <!-- For UPPER teeth: Lateral first (top), then Occlusal (bottom) -->
-    <!-- For LOWER teeth: Occlusal first (top), then Lateral (bottom) -->
-
-    <!-- Lateral View - shown FIRST for upper teeth -->
-    <svg
+    <!-- Lateral View Container - fixed height for alignment -->
+    <div
       v-if="showLateral"
-      width="55"
-      height="88"
-      viewBox="0 0 50 80"
-      class="lateral-view"
+      class="lateral-view-container"
       :class="{ upper: isUpper, lower: !isUpper }"
-      :style="{
-        transform: isUpper ? 'scaleY(-1)' : 'none',
-        opacity: toothOpacity
-      }"
     >
-      <!-- Roots (render first, behind crown) -->
-      <g class="roots">
-        <!-- Single root -->
-        <template v-if="'root' in lateralPaths">
-          <!-- Root inner shading -->
-          <path
-            v-if="'rootInner' in lateralPaths"
-            :d="lateralPaths.rootInner"
-            :fill="TOOTH_COLORS.fillShade"
-            stroke="none"
-          />
-          <!-- Root outline -->
-          <path
-            :d="lateralPaths.root"
-            :fill="TOOTH_COLORS.fill"
-            :stroke="TOOTH_COLORS.outline"
-            stroke-width="1.5"
-          />
-        </template>
-        <!-- Multiple roots -->
-        <template v-else-if="'roots' in lateralPaths">
-          <!-- Roots inner shading -->
-          <template v-if="'rootsInner' in lateralPaths">
+      <svg
+        :width="lateralDisplayWidth"
+        :height="lateralDisplayHeight"
+        :viewBox="lateralViewBox"
+        class="lateral-view"
+        :style="{
+          transform: toothTransform,
+          transformOrigin: 'center center',
+          opacity: toothOpacity
+        }"
+      >
+        <!-- Roots (render first, behind crown) -->
+        <g class="roots">
+          <!-- Single root -->
+          <template v-if="'root' in lateralPaths && lateralPaths.root">
             <path
-              v-for="(rootPath, idx) in lateralPaths.rootsInner"
-              :key="`inner-${idx}`"
-              :d="rootPath"
-              :fill="TOOTH_COLORS.fillShade"
-              stroke="none"
+              :d="lateralPaths.root"
+              class="tooth-root"
+              stroke-width="0.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             />
           </template>
-          <!-- Roots outline -->
-          <path
-            v-for="(rootPath, idx) in lateralPaths.roots"
-            :key="idx"
-            :d="rootPath"
-            :fill="TOOTH_COLORS.fill"
-            :stroke="TOOTH_COLORS.outline"
-            stroke-width="1.5"
-          />
-        </template>
-      </g>
-
-      <!-- Crown -->
-      <g class="crown">
-        <!-- Crown inner shading -->
-        <path
-          v-if="'crownInner' in lateralPaths"
-          :d="lateralPaths.crownInner"
-          :fill="TOOTH_COLORS.fillShade"
-          stroke="none"
-        />
-        <!-- Crown shading detail -->
-        <path
-          v-if="'crownShading' in lateralPaths"
-          :d="lateralPaths.crownShading"
-          :fill="TOOTH_COLORS.fillShade"
-          :stroke="TOOTH_COLORS.outlineLight"
-          stroke-width="0.5"
-          opacity="0.5"
-        />
-        <!-- Crown cusps for molars/premolars -->
-        <path
-          v-if="'crownCusps' in lateralPaths"
-          :d="lateralPaths.crownCusps"
-          fill="none"
-          :stroke="TOOTH_COLORS.outlineLight"
-          stroke-width="0.75"
-          opacity="0.6"
-        />
-        <!-- Crown outline -->
-        <path
-          :d="lateralPaths.crown"
-          :fill="TOOTH_COLORS.fill"
-          :stroke="TOOTH_COLORS.outline"
-          stroke-width="1.5"
-        />
-      </g>
-
-      <!-- Treatment overlays on lateral view -->
-      <g class="treatment-overlays-lateral">
-        <!-- Surface treatments (filling, caries, sealant) - show as colored area on crown -->
-        <template
-          v-for="treatment in toothTreatments"
-          :key="`lateral-surface-${treatment.id}`"
-        >
-          <g
-            v-if="isSurfaceTreatment(treatment.treatment_type)"
-            class="surface-treatment-lateral"
-          >
-            <!-- Show a colored overlay on the crown for surface treatments -->
+          <!-- Multiple roots -->
+          <template v-else-if="'roots' in lateralPaths && lateralPaths.roots">
             <path
-              :d="lateralPaths.crown"
-              :fill="TREATMENT_COLORS[treatment.treatment_type] || '#3B82F6'"
-              :fill-opacity="STATUS_STYLES[treatment.status].opacity * 0.5"
-              :stroke="STATUS_STYLES[treatment.status].border || 'none'"
-              :stroke-width="STATUS_STYLES[treatment.status].borderWidth"
-              :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+              v-for="(rootPath, idx) in lateralPaths.roots"
+              :key="idx"
+              :d="rootPath"
+              class="tooth-root"
+              stroke-width="0.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             />
-          </g>
-        </template>
+          </template>
+        </g>
 
-        <!-- Crown treatment - gold crown -->
-        <g
-          v-if="hasTreatment('crown')"
-          class="crown-treatment"
-        >
+        <!-- Crown -->
+        <g class="crown">
+          <!-- Crown outline -->
           <path
             :d="lateralPaths.crown"
-            :fill="getCrownFill(getTreatmentOfType('crown')!)"
-            :stroke="STATUS_STYLES[getTreatmentOfType('crown')!.status].border || 'none'"
-            :stroke-width="STATUS_STYLES[getTreatmentOfType('crown')!.status].borderWidth"
-            :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('crown')!.status].borderDash || 'none'"
+            class="tooth-crown"
+            stroke-width="0.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           />
-        </g>
 
-        <!-- Implant treatment -->
-        <g
-          v-if="hasTreatment('implant')"
-          class="implant-treatment"
-        >
+          <!-- Highlight details (enamel lines, cusps) -->
           <path
-            :d="TREATMENT_OVERLAYS.implant.fixture"
-            :fill="getImplantFill(getTreatmentOfType('implant')!)"
-            stroke="#6B7280"
-            stroke-width="1"
-          />
-          <path
-            v-for="(thread, idx) in TREATMENT_OVERLAYS.implant.threads"
-            :key="idx"
-            :d="thread"
+            v-for="(highlightPath, idx) in lateralPaths.highlight"
+            :key="`highlight-${idx}`"
+            :d="highlightPath"
+            class="tooth-highlight"
+            stroke-width="0.35"
+            stroke-linecap="round"
+            stroke-linejoin="round"
             fill="none"
-            stroke="#52525B"
-            stroke-width="1"
-          />
-          <path
-            :d="TREATMENT_OVERLAYS.implant.abutment"
-            :fill="getImplantFill(getTreatmentOfType('implant')!)"
-            stroke="#6B7280"
-            stroke-width="1"
-          />
-          <path
-            :d="TREATMENT_OVERLAYS.implant.head"
-            :fill="TOOTH_COLORS.fill"
-            :stroke="TOOTH_COLORS.outline"
-            stroke-width="1"
           />
         </g>
 
-        <!-- Root canal indicator -->
-        <g
-          v-if="hasTreatment('root_canal')"
-          class="root-canal-treatment"
-        >
-          <path
-            :d="TREATMENT_OVERLAYS.rootCanal.indicator"
-            :fill="TREATMENT_COLORS.root_canal"
-            :opacity="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].opacity"
-            :stroke="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].border || 'none'"
-            stroke-width="1"
-            :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].borderDash || 'none'"
-          />
-        </g>
+        <!-- Treatment overlays on lateral view -->
+        <g class="treatment-overlays-lateral">
+          <!-- Surface treatments (filling, caries, sealant) - show as colored area on crown -->
+          <template
+            v-for="treatment in toothTreatments"
+            :key="`lateral-surface-${treatment.id}`"
+          >
+            <g
+              v-if="isSurfaceTreatment(treatment.treatment_type)"
+              class="surface-treatment-lateral"
+            >
+              <path
+                :d="lateralPaths.crown"
+                :fill="TREATMENT_COLORS[treatment.treatment_type] || '#3B82F6'"
+                :fill-opacity="STATUS_STYLES[treatment.status].opacity * 0.5"
+                :stroke="STATUS_STYLES[treatment.status].border || 'none'"
+                :stroke-width="STATUS_STYLES[treatment.status].borderWidth"
+                :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
+              />
+            </g>
+          </template>
 
-        <!-- Post indicator -->
-        <g
-          v-if="hasTreatment('post')"
-          class="post-treatment"
-        >
-          <path
-            :d="TREATMENT_OVERLAYS.post.shaft"
-            :fill="TREATMENT_COLORS.post"
-            :opacity="STATUS_STYLES[getTreatmentOfType('post')!.status].opacity"
-            stroke="#6B7280"
-            stroke-width="0.5"
-          />
-        </g>
+          <!-- Crown treatment - gold crown -->
+          <g
+            v-if="hasTreatment('crown')"
+            class="crown-treatment"
+          >
+            <path
+              :d="lateralPaths.crown"
+              :fill="getCrownFill(getTreatmentOfType('crown')!)"
+              :stroke="STATUS_STYLES[getTreatmentOfType('crown')!.status].border || 'none'"
+              :stroke-width="STATUS_STYLES[getTreatmentOfType('crown')!.status].borderWidth"
+              :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('crown')!.status].borderDash || 'none'"
+            />
+          </g>
 
-        <!-- Veneer overlay -->
-        <g
-          v-if="hasTreatment('veneer')"
-          class="veneer-treatment"
-        >
-          <path
-            :d="TREATMENT_OVERLAYS.veneer.surface"
-            :fill="TREATMENT_COLORS.veneer"
-            :opacity="STATUS_STYLES[getTreatmentOfType('veneer')!.status].opacity * 0.6"
-            :stroke="STATUS_STYLES[getTreatmentOfType('veneer')!.status].border || 'none'"
-            stroke-width="1"
-            :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('veneer')!.status].borderDash || 'none'"
-          />
-        </g>
+          <!-- Implant treatment -->
+          <g
+            v-if="hasTreatment('implant')"
+            class="implant-treatment"
+          >
+            <path
+              :d="TREATMENT_OVERLAYS.implant.fixture"
+              :fill="getImplantFill(getTreatmentOfType('implant')!)"
+              stroke="#6B7280"
+              stroke-width="1"
+            />
+            <path
+              v-for="(thread, idx) in TREATMENT_OVERLAYS.implant.threads"
+              :key="idx"
+              :d="thread"
+              fill="none"
+              stroke="#52525B"
+              stroke-width="1"
+            />
+            <path
+              :d="TREATMENT_OVERLAYS.implant.abutment"
+              :fill="getImplantFill(getTreatmentOfType('implant')!)"
+              stroke="#6B7280"
+              stroke-width="1"
+            />
+            <path
+              :d="TREATMENT_OVERLAYS.implant.head"
+              class="tooth-crown"
+              stroke-width="1"
+            />
+          </g>
 
-        <!-- Extraction indicator on lateral view -->
-        <g
-          v-if="hasTreatment('extraction')"
-          class="extraction-treatment-lateral"
-        >
-          <line
-            x1="12"
-            y1="5"
-            x2="38"
-            y2="25"
-            stroke="#DC2626"
-            stroke-width="2.5"
-            :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('extraction')!.status].borderDash || 'none'"
-            stroke-linecap="round"
-          />
-          <line
-            x1="38"
-            y1="5"
-            x2="12"
-            y2="25"
-            stroke="#DC2626"
-            stroke-width="2.5"
-            :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('extraction')!.status].borderDash || 'none'"
-            stroke-linecap="round"
-          />
+          <!-- Root canal indicator -->
+          <g
+            v-if="hasTreatment('root_canal')"
+            class="root-canal-treatment"
+          >
+            <path
+              :d="TREATMENT_OVERLAYS.rootCanal.indicator"
+              :fill="TREATMENT_COLORS.root_canal"
+              :opacity="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].opacity"
+              :stroke="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].border || 'none'"
+              stroke-width="1"
+              :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('root_canal')!.status].borderDash || 'none'"
+            />
+          </g>
+
+          <!-- Post indicator -->
+          <g
+            v-if="hasTreatment('post')"
+            class="post-treatment"
+          >
+            <path
+              :d="TREATMENT_OVERLAYS.post.shaft"
+              :fill="TREATMENT_COLORS.post"
+              :opacity="STATUS_STYLES[getTreatmentOfType('post')!.status].opacity"
+              stroke="#6B7280"
+              stroke-width="0.5"
+            />
+          </g>
+
+          <!-- Veneer overlay -->
+          <g
+            v-if="hasTreatment('veneer')"
+            class="veneer-treatment"
+          >
+            <path
+              :d="TREATMENT_OVERLAYS.veneer.surface"
+              :fill="TREATMENT_COLORS.veneer"
+              :opacity="STATUS_STYLES[getTreatmentOfType('veneer')!.status].opacity * 0.6"
+              :stroke="STATUS_STYLES[getTreatmentOfType('veneer')!.status].border || 'none'"
+              stroke-width="1"
+              :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('veneer')!.status].borderDash || 'none'"
+            />
+          </g>
+
+          <!-- Extraction indicator on lateral view -->
+          <g
+            v-if="hasTreatment('extraction')"
+            class="extraction-treatment-lateral"
+          >
+            <line
+              x1="12"
+              y1="5"
+              x2="38"
+              y2="25"
+              stroke="#DC2626"
+              stroke-width="2"
+              :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('extraction')!.status].borderDash || 'none'"
+              stroke-linecap="round"
+            />
+            <line
+              x1="38"
+              y1="5"
+              x2="12"
+              y2="25"
+              stroke="#DC2626"
+              stroke-width="2"
+              :stroke-dasharray="STATUS_STYLES[getTreatmentOfType('extraction')!.status].borderDash || 'none'"
+              stroke-linecap="round"
+            />
+          </g>
         </g>
-      </g>
-    </svg>
+      </svg>
+    </div>
 
     <!-- Occlusal View (Top-down) -->
     <svg
@@ -370,7 +370,11 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       height="55"
       viewBox="0 0 50 50"
       class="occlusal-view"
-      :style="{ opacity: toothOpacity }"
+      :style="{
+        opacity: toothOpacity,
+        transform: toothTransform,
+        transformOrigin: 'center center'
+      }"
     >
       <!-- SVG Patterns and Gradients Definition -->
       <defs v-html="PATTERN_DEFINITIONS" />
@@ -388,31 +392,23 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
       <!-- Background outline -->
       <path
         :d="occlusalPaths.outline"
-        :fill="TOOTH_COLORS.fill"
-        :stroke="TOOTH_COLORS.outline"
-        stroke-width="1.5"
+        class="tooth-occlusal"
+        stroke-width="1"
+        stroke-linecap="round"
+        stroke-linejoin="round"
         pointer-events="none"
       />
 
-      <!-- Inner detail (characteristic shape) -->
+      <!-- Highlight details (fissures, ridges) -->
       <path
-        v-if="occlusalPaths.innerDetail"
-        :d="occlusalPaths.innerDetail"
+        v-for="(highlightPath, idx) in occlusalPaths.highlight"
+        :key="`occlusal-highlight-${idx}`"
+        :d="highlightPath"
+        class="tooth-highlight"
+        stroke-width="0.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
         fill="none"
-        :stroke="TOOTH_COLORS.outlineLight"
-        stroke-width="0.75"
-        opacity="0.6"
-        pointer-events="none"
-      />
-
-      <!-- Cross pattern for molars/premolars -->
-      <path
-        v-if="occlusalPaths.crossPattern"
-        :d="occlusalPaths.crossPattern"
-        fill="none"
-        :stroke="TOOTH_COLORS.outlineLight"
-        stroke-width="0.75"
-        opacity="0.5"
         pointer-events="none"
       />
 
@@ -429,12 +425,11 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
               :key="`${treatment.id}-${surface}`"
               class="treatment-surface-overlay"
             >
-              <!-- All surface treatments fill with their color -->
               <path
                 :d="occlusalPaths.surfaces[surface]"
                 :fill="TREATMENT_COLORS[treatment.treatment_type] || '#3B82F6'"
                 :stroke="STATUS_STYLES[treatment.status].border || TREATMENT_COLORS[treatment.treatment_type] || 'none'"
-                :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.5"
+                :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
                 :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
               />
             </g>
@@ -446,7 +441,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
               :d="occlusalPaths.surfaces.O"
               :fill="TREATMENT_COLORS[treatment.treatment_type] || '#3B82F6'"
               :stroke="STATUS_STYLES[treatment.status].border || TREATMENT_COLORS[treatment.treatment_type] || 'none'"
-              :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.5"
+              :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
               :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
               class="treatment-surface-overlay"
             />
@@ -471,24 +466,22 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             v-else-if="['bracket', 'band', 'attachment', 'retainer'].includes(treatment.treatment_type)"
             class="orthodontic-indicator"
           >
-            <!-- Small colored badge in bottom-right corner -->
             <circle
               cx="40"
               cy="40"
-              r="8"
+              r="7"
               :fill="TREATMENT_COLORS[treatment.treatment_type] || '#6366F1'"
               :fill-opacity="STATUS_STYLES[treatment.status].opacity"
               :stroke="STATUS_STYLES[treatment.status].border || '#FFFFFF'"
-              :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.5"
+              :stroke-width="STATUS_STYLES[treatment.status].borderWidth || 1.25"
               :stroke-dasharray="STATUS_STYLES[treatment.status].borderDash || 'none'"
             />
-            <!-- Small icon indicator inside the badge -->
             <text
               x="40"
               y="43"
               text-anchor="middle"
               fill="white"
-              font-size="8"
+              font-size="7"
               font-weight="bold"
             >
               {{ treatment.treatment_type === 'bracket' ? 'B' : treatment.treatment_type === 'band' ? 'Bd' : treatment.treatment_type === 'attachment' ? 'A' : 'R' }}
@@ -500,7 +493,6 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             v-else-if="!isSurfaceTreatment(treatment.treatment_type) && treatment.treatment_type !== 'crown' && treatment.treatment_type !== 'implant'"
             class="whole-tooth-indicator"
           >
-            <!-- Fill the tooth with treatment color -->
             <path
               :d="occlusalPaths.outline"
               :fill="TREATMENT_COLORS[treatment.treatment_type] || '#9CA3AF'"
@@ -525,7 +517,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
           x2="42"
           y2="42"
           stroke="#6B7280"
-          stroke-width="3"
+          stroke-width="2.5"
           stroke-linecap="round"
         />
         <line
@@ -534,7 +526,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
           x2="8"
           y2="42"
           stroke="#6B7280"
-          stroke-width="3"
+          stroke-width="2.5"
           stroke-linecap="round"
         />
       </g>
@@ -551,7 +543,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
           x2="40"
           y2="40"
           stroke="#DC2626"
-          stroke-width="2.5"
+          stroke-width="2"
           stroke-dasharray="5,3"
           stroke-linecap="round"
         />
@@ -561,7 +553,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
           x2="10"
           y2="40"
           stroke="#DC2626"
-          stroke-width="2.5"
+          stroke-width="2"
           stroke-dasharray="5,3"
           stroke-linecap="round"
         />
@@ -577,7 +569,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         <path
           :d="occlusalPaths.outline"
           :fill="TREATMENT_COLORS[pendingTreatment!.type] || '#3B82F6'"
-          stroke="#3B82F6"
+          stroke="var(--odontogram-selected)"
           stroke-width="2"
         />
       </g>
@@ -587,7 +579,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
         v-if="selected"
         :d="occlusalPaths.outline"
         fill="none"
-        stroke="#3B82F6"
+        stroke="var(--odontogram-selected)"
         stroke-width="2.5"
         class="selection-ring"
         pointer-events="none"
@@ -598,7 +590,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
     <!-- Tooth number label -->
     <div
       class="tooth-number"
-      :class="{ 'text-primary-600': selected }"
+      :class="{ selected: selected }"
     >
       {{ toothNumber }}
     </div>
@@ -611,7 +603,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, filter 0.15s ease;
   position: relative;
 }
 
@@ -640,6 +632,25 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   animation: highlight-pulse 1s ease-in-out infinite;
 }
 
+/* Tooth SVG styling using CSS variables */
+.tooth-crown,
+.tooth-occlusal {
+  fill: var(--odontogram-fill);
+  stroke: var(--odontogram-outline);
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.tooth-root {
+  fill: var(--odontogram-root-fill);
+  stroke: var(--odontogram-outline);
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.tooth-highlight {
+  stroke: var(--odontogram-detail);
+  transition: stroke 0.15s ease;
+}
+
 .position-indicators {
   position: absolute;
   top: 0;
@@ -648,7 +659,6 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   flex-direction: column;
   gap: 2px;
   z-index: 10;
-  order: 0; /* Always first, but positioned absolute so it doesn't affect layout */
 }
 
 .indicator-displaced,
@@ -680,19 +690,20 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 
 .tooth-number {
   font-size: 10px;
-  color: #374151;
+  color: var(--color-gray-600);
   font-weight: 600;
   user-select: none;
   text-align: center;
   margin-top: 2px;
+  transition: color 0.15s ease;
 }
 
-.tooth-number.text-primary-600 {
-  color: #2563EB;
+.tooth-number.selected {
+  color: var(--odontogram-selected);
 }
 
 :root.dark .tooth-number {
-  color: #D1D5DB;
+  color: var(--color-gray-400);
 }
 
 .surface {
@@ -704,12 +715,27 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   opacity: 0.85;
 }
 
-.lateral-view {
-  display: block;
+/* Lateral view container - fixed height for alignment across all teeth */
+.lateral-view-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100px; /* Fixed height for consistent crown alignment */
 }
 
-.lateral-view.upper {
-  transform-origin: center;
+/* Upper teeth: align SVG to bottom so crowns line up */
+.lateral-view-container.upper {
+  align-items: flex-end;
+}
+
+/* Lower teeth: align SVG to top so crowns line up (after scaleY flip) */
+.lateral-view-container.lower {
+  align-items: flex-start;
+}
+
+.lateral-view {
+  display: block;
+  flex-shrink: 0;
 }
 
 .occlusal-view {
@@ -719,7 +745,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 
 /* For UPPER teeth: lateral first (order 1), occlusal second (order 2) */
 /* For LOWER teeth: occlusal first (order 1), lateral second (order 2) */
-.tooth-dual-view-wrapper.is-upper .lateral-view {
+.tooth-dual-view-wrapper.is-upper .lateral-view-container {
   order: 1;
 }
 
@@ -727,7 +753,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   order: 2;
 }
 
-.tooth-dual-view-wrapper.is-lower .lateral-view {
+.tooth-dual-view-wrapper.is-lower .lateral-view-container {
   order: 2;
 }
 
@@ -782,9 +808,5 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 
 .implant-treatment path {
   filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
-}
-
-:root.dark .tooth-number {
-  fill: #E5E7EB;
 }
 </style>
