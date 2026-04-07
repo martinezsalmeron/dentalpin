@@ -118,6 +118,33 @@ function getImplantFill(_treatment: Treatment): string {
   return TREATMENT_COLORS.implant || '#10B981'
 }
 
+// Treatment types that fill the pulp chamber
+const PULP_TREATMENT_TYPES = ['root_canal', 'apicoectomy']
+
+// Check if tooth has any pulp-related treatment
+const hasPulpTreatment = computed(() => {
+  return toothTreatments.value.some(t => PULP_TREATMENT_TYPES.includes(t.treatment_type))
+})
+
+// Get the pulp treatment for styling
+function getPulpTreatment(): Treatment | undefined {
+  return toothTreatments.value.find(t => PULP_TREATMENT_TYPES.includes(t.treatment_type))
+}
+
+// Get fill color for pulp based on treatment
+function getPulpFillColor(): string {
+  const treatment = getPulpTreatment()
+  if (!treatment) return 'none'
+  return TREATMENT_COLORS[treatment.treatment_type] || '#8B5CF6'
+}
+
+// Get fill opacity for pulp based on treatment status
+function getPulpFillOpacity(): number {
+  const treatment = getPulpTreatment()
+  if (!treatment) return 0
+  return STATUS_STYLES[treatment.status]?.opacity ?? 1
+}
+
 const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 </script>
 
@@ -205,6 +232,19 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             :d="lateralPaths.crown"
             class="tooth-crown"
             stroke-width="0.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+
+          <!-- Pulp chamber outline (visible by default, filled when root canal treatment) -->
+          <path
+            v-if="lateralPaths.pulp"
+            :d="lateralPaths.pulp"
+            class="tooth-pulp"
+            :class="{ 'pulp-filled': hasPulpTreatment }"
+            :fill="hasPulpTreatment ? getPulpFillColor() : 'none'"
+            :fill-opacity="hasPulpTreatment ? getPulpFillOpacity() : 0"
+            stroke-width="0.5"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
@@ -649,6 +689,15 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
 .tooth-highlight {
   stroke: var(--odontogram-detail);
   transition: stroke 0.15s ease;
+}
+
+.tooth-pulp {
+  stroke: var(--odontogram-detail);
+  transition: fill 0.2s ease, stroke 0.15s ease;
+}
+
+.tooth-pulp.pulp-filled {
+  stroke: none;
 }
 
 .position-indicators {
