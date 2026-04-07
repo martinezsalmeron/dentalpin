@@ -23,8 +23,7 @@ import {
   OCCLUSAL_VISUALIZATION,
   PATTERN_CONFIG,
   normalizeTreatmentType,
-  getTreatmentColor,
-  PLANNED_INDICATOR_COLOR
+  getTreatmentColor
 } from '~/config/odontogramConstants'
 // Note: Icon rendering uses inline SVG elements based on treatment type, not LATERAL_ICONS directly
 import ImplantSVG from './ImplantSVG.vue'
@@ -196,7 +195,7 @@ const viewBoxDimensions = computed(() => {
 const pulpClipY = computed(() => {
   const { y, height } = viewBoxDimensions.value
   switch (pulpFillLevel.value) {
-    case 'half': return y + height * 0.35       // Start at 50% down (show bottom 50%)
+    case 'half': return y + height * 0.35 // Start at 50% down (show bottom 50%)
     case 'two_thirds': return y + height * 0.2 // Start at 30% down (show bottom 70%)
     default: return y
   }
@@ -205,8 +204,8 @@ const pulpClipY = computed(() => {
 const pulpClipHeight = computed(() => {
   const { height } = viewBoxDimensions.value
   switch (pulpFillLevel.value) {
-    case 'half': return height * 0.5        // Show bottom 50%
-    case 'two_thirds': return height * 0.7  // Show bottom 70%
+    case 'half': return height * 0.5 // Show bottom 50%
+    case 'two_thirds': return height * 0.7 // Show bottom 70%
     default: return height
   }
 })
@@ -712,53 +711,130 @@ const hasPlannedLateralTreatments = computed(() => {
           transformOrigin: 'center center'
         }"
       >
-      <!-- SVG Patterns and Gradients Definition -->
-      <defs v-html="PATTERN_DEFINITIONS" />
+        <!-- SVG Patterns and Gradients Definition -->
+        <defs v-html="PATTERN_DEFINITIONS" />
 
-      <!-- Background - pointer-events none to let clicks pass through to surfaces -->
-      <rect
-        x="0"
-        y="0"
-        width="50"
-        height="50"
-        fill="transparent"
-        pointer-events="none"
-      />
+        <!-- Background - pointer-events none to let clicks pass through to surfaces -->
+        <rect
+          x="0"
+          y="0"
+          width="50"
+          height="50"
+          fill="transparent"
+          pointer-events="none"
+        />
 
-      <!-- Background outline -->
-      <path
-        :d="occlusalPaths.outline"
-        class="tooth-occlusal"
-        stroke-width="1"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        pointer-events="none"
-      />
+        <!-- Background outline -->
+        <path
+          :d="occlusalPaths.outline"
+          class="tooth-occlusal"
+          stroke-width="1"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          pointer-events="none"
+        />
 
-      <!-- Highlight details (fissures, ridges) -->
-      <path
-        v-for="(highlightPath, idx) in occlusalPaths.highlight"
-        :key="`occlusal-highlight-${idx}`"
-        :d="highlightPath"
-        class="tooth-highlight"
-        stroke-width="0.6"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        fill="none"
-        pointer-events="none"
-      />
+        <!-- Highlight details (fissures, ridges) -->
+        <path
+          v-for="(highlightPath, idx) in occlusalPaths.highlight"
+          :key="`occlusal-highlight-${idx}`"
+          :d="highlightPath"
+          class="tooth-highlight"
+          stroke-width="0.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          fill="none"
+          pointer-events="none"
+        />
 
-      <!-- Treatment overlays on occlusal view -->
-      <g class="treatment-overlays">
-        <!-- Rule 2: Occlusal surface treatments (solid fill, dot, outline) -->
-        <template
-          v-for="treatment in occlusalSurfaceTreatments"
-          :key="`occlusal-${treatment.id}`"
-        >
-          <!-- Get the config for this treatment type -->
-          <template v-if="getOcclusalConfig(treatment)">
-            <!-- Solid fill type - fill the surface(s) -->
-            <template v-if="getOcclusalConfig(treatment)?.type === 'solid_fill'">
+        <!-- Treatment overlays on occlusal view -->
+        <g class="treatment-overlays">
+          <!-- Rule 2: Occlusal surface treatments (solid fill, dot, outline) -->
+          <template
+            v-for="treatment in occlusalSurfaceTreatments"
+            :key="`occlusal-${treatment.id}`"
+          >
+            <!-- Get the config for this treatment type -->
+            <template v-if="getOcclusalConfig(treatment)">
+              <!-- Solid fill type - fill the surface(s) -->
+              <template v-if="getOcclusalConfig(treatment)?.type === 'solid_fill'">
+                <template v-if="treatment.surfaces && treatment.surfaces.length > 0">
+                  <path
+                    v-for="surface in treatment.surfaces"
+                    :key="`${treatment.id}-${surface}`"
+                    :d="occlusalPaths.surfaces[surface]"
+                    :fill="getTreatmentColor(treatment.treatment_type)"
+                    :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
+                    stroke="none"
+                    class="treatment-surface-overlay"
+                  />
+                </template>
+                <template v-else>
+                  <path
+                    :d="occlusalPaths.surfaces.O"
+                    :fill="getTreatmentColor(treatment.treatment_type)"
+                    :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
+                    stroke="none"
+                    class="treatment-surface-overlay"
+                  />
+                </template>
+              </template>
+
+              <!-- Dot type - show dot indicator in surface center -->
+              <template v-else-if="getOcclusalConfig(treatment)?.type === 'dot'">
+                <template v-if="treatment.surfaces && treatment.surfaces.length > 0">
+                  <circle
+                    v-for="surface in treatment.surfaces"
+                    :key="`${treatment.id}-${surface}-dot`"
+                    :cx="surface === 'O' ? 25 : surface === 'M' ? 12 : surface === 'D' ? 38 : surface === 'V' ? 25 : 25"
+                    :cy="surface === 'O' ? 25 : surface === 'M' ? 25 : surface === 'D' ? 25 : surface === 'V' ? 12 : 38"
+                    r="4"
+                    :fill="getTreatmentColor(treatment.treatment_type)"
+                    :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
+                    class="treatment-dot-overlay"
+                  />
+                </template>
+                <template v-else>
+                  <circle
+                    cx="25"
+                    cy="25"
+                    r="4"
+                    :fill="getTreatmentColor(treatment.treatment_type)"
+                    :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
+                    class="treatment-dot-overlay"
+                  />
+                </template>
+              </template>
+
+              <!-- Outline type - show light outline on surface -->
+              <template v-else-if="getOcclusalConfig(treatment)?.type === 'outline'">
+                <template v-if="treatment.surfaces && treatment.surfaces.length > 0">
+                  <path
+                    v-for="surface in treatment.surfaces"
+                    :key="`${treatment.id}-${surface}-outline`"
+                    :d="occlusalPaths.surfaces[surface]"
+                    fill="none"
+                    :stroke="getTreatmentColor(treatment.treatment_type)"
+                    :stroke-width="1.5"
+                    :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
+                    class="treatment-outline-overlay"
+                  />
+                </template>
+                <template v-else>
+                  <path
+                    :d="occlusalPaths.surfaces.O"
+                    fill="none"
+                    :stroke="getTreatmentColor(treatment.treatment_type)"
+                    :stroke-width="1.5"
+                    :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
+                    class="treatment-outline-overlay"
+                  />
+                </template>
+              </template>
+            </template>
+
+            <!-- Fallback for legacy treatments not in config -->
+            <template v-else>
               <template v-if="treatment.surfaces && treatment.surfaces.length > 0">
                 <path
                   v-for="surface in treatment.surfaces"
@@ -780,191 +856,114 @@ const hasPlannedLateralTreatments = computed(() => {
                 />
               </template>
             </template>
-
-            <!-- Dot type - show dot indicator in surface center -->
-            <template v-else-if="getOcclusalConfig(treatment)?.type === 'dot'">
-              <template v-if="treatment.surfaces && treatment.surfaces.length > 0">
-                <circle
-                  v-for="surface in treatment.surfaces"
-                  :key="`${treatment.id}-${surface}-dot`"
-                  :cx="surface === 'O' ? 25 : surface === 'M' ? 12 : surface === 'D' ? 38 : surface === 'V' ? 25 : 25"
-                  :cy="surface === 'O' ? 25 : surface === 'M' ? 25 : surface === 'D' ? 25 : surface === 'V' ? 12 : 38"
-                  r="4"
-                  :fill="getTreatmentColor(treatment.treatment_type)"
-                  :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                  class="treatment-dot-overlay"
-                />
-              </template>
-              <template v-else>
-                <circle
-                  cx="25"
-                  cy="25"
-                  r="4"
-                  :fill="getTreatmentColor(treatment.treatment_type)"
-                  :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                  class="treatment-dot-overlay"
-                />
-              </template>
-            </template>
-
-            <!-- Outline type - show light outline on surface -->
-            <template v-else-if="getOcclusalConfig(treatment)?.type === 'outline'">
-              <template v-if="treatment.surfaces && treatment.surfaces.length > 0">
-                <path
-                  v-for="surface in treatment.surfaces"
-                  :key="`${treatment.id}-${surface}-outline`"
-                  :d="occlusalPaths.surfaces[surface]"
-                  fill="none"
-                  :stroke="getTreatmentColor(treatment.treatment_type)"
-                  :stroke-width="1.5"
-                  :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                  class="treatment-outline-overlay"
-                />
-              </template>
-              <template v-else>
-                <path
-                  :d="occlusalPaths.surfaces.O"
-                  fill="none"
-                  :stroke="getTreatmentColor(treatment.treatment_type)"
-                  :stroke-width="1.5"
-                  :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                  class="treatment-outline-overlay"
-                />
-              </template>
-            </template>
           </template>
 
-          <!-- Fallback for legacy treatments not in config -->
-          <template v-else>
-            <template v-if="treatment.surfaces && treatment.surfaces.length > 0">
-              <path
-                v-for="surface in treatment.surfaces"
-                :key="`${treatment.id}-${surface}`"
-                :d="occlusalPaths.surfaces[surface]"
-                :fill="getTreatmentColor(treatment.treatment_type)"
-                :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                stroke="none"
-                class="treatment-surface-overlay"
-              />
-            </template>
-            <template v-else>
-              <path
-                :d="occlusalPaths.surfaces.O"
-                :fill="getTreatmentColor(treatment.treatment_type)"
-                :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                stroke="none"
-                class="treatment-surface-overlay"
-              />
-            </template>
+          <!-- Rule 4: Pattern fill treatments (crown, pontic, overlay, etc.) -->
+          <template
+            v-for="treatment in patternFillTreatments"
+            :key="`pattern-${treatment.id}`"
+          >
+            <path
+              :d="occlusalPaths.outline"
+              :fill="getPatternId(treatment.treatment_type) ? `url(#${getPatternId(treatment.treatment_type)})` : getTreatmentColor(treatment.treatment_type)"
+              :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
+              :stroke="getTreatmentColor(treatment.treatment_type)"
+              stroke-width="1.5"
+              class="pattern-fill-overlay"
+            />
           </template>
-        </template>
 
-        <!-- Rule 4: Pattern fill treatments (crown, pontic, overlay, etc.) -->
-        <template
-          v-for="treatment in patternFillTreatments"
-          :key="`pattern-${treatment.id}`"
+          <!-- Whole tooth treatments not covered by other rules -->
+          <template
+            v-for="treatment in toothTreatments.filter(t =>
+              !hasVisualizationRule(t.treatment_type, 'occlusal_surface')
+              && !hasVisualizationRule(t.treatment_type, 'pattern_fill')
+              && !['bracket', 'tube', 'band', 'attachment', 'retainer', 'implant'].includes(t.treatment_type)
+              && !hasVisualizationRule(t.treatment_type, 'pulp_fill')
+              && !hasVisualizationRule(t.treatment_type, 'lateral_icon')
+            )"
+            :key="`whole-${treatment.id}`"
+          >
+            <g class="whole-tooth-indicator">
+              <path
+                :d="occlusalPaths.outline"
+                :fill="getTreatmentColor(treatment.treatment_type)"
+                :fill-opacity="(STATUS_STYLES[treatment.status]?.opacity ?? 1) * 0.4"
+                :stroke="getTreatmentColor(treatment.treatment_type)"
+                stroke-width="2"
+              />
+            </g>
+          </template>
+        </g>
+
+        <!-- Missing tooth X overlay -->
+        <g
+          v-if="generalCondition === 'missing'"
+          class="missing-indicator"
+          pointer-events="none"
+        >
+          <line
+            x1="8"
+            y1="8"
+            x2="42"
+            y2="42"
+            stroke="#6B7280"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          />
+          <line
+            x1="42"
+            y1="8"
+            x2="8"
+            y2="42"
+            stroke="#6B7280"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          />
+        </g>
+
+        <!-- Extraction indicated marker -->
+        <g
+          v-if="generalCondition === 'extraction_indicated'"
+          class="extraction-indicator"
+          pointer-events="none"
+        >
+          <line
+            x1="10"
+            y1="10"
+            x2="40"
+            y2="40"
+            stroke="#DC2626"
+            stroke-width="2"
+            stroke-dasharray="5,3"
+            stroke-linecap="round"
+          />
+          <line
+            x1="40"
+            y1="10"
+            x2="10"
+            y2="40"
+            stroke="#DC2626"
+            stroke-width="2"
+            stroke-dasharray="5,3"
+            stroke-linecap="round"
+          />
+        </g>
+
+        <!-- Preview overlay for pending treatment -->
+        <g
+          v-if="showingPreview"
+          class="preview-overlay"
+          opacity="0.5"
+          pointer-events="none"
         >
           <path
             :d="occlusalPaths.outline"
-            :fill="getPatternId(treatment.treatment_type) ? `url(#${getPatternId(treatment.treatment_type)})` : getTreatmentColor(treatment.treatment_type)"
-            :fill-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-            :stroke="getTreatmentColor(treatment.treatment_type)"
-            stroke-width="1.5"
-            class="pattern-fill-overlay"
+            :fill="getTreatmentColor(pendingTreatment!.type)"
+            stroke="var(--odontogram-selected)"
+            stroke-width="2"
           />
-        </template>
-
-        <!-- Whole tooth treatments not covered by other rules -->
-        <template
-          v-for="treatment in toothTreatments.filter(t =>
-            !hasVisualizationRule(t.treatment_type, 'occlusal_surface')
-            && !hasVisualizationRule(t.treatment_type, 'pattern_fill')
-            && !['bracket', 'tube', 'band', 'attachment', 'retainer', 'implant'].includes(t.treatment_type)
-            && !hasVisualizationRule(t.treatment_type, 'pulp_fill')
-            && !hasVisualizationRule(t.treatment_type, 'lateral_icon')
-          )"
-          :key="`whole-${treatment.id}`"
-        >
-          <g class="whole-tooth-indicator">
-            <path
-              :d="occlusalPaths.outline"
-              :fill="getTreatmentColor(treatment.treatment_type)"
-              :fill-opacity="(STATUS_STYLES[treatment.status]?.opacity ?? 1) * 0.4"
-              :stroke="getTreatmentColor(treatment.treatment_type)"
-              stroke-width="2"
-            />
-          </g>
-        </template>
-      </g>
-
-      <!-- Missing tooth X overlay -->
-      <g
-        v-if="generalCondition === 'missing'"
-        class="missing-indicator"
-        pointer-events="none"
-      >
-        <line
-          x1="8"
-          y1="8"
-          x2="42"
-          y2="42"
-          stroke="#6B7280"
-          stroke-width="2.5"
-          stroke-linecap="round"
-        />
-        <line
-          x1="42"
-          y1="8"
-          x2="8"
-          y2="42"
-          stroke="#6B7280"
-          stroke-width="2.5"
-          stroke-linecap="round"
-        />
-      </g>
-
-      <!-- Extraction indicated marker -->
-      <g
-        v-if="generalCondition === 'extraction_indicated'"
-        class="extraction-indicator"
-        pointer-events="none"
-      >
-        <line
-          x1="10"
-          y1="10"
-          x2="40"
-          y2="40"
-          stroke="#DC2626"
-          stroke-width="2"
-          stroke-dasharray="5,3"
-          stroke-linecap="round"
-        />
-        <line
-          x1="40"
-          y1="10"
-          x2="10"
-          y2="40"
-          stroke="#DC2626"
-          stroke-width="2"
-          stroke-dasharray="5,3"
-          stroke-linecap="round"
-        />
-      </g>
-
-      <!-- Preview overlay for pending treatment -->
-      <g
-        v-if="showingPreview"
-        class="preview-overlay"
-        opacity="0.5"
-        pointer-events="none"
-      >
-        <path
-          :d="occlusalPaths.outline"
-          :fill="getTreatmentColor(pendingTreatment!.type)"
-          stroke="var(--odontogram-selected)"
-          stroke-width="2"
-        />
-      </g>
+        </g>
 
         <!-- Selection highlight -->
         <path

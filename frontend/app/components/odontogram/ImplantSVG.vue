@@ -77,17 +77,6 @@ const statusStyle = computed(() => STATUS_STYLES[props.status] || STATUS_STYLES.
       fill-opacity="0.15"
       stroke="none"
     />
-
-    <!-- Status indicator (dashed outline for planned) -->
-    <path
-      v-if="status === 'planned'"
-      :d="IMPLANT_PATH"
-      fill="none"
-      :stroke="statusStyle.border"
-      :stroke-width="statusStyle.borderWidth"
-      :stroke-dasharray="statusStyle.borderDash || 'none'"
-      vector-effect="non-scaling-stroke"
-    />
   </g>
 </template>
 

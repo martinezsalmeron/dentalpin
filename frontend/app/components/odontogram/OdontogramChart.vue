@@ -2,7 +2,6 @@
 import type { OdontogramHistoryEntry, Surface, Treatment, TreatmentStatus, TreatmentType } from '~/types'
 import { DECIDUOUS_TEETH, PERMANENT_TEETH } from '~/composables/useOdontogram'
 import { isSurfaceTreatment } from './TreatmentIcons'
-import type { PositionAction } from '~/config/odontogramConstants'
 
 export type OdontogramMode = 'full' | 'view-only' | 'planning'
 
@@ -24,7 +23,6 @@ const toast = useToast()
 const {
   loading,
   fetchOdontogram,
-  updateTooth,
   fetchPatientHistory,
   getToothRecord,
   // Treatment methods
@@ -54,10 +52,6 @@ const historyLoading = ref(false)
 const selectedTreatmentType = ref<TreatmentType | null>(null)
 const selectedTreatmentStatus = ref<TreatmentStatus>('existing')
 const hoveredTooth = ref<number | null>(null)
-
-// Position action mode (rotate/displace)
-const selectedPositionAction = ref<PositionAction | null>(null)
-const isPositionActionMode = computed(() => selectedPositionAction.value !== null)
 
 // Undo stack for quick undo
 const undoStack = ref<Array<{ treatmentId: string, tooth: number, type: string }>>([])
@@ -175,17 +169,16 @@ function getToothData(toothNumber: number): {
   isRotated: boolean
 } {
   const record = getToothRecord(toothNumber)
-  if (record) {
-    return {
-      generalCondition: record.general_condition,
-      isDisplaced: record.is_displaced || false,
-      isRotated: record.is_rotated || false
-    }
-  }
+  const toothTreatments = getToothTreatments(toothNumber)
+
+  // Derive position states from treatments
+  const isDisplaced = toothTreatments.some(t => t.treatment_type === 'displaced')
+  const isRotated = toothTreatments.some(t => t.treatment_type === 'rotated')
+
   return {
-    generalCondition: 'healthy',
-    isDisplaced: false,
-    isRotated: false
+    generalCondition: record?.general_condition || 'healthy',
+    isDisplaced,
+    isRotated
   }
 }
 
@@ -200,47 +193,29 @@ function getToothTreatmentsFiltered(toothNumber: number): Treatment[] {
 
 // Handle surface click in click-to-apply mode
 function handleSurfaceClick(toothNumber: number, surface: Surface) {
-  if (isReadonly.value) return
+  if (isReadonly.value || !isClickToApplyMode.value) return
 
-  // Position action mode (rotate/displace toggle) - also works from occlusal view
-  if (isPositionActionMode.value) {
-    applyPositionAction(toothNumber)
-    return
+  // Check if it's a surface treatment - apply to the clicked surface
+  if (isSurfaceTreatment(selectedTreatmentType.value!)) {
+    applyTreatmentToTooth(toothNumber, [surface])
+  } else {
+    // For non-surface treatments (crown, extraction, rotated, displaced, etc.), apply to whole tooth
+    applyTreatmentToTooth(toothNumber)
   }
-
-  if (isClickToApplyMode.value) {
-    // Check if it's a surface treatment - apply to the clicked surface
-    if (isSurfaceTreatment(selectedTreatmentType.value!)) {
-      applyTreatmentToTooth(toothNumber, [surface])
-    } else {
-      // For non-surface treatments (crown, extraction, etc.), apply to whole tooth
-      applyTreatmentToTooth(toothNumber)
-    }
-  }
-  // No action when no treatment is selected - use the TreatmentBar to select first
 }
 
 // Handle tooth click
 function handleToothClick(toothNumber: number) {
-  if (isReadonly.value) return
+  if (isReadonly.value || !isClickToApplyMode.value) return
 
-  // Position action mode (rotate/displace toggle)
-  if (isPositionActionMode.value) {
-    applyPositionAction(toothNumber)
-    return
+  // Check if it's a surface treatment - need surface selector
+  if (isSurfaceTreatment(selectedTreatmentType.value!)) {
+    selectedTooth.value = toothNumber
+    showSurfaceSelector.value = true
+  } else {
+    // Apply whole tooth treatment (including rotated, displaced)
+    applyTreatmentToTooth(toothNumber)
   }
-
-  if (isClickToApplyMode.value) {
-    // Check if it's a surface treatment - need surface selector
-    if (isSurfaceTreatment(selectedTreatmentType.value!)) {
-      selectedTooth.value = toothNumber
-      showSurfaceSelector.value = true
-    } else {
-      // Apply whole tooth treatment
-      applyTreatmentToTooth(toothNumber)
-    }
-  }
-  // No action when no treatment is selected - use the TreatmentBar to select first
 }
 
 // Handle right-click context menu
@@ -251,60 +226,10 @@ function handleToothContextMenu(toothNumber: number, event: MouseEvent) {
   showContextMenu.value = true
 }
 
-// Handle position update from context menu
-async function _handlePositionUpdate(updates: { is_displaced?: boolean, is_rotated?: boolean }) {
-  if (!contextMenuTooth.value) return
-
-  // Keep the menu open to allow multiple toggles
-  await updateTooth(props.patientId, contextMenuTooth.value, updates as Record<string, unknown>)
-}
-
 // Close context menu
 function _closeContextMenu() {
   showContextMenu.value = false
   contextMenuTooth.value = null
-}
-
-// Apply position action (rotate/displace toggle)
-async function applyPositionAction(toothNumber: number) {
-  if (!selectedPositionAction.value) return
-
-  const toothData = getToothData(toothNumber)
-  const updates: { is_displaced?: boolean, is_rotated?: boolean } = {}
-
-  if (selectedPositionAction.value === 'rotate') {
-    updates.is_rotated = !toothData.isRotated
-  } else if (selectedPositionAction.value === 'displace') {
-    updates.is_displaced = !toothData.isDisplaced
-  }
-
-  await updateTooth(props.patientId, toothNumber, updates as Record<string, unknown>)
-
-  // Show feedback
-  const actionKey = selectedPositionAction.value === 'rotate' ? 'rotated' : 'displaced'
-  const isNowSet = selectedPositionAction.value === 'rotate' ? !toothData.isRotated : !toothData.isDisplaced
-  toast.add({
-    title: `${t('odontogram.tooth')} ${toothNumber}`,
-    description: isNowSet
-      ? t(`odontogram.position.${actionKey}`)
-      : t('odontogram.position.normal'),
-    color: isNowSet ? 'primary' : 'neutral'
-  })
-
-  // Deselect position action after applying
-  selectedPositionAction.value = null
-}
-
-// Handle position action selection from TreatmentBar
-function handlePositionActionSelect(_action: PositionAction) {
-  // Position action is already set via v-model
-  // This handler is for any additional logic if needed
-}
-
-// Cancel position action mode
-function _cancelPositionActionMode() {
-  selectedPositionAction.value = null
-  hoveredTooth.value = null
 }
 
 // Apply treatment in click-to-apply mode
@@ -375,7 +300,6 @@ async function handleUndo() {
 // Cancel click-to-apply mode
 function cancelClickToApplyMode() {
   selectedTreatmentType.value = null
-  selectedPositionAction.value = null
   hoveredTooth.value = null
 }
 
@@ -601,8 +525,6 @@ async function onHistoryExpanded(expanded: boolean) {
                       <ToothTooltip
                         :tooth-number="toothNum"
                         :treatments="getToothTreatmentsFiltered(toothNum)"
-                        :is-displaced="getToothData(toothNum).isDisplaced"
-                        :is-rotated="getToothData(toothNum).isRotated"
                         @edit-treatment="handleEditTreatment"
                       />
                     </template>
@@ -648,8 +570,6 @@ async function onHistoryExpanded(expanded: boolean) {
                       <ToothTooltip
                         :tooth-number="toothNum"
                         :treatments="getToothTreatmentsFiltered(toothNum)"
-                        :is-displaced="getToothData(toothNum).isDisplaced"
-                        :is-rotated="getToothData(toothNum).isRotated"
                         @edit-treatment="handleEditTreatment"
                       />
                     </template>
@@ -700,8 +620,6 @@ async function onHistoryExpanded(expanded: boolean) {
                       <ToothTooltip
                         :tooth-number="toothNum"
                         :treatments="getToothTreatmentsFiltered(toothNum)"
-                        :is-displaced="getToothData(toothNum).isDisplaced"
-                        :is-rotated="getToothData(toothNum).isRotated"
                         @edit-treatment="handleEditTreatment"
                       />
                     </template>
@@ -747,8 +665,6 @@ async function onHistoryExpanded(expanded: boolean) {
                       <ToothTooltip
                         :tooth-number="toothNum"
                         :treatments="getToothTreatmentsFiltered(toothNum)"
-                        :is-displaced="getToothData(toothNum).isDisplaced"
-                        :is-rotated="getToothData(toothNum).isRotated"
                         @edit-treatment="handleEditTreatment"
                       />
                     </template>
@@ -767,12 +683,10 @@ async function onHistoryExpanded(expanded: boolean) {
       <TreatmentBar
         v-if="!isReadonly"
         v-model:selected-treatment="selectedTreatmentType"
-        v-model:selected-position-action="selectedPositionAction"
         :selected-status="selectedTreatmentStatus"
         :disabled="isReadonly"
         @update:selected-status="selectedTreatmentStatus = $event"
         @treatment-select="handleTreatmentSelect"
-        @position-action-select="handlePositionActionSelect"
         @cancel="cancelClickToApplyMode"
       />
 
