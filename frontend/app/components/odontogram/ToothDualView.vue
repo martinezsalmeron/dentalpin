@@ -15,6 +15,7 @@ import {
   SURFACE_TREATMENT_TYPES
 } from './ToothSVGPaths'
 import { getToothNameKey, getToothPositionKeys } from '~/config/odontogramConstants'
+import ImplantSVG from './ImplantSVG.vue'
 
 const props = defineProps<{
   toothNumber: number
@@ -95,6 +96,11 @@ function handleToothClick() {
 }
 
 const toothTreatments = computed(() => props.treatments || [])
+
+// Check if tooth has an implant (roots should be hidden)
+const hasImplantTreatment = computed(() => {
+  return toothTreatments.value.some(t => t.treatment_type === 'implant')
+})
 
 function hasTreatment(type: string, status?: TreatmentStatus): boolean {
   return toothTreatments.value.some(t =>
@@ -199,8 +205,11 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
           opacity: toothOpacity
         }"
       >
-        <!-- Roots (render first, behind crown) -->
-        <g class="roots">
+        <!-- Roots (render first, behind crown) - hidden when implant present -->
+        <g
+          v-if="!hasImplantTreatment"
+          class="roots"
+        >
           <!-- Single root -->
           <template v-if="'root' in lateralPaths && lateralPaths.root">
             <path
@@ -225,6 +234,19 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
           </template>
         </g>
 
+        <!-- Implant (replaces roots) -->
+        <g
+          v-if="hasImplantTreatment"
+          class="implant-root"
+        >
+          <ImplantSVG
+            :view-box="lateralViewBox"
+            :tooth-number="toothNumber"
+            :fill="getImplantFill(getTreatmentOfType('implant')!)"
+            :status="getTreatmentOfType('implant')!.status"
+          />
+        </g>
+
         <!-- Crown -->
         <g class="crown">
           <!-- Crown outline -->
@@ -236,9 +258,9 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             stroke-linejoin="round"
           />
 
-          <!-- Pulp chamber outline (visible by default, filled when root canal treatment) -->
+          <!-- Pulp chamber outline (visible by default, filled when root canal treatment, hidden when implant) -->
           <path
-            v-if="lateralPaths.pulp"
+            v-if="lateralPaths.pulp && !hasImplantTreatment"
             :d="lateralPaths.pulp"
             class="tooth-pulp"
             :class="{ 'pulp-filled': hasPulpTreatment }"
@@ -298,37 +320,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
             />
           </g>
 
-          <!-- Implant treatment -->
-          <g
-            v-if="hasTreatment('implant')"
-            class="implant-treatment"
-          >
-            <path
-              :d="TREATMENT_OVERLAYS.implant.fixture"
-              :fill="getImplantFill(getTreatmentOfType('implant')!)"
-              stroke="#6B7280"
-              stroke-width="1"
-            />
-            <path
-              v-for="(thread, idx) in TREATMENT_OVERLAYS.implant.threads"
-              :key="idx"
-              :d="thread"
-              fill="none"
-              stroke="#52525B"
-              stroke-width="1"
-            />
-            <path
-              :d="TREATMENT_OVERLAYS.implant.abutment"
-              :fill="getImplantFill(getTreatmentOfType('implant')!)"
-              stroke="#6B7280"
-              stroke-width="1"
-            />
-            <path
-              :d="TREATMENT_OVERLAYS.implant.head"
-              class="tooth-crown"
-              stroke-width="1"
-            />
-          </g>
+          <!-- Implant treatment - now rendered in the root area, not as overlay -->
 
           <!-- Root canal indicator -->
           <g
@@ -855,7 +847,7 @@ const showingPreview = computed(() => props.isHovered && props.pendingTreatment)
   filter: drop-shadow(0 1px 2px rgba(180, 83, 9, 0.3));
 }
 
-.implant-treatment path {
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
+.implant-root .dental-implant {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
 }
 </style>
