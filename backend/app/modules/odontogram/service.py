@@ -378,7 +378,7 @@ class TreatmentService:
         tooth_number: int,
         user_id: UUID,
         treatment_type: str,
-        status: str = TreatmentStatus.PERFORMED.value,
+        status: str = TreatmentStatus.EXISTING.value,
         surfaces: list[str] | None = None,
         notes: str | None = None,
         budget_item_id: UUID | None = None,
@@ -410,8 +410,8 @@ class TreatmentService:
             surfaces=surfaces,
             status=status,
             recorded_at=now,
-            performed_at=now if status == TreatmentStatus.PERFORMED.value else None,
-            performed_by=user_id if status == TreatmentStatus.PERFORMED.value else None,
+            performed_at=now if status == TreatmentStatus.EXISTING.value else None,
+            performed_by=user_id if status == TreatmentStatus.EXISTING.value else None,
             budget_item_id=budget_item_id,
             source_module=source_module,
             notes=notes,
@@ -538,8 +538,8 @@ class TreatmentService:
 
         if status is not None and status != old_status:
             treatment.status = status
-            # If marking as performed, set performed_at and performed_by
-            if status == TreatmentStatus.PERFORMED.value:
+            # If marking as existing, set performed_at and performed_by
+            if status == TreatmentStatus.EXISTING.value:
                 treatment.performed_at = now
                 treatment.performed_by = user_id
 
@@ -613,7 +613,7 @@ class TreatmentService:
         user_id: UUID,
         notes: str | None = None,
     ) -> ToothTreatment | None:
-        """Mark a treatment as performed.
+        """Mark a treatment as existing (performed).
 
         This is the key method for budget integration - emits a specific event
         that the budget module can listen to for updating budget item status.
@@ -625,7 +625,7 @@ class TreatmentService:
         old_status = treatment.status
         now = datetime.now(UTC)
 
-        treatment.status = TreatmentStatus.PERFORMED.value
+        treatment.status = TreatmentStatus.EXISTING.value
         treatment.performed_at = now
         treatment.performed_by = user_id
         if notes:

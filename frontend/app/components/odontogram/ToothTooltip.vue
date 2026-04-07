@@ -45,8 +45,7 @@ function getToothName(toothNumber: number): string {
 const groupedTreatments = computed(() => {
   const groups: Record<TreatmentStatus, Treatment[]> = {
     planned: [],
-    performed: [],
-    preexisting: []
+    existing: []
   }
   for (const treatment of props.treatments) {
     groups[treatment.status]?.push(treatment)
@@ -62,9 +61,8 @@ function getTreatmentLabel(type: string): string {
 
 function _getStatusColor(status: TreatmentStatus): string {
   const colorMap: Record<TreatmentStatus, string> = {
-    preexisting: 'neutral',
-    planned: 'warning',
-    performed: 'success'
+    existing: 'neutral',
+    planned: 'warning'
   }
   return colorMap[status] || 'neutral'
 }
@@ -153,20 +151,20 @@ function handleEditClick(event: Event, treatment: Treatment) {
         </div>
       </div>
 
-      <!-- Performed treatments -->
+      <!-- Existing treatments -->
       <div
-        v-if="groupedTreatments.performed.length > 0"
+        v-if="groupedTreatments.existing.length > 0"
         class="treatment-group"
       >
-        <div class="group-header group-performed">
+        <div class="group-header group-existing">
           <UIcon
             name="i-lucide-check-circle"
             class="w-3 h-3"
           />
-          <span>{{ t('odontogram.status.performed') }}</span>
+          <span>{{ t('odontogram.status.existing') }}</span>
         </div>
         <div
-          v-for="treatment in groupedTreatments.performed"
+          v-for="treatment in groupedTreatments.existing"
           :key="treatment.id"
           class="treatment-item"
           @click="handleEditClick($event, treatment)"
@@ -191,42 +189,6 @@ function handleEditClick(event: Event, treatment: Treatment) {
             class="treatment-date"
           >
             {{ formatDate(treatment.performed_at) }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Preexisting treatments -->
-      <div
-        v-if="groupedTreatments.preexisting.length > 0"
-        class="treatment-group"
-      >
-        <div class="group-header group-preexisting">
-          <UIcon
-            name="i-lucide-history"
-            class="w-3 h-3"
-          />
-          <span>{{ t('odontogram.status.preexisting') }}</span>
-        </div>
-        <div
-          v-for="treatment in groupedTreatments.preexisting"
-          :key="treatment.id"
-          class="treatment-item treatment-preexisting"
-          @click="handleEditClick($event, treatment)"
-        >
-          <div class="treatment-main">
-            <span
-              class="treatment-dot"
-              :style="{ backgroundColor: TREATMENT_COLORS[treatment.treatment_type] || '#9CA3AF' }"
-            />
-            <span class="treatment-name">{{ getTreatmentLabel(treatment.treatment_type) }}</span>
-            <UBadge
-              v-if="treatment.surfaces?.length"
-              color="neutral"
-              variant="subtle"
-              size="xs"
-            >
-              {{ treatment.surfaces.join('-') }}
-            </UBadge>
           </div>
         </div>
       </div>
@@ -331,11 +293,7 @@ function handleEditClick(event: Event, treatment: Treatment) {
   color: #D97706;
 }
 
-.group-performed {
-  color: #059669;
-}
-
-.group-preexisting {
+.group-existing {
   color: #6B7280;
 }
 
@@ -356,10 +314,6 @@ function handleEditClick(event: Event, treatment: Treatment) {
 
 :root.dark .treatment-item:hover {
   background-color: #374151;
-}
-
-.treatment-item.treatment-preexisting {
-  opacity: 0.7;
 }
 
 .treatment-main {

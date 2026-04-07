@@ -2,7 +2,7 @@
 import type { OdontogramHistoryEntry, Surface, Treatment, TreatmentStatus, TreatmentType } from '~/types'
 import { DECIDUOUS_TEETH, PERMANENT_TEETH } from '~/composables/useOdontogram'
 import { isSurfaceTreatment } from './TreatmentIcons'
-import { TREATMENT_COLORS, type PositionAction } from '~/config/odontogramConstants'
+import type { PositionAction } from '~/config/odontogramConstants'
 
 export type OdontogramMode = 'full' | 'view-only' | 'planning'
 
@@ -43,7 +43,6 @@ const dentitionMode = ref<'permanent' | 'deciduous'>('permanent')
 const selectedTooth = ref<number | null>(null)
 const _selectedSurface = ref<Surface | null>(null)
 const showSurfaceSelector = ref(false)
-const showHistory = ref(false)
 const showContextMenu = ref(false)
 const contextMenuTooth = ref<number | null>(null)
 // Always show dual view (lateral + occlusal)
@@ -53,7 +52,7 @@ const historyLoading = ref(false)
 
 // Click-to-apply mode state
 const selectedTreatmentType = ref<TreatmentType | null>(null)
-const selectedTreatmentStatus = ref<TreatmentStatus>('performed')
+const selectedTreatmentStatus = ref<TreatmentStatus>('existing')
 const hoveredTooth = ref<number | null>(null)
 
 // Position action mode (rotate/displace)
@@ -152,17 +151,13 @@ function handleKeydown(e: KeyboardEvent) {
     return
   }
 
-  // Status shortcuts: P for planned, R for realized, E for existing
+  // Status shortcuts: P for planned, E for existing
   if (e.key === 'p' || e.key === 'P') {
     selectedTreatmentStatus.value = 'planned'
     return
   }
-  if (e.key === 'r' || e.key === 'R') {
-    selectedTreatmentStatus.value = 'performed'
-    return
-  }
   if (e.key === 'e' || e.key === 'E') {
-    selectedTreatmentStatus.value = 'preexisting'
+    selectedTreatmentStatus.value = 'existing'
     return
   }
 
@@ -402,20 +397,6 @@ async function _handleDeleteTreatment(treatment: Treatment) {
   await deleteTreatment(treatment.id)
 }
 
-// Toggle history panel
-async function toggleHistory() {
-  showHistory.value = !showHistory.value
-
-  if (showHistory.value && historyData.value.length === 0) {
-    historyLoading.value = true
-    const response = await fetchPatientHistory(props.patientId)
-    if (response) {
-      historyData.value = response.data
-    }
-    historyLoading.value = false
-  }
-}
-
 // Selected tooth treatments for panel
 const _selectedToothTreatments = computed(() => {
   if (!selectedTooth.value) return []
@@ -551,15 +532,6 @@ async function onHistoryExpanded(expanded: boolean) {
             {{ t('odontogram.dentition.deciduous') }}
           </UButton>
         </UButtonGroup>
-
-        <!-- History toggle -->
-        <UButton
-          icon="i-lucide-history"
-          :color="showHistory ? 'primary' : 'neutral'"
-          variant="ghost"
-          size="sm"
-          @click="toggleHistory"
-        />
       </div>
     </div>
 
@@ -788,18 +760,6 @@ async function onHistoryExpanded(expanded: boolean) {
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- History panel (slide out) -->
-        <div
-          v-if="showHistory"
-          class="w-80 flex-shrink-0"
-        >
-          <OdontogramHistory
-            :history="historyData"
-            :loading="historyLoading"
-            :treatment-colors="TREATMENT_COLORS"
-          />
         </div>
       </div>
 

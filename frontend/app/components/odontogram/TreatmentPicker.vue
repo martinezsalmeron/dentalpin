@@ -21,7 +21,7 @@ const { t } = useI18n()
 
 // Form state
 const selectedType = ref<TreatmentType | null>(null)
-const selectedStatus = ref<TreatmentStatus>('performed')
+const selectedStatus = ref<TreatmentStatus>('existing')
 const selectedSurfaces = ref<Surface[]>([])
 const notes = ref('')
 
@@ -79,9 +79,8 @@ const isSurfaceTreatment = computed(() => {
 
 // Status options
 const statusOptions = [
-  { value: 'performed' as TreatmentStatus, label: t('odontogram.status.performed'), color: 'success', icon: 'i-lucide-check-circle' },
-  { value: 'planned' as TreatmentStatus, label: t('odontogram.status.planned'), color: 'warning', icon: 'i-lucide-clock' },
-  { value: 'preexisting' as TreatmentStatus, label: t('odontogram.status.preexisting'), color: 'neutral', icon: 'i-lucide-history' }
+  { value: 'existing' as TreatmentStatus, label: t('odontogram.status.existing'), color: 'neutral', icon: 'i-lucide-check-circle' },
+  { value: 'planned' as TreatmentStatus, label: t('odontogram.status.planned'), color: 'warning', icon: 'i-lucide-clock' }
 ]
 
 function getTreatmentColor(type: TreatmentType): string {
@@ -125,7 +124,7 @@ function handleSubmit() {
 
 function resetForm() {
   selectedType.value = null
-  selectedStatus.value = 'performed'
+  selectedStatus.value = 'existing'
   selectedSurfaces.value = []
   notes.value = ''
 }

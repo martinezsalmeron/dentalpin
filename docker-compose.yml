@@ -34,6 +34,7 @@ services:
   frontend:
     build:
       context: ./frontend
+      target: builder
       args:
         API_BASE_URL: http://localhost:8000
     environment:
@@ -44,6 +45,10 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
 
 volumes:
   pgdata:

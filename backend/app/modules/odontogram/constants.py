@@ -122,9 +122,8 @@ class ToothCondition(StrEnum):
 class TreatmentStatus(StrEnum):
     """Status of a tooth treatment."""
 
-    PREEXISTING = "preexisting"  # Prior treatment (before first visit)
-    PLANNED = "planned"  # Planned (in budget)
-    PERFORMED = "performed"  # Performed (in this clinic)
+    EXISTING = "existing"  # Existing treatment (current state)
+    PLANNED = "planned"  # Planned (in budget, to be performed)
 
 
 class TreatmentCategory(StrEnum):

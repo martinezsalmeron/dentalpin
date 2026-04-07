@@ -45,8 +45,7 @@ const treatmentsByType = computed(() => {
 const treatmentsByStatus = computed(() => {
   const grouped: Record<TreatmentStatus, number> = {
     planned: 0,
-    performed: 0,
-    preexisting: 0
+    existing: 0
   }
 
   for (const treatment of props.treatments) {
@@ -121,8 +120,7 @@ function getTreatmentLabel(type: string): string {
         :class="{
           active: activeStatusFilter === status,
           planned: status === 'planned',
-          performed: status === 'performed',
-          preexisting: status === 'preexisting'
+          existing: status === 'existing'
         }"
         @click="toggleStatusFilter(status)"
       >
@@ -187,8 +185,8 @@ function getTreatmentLabel(type: string): string {
         <span class="stat-label">{{ t('odontogram.status.planned') }}</span>
       </div>
       <div class="stat">
-        <span class="stat-value">{{ treatmentsByStatus.performed }}</span>
-        <span class="stat-label">{{ t('odontogram.status.performed') }}</span>
+        <span class="stat-value">{{ treatmentsByStatus.existing }}</span>
+        <span class="stat-label">{{ t('odontogram.status.existing') }}</span>
       </div>
     </div>
   </div>
@@ -254,12 +252,7 @@ function getTreatmentLabel(type: string): string {
   color: #DC2626;
 }
 
-.status-badge.active.performed {
-  background: #F0FDF4;
-  color: #16A34A;
-}
-
-.status-badge.active.preexisting {
+.status-badge.active.existing {
   background: #F4F4F5;
   color: #52525B;
 }

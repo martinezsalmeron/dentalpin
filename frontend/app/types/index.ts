@@ -296,7 +296,7 @@ export interface OdontogramHistoryEntry {
 }
 
 // Treatment types (Gesdén style)
-export type TreatmentStatus = 'preexisting' | 'planned' | 'performed'
+export type TreatmentStatus = 'existing' | 'planned'
 export type TreatmentCategory = 'surface' | 'whole_tooth'
 export type TreatmentType
   = | 'caries'

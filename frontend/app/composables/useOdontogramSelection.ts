@@ -22,7 +22,7 @@ export function useOdontogramSelection() {
   const selectedTreatmentType = useState<TreatmentType | null>('odontogram:selectedTreatmentType', () => null)
 
   // Click-to-apply mode: selected status for new treatments
-  const selectedTreatmentStatus = useState<TreatmentStatus>('odontogram:selectedTreatmentStatus', () => 'performed')
+  const selectedTreatmentStatus = useState<TreatmentStatus>('odontogram:selectedTreatmentStatus', () => 'existing')
 
   // Computed: is click-to-apply mode active
   const isClickToApplyMode = computed(() => selectedTreatmentType.value !== null)
@@ -77,7 +77,7 @@ export function useOdontogramSelection() {
     hoveredTooth.value = null
     highlightedTeeth.value = []
     selectedTreatmentType.value = null
-    selectedTreatmentStatus.value = 'performed'
+    selectedTreatmentStatus.value = 'existing'
   }
 
   return {

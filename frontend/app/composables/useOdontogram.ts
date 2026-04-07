@@ -353,7 +353,7 @@ export function useOdontogram() {
     }
   }
 
-  // Mark treatment as performed
+  // Mark treatment as existing (performed)
   async function performTreatment(
     treatmentId: string,
     notes?: string

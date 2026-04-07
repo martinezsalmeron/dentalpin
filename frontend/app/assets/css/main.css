@@ -17,6 +17,32 @@
   --color-green-950: #052E16;
 }
 
+/* Odontogram theming - Light mode */
+:root {
+  --odontogram-outline: #6b668a;
+  --odontogram-outline-light: #8a85a8;
+  --odontogram-fill: #FFFFFF;
+  --odontogram-fill-shade: #F8F8FA;
+  --odontogram-root-fill: #FEFEFD;
+  --odontogram-detail: rgba(107, 102, 138, 0.35);
+  --odontogram-bg: #FAFAFA;
+  --odontogram-gum: #FDA4AF;
+  --odontogram-selected: #3B82F6;
+}
+
+/* Odontogram theming - Dark mode */
+.dark {
+  --odontogram-outline: #9590b3;
+  --odontogram-outline-light: #7a7599;
+  --odontogram-fill: #1E1E24;
+  --odontogram-fill-shade: #2A2A32;
+  --odontogram-root-fill: #252530;
+  --odontogram-detail: rgba(149, 144, 179, 0.3);
+  --odontogram-bg: #0F0F14;
+  --odontogram-gum: #BE6B78;
+  --odontogram-selected: #60A5FA;
+}
+
 /* NProgress customization */
 #nprogress .bar {
   background: #10b981 !important;

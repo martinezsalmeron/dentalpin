@@ -49,7 +49,7 @@ export type SurfaceTreatmentType = typeof SURFACE_TREATMENTS[number]
 export type WholeToothTreatmentType = typeof WHOLE_TOOTH_TREATMENTS[number]
 export type TreatmentType = typeof ALL_TREATMENT_TYPES[number]
 
-export type TreatmentStatus = 'preexisting' | 'planned' | 'performed'
+export type TreatmentStatus = 'existing' | 'planned'
 export type TreatmentCategory = 'surface' | 'whole_tooth'
 
 export type ToothSurface = 'M' | 'D' | 'O' | 'V' | 'L'
@@ -119,7 +119,7 @@ export const STATUS_STYLES: Record<TreatmentStatus, {
   borderWidth: number
   borderDash?: string
 }> = {
-  preexisting: {
+  existing: {
     fill: 'solid',
     opacity: 1.0,
     border: null,
@@ -129,14 +129,8 @@ export const STATUS_STYLES: Record<TreatmentStatus, {
     fill: 'solid',
     opacity: 0.7,
     border: '#EF4444',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderDash: '4,2'
-  },
-  performed: {
-    fill: 'solid',
-    opacity: 1.0,
-    border: '#22C55E',
-    borderWidth: 2.5
   }
 }
 
@@ -146,8 +140,31 @@ export const STATUS_STYLES: Record<TreatmentStatus, {
 
 export type ToothCategory = 'incisor' | 'canine' | 'premolar' | 'molar'
 
+/**
+ * Check if a tooth is deciduous (baby tooth).
+ * Deciduous teeth are in quadrants 5, 6, 7, 8.
+ */
+export function isDeciduousTooth(toothNumber: number): boolean {
+  const quadrant = Math.floor(toothNumber / 10)
+  return quadrant >= 5 && quadrant <= 8
+}
+
+/**
+ * Get the category of a tooth based on its FDI number.
+ * For deciduous teeth (quadrants 5-8), positions 4 and 5 are MOLARS (not premolars).
+ */
 export function getToothCategory(toothNumber: number): ToothCategory {
+  const quadrant = Math.floor(toothNumber / 10)
   const num = toothNumber % 10
+
+  // Deciduous teeth (quadrants 5, 6, 7, 8)
+  if (quadrant >= 5 && quadrant <= 8) {
+    if (num === 1 || num === 2) return 'incisor'
+    if (num === 3) return 'canine'
+    return 'molar' // 4,5 are deciduous MOLARS, not premolars
+  }
+
+  // Permanent teeth (quadrants 1, 2, 3, 4)
   if (num === 1 || num === 2) return 'incisor'
   if (num === 3) return 'canine'
   if (num === 4 || num === 5) return 'premolar'
@@ -206,10 +223,25 @@ export function isPositionAction(action: string): boolean {
 /**
  * Get the i18n key for a tooth name based on its number.
  * Returns the key to use with t() function.
+ * Handles both permanent and deciduous teeth naming.
  */
 export function getToothNameKey(toothNumber: number): string {
   const num = toothNumber % 10
-  const keys: Record<number, string> = {
+
+  // Deciduous teeth have different naming (no premolars)
+  if (isDeciduousTooth(toothNumber)) {
+    const deciduousKeys: Record<number, string> = {
+      1: 'centralIncisor',
+      2: 'lateralIncisor',
+      3: 'canine',
+      4: 'firstMolar', // Deciduous first molar (not premolar)
+      5: 'secondMolar' // Deciduous second molar (not premolar)
+    }
+    return `odontogram.toothNames.${deciduousKeys[num] || 'unknown'}`
+  }
+
+  // Permanent teeth naming
+  const permanentKeys: Record<number, string> = {
     1: 'centralIncisor',
     2: 'lateralIncisor',
     3: 'canine',
@@ -219,7 +251,7 @@ export function getToothNameKey(toothNumber: number): string {
     7: 'secondMolar',
     8: 'thirdMolar'
   }
-  return `odontogram.toothNames.${keys[num] || 'unknown'}`
+  return `odontogram.toothNames.${permanentKeys[num] || 'unknown'}`
 }
 
 /**
@@ -242,14 +274,14 @@ export function getToothPositionKeys(toothNumber: number): { vertical: string, h
 
 /**
  * Status restrictions by category.
- * Diagnostic and position categories only allow "preexisting" status.
+ * Diagnostic and position categories only allow "existing" status.
  */
 export const CATEGORY_STATUS_RESTRICTIONS: Record<string, TreatmentStatus[]> = {
-  common: ['planned', 'performed', 'preexisting'],
-  restorative: ['planned', 'performed', 'preexisting'],
-  diagnostic: ['preexisting'], // Only preexisting
-  orthodontic: ['planned', 'performed', 'preexisting'],
-  position: ['preexisting'] // Only preexisting
+  common: ['existing', 'planned'],
+  restorative: ['existing', 'planned'],
+  diagnostic: ['existing'], // Only existing
+  orthodontic: ['existing', 'planned'],
+  position: ['existing'] // Only existing
 }
 
 /**
@@ -272,5 +304,5 @@ export function getAllowedStatusesForTreatment(treatmentType: string): Treatment
   if (categoryKey && categoryKey in CATEGORY_STATUS_RESTRICTIONS) {
     return CATEGORY_STATUS_RESTRICTIONS[categoryKey]
   }
-  return ['planned', 'performed', 'preexisting']
+  return ['existing', 'planned']
 }

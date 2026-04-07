@@ -191,8 +191,8 @@ class TreatmentCreate(BaseModel):
 
     treatment_type: str = Field(..., description="Type of treatment: filling, crown, etc.")
     status: str = Field(
-        default=TreatmentStatus.PERFORMED.value,
-        description="Treatment status: preexisting, planned, performed",
+        default=TreatmentStatus.EXISTING.value,
+        description="Treatment status: existing, planned",
     )
     surfaces: list[str] | None = Field(
         default=None, description="Affected surfaces for surface treatments (e.g., ['M', 'O'])"

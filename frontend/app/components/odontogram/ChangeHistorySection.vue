@@ -105,8 +105,6 @@ function getChangeTypeLabel(changeType: string): string {
 
 function getTreatmentStatusColor(status: string): string {
   switch (status) {
-    case 'performed':
-      return 'text-green-600 dark:text-green-400'
     case 'planned':
       return 'text-amber-600 dark:text-amber-400'
     default:

@@ -82,7 +82,7 @@ const isToothTransparent = computed(() => {
     return true
   }
   return props.treatments?.some(t =>
-    makesToothTransparent(t.treatment_type) && t.status === 'performed'
+    makesToothTransparent(t.treatment_type) && t.status === 'existing'
   ) || false
 })
 

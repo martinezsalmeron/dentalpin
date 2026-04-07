@@ -41,8 +41,6 @@ function getTreatmentColor(treatmentType: string): string {
 
 function getStatusBadgeColor(status: string): 'success' | 'warning' | 'neutral' {
   switch (status) {
-    case 'performed':
-      return 'success'
     case 'planned':
       return 'warning'
     default:

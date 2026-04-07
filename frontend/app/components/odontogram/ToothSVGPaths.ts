@@ -14,7 +14,8 @@ import {
   isDeciduousTooth as isDeciduousToothFn,
   isUpperTooth as isUpperToothFn,
   SURFACE_TREATMENTS,
-  WHOLE_TOOTH_TREATMENTS
+  WHOLE_TOOTH_TREATMENTS,
+  STATUS_STYLES as STATUS_STYLES_CONFIG
 } from '~/config/odontogramConstants'
 
 // Re-export helpers
@@ -406,34 +407,18 @@ export const TREATMENT_OVERLAYS = {
 }
 
 // ============================================================================
-// STATUS STYLES
+// STATUS STYLES (re-exported from odontogramConstants for backwards compatibility)
 // ============================================================================
 
-export const STATUS_STYLES: Record<string, { opacity: number, border: string, borderWidth: number, borderDash?: string }> = {
-  completed: {
-    opacity: 1,
-    border: 'none',
-    borderWidth: 0
-  },
-  performed: {
-    opacity: 1,
-    border: 'none',
-    borderWidth: 0
-  },
-  planned: {
-    opacity: 0.7,
-    border: '#EF4444',
-    borderWidth: 2,
-    borderDash: '4,2'
-  },
-  in_progress: {
-    opacity: 0.85,
-    border: '#F59E0B',
-    borderWidth: 1.5
-  },
-  preexisting: {
-    opacity: 0.9,
-    border: '#6B7280',
-    borderWidth: 1
-  }
-}
+// Convert from odontogramConstants format to local format
+export const STATUS_STYLES: Record<string, { opacity: number, border: string, borderWidth: number, borderDash?: string }> = Object.fromEntries(
+  Object.entries(STATUS_STYLES_CONFIG).map(([key, value]) => [
+    key,
+    {
+      opacity: value.opacity,
+      border: value.border || 'none',
+      borderWidth: value.borderWidth,
+      ...(value.borderDash ? { borderDash: value.borderDash } : {})
+    }
+  ])
+)

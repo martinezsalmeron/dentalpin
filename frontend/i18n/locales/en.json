@@ -124,9 +124,8 @@
       "print": "Print"
     },
     "status": {
-      "preexisting": "Preexisting",
-      "planned": "Planned",
-      "performed": "Performed"
+      "existing": "Existing",
+      "planned": "Planned"
     },
     "treatments": {
       "title": "Treatments",
@@ -169,9 +168,8 @@
       "treatmentPerformed": "Treatment marked as performed",
       "treatmentDeleted": "Treatment deleted",
       "status": {
-        "preexisting": "Preexisting",
-        "planned": "Planned",
-        "performed": "Performed"
+        "existing": "Existing",
+        "planned": "Planned"
       }
     },
     "position": {

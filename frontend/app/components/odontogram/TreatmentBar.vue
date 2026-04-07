@@ -33,9 +33,8 @@ const activeCategory = ref('common')
 
 // All status options
 const allStatusOptions: Array<{ value: TreatmentStatus, labelKey: string, color: string }> = [
-  { value: 'planned', labelKey: 'odontogram.status.planned', color: 'red' },
-  { value: 'performed', labelKey: 'odontogram.status.performed', color: 'green' },
-  { value: 'preexisting', labelKey: 'odontogram.status.preexisting', color: 'gray' }
+  { value: 'existing', labelKey: 'odontogram.status.existing', color: 'gray' },
+  { value: 'planned', labelKey: 'odontogram.status.planned', color: 'red' }
 ]
 
 // Filtered status options based on selected treatment
@@ -60,7 +59,7 @@ function selectTreatment(treatment: string) {
   // Check allowed statuses and auto-set if restricted
   const allowedStatuses = getAllowedStatusesForTreatment(treatment)
   if (allowedStatuses.length === 1 && !allowedStatuses.includes(props.selectedStatus)) {
-    // Auto-select the only allowed status (e.g., preexisting for diagnostic)
+    // Auto-select the only allowed status (e.g., existing for diagnostic)
     emit('update:selectedStatus', allowedStatuses[0])
   } else if (!allowedStatuses.includes(props.selectedStatus)) {
     // Current status not allowed, switch to first allowed

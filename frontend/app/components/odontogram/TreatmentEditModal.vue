@@ -17,7 +17,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 // Local state
-const status = ref<TreatmentStatus>('performed')
+const status = ref<TreatmentStatus>('existing')
 const selectedSurfaces = ref<Surface[]>([])
 const notes = ref('')
 
@@ -53,9 +53,8 @@ const treatmentColor = computed(() => {
 
 // All status options
 const allStatusOptions = [
-  { value: 'preexisting' as TreatmentStatus, label: () => t('odontogram.status.preexisting'), color: 'neutral' },
-  { value: 'planned' as TreatmentStatus, label: () => t('odontogram.status.planned'), color: 'warning' },
-  { value: 'performed' as TreatmentStatus, label: () => t('odontogram.status.performed'), color: 'success' }
+  { value: 'existing' as TreatmentStatus, label: () => t('odontogram.status.existing'), color: 'neutral' },
+  { value: 'planned' as TreatmentStatus, label: () => t('odontogram.status.planned'), color: 'warning' }
 ]
 
 // Status options filtered by treatment type
@@ -134,7 +133,7 @@ function handleClose() {
               <span class="font-semibold text-gray-900 dark:text-white">{{ treatmentLabel }}</span>
               <UBadge
                 v-if="treatment"
-                :color="status === 'performed' ? 'success' : status === 'planned' ? 'warning' : 'neutral'"
+                :color="status === 'planned' ? 'warning' : 'neutral'"
                 variant="subtle"
                 size="xs"
               >

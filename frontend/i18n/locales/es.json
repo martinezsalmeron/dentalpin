@@ -124,9 +124,8 @@
       "print": "Imprimir"
     },
     "status": {
-      "preexisting": "Preexistente",
-      "planned": "Planificado",
-      "performed": "Realizado"
+      "existing": "Existente",
+      "planned": "Planificado"
     },
     "treatments": {
       "title": "Tratamientos",
@@ -169,9 +168,8 @@
       "treatmentPerformed": "Tratamiento marcado como realizado",
       "treatmentDeleted": "Tratamiento eliminado",
       "status": {
-        "preexisting": "Preexistente",
-        "planned": "Planificado",
-        "performed": "Realizado"
+        "existing": "Existente",
+        "planned": "Planificado"
       }
     },
     "position": {

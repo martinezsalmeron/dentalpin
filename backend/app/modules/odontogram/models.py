@@ -56,7 +56,7 @@ class ToothRecord(Base, TimestampMixin):
 class ToothTreatment(Base, TimestampMixin):
     """Individual treatment record for a tooth.
 
-    Stores treatments with their status (preexisting/planned/performed)
+    Stores treatments with their status (existing/planned)
     for tracking treatment history and integration with budgets.
     """
 
@@ -76,9 +76,7 @@ class ToothTreatment(Base, TimestampMixin):
     surfaces: Mapped[list | None] = mapped_column(JSONB)  # ["M", "O"] for MO filling
 
     # Status (key concept for Gesdén style)
-    status: Mapped[str] = mapped_column(
-        String(20), default="performed"
-    )  # preexisting, planned, performed
+    status: Mapped[str] = mapped_column(String(20), default="existing")  # existing, planned
 
     # Audit timestamps
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

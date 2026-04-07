@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Surface, TreatmentStatus, TreatmentType } from '~/types'
-import { getOcclusalPath, getLateralPath, isUpperTooth, TREATMENT_COLORS } from './ToothSVGPaths'
+import { getOcclusalPath, getLateralPath, isUpperTooth, getToothTransform, TREATMENT_COLORS } from './ToothSVGPaths'
 import { getToothNameKey, getToothPositionKeys } from '~/config/odontogramConstants'
 
 const props = defineProps<{
@@ -27,11 +27,27 @@ const allSurfaces: Surface[] = ['M', 'D', 'O', 'V', 'L']
 // Get paths for the tooth
 const occlusalPaths = computed(() => getOcclusalPath(props.toothNumber))
 const lateralPaths = computed(() => getLateralPath(props.toothNumber))
-const isUpper = computed(() => isUpperTooth(props.toothNumber))
+const _isUpper = computed(() => isUpperTooth(props.toothNumber))
+const toothTransform = computed(() => getToothTransform(props.toothNumber))
 const toothName = computed(() => {
   const nameKey = getToothNameKey(props.toothNumber)
   const positionKeys = getToothPositionKeys(props.toothNumber)
   return `${t(nameKey)} ${t(positionKeys.vertical)} ${t(positionKeys.horizontal)}`
+})
+
+// Lateral view dimensions from viewBox
+const lateralViewBox = computed(() => lateralPaths.value.viewBox)
+const lateralDimensions = computed(() => {
+  const vb = lateralViewBox.value.split(' ').map(Number)
+  const vbWidth = vb[2] || 60
+  const vbHeight = vb[3] || 100
+  const aspectRatio = vbWidth / vbHeight
+
+  // Keep display width at 160px for the popup
+  const displayWidth = 160
+  const displayHeight = Math.round(displayWidth / aspectRatio)
+
+  return { displayWidth, displayHeight }
 })
 
 // Treatment color
@@ -60,7 +76,7 @@ function getSurfaceFill(surface: Surface): string {
     }
     return treatmentColor.value
   }
-  return '#FFFFFF'
+  return 'var(--odontogram-fill, #FFFFFF)'
 }
 
 // Get surface opacity
@@ -157,9 +173,23 @@ watch(() => props.open, (isOpen) => {
               <!-- Outline -->
               <path
                 :d="occlusalPaths.outline"
-                fill="#F8FAFC"
-                stroke="#94A3B8"
-                stroke-width="1"
+                fill="var(--odontogram-fill-shade)"
+                stroke="var(--odontogram-outline)"
+                stroke-width="1.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+
+              <!-- Highlight details (fissures) -->
+              <path
+                v-for="(highlightPath, idx) in occlusalPaths.highlight"
+                :key="`occlusal-highlight-${idx}`"
+                :d="highlightPath"
+                fill="none"
+                stroke="var(--odontogram-detail)"
+                stroke-width="0.75"
+                stroke-linecap="round"
+                pointer-events="none"
               />
 
               <!-- Surfaces (clickable) -->
@@ -169,8 +199,10 @@ watch(() => props.open, (isOpen) => {
                 :d="path"
                 :fill="getSurfaceFill(surface as Surface)"
                 :opacity="getSurfaceOpacity(surface as Surface)"
-                :stroke="isSurfaceSelected(surface as Surface) ? treatmentColor : '#CBD5E1'"
+                :stroke="isSurfaceSelected(surface as Surface) ? treatmentColor : 'var(--odontogram-outline-light)'"
                 :stroke-width="isSurfaceSelected(surface as Surface) ? 2 : 0.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
                 class="surface-path"
                 @click="toggleSurface(surface as Surface)"
               />
@@ -215,46 +247,63 @@ watch(() => props.open, (isOpen) => {
               {{ t('odontogram.views.lateral') }}
             </div>
             <svg
-              width="160"
-              height="200"
-              viewBox="0 0 50 80"
+              :width="lateralDimensions.displayWidth"
+              :height="lateralDimensions.displayHeight"
+              :viewBox="lateralViewBox"
               class="tooth-svg lateral"
-              :style="{ transform: isUpper ? 'scaleY(-1)' : 'none' }"
+              :style="{ transform: toothTransform, transformOrigin: 'center center' }"
             >
               <!-- Gum line -->
               <path
                 :d="lateralPaths.gumLine"
                 fill="none"
-                stroke="#FDA4AF"
-                stroke-width="2"
+                stroke="var(--odontogram-gum)"
+                stroke-width="1.5"
               />
 
               <!-- Roots -->
-              <template v-if="'root' in lateralPaths">
+              <template v-if="'root' in lateralPaths && lateralPaths.root">
                 <path
                   :d="lateralPaths.root"
-                  fill="#FEF3C7"
-                  stroke="#D4A574"
-                  stroke-width="0.75"
+                  fill="var(--odontogram-root-fill)"
+                  stroke="var(--odontogram-outline)"
+                  stroke-width="1.25"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
                 />
               </template>
-              <template v-else-if="'roots' in lateralPaths">
+              <template v-else-if="'roots' in lateralPaths && lateralPaths.roots">
                 <path
                   v-for="(rootPath, idx) in lateralPaths.roots"
                   :key="idx"
                   :d="rootPath"
-                  fill="#FEF3C7"
-                  stroke="#D4A574"
-                  stroke-width="0.75"
+                  fill="var(--odontogram-root-fill)"
+                  stroke="var(--odontogram-outline)"
+                  stroke-width="1.25"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
                 />
               </template>
 
               <!-- Crown -->
               <path
                 :d="lateralPaths.crown"
-                fill="#F8FAFC"
-                stroke="#94A3B8"
-                stroke-width="1"
+                fill="var(--odontogram-fill)"
+                stroke="var(--odontogram-outline)"
+                stroke-width="1.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+
+              <!-- Highlight details -->
+              <path
+                v-for="(highlightPath, idx) in lateralPaths.highlight"
+                :key="`highlight-${idx}`"
+                :d="highlightPath"
+                fill="none"
+                stroke="var(--odontogram-detail)"
+                stroke-width="0.75"
+                stroke-linecap="round"
               />
             </svg>
           </div>
@@ -354,19 +403,15 @@ watch(() => props.open, (isOpen) => {
 .view-label {
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .tooth-svg {
-  background: #FAFAFA;
+  background: var(--odontogram-bg);
   border-radius: 12px;
   padding: 8px;
-}
-
-:root.dark .tooth-svg {
-  background: #27272A;
 }
 
 .tooth-svg.lateral {

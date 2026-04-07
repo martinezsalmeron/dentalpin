@@ -22,8 +22,7 @@ const { t } = useI18n()
 const groupedTreatments = computed(() => {
   const groups: Record<TreatmentStatus, Treatment[]> = {
     planned: [],
-    performed: [],
-    preexisting: []
+    existing: []
   }
   for (const treatment of props.treatments) {
     groups[treatment.status]?.push(treatment)
@@ -41,9 +40,8 @@ function getStatusLabel(status: TreatmentStatus): string {
 
 function _getStatusColor(status: TreatmentStatus): string {
   const colorMap: Record<TreatmentStatus, string> = {
-    preexisting: 'neutral',
-    planned: 'warning',
-    performed: 'success'
+    existing: 'neutral',
+    planned: 'warning'
   }
   return colorMap[status] || 'neutral'
 }
@@ -160,20 +158,20 @@ function formatDate(dateString: string): string {
         </div>
       </div>
 
-      <!-- Performed treatments -->
-      <div v-if="groupedTreatments.performed.length > 0">
-        <div class="text-xs font-medium text-green-600 mb-2 flex items-center gap-1">
+      <!-- Existing treatments -->
+      <div v-if="groupedTreatments.existing.length > 0">
+        <div class="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1">
           <UIcon
             name="i-lucide-check-circle"
             class="w-3 h-3"
           />
-          {{ getStatusLabel('performed') }}
+          {{ getStatusLabel('existing') }}
         </div>
         <div class="space-y-2">
           <div
-            v-for="treatment in groupedTreatments.performed"
+            v-for="treatment in groupedTreatments.existing"
             :key="treatment.id"
-            class="treatment-item treatment-performed"
+            class="treatment-item treatment-existing"
             @click="emit('selectTreatment', treatment)"
           >
             <div class="flex items-center gap-2">
@@ -194,47 +192,6 @@ function formatDate(dateString: string): string {
             <div class="text-xs text-gray-500 mt-1">
               {{ formatDate(treatment.performed_at || treatment.recorded_at) }}
               <span v-if="treatment.performed_by_name"> - {{ treatment.performed_by_name }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Preexisting treatments -->
-      <div v-if="groupedTreatments.preexisting.length > 0">
-        <div class="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
-          <UIcon
-            name="i-lucide-history"
-            class="w-3 h-3"
-          />
-          {{ getStatusLabel('preexisting') }}
-        </div>
-        <div class="space-y-2">
-          <div
-            v-for="treatment in groupedTreatments.preexisting"
-            :key="treatment.id"
-            class="treatment-item treatment-preexisting"
-            @click="emit('selectTreatment', treatment)"
-          >
-            <div class="flex items-center gap-2">
-              <div
-                class="w-3 h-3 rounded-full opacity-60"
-                :style="{ backgroundColor: getTreatmentColor(treatment.treatment_type) }"
-              />
-              <span class="text-sm text-gray-600">{{ getTreatmentLabel(treatment.treatment_type) }}</span>
-              <UBadge
-                v-if="treatment.surfaces?.length"
-                color="neutral"
-                variant="subtle"
-                size="xs"
-              >
-                {{ treatment.surfaces.join('-') }}
-              </UBadge>
-            </div>
-            <div
-              v-if="treatment.notes"
-              class="text-xs text-gray-400 mt-1 truncate"
-            >
-              {{ treatment.notes }}
             </div>
           </div>
         </div>
@@ -276,14 +233,8 @@ function formatDate(dateString: string): string {
   padding-left: 0.75rem;
 }
 
-.treatment-performed {
-  border-left: 2px solid #4ade80;
+.treatment-existing {
+  border-left: 2px solid #6b7280;
   padding-left: 0.75rem;
-}
-
-.treatment-preexisting {
-  border-left: 2px solid #d1d5db;
-  padding-left: 0.75rem;
-  opacity: 0.8;
 }
 </style>

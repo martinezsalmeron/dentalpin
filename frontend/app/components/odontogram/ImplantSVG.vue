@@ -51,7 +51,7 @@ const implantTransform = computed(() => {
 })
 
 // Get status styling
-const statusStyle = computed(() => STATUS_STYLES[props.status] || STATUS_STYLES.performed)
+const statusStyle = computed(() => STATUS_STYLES[props.status] || STATUS_STYLES.existing)
 </script>
 
 <template>

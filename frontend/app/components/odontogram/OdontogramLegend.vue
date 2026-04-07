@@ -17,9 +17,8 @@ const treatmentTypes: TreatmentType[] = [
 
 // Status types
 const statusTypes: Array<{ key: TreatmentStatus, borderStyle: string }> = [
-  { key: 'preexisting', borderStyle: 'none' },
-  { key: 'planned', borderStyle: 'dashed' },
-  { key: 'performed', borderStyle: 'solid' }
+  { key: 'existing', borderStyle: 'none' },
+  { key: 'planned', borderStyle: 'dashed' }
 ]
 
 function getTreatmentLabel(treatment: TreatmentType): string {
@@ -70,7 +69,7 @@ function getStatusLabel(status: TreatmentStatus): string {
             class="w-4 h-4 rounded"
             :style="{
               backgroundColor: '#E5E7EB',
-              border: status.key === 'preexisting'
+              border: status.key === 'existing'
                 ? 'none'
                 : `2px ${status.borderStyle} ${STATUS_STYLES[status.key].border}`
             }"
