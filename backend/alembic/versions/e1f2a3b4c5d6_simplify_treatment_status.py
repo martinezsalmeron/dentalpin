@@ -30,7 +30,4 @@ def downgrade() -> None:
     # Note: We cannot perfectly reverse this migration since we lose
     # the distinction between preexisting and performed.
     # All 'existing' records will be converted back to 'performed'.
-    op.execute(
-        "UPDATE tooth_treatments SET status = 'performed' "
-        "WHERE status = 'existing'"
-    )
+    op.execute("UPDATE tooth_treatments SET status = 'performed' WHERE status = 'existing'")

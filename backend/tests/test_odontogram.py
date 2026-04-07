@@ -487,7 +487,7 @@ async def test_create_treatment(
         headers=auth_headers,
         json={
             "treatment_type": "filling",
-            "status": "performed",
+            "status": "existing",
             "surfaces": ["M", "O"],
             "notes": "Composite filling MO",
         },
@@ -497,7 +497,7 @@ async def test_create_treatment(
     assert data["tooth_number"] == 11
     assert data["treatment_type"] == "filling"
     assert data["treatment_category"] == "surface"
-    assert data["status"] == "performed"
+    assert data["status"] == "existing"
     assert data["surfaces"] == ["M", "O"]
     assert data["notes"] == "Composite filling MO"
     assert data["source_module"] == "odontogram"
@@ -532,10 +532,10 @@ async def test_create_planned_treatment(
 
 
 @pytest.mark.asyncio
-async def test_create_preexisting_treatment(
+async def test_create_existing_treatment(
     client: AsyncClient, auth_headers: dict[str, str], odontogram_setup: dict
 ) -> None:
-    """Test creating a preexisting treatment (prior history)."""
+    """Test creating an existing treatment (prior history or current state)."""
     patient_id = odontogram_setup["patient_id"]
 
     response = await client.post(
@@ -543,14 +543,14 @@ async def test_create_preexisting_treatment(
         headers=auth_headers,
         json={
             "treatment_type": "root_canal",
-            "status": "preexisting",
+            "status": "existing",
             "notes": "Prior root canal from external clinic",
         },
     )
     assert response.status_code == 201
     data = response.json()["data"]
-    assert data["status"] == "preexisting"
-    assert data["performed_at"] is None
+    assert data["status"] == "existing"
+    assert data["notes"] == "Prior root canal from external clinic"
 
 
 @pytest.mark.asyncio
@@ -562,9 +562,9 @@ async def test_list_patient_treatments(
 
     # Create multiple treatments
     for tooth, treatment_type, status in [
-        (11, "filling", "performed"),
+        (11, "filling", "existing"),
         (12, "crown", "planned"),
-        (21, "root_canal", "preexisting"),
+        (21, "root_canal", "existing"),
     ]:
         await client.post(
             f"/api/v1/odontogram/patients/{patient_id}/teeth/{tooth}/treatments",
@@ -603,7 +603,7 @@ async def test_list_treatments_filter_by_status(
     await client.post(
         f"/api/v1/odontogram/patients/{patient_id}/teeth/16/treatments",
         headers=auth_headers,
-        json={"treatment_type": "filling", "status": "performed"},
+        json={"treatment_type": "filling", "status": "existing"},
     )
 
     # Filter by planned status
@@ -620,7 +620,7 @@ async def test_list_treatments_filter_by_status(
 async def test_perform_treatment(
     client: AsyncClient, auth_headers: dict[str, str], odontogram_setup: dict
 ) -> None:
-    """Test marking a planned treatment as performed."""
+    """Test marking a planned treatment as existing (performed)."""
     patient_id = odontogram_setup["patient_id"]
 
     # Create planned treatment
@@ -631,7 +631,7 @@ async def test_perform_treatment(
     )
     treatment_id = create_response.json()["data"]["id"]
 
-    # Mark as performed
+    # Mark as existing (performed)
     response = await client.patch(
         f"/api/v1/odontogram/treatments/{treatment_id}/perform",
         headers=auth_headers,
@@ -639,7 +639,7 @@ async def test_perform_treatment(
     )
     assert response.status_code == 200
     data = response.json()["data"]
-    assert data["status"] == "performed"
+    assert data["status"] == "existing"
     assert data["performed_at"] is not None
     assert data["performed_by"] is not None
     assert data["notes"] == "Surgery completed without complications"
@@ -656,7 +656,7 @@ async def test_update_treatment(
     create_response = await client.post(
         f"/api/v1/odontogram/patients/{patient_id}/teeth/27/treatments",
         headers=auth_headers,
-        json={"treatment_type": "filling", "status": "performed", "surfaces": ["O"]},
+        json={"treatment_type": "filling", "status": "existing", "surfaces": ["O"]},
     )
     treatment_id = create_response.json()["data"]["id"]
 
@@ -683,7 +683,7 @@ async def test_delete_treatment(
     create_response = await client.post(
         f"/api/v1/odontogram/patients/{patient_id}/teeth/28/treatments",
         headers=auth_headers,
-        json={"treatment_type": "sealant", "status": "performed"},
+        json={"treatment_type": "sealant", "status": "existing"},
     )
     treatment_id = create_response.json()["data"]["id"]
 
@@ -720,12 +720,12 @@ async def test_get_tooth_with_treatments(
     await client.post(
         f"/api/v1/odontogram/patients/{patient_id}/teeth/31/treatments",
         headers=auth_headers,
-        json={"treatment_type": "root_canal", "status": "preexisting"},
+        json={"treatment_type": "root_canal", "status": "existing"},
     )
     await client.post(
         f"/api/v1/odontogram/patients/{patient_id}/teeth/31/treatments",
         headers=auth_headers,
-        json={"treatment_type": "post", "status": "performed"},
+        json={"treatment_type": "post", "status": "existing"},
     )
     await client.post(
         f"/api/v1/odontogram/patients/{patient_id}/teeth/31/treatments",
