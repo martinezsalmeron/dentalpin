@@ -1,9 +1,145 @@
 /**
  * Odontogram Constants - Single Source of Truth
  *
- * This file defines all treatment types and their categorization.
+ * This file defines all treatment types, visualization rules, and their categorization.
  * All odontogram components should import from here instead of defining locally.
  */
+
+// ============================================================================
+// Visualization Rules
+// ============================================================================
+
+export type VisualizationRule = 'pulp_fill' | 'occlusal_surface' | 'lateral_icon' | 'pattern_fill'
+
+/**
+ * Visualization rules for rendering treatments:
+ * - pulp_fill: Fill pulp chamber in lateral view
+ * - occlusal_surface: Surface fill/dot in cenital view
+ * - lateral_icon: SVG icon overlay on lateral view
+ * - pattern_fill: Pattern fill on cenital view
+ */
+export const VISUALIZATION_RULES: Record<VisualizationRule, string[]> = {
+  // Rule 1: Pulp fill (lateral view)
+  pulp_fill: [
+    'pulpitis',
+    'root_canal_full',
+    'root_canal_two_thirds',
+    'root_canal_half',
+    'root_canal_overfill' // Also uses lateral_icon
+  ],
+  // Rule 2: Occlusal surface (cenital view)
+  occlusal_surface: [
+    'caries',
+    'incipient_caries',
+    'pigmentation',
+    'filling_composite',
+    'filling_amalgam',
+    'filling_temporary',
+    'sealant',
+    'veneer'
+  ],
+  // Rule 3: Lateral icon (lateral view)
+  lateral_icon: [
+    'fracture',
+    'missing',
+    'periapical_small',
+    'periapical_medium',
+    'periapical_large',
+    'rotated',
+    'displaced',
+    'implant',
+    'apicoectomy',
+    'extraction',
+    'post',
+    'root_canal_overfill', // Also uses pulp_fill
+    'bracket',
+    'tube',
+    'band',
+    'attachment',
+    'retainer'
+  ],
+  // Rule 4: Pattern fill (cenital view)
+  pattern_fill: [
+    'unerupted',
+    'inlay',
+    'pontic',
+    'bridge_abutment',
+    'overlay',
+    'crown'
+  ]
+}
+
+// ============================================================================
+// Occlusal Surface Visualization Config
+// ============================================================================
+
+export type OcclusalVisualizationType = 'solid_fill' | 'dot' | 'outline'
+
+export interface OcclusalVisualizationConfig {
+  type: OcclusalVisualizationType
+  color: string
+  darkColor?: string
+}
+
+/**
+ * How each treatment renders on occlusal/cenital view
+ */
+export const OCCLUSAL_VISUALIZATION: Record<string, OcclusalVisualizationConfig> = {
+  caries: { type: 'solid_fill', color: '#EF4444' },
+  incipient_caries: { type: 'dot', color: '#F97316' },
+  pigmentation: { type: 'dot', color: '#92400E', darkColor: '#D97706' },
+  filling_composite: { type: 'solid_fill', color: '#3B82F6' },
+  filling_amalgam: { type: 'solid_fill', color: '#6B7280', darkColor: '#9CA3AF' },
+  filling_temporary: { type: 'solid_fill', color: '#22C55E' },
+  sealant: { type: 'outline', color: '#7DD3FC' },
+  veneer: { type: 'solid_fill', color: '#FEF3C7', darkColor: '#FDE68A' } // V surface only
+}
+
+// ============================================================================
+// Pattern Definitions for Rule 4
+// ============================================================================
+
+export type PatternType = 'diagonal_stripes' | 'dots' | 'grid' | 'vertical_stripes' | 'horizontal_stripes'
+
+export interface PatternConfig {
+  type: PatternType
+  color: string
+  darkColor?: string
+}
+
+/**
+ * Pattern configurations for Rule 4 treatments
+ */
+export const PATTERN_CONFIG: Record<string, PatternConfig> = {
+  unerupted: { type: 'diagonal_stripes', color: '#9CA3AF' },
+  inlay: { type: 'dots', color: '#3B82F6' },
+  pontic: { type: 'grid', color: '#3B82F6' },
+  bridge_abutment: { type: 'vertical_stripes', color: '#3B82F6' },
+  overlay: { type: 'horizontal_stripes', color: '#3B82F6' },
+  crown: { type: 'diagonal_stripes', color: '#F59E0B' }
+}
+
+// ============================================================================
+// Pulp Fill Configuration for Rule 1
+// ============================================================================
+
+export type PulpFillLevel = 'full' | 'two_thirds' | 'half'
+
+export interface PulpFillConfig {
+  level: PulpFillLevel
+  color: string
+}
+
+/**
+ * Pulp fill configurations for Rule 1 treatments
+ */
+export const PULP_FILL_CONFIG: Record<string, PulpFillConfig> = {
+  pulpitis: { level: 'full', color: '#EF4444' },
+  root_canal_full: { level: 'full', color: '#3B82F6' },
+  root_canal_two_thirds: { level: 'two_thirds', color: '#3B82F6' },
+  root_canal_half: { level: 'half', color: '#3B82F6' },
+  root_canal_overfill: { level: 'full', color: '#3B82F6' } // Also has lateral icon
+}
 
 // ============================================================================
 // Treatment Type Definitions
@@ -12,28 +148,53 @@
 /**
  * Surface treatments - treatments that affect specific tooth surfaces (M, D, O, V, L)
  */
-export const SURFACE_TREATMENTS = ['filling', 'caries', 'sealant'] as const
+export const SURFACE_TREATMENTS = [
+  'caries',
+  'incipient_caries',
+  'pigmentation',
+  'filling_composite',
+  'filling_amalgam',
+  'filling_temporary',
+  'sealant',
+  'veneer',
+  'inlay',
+  // Legacy
+  'filling'
+] as const
 
 /**
  * Whole tooth treatments - treatments that affect the entire tooth
  */
 export const WHOLE_TOOTH_TREATMENTS = [
-  'crown',
-  'root_canal',
-  'implant',
-  'extraction',
-  'missing',
-  'post',
-  'veneer',
-  'bridge_pontic',
-  'bridge_abutment',
+  'pulpitis',
   'fracture',
+  'missing',
+  'periapical_small',
+  'periapical_medium',
+  'periapical_large',
+  'rotated',
+  'displaced',
+  'unerupted',
+  'overlay',
+  'crown',
+  'pontic',
+  'bridge_abutment',
+  'extraction',
+  'implant',
   'apicoectomy',
-  // Orthodontic treatments
+  'root_canal_full',
+  'root_canal_two_thirds',
+  'root_canal_half',
+  'post',
+  'root_canal_overfill',
   'bracket',
+  'tube',
   'band',
   'attachment',
-  'retainer'
+  'retainer',
+  // Legacy
+  'root_canal',
+  'bridge_pontic'
 ] as const
 
 /**
@@ -55,6 +216,20 @@ export type TreatmentCategory = 'surface' | 'whole_tooth'
 export type ToothSurface = 'M' | 'D' | 'O' | 'V' | 'L'
 
 // ============================================================================
+// Legacy Treatment Mapping
+// ============================================================================
+
+export const LEGACY_TREATMENT_MAPPING: Record<string, string> = {
+  filling: 'filling_composite',
+  root_canal: 'root_canal_full',
+  bridge_pontic: 'pontic'
+}
+
+export function normalizeTreatmentType(treatmentType: string): string {
+  return LEGACY_TREATMENT_MAPPING[treatmentType] || treatmentType
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -62,14 +237,16 @@ export type ToothSurface = 'M' | 'D' | 'O' | 'V' | 'L'
  * Check if a treatment type requires surface selection
  */
 export function isSurfaceTreatment(treatmentType: string): boolean {
-  return (SURFACE_TREATMENTS as readonly string[]).includes(treatmentType)
+  const normalized = normalizeTreatmentType(treatmentType)
+  return (SURFACE_TREATMENTS as readonly string[]).includes(normalized)
 }
 
 /**
  * Check if a treatment type affects the whole tooth
  */
 export function isWholeToothTreatment(treatmentType: string): boolean {
-  return (WHOLE_TOOTH_TREATMENTS as readonly string[]).includes(treatmentType)
+  const normalized = normalizeTreatmentType(treatmentType)
+  return (WHOLE_TOOTH_TREATMENTS as readonly string[]).includes(normalized)
 }
 
 /**
@@ -79,33 +256,100 @@ export function getTreatmentCategory(treatmentType: string): TreatmentCategory {
   return isSurfaceTreatment(treatmentType) ? 'surface' : 'whole_tooth'
 }
 
+/**
+ * Get visualization rules for a treatment type
+ */
+export function getVisualizationRules(treatmentType: string): VisualizationRule[] {
+  const normalized = normalizeTreatmentType(treatmentType)
+  const rules: VisualizationRule[] = []
+  for (const [rule, treatments] of Object.entries(VISUALIZATION_RULES)) {
+    if (treatments.includes(normalized)) {
+      rules.push(rule as VisualizationRule)
+    }
+  }
+  return rules
+}
+
+/**
+ * Check if a treatment uses a specific visualization rule
+ */
+export function hasVisualizationRule(treatmentType: string, rule: VisualizationRule): boolean {
+  const normalized = normalizeTreatmentType(treatmentType)
+  return VISUALIZATION_RULES[rule].includes(normalized)
+}
+
 // ============================================================================
-// Treatment Colors
+// Treatment Colors (with light/dark mode support)
 // ============================================================================
 
-export const TREATMENT_COLORS: Record<string, string> = {
-  caries: '#EF4444',
-  filling: '#3B82F6',
-  sealant: '#06B6D4',
-  crown: '#F59E0B',
-  root_canal: '#8B5CF6',
-  implant: '#10B981',
-  bridge_pontic: '#F97316',
-  bridge_abutment: '#FBBF24',
-  extraction: '#DC2626',
-  missing: '#9CA3AF',
-  fracture: '#BE185D',
-  post: '#7C3AED',
-  veneer: '#EC4899',
-  apicoectomy: '#6366F1',
-  // Orthodontic treatments
-  bracket: '#6366F1', // Indigo
-  band: '#8B5CF6', // Violet
-  attachment: '#EC4899', // Pink
-  retainer: '#14B8A6', // Teal
+export interface TreatmentColorConfig {
+  light: string
+  dark: string
+}
+
+export const TREATMENT_COLORS: Record<string, TreatmentColorConfig> = {
+  // Diagnóstico
+  pulpitis: { light: '#EF4444', dark: '#F87171' },
+  caries: { light: '#EF4444', dark: '#F87171' },
+  incipient_caries: { light: '#F97316', dark: '#FB923C' },
+  pigmentation: { light: '#92400E', dark: '#D97706' },
+  fracture: { light: '#BE185D', dark: '#EC4899' },
+  missing: { light: '#6B7280', dark: '#9CA3AF' },
+  periapical_small: { light: '#EF4444', dark: '#F87171' },
+  periapical_medium: { light: '#DC2626', dark: '#EF4444' },
+  periapical_large: { light: '#B91C1C', dark: '#DC2626' },
+  rotated: { light: '#8B5CF6', dark: '#A78BFA' },
+  displaced: { light: '#F59E0B', dark: '#FBBF24' },
+  unerupted: { light: '#9CA3AF', dark: '#D1D5DB' },
+
+  // Restauradora
+  filling_composite: { light: '#3B82F6', dark: '#60A5FA' },
+  filling_amalgam: { light: '#6B7280', dark: '#9CA3AF' },
+  filling_temporary: { light: '#22C55E', dark: '#4ADE80' },
+  sealant: { light: '#06B6D4', dark: '#22D3EE' },
+  veneer: { light: '#EC4899', dark: '#F472B6' },
+  inlay: { light: '#3B82F6', dark: '#60A5FA' },
+  overlay: { light: '#3B82F6', dark: '#60A5FA' },
+  crown: { light: '#F59E0B', dark: '#FBBF24' },
+  pontic: { light: '#F97316', dark: '#FB923C' },
+  bridge_abutment: { light: '#FBBF24', dark: '#FDE68A' },
+
+  // Cirugía
+  extraction: { light: '#DC2626', dark: '#EF4444' },
+  implant: { light: '#10B981', dark: '#34D399' },
+  apicoectomy: { light: '#6366F1', dark: '#818CF8' },
+
+  // Endodoncia
+  root_canal_full: { light: '#8B5CF6', dark: '#A78BFA' },
+  root_canal_two_thirds: { light: '#8B5CF6', dark: '#A78BFA' },
+  root_canal_half: { light: '#8B5CF6', dark: '#A78BFA' },
+  post: { light: '#7C3AED', dark: '#A855F7' },
+  root_canal_overfill: { light: '#3B82F6', dark: '#60A5FA' },
+
+  // Ortodoncia
+  bracket: { light: '#6366F1', dark: '#818CF8' },
+  tube: { light: '#6366F1', dark: '#818CF8' },
+  band: { light: '#8B5CF6', dark: '#A78BFA' },
+  attachment: { light: '#EC4899', dark: '#F472B6' },
+  retainer: { light: '#14B8A6', dark: '#2DD4BF' },
+
+  // Legacy (redirects)
+  filling: { light: '#3B82F6', dark: '#60A5FA' },
+  root_canal: { light: '#8B5CF6', dark: '#A78BFA' },
+  bridge_pontic: { light: '#F97316', dark: '#FB923C' },
+
   // Position actions
-  rotate: '#8B5CF6', // Violet for rotated
-  displace: '#F59E0B' // Amber for displaced
+  rotate: { light: '#8B5CF6', dark: '#A78BFA' },
+  displace: { light: '#F59E0B', dark: '#FBBF24' }
+}
+
+/**
+ * Get treatment color for current mode
+ */
+export function getTreatmentColor(treatmentType: string, darkMode: boolean = false): string {
+  const normalized = normalizeTreatmentType(treatmentType)
+  const config = TREATMENT_COLORS[normalized] || { light: '#6B7280', dark: '#9CA3AF' }
+  return darkMode ? config.dark : config.light
 }
 
 // ============================================================================
@@ -180,36 +424,82 @@ export function isUpperTooth(toothNumber: number): boolean {
 // Treatment Category Definitions (for TreatmentBar)
 // ============================================================================
 
-export const TREATMENT_CATEGORIES = [
-  {
-    key: 'common',
-    labelKey: 'odontogram.treatments.categories.common',
-    treatments: ['filling', 'crown', 'root_canal', 'extraction', 'implant', 'sealant']
-  },
-  {
-    key: 'restorative',
-    labelKey: 'odontogram.treatments.categories.restorative',
-    treatments: ['veneer', 'post', 'bridge_pontic', 'bridge_abutment']
-  },
-  {
-    key: 'diagnostic',
-    labelKey: 'odontogram.treatments.categories.diagnostic',
-    treatments: ['caries', 'fracture', 'missing', 'apicoectomy']
-  },
-  {
-    key: 'orthodontic',
-    labelKey: 'odontogram.treatments.categories.orthodontic',
-    treatments: ['bracket', 'band', 'attachment', 'retainer']
-  },
-  {
-    key: 'position',
-    labelKey: 'odontogram.treatments.categories.position',
-    treatments: ['rotate', 'displace']
-  }
-] as const
+export type TreatmentClinicalCategory = 'diagnostico' | 'restauradora' | 'cirugia' | 'endodoncia' | 'ortodoncia'
 
-// Position actions (not treatments, but tooth properties)
-export const POSITION_ACTIONS = ['rotate', 'displace'] as const
+export const TREATMENT_CATEGORIES: Array<{
+  key: TreatmentClinicalCategory
+  labelKey: string
+  treatments: string[]
+}> = [
+  {
+    key: 'diagnostico',
+    labelKey: 'odontogram.treatments.categories.diagnostico',
+    treatments: [
+      'pulpitis',
+      'caries',
+      'incipient_caries',
+      'pigmentation',
+      'fracture',
+      'missing',
+      'periapical_small',
+      'periapical_medium',
+      'periapical_large',
+      'rotated',
+      'displaced',
+      'unerupted'
+    ]
+  },
+  {
+    key: 'restauradora',
+    labelKey: 'odontogram.treatments.categories.restauradora',
+    treatments: [
+      'filling_composite',
+      'filling_amalgam',
+      'filling_temporary',
+      'sealant',
+      'veneer',
+      'inlay',
+      'overlay',
+      'crown',
+      'pontic',
+      'bridge_abutment'
+    ]
+  },
+  {
+    key: 'cirugia',
+    labelKey: 'odontogram.treatments.categories.cirugia',
+    treatments: [
+      'extraction',
+      'implant',
+      'apicoectomy'
+    ]
+  },
+  {
+    key: 'endodoncia',
+    labelKey: 'odontogram.treatments.categories.endodoncia',
+    treatments: [
+      'root_canal_full',
+      'root_canal_two_thirds',
+      'root_canal_half',
+      'post',
+      'root_canal_overfill'
+    ]
+  },
+  {
+    key: 'ortodoncia',
+    labelKey: 'odontogram.treatments.categories.ortodoncia',
+    treatments: [
+      'bracket',
+      'tube',
+      'band',
+      'attachment',
+      'retainer'
+    ]
+  }
+]
+
+// Position actions are now part of diagnostico category
+export const POSITION_ACTIONS = ['rotated', 'displaced'] as const
 export type PositionAction = typeof POSITION_ACTIONS[number]
 
 export function isPositionAction(action: string): boolean {
@@ -274,22 +564,23 @@ export function getToothPositionKeys(toothNumber: number): { vertical: string, h
 
 /**
  * Status restrictions by category.
- * Diagnostic and position categories only allow "existing" status.
+ * Diagnostic category only allows "existing" status (current conditions, not planned).
  */
-export const CATEGORY_STATUS_RESTRICTIONS: Record<string, TreatmentStatus[]> = {
-  common: ['existing', 'planned'],
-  restorative: ['existing', 'planned'],
-  diagnostic: ['existing'], // Only existing
-  orthodontic: ['existing', 'planned'],
-  position: ['existing'] // Only existing
+export const CATEGORY_STATUS_RESTRICTIONS: Record<TreatmentClinicalCategory, TreatmentStatus[]> = {
+  diagnostico: ['existing'], // Diagnoses are always existing conditions
+  restauradora: ['existing', 'planned'],
+  cirugia: ['existing', 'planned'],
+  endodoncia: ['existing', 'planned'],
+  ortodoncia: ['existing', 'planned']
 }
 
 /**
  * Get the category key for a treatment type.
  */
-export function getCategoryForTreatment(treatmentType: string): string | null {
+export function getCategoryForTreatment(treatmentType: string): TreatmentClinicalCategory | null {
+  const normalized = normalizeTreatmentType(treatmentType)
   for (const category of TREATMENT_CATEGORIES) {
-    if ((category.treatments as readonly string[]).includes(treatmentType)) {
+    if (category.treatments.includes(normalized)) {
       return category.key
     }
   }

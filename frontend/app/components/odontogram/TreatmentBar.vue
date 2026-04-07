@@ -2,10 +2,10 @@
 import type { TreatmentStatus, TreatmentType } from '~/types'
 import { TREATMENT_ICONS, isSurfaceTreatment } from './TreatmentIcons'
 import {
-  TREATMENT_COLORS,
   TREATMENT_CATEGORIES,
   isPositionAction,
   getAllowedStatusesForTreatment,
+  getTreatmentColor,
   type PositionAction
 } from '~/config/odontogramConstants'
 
@@ -206,7 +206,7 @@ function getTreatmentLabel(treatment: string): string {
       >
         <div
           class="treatment-icon"
-          :style="{ color: TREATMENT_COLORS[treatment] || '#6B7280' }"
+          :style="{ color: getTreatmentColor(treatment) }"
         >
           <svg
             viewBox="0 0 24 24"

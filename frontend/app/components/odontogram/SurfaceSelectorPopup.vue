@@ -29,6 +29,55 @@ const occlusalPaths = computed(() => getOcclusalPath(props.toothNumber))
 const lateralPaths = computed(() => getLateralPath(props.toothNumber))
 const _isUpper = computed(() => isUpperTooth(props.toothNumber))
 const toothTransform = computed(() => getToothTransform(props.toothNumber))
+
+// Determine quadrant for symmetry
+const quadrant = computed(() => Math.floor(props.toothNumber / 10))
+
+// Check if the tooth is on the left side (quadrants 2, 3, 6, 7)
+// For left side teeth, the tooth shape should be mirrored horizontally
+// so that M (mesial) appears on the correct side relative to midline
+const isLeftSide = computed(() => [2, 3, 6, 7].includes(quadrant.value))
+
+// Check if the tooth is on the lower arch (quadrants 3, 4, 7, 8)
+// For lower teeth, the tooth shape should be mirrored vertically
+// so that V (vestibular) appears at the bottom and L (lingual) at the top
+const isLower = computed(() => [3, 4, 7, 8].includes(quadrant.value))
+
+// Build the transform string for the occlusal view based on quadrant
+const occlusalGroupTransform = computed(() => {
+  const transforms: string[] = []
+
+  // Apply horizontal flip for left-side teeth
+  if (isLeftSide.value) {
+    transforms.push('translate(50, 0) scale(-1, 1)')
+  }
+
+  // Apply vertical flip for lower teeth
+  if (isLower.value) {
+    // If already horizontally flipped, we need to adjust
+    if (isLeftSide.value) {
+      // Reset and apply both flips: scale(-1, -1) centered
+      return 'translate(50, 50) scale(-1, -1)'
+    } else {
+      transforms.push('translate(0, 50) scale(1, -1)')
+    }
+  }
+
+  return transforms.join(' ')
+})
+
+// Get correct X position for M label based on quadrant
+// M (mesial) is always toward midline: left side of view for right teeth, right side for left teeth
+const mLabelX = computed(() => isLeftSide.value ? 43 : 4)
+// Get correct X position for D label based on quadrant
+const dLabelX = computed(() => isLeftSide.value ? 4 : 43)
+
+// Get correct Y position for V label based on arch
+// V (vestibular) faces outward: top for upper teeth, bottom for lower teeth
+const vLabelY = computed(() => isLower.value ? 47 : 8)
+// Get correct Y position for L label based on arch
+// L (lingual) faces inward: bottom for upper teeth, top for lower teeth
+const lLabelY = computed(() => isLower.value ? 8 : 47)
 const toothName = computed(() => {
   const nameKey = getToothNameKey(props.toothNumber)
   const positionKeys = getToothPositionKeys(props.toothNumber)
@@ -170,65 +219,68 @@ watch(() => props.open, (isOpen) => {
                 </pattern>
               </defs>
 
-              <!-- Outline -->
-              <path
-                :d="occlusalPaths.outline"
-                fill="var(--odontogram-fill-shade)"
-                stroke="var(--odontogram-outline)"
-                stroke-width="1.25"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+              <!-- Tooth paths group with transform for quadrant symmetry -->
+              <g :transform="occlusalGroupTransform">
+                <!-- Outline -->
+                <path
+                  :d="occlusalPaths.outline"
+                  fill="var(--odontogram-fill-shade)"
+                  stroke="var(--odontogram-outline)"
+                  stroke-width="1.25"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
 
-              <!-- Highlight details (fissures) -->
-              <path
-                v-for="(highlightPath, idx) in occlusalPaths.highlight"
-                :key="`occlusal-highlight-${idx}`"
-                :d="highlightPath"
-                fill="none"
-                stroke="var(--odontogram-detail)"
-                stroke-width="0.75"
-                stroke-linecap="round"
-                pointer-events="none"
-              />
+                <!-- Highlight details (fissures) -->
+                <path
+                  v-for="(highlightPath, idx) in occlusalPaths.highlight"
+                  :key="`occlusal-highlight-${idx}`"
+                  :d="highlightPath"
+                  fill="none"
+                  stroke="var(--odontogram-detail)"
+                  stroke-width="0.75"
+                  stroke-linecap="round"
+                  pointer-events="none"
+                />
 
-              <!-- Surfaces (clickable) -->
-              <path
-                v-for="(path, surface) in occlusalPaths.surfaces"
-                :key="surface"
-                :d="path"
-                :fill="getSurfaceFill(surface as Surface)"
-                :opacity="getSurfaceOpacity(surface as Surface)"
-                :stroke="isSurfaceSelected(surface as Surface) ? treatmentColor : 'var(--odontogram-outline-light)'"
-                :stroke-width="isSurfaceSelected(surface as Surface) ? 2 : 0.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="surface-path"
-                @click="toggleSurface(surface as Surface)"
-              />
+                <!-- Surfaces (clickable) -->
+                <path
+                  v-for="(path, surface) in occlusalPaths.surfaces"
+                  :key="surface"
+                  :d="path"
+                  :fill="getSurfaceFill(surface as Surface)"
+                  :opacity="getSurfaceOpacity(surface as Surface)"
+                  :stroke="isSurfaceSelected(surface as Surface) ? treatmentColor : 'var(--odontogram-outline-light)'"
+                  :stroke-width="isSurfaceSelected(surface as Surface) ? 2 : 0.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="surface-path"
+                  @click="toggleSurface(surface as Surface)"
+                />
+              </g>
 
-              <!-- Surface labels -->
+              <!-- Surface labels (outside transform to remain readable) -->
               <text
-                x="4"
+                :x="mLabelX"
                 y="27"
                 class="surface-label"
                 @click="toggleSurface('M')"
               >M</text>
               <text
-                x="43"
+                :x="dLabelX"
                 y="27"
                 class="surface-label"
                 @click="toggleSurface('D')"
               >D</text>
               <text
                 x="24"
-                y="8"
+                :y="vLabelY"
                 class="surface-label"
                 @click="toggleSurface('V')"
               >V</text>
               <text
                 x="24"
-                y="47"
+                :y="lLabelY"
                 class="surface-label"
                 @click="toggleSurface('L')"
               >L</text>

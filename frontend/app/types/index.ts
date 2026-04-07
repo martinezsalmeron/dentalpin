@@ -295,29 +295,57 @@ export interface OdontogramHistoryEntry {
   changed_at: string
 }
 
-// Treatment types (Gesdén style)
+// Treatment types with new clinical categories and visualization rules
 export type TreatmentStatus = 'existing' | 'planned'
 export type TreatmentCategory = 'surface' | 'whole_tooth'
+export type TreatmentClinicalCategory = 'diagnostico' | 'restauradora' | 'cirugia' | 'endodoncia' | 'ortodoncia'
+export type VisualizationRule = 'pulp_fill' | 'occlusal_surface' | 'lateral_icon' | 'pattern_fill'
+
 export type TreatmentType
-  = | 'caries'
-    | 'filling'
-    | 'sealant'
-    | 'crown'
-    | 'root_canal'
-    | 'implant'
-    | 'bridge_pontic'
-    | 'bridge_abutment'
-    | 'extraction'
-    | 'missing'
+  // Diagnóstico
+  = | 'pulpitis'
+    | 'caries'
+    | 'incipient_caries'
+    | 'pigmentation'
     | 'fracture'
-    | 'post'
+    | 'missing'
+    | 'periapical_small'
+    | 'periapical_medium'
+    | 'periapical_large'
+    | 'rotated'
+    | 'displaced'
+    | 'unerupted'
+    // Restauradora
+    | 'filling_composite'
+    | 'filling_amalgam'
+    | 'filling_temporary'
+    | 'sealant'
     | 'veneer'
+    | 'inlay'
+    | 'overlay'
+    | 'crown'
+    | 'pontic'
+    | 'bridge_abutment'
+    // Cirugía
+    | 'extraction'
+    | 'implant'
     | 'apicoectomy'
-    // Orthodontic treatments
+    // Endodoncia
+    | 'root_canal_full'
+    | 'root_canal_two_thirds'
+    | 'root_canal_half'
+    | 'post'
+    | 'root_canal_overfill'
+    // Ortodoncia
     | 'bracket'
+    | 'tube'
     | 'band'
     | 'attachment'
     | 'retainer'
+    // Legacy types (for backwards compatibility)
+    | 'filling'
+    | 'root_canal'
+    | 'bridge_pontic'
 
 export interface Treatment {
   id: string
