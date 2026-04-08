@@ -28,6 +28,26 @@ We're not just building software—we're building the foundation for an ecosyste
 
 Clinics deserve better than closed, expensive software from the last decade. DentalPin is the open alternative.
 
+## Screenshots
+
+### Dashboard
+![Dashboard](docs/screenshots/home.png)
+
+### Patient Management
+![Patients](docs/screenshots/patients.png)
+
+### Weekly Schedule
+![Weekly Schedule](docs/screenshots/schedule-week.png)
+
+### Daily Schedule
+![Daily Schedule](docs/screenshots/schedule-day.png)
+
+### Dental Chart (Odontogram)
+![Dental Chart](docs/screenshots/dental-chart.png)
+
+### Settings
+![Settings](docs/screenshots/settings.png)
+
 ## Quick Start
 
 ```bash
