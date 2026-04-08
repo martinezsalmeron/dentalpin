@@ -164,6 +164,6 @@ See [LICENSE](LICENSE) for full terms.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## Backed by
+---
 
-[Dentaltix](https://www.dentaltix.com) - Dental supplies distributor
+Backed by [Dentaltix](https://www.dentaltix.com)

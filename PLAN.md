@@ -1044,7 +1044,7 @@ Items deferred with rationale:
 | # | Phase | Decision | Classification | Principle | Rationale |
 |---|-------|----------|----------------|-----------|-----------|
 | 1 | CEO | Keep plugin architecture | TASTE | P1 completeness | ~100 LOC overhead, enables future modules |
-| 2 | CEO | Proceed without user validation | TASTE | P6 action | Dentaltix has market context, contact exists |
+| 2 | CEO | Proceed without user validation | TASTE | P6 action | Market context exists, validation can follow |
 | 3 | CEO | Accept all premises | MECHANICAL | P6 action | Premises grounded in design doc research |
 | 4 | CEO | GTM outside scope | MECHANICAL | P3 pragmatic | Technical plan, not business plan |
 | 5 | Design | Add first-time UX | MECHANICAL | P1 completeness | Critical for adoption |
