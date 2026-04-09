@@ -68,7 +68,7 @@ Included by default. Functionality every clinic needs.
 |--------|--------|----------|
 | `clinical` | ⚠️ Partial | Patients, appointments (basic) |
 | `odontogram` | ✅ | Interactive FDI dental chart |
-| `catalog` | 🔴 P0 | Treatment catalog |
+| `catalog` | ✅ | Treatment catalog with VAT types |
 | `budgets` | 🔴 P0 | Budgets/quotes + PDF |
 | `billing` | 🔴 P0 | Invoicing |
 | `patient-record` | 🔴 P0 | Complete patient record (see detail below) |
@@ -130,16 +130,23 @@ The current patient record is basic. A professional patient record needs:
 
 ---
 
-#### Treatment Catalog (`catalog`) 🔴 P0
+#### Treatment Catalog (`catalog`) ✅ Implemented
 
-| Feature | Description |
-|---------|-------------|
-| Multi-code | Internal codes + official nomenclatures (RCOE, CCAM, CDT/ADA) |
-| Price lists | Multiple rates (private, insured, promotional) |
-| Packages | Combined treatment templates |
-| Duration | Default times for scheduling |
-| Materials | Inventory linkage |
-| VAT | Tax configuration by category |
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Internal codes | ✅ | Per-clinic internal treatment codes |
+| Multi-language | ✅ | Localized names and descriptions (i18n) |
+| Categories | ✅ | Hierarchical categories with icons |
+| Pricing | ✅ | Default price + cost price tracking |
+| Duration | ✅ | Default times for scheduling integration |
+| VAT | ✅ | Configurable VAT types per clinic |
+| Odontogram mapping | ✅ | Link treatments to odontogram visualization |
+| Treatment scope | ✅ | Surface vs whole tooth classification |
+| Multi-code | 🟠 P1 | Official nomenclatures (RCOE, CCAM, CDT/ADA) |
+| Price lists | 🟠 P1 | Multiple rates (private, insured, promotional) |
+| Packages | 🟡 P2 | Combined treatment templates |
+| Materials | 🟠 P1 | Inventory linkage |
+| Import/Export | 🟠 P1 | CSV import/export |
 
 ---
 
@@ -306,14 +313,14 @@ DentalPin is designed so the **entire dental industry** can build modules.
 
 **Goal:** A small clinic can operate day to day.
 
-| Module | Key Deliverables |
-|--------|------------------|
-| `patient-record` | Complete record: anamnesis, alerts, documents |
-| `catalog` | Multi-code treatment catalog |
-| `budgets` | Budgets with complete workflow + PDF |
-| `billing` | Basic invoicing + PDF |
-| `imaging-basic` | Basic clinical image gallery |
-| AI Infrastructure | ToolRegistry, ContextProvider |
+| Module | Status | Key Deliverables |
+|--------|--------|------------------|
+| `patient-record` | 🔴 | Complete record: anamnesis, alerts, documents |
+| `catalog` | ✅ | Treatment catalog with VAT types, odontogram mapping |
+| `budgets` | 🔴 | Budgets with complete workflow + PDF |
+| `billing` | 🔴 | Basic invoicing + PDF |
+| `imaging-basic` | 🔴 | Basic clinical image gallery |
+| AI Infrastructure | 🔴 | ToolRegistry, ContextProvider |
 
 ---
 
@@ -614,9 +621,10 @@ Open source dental clinic management software:
 ### What to build first
 
 1. 🔴 **Complete patient record** — Without this, no MVP
-2. 🔴 **Catalog + Budgets + Billing** — The revenue workflow
-3. 🟠 **Verifactu** — Mandatory legal compliance
-4. 🟠 **Inventory** — Stock and supplies management
+2. ✅ **Catalog** — Treatment catalog implemented
+3. 🔴 **Budgets + Billing** — The revenue workflow (depends on catalog ✅)
+4. 🟠 **Verifactu** — Mandatory legal compliance
+5. 🟠 **Inventory** — Stock and supplies management
 
 ### How we measure success
 
