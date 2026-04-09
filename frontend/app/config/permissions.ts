@@ -24,6 +24,11 @@ export const PERMISSIONS = {
     write: 'odontogram.write',
     treatmentsRead: 'odontogram.treatments.read',
     treatmentsWrite: 'odontogram.treatments.write'
+  },
+  catalog: {
+    read: 'catalog.read',
+    write: 'catalog.write',
+    admin: 'catalog.admin'
   }
 } as const
 

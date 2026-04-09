@@ -486,6 +486,56 @@ async function handleDeleteCabinet() {
           </UButton>
         </div>
       </UCard>
+
+      <!-- Catalog link (admin only) -->
+      <UCard v-if="isAdmin">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-lucide-list"
+              class="w-5 h-5 text-primary-500"
+            />
+            <h2 class="font-semibold text-gray-900 dark:text-white">
+              {{ t('catalog.title') }}
+            </h2>
+          </div>
+        </template>
+
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          {{ t('catalog.description') }}
+        </p>
+
+        <NuxtLink to="/settings/catalog">
+          <UButton icon="i-lucide-arrow-right">
+            {{ t('nav.catalog') }}
+          </UButton>
+        </NuxtLink>
+      </UCard>
+
+      <!-- VAT Types link (admin only) -->
+      <UCard v-if="isAdmin">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-lucide-percent"
+              class="w-5 h-5 text-primary-500"
+            />
+            <h2 class="font-semibold text-gray-900 dark:text-white">
+              {{ t('vatTypes.title') }}
+            </h2>
+          </div>
+        </template>
+
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          {{ t('vatTypes.description') }}
+        </p>
+
+        <NuxtLink to="/settings/vat-types">
+          <UButton icon="i-lucide-arrow-right">
+            {{ t('vatTypes.title') }}
+          </UButton>
+        </NuxtLink>
+      </UCard>
     </div>
 
     <!-- User Management (Admin only) -->
@@ -646,6 +696,7 @@ async function handleDeleteCabinet() {
                 :items="translatedRoles"
                 value-key="value"
                 label-key="label"
+                :placeholder="t('placeholders.selectRole')"
               />
             </UFormField>
 
@@ -717,6 +768,7 @@ async function handleDeleteCabinet() {
                 :items="translatedRoles"
                 value-key="value"
                 label-key="label"
+                :placeholder="t('placeholders.selectRole')"
               />
             </UFormField>
 

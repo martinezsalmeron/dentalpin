@@ -387,3 +387,190 @@ export interface ToothRecordWithTreatments extends ToothRecord {
   is_rotated: boolean
   displacement_notes?: string
 }
+
+// ============================================================================
+// VAT Type Types
+// ============================================================================
+
+export interface VatType {
+  id: string
+  clinic_id: string
+  names: Record<string, string>
+  rate: number
+  is_default: boolean
+  is_active: boolean
+  is_system: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface VatTypeCreate {
+  names: Record<string, string>
+  rate: number
+  is_default?: boolean
+}
+
+export interface VatTypeUpdate {
+  names?: Record<string, string>
+  rate?: number
+  is_default?: boolean
+  is_active?: boolean
+}
+
+export interface VatTypeBrief {
+  id: string
+  names: Record<string, string>
+  rate: number
+  is_default: boolean
+  is_active: boolean
+  is_system: boolean
+}
+
+// ============================================================================
+// Catalog Types
+// ============================================================================
+
+export interface TreatmentCatalogCategory {
+  id: string
+  clinic_id: string
+  parent_id?: string
+  key: string
+  names: Record<string, string>
+  descriptions?: Record<string, string>
+  display_order: number
+  icon?: string
+  is_active: boolean
+  is_system: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface TreatmentCatalogCategoryCreate {
+  key: string
+  names: Record<string, string>
+  descriptions?: Record<string, string>
+  parent_id?: string
+  display_order?: number
+  icon?: string
+}
+
+export interface TreatmentCatalogCategoryUpdate {
+  key?: string
+  names?: Record<string, string>
+  descriptions?: Record<string, string>
+  parent_id?: string
+  display_order?: number
+  icon?: string
+  is_active?: boolean
+}
+
+export interface OdontogramMapping {
+  id: string
+  odontogram_treatment_type: string
+  visualization_rules: string[]
+  visualization_config: Record<string, unknown>
+  clinical_category: string
+}
+
+export interface OdontogramMappingCreate {
+  odontogram_treatment_type: string
+  visualization_rules: string[]
+  visualization_config: Record<string, unknown>
+  clinical_category: string
+}
+
+export interface TreatmentCatalogItem {
+  id: string
+  clinic_id: string
+  category_id: string
+  internal_code: string
+  names: Record<string, string>
+  descriptions?: Record<string, string>
+  // Pricing
+  default_price?: number
+  cost_price?: number
+  currency: string
+  // Scheduling
+  default_duration_minutes?: number
+  requires_appointment: boolean
+  // Tax - references VatType
+  vat_type_id?: string
+  vat_type?: VatTypeBrief
+  // Treatment characteristics
+  treatment_scope: 'surface' | 'whole_tooth'
+  is_diagnostic: boolean
+  requires_surfaces: boolean
+  // Material
+  material_notes?: string
+  // Status
+  is_active: boolean
+  is_system: boolean
+  deleted_at?: string
+  // Timestamps
+  created_at: string
+  updated_at: string
+  // Related
+  category?: TreatmentCatalogCategory
+  odontogram_mapping?: OdontogramMapping
+}
+
+export interface TreatmentCatalogItemCreate {
+  internal_code: string
+  category_id: string
+  names: Record<string, string>
+  descriptions?: Record<string, string>
+  // Pricing
+  default_price?: number
+  cost_price?: number
+  currency?: string
+  // Scheduling
+  default_duration_minutes?: number
+  requires_appointment?: boolean
+  // Tax - references VatType (uses clinic default if not provided)
+  vat_type_id?: string
+  // Treatment characteristics
+  treatment_scope?: 'surface' | 'whole_tooth'
+  is_diagnostic?: boolean
+  requires_surfaces?: boolean
+  // Material
+  material_notes?: string
+  // Odontogram mapping
+  odontogram_mapping?: OdontogramMappingCreate
+}
+
+export interface TreatmentCatalogItemUpdate {
+  internal_code?: string
+  category_id?: string
+  names?: Record<string, string>
+  descriptions?: Record<string, string>
+  default_price?: number
+  cost_price?: number
+  currency?: string
+  default_duration_minutes?: number
+  requires_appointment?: boolean
+  vat_type_id?: string
+  treatment_scope?: 'surface' | 'whole_tooth'
+  is_diagnostic?: boolean
+  requires_surfaces?: boolean
+  material_notes?: string
+  is_active?: boolean
+  odontogram_mapping?: OdontogramMappingCreate
+}
+
+export interface OdontogramTreatment {
+  id: string
+  internal_code: string
+  names: Record<string, string>
+  default_price?: number
+  treatment_scope: 'surface' | 'whole_tooth'
+  requires_surfaces: boolean
+  is_diagnostic: boolean
+  // Odontogram specific
+  odontogram_treatment_type: string
+  visualization_rules: string[]
+  visualization_config: Record<string, unknown>
+  clinical_category: string
+  // Category info
+  category_key: string
+  category_names: Record<string, string>
+}
