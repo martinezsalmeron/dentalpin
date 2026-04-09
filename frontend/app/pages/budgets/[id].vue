@@ -1,0 +1,782 @@
+<script setup lang="ts">
+import type { BudgetItem, SignatureCreate } from '~/types'
+
+const route = useRoute()
+const router = useRouter()
+const { t, locale } = useI18n()
+const toast = useToast()
+const { can } = usePermissions()
+
+const {
+  currentBudget,
+  isLoading,
+  fetchBudget,
+  updateBudget,
+  removeItem,
+  sendBudget,
+  acceptBudget,
+  rejectBudget,
+  cancelBudget,
+  completeBudget,
+  duplicateBudget,
+  downloadPDF,
+  canEdit,
+  canSend,
+  canAccept,
+  canCancel,
+  canComplete
+} = useBudgets()
+
+const budgetId = computed(() => route.params.id as string)
+
+// Load budget
+async function loadBudget() {
+  const budget = await fetchBudget(budgetId.value)
+  if (!budget) {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.notFound'),
+      color: 'error'
+    })
+    router.push('/budgets')
+  }
+}
+
+onMounted(() => {
+  loadBudget()
+})
+
+// Modal states
+const isAddItemModalOpen = ref(false)
+const isSignatureModalOpen = ref(false)
+const signatureAction = ref<'accept' | 'reject'>('accept')
+
+// Edit state
+const isEditing = ref(false)
+const editForm = reactive({
+  valid_from: '',
+  valid_until: '',
+  global_discount_type: '',
+  global_discount_value: '',
+  internal_notes: '',
+  patient_notes: ''
+})
+
+function startEditing() {
+  if (!currentBudget.value) return
+  editForm.valid_from = currentBudget.value.valid_from
+  editForm.valid_until = currentBudget.value.valid_until || ''
+  editForm.global_discount_type = currentBudget.value.global_discount_type || ''
+  editForm.global_discount_value = currentBudget.value.global_discount_value?.toString() || ''
+  editForm.internal_notes = currentBudget.value.internal_notes || ''
+  editForm.patient_notes = currentBudget.value.patient_notes || ''
+  isEditing.value = true
+}
+
+async function saveEdits() {
+  if (!currentBudget.value) return
+
+  try {
+    await updateBudget(currentBudget.value.id, {
+      valid_from: editForm.valid_from || undefined,
+      valid_until: editForm.valid_until || undefined,
+      global_discount_type: (editForm.global_discount_type as 'percentage' | 'absolute') || undefined,
+      global_discount_value: editForm.global_discount_value
+        ? parseFloat(editForm.global_discount_value)
+        : undefined,
+      internal_notes: editForm.internal_notes || undefined,
+      patient_notes: editForm.patient_notes || undefined
+    })
+
+    toast.add({
+      title: t('common.success'),
+      description: t('budget.messages.updated'),
+      color: 'success'
+    })
+    isEditing.value = false
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.update'),
+      color: 'error'
+    })
+  }
+}
+
+// Item management
+function handleItemAdded() {
+  isAddItemModalOpen.value = false
+  loadBudget()
+}
+
+async function handleRemoveItem(item: BudgetItem) {
+  if (!currentBudget.value) return
+  if (!confirm(t('budget.items.remove') + '?')) return
+
+  try {
+    await removeItem(currentBudget.value.id, item.id)
+    toast.add({
+      title: t('common.success'),
+      description: t('budget.messages.itemRemoved'),
+      color: 'success'
+    })
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.delete'),
+      color: 'error'
+    })
+  }
+}
+
+// Workflow actions
+async function handleSend() {
+  if (!currentBudget.value) return
+  if (!confirm(t('budget.confirmations.send'))) return
+
+  try {
+    await sendBudget(currentBudget.value.id)
+    toast.add({
+      title: t('common.success'),
+      description: t('budget.messages.sent'),
+      color: 'success'
+    })
+    await loadBudget()
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.send'),
+      color: 'error'
+    })
+  }
+}
+
+function openSignatureModal(action: 'accept' | 'reject') {
+  signatureAction.value = action
+  isSignatureModalOpen.value = true
+}
+
+// Signature form
+const signatureForm = reactive<SignatureCreate>({
+  signed_by_name: '',
+  signed_by_email: '',
+  relationship_to_patient: 'patient'
+})
+
+async function handleSignatureSubmit() {
+  if (!currentBudget.value || !signatureForm.signed_by_name) return
+
+  try {
+    if (signatureAction.value === 'accept') {
+      await acceptBudget(currentBudget.value.id, { signature: signatureForm })
+      toast.add({
+        title: t('common.success'),
+        description: t('budget.messages.accepted'),
+        color: 'success'
+      })
+    } else {
+      await rejectBudget(currentBudget.value.id, { signature: signatureForm })
+      toast.add({
+        title: t('common.success'),
+        description: t('budget.messages.rejected'),
+        color: 'success'
+      })
+    }
+
+    isSignatureModalOpen.value = false
+    resetSignatureForm()
+    await loadBudget()
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: signatureAction.value === 'accept'
+        ? t('budget.errors.accept')
+        : t('budget.errors.reject'),
+      color: 'error'
+    })
+  }
+}
+
+function resetSignatureForm() {
+  signatureForm.signed_by_name = ''
+  signatureForm.signed_by_email = ''
+  signatureForm.relationship_to_patient = 'patient'
+}
+
+async function handleCancel() {
+  if (!currentBudget.value) return
+  if (!confirm(t('budget.confirmations.cancel'))) return
+
+  try {
+    await cancelBudget(currentBudget.value.id)
+    toast.add({
+      title: t('common.success'),
+      description: t('budget.messages.cancelled'),
+      color: 'success'
+    })
+    await loadBudget()
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.update'),
+      color: 'error'
+    })
+  }
+}
+
+async function handleComplete() {
+  if (!currentBudget.value) return
+
+  try {
+    await completeBudget(currentBudget.value.id)
+    toast.add({
+      title: t('common.success'),
+      description: t('budget.messages.completed'),
+      color: 'success'
+    })
+    await loadBudget()
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.update'),
+      color: 'error'
+    })
+  }
+}
+
+async function handleDuplicate() {
+  if (!currentBudget.value) return
+
+  try {
+    const newBudget = await duplicateBudget(currentBudget.value.id)
+    toast.add({
+      title: t('common.success'),
+      description: t('budget.messages.duplicated'),
+      color: 'success'
+    })
+    router.push(`/budgets/${newBudget.id}`)
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.create'),
+      color: 'error'
+    })
+  }
+}
+
+async function handleDownloadPDF() {
+  if (!currentBudget.value) return
+
+  try {
+    await downloadPDF(currentBudget.value.id, locale.value)
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.pdf.downloadError'),
+      color: 'error'
+    })
+  }
+}
+
+// Format helpers
+function formatCurrency(amount: number, currency: string = 'EUR'): string {
+  return new Intl.NumberFormat(locale.value, {
+    style: 'currency',
+    currency
+  }).format(amount)
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString(locale.value)
+}
+
+function getItemName(item: BudgetItem): string {
+  if (!item.catalog_item) return '-'
+  return item.catalog_item.names[locale.value] || item.catalog_item.names.es || item.catalog_item.internal_code
+}
+</script>
+
+<template>
+  <div class="space-y-6">
+    <!-- Loading -->
+    <div
+      v-if="isLoading"
+      class="space-y-4"
+    >
+      <USkeleton class="h-12 w-1/3" />
+      <USkeleton class="h-64 w-full" />
+    </div>
+
+    <template v-else-if="currentBudget">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-arrow-left"
+            @click="router.push('/budgets')"
+          />
+          <div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {{ currentBudget.budget_number }}
+              </h1>
+              <span class="text-gray-500">v{{ currentBudget.version }}</span>
+              <BudgetStatusBadge :status="currentBudget.status" />
+            </div>
+            <NuxtLink
+              v-if="currentBudget.patient"
+              :to="`/patients/${currentBudget.patient.id}`"
+              class="text-lg font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
+            >
+              {{ currentBudget.patient.first_name }} {{ currentBudget.patient.last_name }}
+            </NuxtLink>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-2">
+          <UButton
+            variant="outline"
+            color="neutral"
+            icon="i-lucide-download"
+            @click="handleDownloadPDF"
+          >
+            {{ t('budget.actions.downloadPdf') }}
+          </UButton>
+
+          <UButton
+            v-if="can('budget.write')"
+            variant="outline"
+            color="neutral"
+            icon="i-lucide-copy"
+            @click="handleDuplicate"
+          >
+            {{ t('budget.actions.duplicate') }}
+          </UButton>
+
+          <UButton
+            v-if="canSend(currentBudget) && can('budget.write')"
+            color="primary"
+            icon="i-lucide-send"
+            @click="handleSend"
+          >
+            {{ t('budget.actions.send') }}
+          </UButton>
+
+          <UButton
+            v-if="canAccept(currentBudget) && can('budget.write')"
+            color="success"
+            icon="i-lucide-check"
+            @click="openSignatureModal('accept')"
+          >
+            {{ t('budget.actions.accept') }}
+          </UButton>
+
+          <UButton
+            v-if="canAccept(currentBudget) && can('budget.write')"
+            color="error"
+            variant="outline"
+            icon="i-lucide-x"
+            @click="openSignatureModal('reject')"
+          >
+            {{ t('budget.actions.reject') }}
+          </UButton>
+
+          <UButton
+            v-if="canComplete(currentBudget) && can('budget.write')"
+            color="success"
+            icon="i-lucide-check-circle"
+            @click="handleComplete"
+          >
+            {{ t('budget.actions.complete') }}
+          </UButton>
+
+          <UButton
+            v-if="canCancel(currentBudget) && can('budget.write')"
+            color="error"
+            variant="ghost"
+            icon="i-lucide-ban"
+            @click="handleCancel"
+          >
+            {{ t('budget.actions.cancel') }}
+          </UButton>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main content -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Budget details -->
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold">
+                  {{ t('budget.view') }}
+                </h2>
+                <UButton
+                  v-if="canEdit(currentBudget) && can('budget.write') && !isEditing"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-pencil"
+                  size="sm"
+                  @click="startEditing"
+                >
+                  {{ t('common.edit') }}
+                </UButton>
+              </div>
+            </template>
+
+            <!-- View mode -->
+            <div
+              v-if="!isEditing"
+              class="grid grid-cols-2 gap-4"
+            >
+              <div>
+                <span class="text-sm text-gray-500">{{ t('budget.validFrom') }}</span>
+                <p class="font-medium">
+                  {{ formatDate(currentBudget.valid_from) }}
+                </p>
+              </div>
+              <div>
+                <span class="text-sm text-gray-500">{{ t('budget.validUntil') }}</span>
+                <p class="font-medium">
+                  {{ currentBudget.valid_until ? formatDate(currentBudget.valid_until) : t('budget.noExpiry') }}
+                </p>
+              </div>
+              <div v-if="currentBudget.global_discount_value">
+                <span class="text-sm text-gray-500">{{ t('budget.globalDiscount') }}</span>
+                <p class="font-medium">
+                  {{ currentBudget.global_discount_type === 'percentage'
+                    ? `${currentBudget.global_discount_value}%`
+                    : formatCurrency(currentBudget.global_discount_value, currentBudget.currency) }}
+                </p>
+              </div>
+              <div v-if="currentBudget.patient_notes">
+                <span class="text-sm text-gray-500">{{ t('budget.patientNotes') }}</span>
+                <p class="mt-1">
+                  {{ currentBudget.patient_notes }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Edit mode -->
+            <form
+              v-else
+              class="space-y-4"
+              @submit.prevent="saveEdits"
+            >
+              <div class="grid grid-cols-2 gap-4">
+                <UFormField :label="t('budget.validFrom')">
+                  <UInput
+                    v-model="editForm.valid_from"
+                    type="date"
+                  />
+                </UFormField>
+                <UFormField :label="t('budget.validUntil')">
+                  <UInput
+                    v-model="editForm.valid_until"
+                    type="date"
+                  />
+                </UFormField>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <UFormField :label="t('budget.discountType')">
+                  <USelect
+                    v-model="editForm.global_discount_type"
+                    :items="[
+                      { label: '-', value: '' },
+                      { label: t('budget.percentage'), value: 'percentage' },
+                      { label: t('budget.absolute'), value: 'absolute' }
+                    ]"
+                  />
+                </UFormField>
+                <UFormField :label="t('budget.discountValue')">
+                  <UInput
+                    v-model="editForm.global_discount_value"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                  />
+                </UFormField>
+              </div>
+
+              <UFormField :label="t('budget.patientNotes')">
+                <UTextarea
+                  v-model="editForm.patient_notes"
+                  :placeholder="t('budget.patientNotesPlaceholder')"
+                  :rows="3"
+                />
+              </UFormField>
+
+              <UFormField :label="t('budget.internalNotes')">
+                <UTextarea
+                  v-model="editForm.internal_notes"
+                  :placeholder="t('budget.internalNotesPlaceholder')"
+                  :rows="3"
+                />
+              </UFormField>
+
+              <div class="flex justify-end gap-2">
+                <UButton
+                  variant="outline"
+                  color="neutral"
+                  @click="isEditing = false"
+                >
+                  {{ t('common.cancel') }}
+                </UButton>
+                <UButton
+                  type="submit"
+                  color="primary"
+                >
+                  {{ t('common.save') }}
+                </UButton>
+              </div>
+            </form>
+          </UCard>
+
+          <!-- Items -->
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold">
+                  {{ t('budget.items.title') }}
+                </h2>
+                <UButton
+                  v-if="canEdit(currentBudget) && can('budget.write')"
+                  icon="i-lucide-plus"
+                  size="sm"
+                  @click="isAddItemModalOpen = true"
+                >
+                  {{ t('budget.items.add') }}
+                </UButton>
+              </div>
+            </template>
+
+            <div
+              v-if="currentBudget.items.length === 0"
+              class="text-center py-8 text-gray-500"
+            >
+              {{ t('budget.items.empty') }}
+            </div>
+
+            <div
+              v-else
+              class="divide-y divide-gray-200 dark:divide-gray-800"
+            >
+              <div
+                v-for="item in currentBudget.items"
+                :key="item.id"
+                class="py-4 flex items-start gap-4"
+              >
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium">{{ getItemName(item) }}</span>
+                    <span
+                      v-if="item.tooth_number"
+                      class="text-sm text-gray-500"
+                    >
+                      #{{ item.tooth_number }}
+                      <span v-if="item.surfaces?.length">({{ item.surfaces.join(', ') }})</span>
+                    </span>
+                  </div>
+                  <div class="text-sm text-gray-500 mt-1">
+                    {{ item.quantity }} x {{ formatCurrency(item.unit_price, currentBudget.currency) }}
+                    <span
+                      v-if="item.line_discount > 0"
+                      class="text-green-600"
+                    >
+                      -{{ formatCurrency(item.line_discount, currentBudget.currency) }}
+                    </span>
+                  </div>
+                  <p
+                    v-if="item.notes"
+                    class="text-sm text-gray-500 mt-1"
+                  >
+                    {{ item.notes }}
+                  </p>
+                </div>
+                <div class="text-right">
+                  <p class="font-semibold">
+                    {{ formatCurrency(item.line_total, currentBudget.currency) }}
+                  </p>
+                  <span
+                    class="text-xs px-2 py-1 rounded"
+                    :class="{
+                      'bg-gray-100 text-gray-700': item.item_status === 'pending',
+                      'bg-green-100 text-green-700': item.item_status === 'accepted' || item.item_status === 'completed',
+                      'bg-red-100 text-red-700': item.item_status === 'rejected',
+                      'bg-purple-100 text-purple-700': item.item_status === 'in_progress'
+                    }"
+                  >
+                    {{ t(`budget.itemStatus.${item.item_status}`) }}
+                  </span>
+                </div>
+                <UButton
+                  v-if="canEdit(currentBudget) && can('budget.write')"
+                  variant="ghost"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  size="sm"
+                  @click="handleRemoveItem(item)"
+                />
+              </div>
+            </div>
+          </UCard>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+          <!-- Totals -->
+          <UCard>
+            <template #header>
+              <h2 class="text-lg font-semibold">
+                {{ t('budget.total') }}
+              </h2>
+            </template>
+
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-gray-500">{{ t('budget.subtotal') }}</span>
+                <span>{{ formatCurrency(currentBudget.subtotal, currentBudget.currency) }}</span>
+              </div>
+              <div
+                v-if="currentBudget.total_discount > 0"
+                class="flex justify-between text-green-600"
+              >
+                <span>{{ t('budget.totalDiscount') }}</span>
+                <span>-{{ formatCurrency(currentBudget.total_discount, currentBudget.currency) }}</span>
+              </div>
+              <div
+                v-if="currentBudget.total_tax > 0"
+                class="flex justify-between"
+              >
+                <span class="text-gray-500">{{ t('budget.totalTax') }}</span>
+                <span>{{ formatCurrency(currentBudget.total_tax, currentBudget.currency) }}</span>
+              </div>
+              <div class="border-t pt-3 flex justify-between font-bold text-lg">
+                <span>{{ t('budget.total') }}</span>
+                <span>{{ formatCurrency(currentBudget.total, currentBudget.currency) }}</span>
+              </div>
+            </div>
+          </UCard>
+
+          <!-- Info -->
+          <UCard>
+            <div class="space-y-3 text-sm">
+              <div>
+                <span class="text-gray-500">{{ t('budget.budgetNumber') }}</span>
+                <p class="font-medium">
+                  {{ currentBudget.budget_number }}
+                </p>
+              </div>
+              <div>
+                <span class="text-gray-500">{{ t('budget.version') }}</span>
+                <p class="font-medium">
+                  v{{ currentBudget.version }}
+                </p>
+              </div>
+              <div v-if="currentBudget.creator">
+                <span class="text-gray-500">{{ t('common.createdBy') || 'Creado por' }}</span>
+                <p class="font-medium">
+                  {{ currentBudget.creator.first_name }} {{ currentBudget.creator.last_name }}
+                </p>
+              </div>
+              <div>
+                <span class="text-gray-500">{{ t('common.date') || 'Fecha' }}</span>
+                <p class="font-medium">
+                  {{ formatDate(currentBudget.created_at) }}
+                </p>
+              </div>
+            </div>
+          </UCard>
+        </div>
+      </div>
+    </template>
+
+    <!-- Add Item Modal -->
+    <BudgetItemModal
+      v-model:open="isAddItemModalOpen"
+      :budget-id="budgetId"
+      :currency="currentBudget?.currency"
+      @added="handleItemAdded"
+    />
+
+    <!-- Signature Modal -->
+    <UModal v-model:open="isSignatureModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold">
+                {{ signatureAction === 'accept' ? t('budget.actions.accept') : t('budget.actions.reject') }}
+              </h2>
+              <UButton
+                variant="ghost"
+                color="neutral"
+                icon="i-lucide-x"
+                @click="isSignatureModalOpen = false"
+              />
+            </div>
+          </template>
+
+          <form
+            class="space-y-4"
+            @submit.prevent="handleSignatureSubmit"
+          >
+            <UFormField
+              :label="t('budget.signature.signedBy')"
+              required
+            >
+              <UInput
+                v-model="signatureForm.signed_by_name"
+                :placeholder="t('budget.signature.signedBy')"
+                required
+              />
+            </UFormField>
+
+            <UFormField :label="t('budget.signature.email')">
+              <UInput
+                v-model="signatureForm.signed_by_email"
+                type="email"
+                :placeholder="t('budget.signature.email')"
+              />
+            </UFormField>
+
+            <UFormField :label="t('budget.signature.relationship')">
+              <USelect
+                v-model="signatureForm.relationship_to_patient"
+                :items="[
+                  { label: t('budget.signature.patient'), value: 'patient' },
+                  { label: t('budget.signature.guardian'), value: 'guardian' },
+                  { label: t('budget.signature.representative'), value: 'representative' }
+                ]"
+              />
+            </UFormField>
+          </form>
+
+          <template #footer>
+            <div class="flex justify-end gap-3">
+              <UButton
+                variant="outline"
+                color="neutral"
+                @click="isSignatureModalOpen = false"
+              >
+                {{ t('common.cancel') }}
+              </UButton>
+              <UButton
+                :color="signatureAction === 'accept' ? 'success' : 'error'"
+                :disabled="!signatureForm.signed_by_name"
+                @click="handleSignatureSubmit"
+              >
+                {{ signatureAction === 'accept' ? t('budget.actions.accept') : t('budget.actions.reject') }}
+              </UButton>
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
+  </div>
+</template>

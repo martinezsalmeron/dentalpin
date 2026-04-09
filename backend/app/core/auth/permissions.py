@@ -32,21 +32,31 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     "dentist": [
         "clinical.*",  # All clinical permissions
         "odontogram.*",  # Full odontogram access
+        "catalog.read",  # Can view catalog (prices, treatments)
+        "budget.*",  # Full budget access
     ],
     "hygienist": [
         "clinical.patients.read",
         "clinical.appointments.*",
         "odontogram.read",
         "odontogram.write",
+        "catalog.read",  # Can view catalog (prices, treatments)
+        "budget.read",  # Can view budgets
     ],
     "assistant": [
         "clinical.patients.*",
         "clinical.appointments.*",
         "odontogram.read",  # Can view but not edit
+        "catalog.read",  # Can view catalog (prices, treatments)
+        "budget.read",  # Can view budgets
+        "budget.write",  # Can create/edit budgets
     ],
     "receptionist": [
         "clinical.patients.*",
         "clinical.appointments.*",
+        "catalog.read",  # Can view catalog for budgeting
+        "budget.read",  # Can view budgets
+        "budget.write",  # Can create/edit budgets
         # No odontogram access for receptionists
     ],
 }

@@ -574,3 +574,284 @@ export interface OdontogramTreatment {
   category_key: string
   category_names: Record<string, string>
 }
+
+// ============================================================================
+// Budget Types
+// ============================================================================
+
+export type BudgetStatus
+  = | 'draft'
+    | 'sent'
+    | 'partially_accepted'
+    | 'accepted'
+    | 'in_progress'
+    | 'completed'
+    | 'invoiced'
+    | 'rejected'
+    | 'expired'
+    | 'cancelled'
+
+export type BudgetItemStatus
+  = | 'pending'
+    | 'accepted'
+    | 'rejected'
+    | 'in_progress'
+    | 'completed'
+
+export type DiscountType = 'percentage' | 'absolute'
+
+export type SignatureType = 'full_acceptance' | 'partial_acceptance' | 'rejection'
+
+export type SignatureMethod = 'click_accept' | 'drawn' | 'external_provider'
+
+export type RelationshipToPatient = 'patient' | 'guardian' | 'representative'
+
+// Brief types for nested responses
+export interface PatientBrief {
+  id: string
+  first_name: string
+  last_name: string
+  email?: string
+}
+
+export interface UserBrief {
+  id: string
+  first_name: string
+  last_name: string
+}
+
+export interface CatalogItemBrief {
+  id: string
+  internal_code: string
+  names: Record<string, string>
+  default_price?: number
+}
+
+// Budget Item
+export interface BudgetItem {
+  id: string
+  budget_id: string
+  catalog_item_id: string
+  // Pricing
+  unit_price: number
+  quantity: number
+  // Line discount
+  discount_type?: DiscountType
+  discount_value?: number
+  // VAT
+  vat_type_id?: string
+  vat_rate: number
+  // Calculated totals
+  line_subtotal: number
+  line_discount: number
+  line_tax: number
+  line_total: number
+  // Dental specifics
+  tooth_number?: number
+  surfaces?: string[]
+  // Odontogram integration
+  tooth_treatment_id?: string
+  // Status
+  item_status: BudgetItemStatus
+  accepted_at?: string
+  rejected_at?: string
+  treatment_started_at?: string
+  treatment_completed_at?: string
+  performed_by?: string
+  // Display
+  display_order: number
+  notes?: string
+  // Timestamps
+  created_at: string
+  updated_at: string
+  // Related
+  catalog_item?: CatalogItemBrief
+  vat_type?: VatTypeBrief
+  performer?: UserBrief
+}
+
+export interface BudgetItemCreate {
+  catalog_item_id: string
+  quantity?: number
+  unit_price?: number
+  discount_type?: DiscountType
+  discount_value?: number
+  tooth_number?: number
+  surfaces?: string[]
+  tooth_treatment_id?: string
+  display_order?: number
+  notes?: string
+}
+
+export interface BudgetItemUpdate {
+  quantity?: number
+  unit_price?: number
+  discount_type?: DiscountType
+  discount_value?: number
+  tooth_number?: number
+  surfaces?: string[]
+  display_order?: number
+  notes?: string
+}
+
+// Budget Signature
+export interface BudgetSignature {
+  id: string
+  budget_id: string
+  signature_type: SignatureType
+  signed_items?: string[]
+  signed_by_name: string
+  signed_by_email?: string
+  relationship_to_patient: RelationshipToPatient
+  signature_method: SignatureMethod
+  signature_data?: Record<string, unknown>
+  ip_address?: string
+  signed_at: string
+  external_signature_id?: string
+  external_provider?: string
+  document_hash?: string
+  created_at: string
+}
+
+export interface SignatureCreate {
+  signed_by_name: string
+  signed_by_email?: string
+  relationship_to_patient?: RelationshipToPatient
+  item_ids?: string[]
+  signature_data?: Record<string, unknown>
+}
+
+// Budget History
+export interface BudgetHistoryEntry {
+  id: string
+  budget_id: string
+  action: string
+  changed_by: string
+  changed_at: string
+  previous_state?: Record<string, unknown>
+  new_state?: Record<string, unknown>
+  notes?: string
+  user?: UserBrief
+}
+
+// Budget
+export interface Budget {
+  id: string
+  clinic_id: string
+  patient_id: string
+  // Identification
+  budget_number: string
+  version: number
+  parent_budget_id?: string
+  // Status
+  status: BudgetStatus
+  // Validity
+  valid_from: string
+  valid_until?: string
+  // Assignments
+  created_by: string
+  assigned_professional_id?: string
+  // Global discount
+  global_discount_type?: DiscountType
+  global_discount_value?: number
+  // Totals
+  subtotal: number
+  total_discount: number
+  total_tax: number
+  total: number
+  currency: string
+  // Notes
+  internal_notes?: string
+  patient_notes?: string
+  // Insurance
+  insurance_estimate?: number
+  // Timestamps
+  created_at: string
+  updated_at: string
+  deleted_at?: string
+  // Related
+  patient?: PatientBrief
+  creator?: UserBrief
+  assigned_professional?: UserBrief
+}
+
+export interface BudgetDetail extends Budget {
+  items: BudgetItem[]
+  signatures: BudgetSignature[]
+}
+
+export interface BudgetListItem {
+  id: string
+  budget_number: string
+  version: number
+  status: BudgetStatus
+  valid_from: string
+  valid_until?: string
+  total: number
+  currency: string
+  created_at: string
+  patient?: PatientBrief
+  creator?: UserBrief
+}
+
+export interface BudgetCreate {
+  patient_id: string
+  valid_from?: string
+  valid_until?: string
+  assigned_professional_id?: string
+  global_discount_type?: DiscountType
+  global_discount_value?: number
+  internal_notes?: string
+  patient_notes?: string
+  items?: BudgetItemCreate[]
+}
+
+export interface BudgetUpdate {
+  valid_from?: string
+  valid_until?: string
+  assigned_professional_id?: string
+  global_discount_type?: DiscountType
+  global_discount_value?: number
+  internal_notes?: string
+  patient_notes?: string
+}
+
+// Workflow
+export interface BudgetSendRequest {
+  send_email?: boolean
+  custom_message?: string
+}
+
+export interface BudgetAcceptRequest {
+  signature: SignatureCreate
+}
+
+export interface BudgetRejectRequest {
+  reason?: string
+  signature?: SignatureCreate
+}
+
+export interface BudgetCancelRequest {
+  reason?: string
+}
+
+export interface ItemStatusUpdateRequest {
+  performed_by?: string
+  notes?: string
+}
+
+// Versions
+export interface BudgetVersion {
+  id: string
+  version: number
+  status: BudgetStatus
+  total: number
+  created_at: string
+  is_current: boolean
+}
+
+export interface BudgetVersionList {
+  budget_number: string
+  versions: BudgetVersion[]
+  current_version: number
+}

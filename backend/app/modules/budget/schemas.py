@@ -1,0 +1,485 @@
+"""Budget module Pydantic schemas for API request/response."""
+
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+# ============================================================================
+# Budget Status Types
+# ============================================================================
+
+BudgetStatus = Literal[
+    "draft",
+    "sent",
+    "partially_accepted",
+    "accepted",
+    "in_progress",
+    "completed",
+    "invoiced",
+    "rejected",
+    "expired",
+    "cancelled",
+]
+
+ItemStatus = Literal["pending", "accepted", "rejected", "in_progress", "completed"]
+
+DiscountType = Literal["percentage", "absolute"]
+
+SignatureType = Literal["full_acceptance", "partial_acceptance", "rejection"]
+
+SignatureMethod = Literal["click_accept", "drawn", "external_provider"]
+
+RelationshipToPatient = Literal["patient", "guardian", "representative"]
+
+
+# ============================================================================
+# Brief Schemas (for nested responses)
+# ============================================================================
+
+
+class PatientBrief(BaseModel):
+    """Brief patient info for budget responses."""
+
+    id: UUID
+    first_name: str
+    last_name: str
+    email: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class UserBrief(BaseModel):
+    """Brief user info for budget responses."""
+
+    id: UUID
+    first_name: str
+    last_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class CatalogItemBrief(BaseModel):
+    """Brief catalog item info for budget items."""
+
+    id: UUID
+    internal_code: str
+    names: dict[str, str]
+    default_price: Decimal | None
+
+    class Config:
+        from_attributes = True
+
+
+class VatTypeBrief(BaseModel):
+    """Brief VAT type info for budget items."""
+
+    id: UUID
+    names: dict[str, str]
+    rate: float
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# Budget Item Schemas
+# ============================================================================
+
+
+class BudgetItemCreate(BaseModel):
+    """Schema for creating a budget item."""
+
+    catalog_item_id: UUID
+    quantity: int = Field(default=1, ge=1)
+
+    # Optional overrides (if not provided, uses catalog defaults)
+    unit_price: Decimal | None = Field(default=None, ge=0)
+
+    # Line discount
+    discount_type: DiscountType | None = None
+    discount_value: Decimal | None = Field(default=None, ge=0)
+
+    # Dental specifics
+    tooth_number: int | None = Field(default=None, ge=11, le=85)
+    surfaces: list[str] | None = None  # ["M", "O", "D"]
+
+    # Odontogram integration
+    tooth_treatment_id: UUID | None = None
+
+    # Display
+    display_order: int = 0
+    notes: str | None = None
+
+
+class BudgetItemUpdate(BaseModel):
+    """Schema for updating a budget item."""
+
+    quantity: int | None = Field(default=None, ge=1)
+    unit_price: Decimal | None = Field(default=None, ge=0)
+
+    # Line discount
+    discount_type: DiscountType | None = None
+    discount_value: Decimal | None = Field(default=None, ge=0)
+
+    # Dental specifics
+    tooth_number: int | None = Field(default=None, ge=11, le=85)
+    surfaces: list[str] | None = None
+
+    # Display
+    display_order: int | None = None
+    notes: str | None = None
+
+
+class BudgetItemResponse(BaseModel):
+    """Schema for budget item response."""
+
+    id: UUID
+    budget_id: UUID
+    catalog_item_id: UUID
+
+    # Pricing
+    unit_price: Decimal
+    quantity: int
+
+    # Line discount
+    discount_type: str | None
+    discount_value: Decimal | None
+
+    # VAT
+    vat_type_id: UUID | None
+    vat_rate: float
+
+    # Calculated totals
+    line_subtotal: Decimal
+    line_discount: Decimal
+    line_tax: Decimal
+    line_total: Decimal
+
+    # Dental specifics
+    tooth_number: int | None
+    surfaces: list[str] | None
+
+    # Odontogram integration
+    tooth_treatment_id: UUID | None
+
+    # Status
+    item_status: str
+    accepted_at: datetime | None
+    rejected_at: datetime | None
+    treatment_started_at: datetime | None
+    treatment_completed_at: datetime | None
+    performed_by: UUID | None
+
+    # Display
+    display_order: int
+    notes: str | None
+
+    # Timestamps
+    created_at: datetime
+    updated_at: datetime
+
+    # Related
+    catalog_item: CatalogItemBrief | None = None
+    vat_type: VatTypeBrief | None = None
+    performer: UserBrief | None = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# Budget Signature Schemas
+# ============================================================================
+
+
+class SignatureCreate(BaseModel):
+    """Schema for creating a signature."""
+
+    signed_by_name: str = Field(min_length=1, max_length=200)
+    signed_by_email: str | None = None
+    relationship_to_patient: RelationshipToPatient = "patient"
+
+    # For partial acceptance, list of item IDs to accept
+    item_ids: list[UUID] | None = None
+
+    # Signature data (for drawn signatures)
+    signature_data: dict | None = None
+
+
+class SignatureResponse(BaseModel):
+    """Schema for signature response."""
+
+    id: UUID
+    budget_id: UUID
+    signature_type: str
+    signed_items: list[UUID] | None
+
+    # Signer info
+    signed_by_name: str
+    signed_by_email: str | None
+    relationship_to_patient: str
+
+    # Method
+    signature_method: str
+    signature_data: dict | None
+
+    # Audit
+    ip_address: str | None
+    signed_at: datetime
+
+    # External provider
+    external_signature_id: str | None
+    external_provider: str | None
+
+    # Integrity
+    document_hash: str | None
+
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# Budget History Schemas
+# ============================================================================
+
+
+class BudgetHistoryResponse(BaseModel):
+    """Schema for budget history response."""
+
+    id: UUID
+    budget_id: UUID
+    action: str
+    changed_by: UUID
+    changed_at: datetime
+    previous_state: dict | None
+    new_state: dict | None
+    notes: str | None
+
+    # Related
+    user: UserBrief | None = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# Budget Schemas
+# ============================================================================
+
+
+class BudgetCreate(BaseModel):
+    """Schema for creating a budget."""
+
+    patient_id: UUID
+
+    # Validity
+    valid_from: date = Field(default_factory=date.today)
+    valid_until: date | None = None
+
+    # Assignment
+    assigned_professional_id: UUID | None = None
+
+    # Global discount
+    global_discount_type: DiscountType | None = None
+    global_discount_value: Decimal | None = Field(default=None, ge=0)
+
+    # Notes
+    internal_notes: str | None = None
+    patient_notes: str | None = None
+
+    # Items (optional, can be added later)
+    items: list[BudgetItemCreate] = Field(default_factory=list)
+
+
+class BudgetUpdate(BaseModel):
+    """Schema for updating a budget (only allowed in draft status)."""
+
+    # Validity
+    valid_from: date | None = None
+    valid_until: date | None = None
+
+    # Assignment
+    assigned_professional_id: UUID | None = None
+
+    # Global discount
+    global_discount_type: DiscountType | None = None
+    global_discount_value: Decimal | None = Field(default=None, ge=0)
+
+    # Notes
+    internal_notes: str | None = None
+    patient_notes: str | None = None
+
+
+class BudgetResponse(BaseModel):
+    """Schema for budget response."""
+
+    id: UUID
+    clinic_id: UUID
+    patient_id: UUID
+
+    # Identification
+    budget_number: str
+    version: int
+    parent_budget_id: UUID | None
+
+    # Status
+    status: str
+
+    # Validity
+    valid_from: date
+    valid_until: date | None
+
+    # Assignments
+    created_by: UUID
+    assigned_professional_id: UUID | None
+
+    # Global discount
+    global_discount_type: str | None
+    global_discount_value: Decimal | None
+
+    # Totals
+    subtotal: Decimal
+    total_discount: Decimal
+    total_tax: Decimal
+    total: Decimal
+    currency: str
+
+    # Notes
+    internal_notes: str | None
+    patient_notes: str | None
+
+    # Insurance
+    insurance_estimate: Decimal | None
+
+    # Timestamps
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None
+
+    # Related
+    patient: PatientBrief | None = None
+    creator: UserBrief | None = None
+    assigned_professional: UserBrief | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class BudgetDetailResponse(BudgetResponse):
+    """Schema for budget with full details including items."""
+
+    items: list[BudgetItemResponse] = []
+    signatures: list[SignatureResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class BudgetListResponse(BaseModel):
+    """Schema for budget list item (lighter than full response)."""
+
+    id: UUID
+    budget_number: str
+    version: int
+    status: str
+    valid_from: date
+    valid_until: date | None
+    total: Decimal
+    currency: str
+    created_at: datetime
+
+    # Related (brief)
+    patient: PatientBrief | None = None
+    creator: UserBrief | None = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# Workflow Schemas
+# ============================================================================
+
+
+class BudgetSendRequest(BaseModel):
+    """Schema for sending a budget to patient."""
+
+    send_email: bool = False
+    custom_message: str | None = None
+
+
+class BudgetAcceptRequest(BaseModel):
+    """Schema for accepting a budget (full or partial)."""
+
+    signature: SignatureCreate
+
+
+class BudgetRejectRequest(BaseModel):
+    """Schema for rejecting a budget."""
+
+    reason: str | None = None
+    signature: SignatureCreate | None = None
+
+
+class BudgetCancelRequest(BaseModel):
+    """Schema for cancelling a budget."""
+
+    reason: str | None = None
+
+
+class ItemStatusUpdateRequest(BaseModel):
+    """Schema for updating item status."""
+
+    performed_by: UUID | None = None
+    notes: str | None = None
+
+
+# ============================================================================
+# Version Schemas
+# ============================================================================
+
+
+class BudgetVersionResponse(BaseModel):
+    """Schema for budget version in version history."""
+
+    id: UUID
+    version: int
+    status: str
+    total: Decimal
+    created_at: datetime
+    is_current: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class BudgetVersionListResponse(BaseModel):
+    """Schema for list of budget versions."""
+
+    budget_number: str
+    versions: list[BudgetVersionResponse]
+    current_version: int
+
+
+# ============================================================================
+# Search/Filter Schemas
+# ============================================================================
+
+
+class BudgetSearchParams(BaseModel):
+    """Search parameters for budgets."""
+
+    patient_id: UUID | None = None
+    status: list[BudgetStatus] | None = None
+    created_by: UUID | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    expired: bool | None = None
+    search: str | None = None  # budget_number or patient name

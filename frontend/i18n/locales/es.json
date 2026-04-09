@@ -7,6 +7,7 @@
     "dashboard": "Inicio",
     "patients": "Pacientes",
     "appointments": "Agenda",
+    "budgets": "Presupuestos",
     "settings": "Configuración",
     "catalog": "Catálogo"
   },
@@ -54,11 +55,14 @@
       "info": "Info",
       "odontogram": "Odontograma",
       "history": "Historial",
-      "appointments": "Citas"
+      "appointments": "Citas",
+      "budgets": "Presupuestos"
     },
     "historyPlaceholder": "Notas clínicas disponibles en futura versión",
     "noAppointments": "Este paciente no tiene citas",
-    "scheduleAppointment": "Agendar cita"
+    "scheduleAppointment": "Agendar cita",
+    "noBudgets": "Este paciente no tiene presupuestos",
+    "createBudget": "Crear presupuesto"
   },
   "odontogram": {
     "title": "Odontograma",
@@ -506,5 +510,178 @@
     "createError": "Error al crear tipo de IVA",
     "updateError": "Error al actualizar tipo de IVA",
     "deleteError": "Error al eliminar tipo de IVA"
+  },
+  "budget": {
+    "title": "Presupuestos",
+    "description": "Gestiona presupuestos de tratamientos para pacientes",
+    "new": "Nuevo presupuesto",
+    "edit": "Editar presupuesto",
+    "view": "Ver presupuesto",
+    "delete": "Eliminar presupuesto",
+    "duplicate": "Crear nueva versión",
+    "noItems": "No hay presupuestos",
+    "empty": "No hay presupuestos registrados",
+    "emptyAction": "Crear primer presupuesto",
+    "searchPlaceholder": "Buscar por número o paciente...",
+    "budgetNumber": "Número",
+    "version": "Versión",
+    "patient": "Paciente",
+    "selectPatient": "Seleccionar paciente",
+    "selectPatientHint": "Busca y selecciona el paciente para este presupuesto",
+    "professional": "Profesional",
+    "validFrom": "Válido desde",
+    "validUntil": "Válido hasta",
+    "validUntilHint": "Dejar vacío para presupuesto sin fecha de caducidad",
+    "noExpiry": "Sin fecha de caducidad",
+    "createAndAddItems": "Crear y añadir tratamientos",
+    "subtotal": "Subtotal",
+    "totalDiscount": "Descuento total",
+    "totalTax": "IVA total",
+    "total": "Total",
+    "globalDiscount": "Descuento global",
+    "discountType": "Tipo de descuento",
+    "discountValue": "Valor del descuento",
+    "percentage": "Porcentaje",
+    "absolute": "Absoluto",
+    "internalNotes": "Notas internas",
+    "internalNotesPlaceholder": "Notas solo visibles para el personal...",
+    "patientNotes": "Notas para el paciente",
+    "patientNotesPlaceholder": "Observaciones visibles en el presupuesto...",
+    "status": {
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "partially_accepted": "Aceptado parcialmente",
+      "accepted": "Aceptado",
+      "in_progress": "En progreso",
+      "completed": "Completado",
+      "invoiced": "Facturado",
+      "rejected": "Rechazado",
+      "expired": "Caducado",
+      "cancelled": "Cancelado"
+    },
+    "itemStatus": {
+      "pending": "Pendiente",
+      "accepted": "Aceptado",
+      "rejected": "Rechazado",
+      "in_progress": "En progreso",
+      "completed": "Completado"
+    },
+    "actions": {
+      "send": "Enviar al paciente",
+      "accept": "Aceptar presupuesto",
+      "acceptPartial": "Aceptar seleccionados",
+      "reject": "Rechazar",
+      "cancel": "Cancelar presupuesto",
+      "complete": "Marcar completado",
+      "duplicate": "Crear nueva versión",
+      "downloadPdf": "Descargar PDF",
+      "previewPdf": "Vista previa PDF",
+      "startTreatment": "Iniciar tratamiento",
+      "completeTreatment": "Completar tratamiento"
+    },
+    "items": {
+      "title": "Tratamientos",
+      "add": "Añadir tratamiento",
+      "remove": "Eliminar tratamiento",
+      "edit": "Editar tratamiento",
+      "empty": "No hay tratamientos en este presupuesto",
+      "addFromCatalog": "Añadir del catálogo",
+      "addFromOdontogram": "Añadir del odontograma",
+      "treatment": "Tratamiento",
+      "searchCatalog": "Buscar en el catálogo de tratamientos...",
+      "unitPrice": "Precio unitario",
+      "quantity": "Cantidad",
+      "discount": "Descuento",
+      "lineTotal": "Total línea",
+      "tooth": "Diente",
+      "toothNumber": "Número de diente",
+      "toothNumberPlaceholder": "Ej: 11, 21, 36...",
+      "surfaces": "Superficies",
+      "notes": "Notas",
+      "notesPlaceholder": "Observaciones sobre este tratamiento..."
+    },
+    "signature": {
+      "title": "Firma digital",
+      "signedBy": "Firmado por",
+      "email": "Email",
+      "relationship": "Relación con el paciente",
+      "patient": "Paciente",
+      "guardian": "Tutor legal",
+      "representative": "Representante",
+      "accept": "Acepto los términos del presupuesto",
+      "signHere": "Firma aquí",
+      "clear": "Limpiar firma"
+    },
+    "history": {
+      "title": "Historial de cambios",
+      "noChanges": "No hay cambios registrados",
+      "actions": {
+        "created": "Presupuesto creado",
+        "updated": "Presupuesto actualizado",
+        "status_changed": "Estado cambiado",
+        "item_added": "Tratamiento añadido",
+        "item_removed": "Tratamiento eliminado",
+        "signed": "Presupuesto firmado",
+        "sent": "Presupuesto enviado",
+        "duplicated": "Nueva versión creada",
+        "deleted": "Presupuesto eliminado",
+        "item_treatment_started": "Tratamiento iniciado",
+        "item_treatment_completed": "Tratamiento completado"
+      }
+    },
+    "versions": {
+      "title": "Versiones",
+      "current": "Actual",
+      "viewVersion": "Ver versión"
+    },
+    "confirmations": {
+      "send": "¿Enviar presupuesto al paciente?",
+      "sendDescription": "El presupuesto quedará marcado como enviado.",
+      "reject": "¿Rechazar presupuesto?",
+      "rejectDescription": "Esta acción no se puede deshacer.",
+      "cancel": "¿Cancelar presupuesto?",
+      "cancelDescription": "Esta acción no se puede deshacer.",
+      "delete": "¿Eliminar presupuesto?",
+      "deleteDescription": "Esta acción no se puede deshacer."
+    },
+    "messages": {
+      "created": "Presupuesto creado",
+      "updated": "Presupuesto actualizado",
+      "deleted": "Presupuesto eliminado",
+      "sent": "Presupuesto enviado",
+      "accepted": "Presupuesto aceptado",
+      "rejected": "Presupuesto rechazado",
+      "cancelled": "Presupuesto cancelado",
+      "completed": "Presupuesto completado",
+      "duplicated": "Nueva versión creada",
+      "itemAdded": "Tratamiento añadido",
+      "itemUpdated": "Tratamiento actualizado",
+      "itemRemoved": "Tratamiento eliminado",
+      "treatmentStarted": "Tratamiento iniciado",
+      "treatmentCompleted": "Tratamiento completado"
+    },
+    "errors": {
+      "load": "Error al cargar presupuestos",
+      "create": "Error al crear presupuesto",
+      "update": "Error al actualizar presupuesto",
+      "delete": "Error al eliminar presupuesto",
+      "send": "Error al enviar presupuesto",
+      "accept": "Error al aceptar presupuesto",
+      "reject": "Error al rechazar presupuesto",
+      "notFound": "Presupuesto no encontrado",
+      "onlyDraft": "Solo se pueden editar presupuestos en borrador"
+    },
+    "filters": {
+      "allStatuses": "Todos los estados",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "showExpired": "Mostrar caducados",
+      "advanced": "Filtros avanzados",
+      "clear": "Limpiar filtros"
+    },
+    "pdf": {
+      "generating": "Generando PDF...",
+      "downloadError": "Error al descargar PDF"
+    }
   }
 }

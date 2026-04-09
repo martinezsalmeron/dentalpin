@@ -42,6 +42,12 @@ registerModule({
       icon: 'i-lucide-calendar',
       to: '/appointments',
       permission: PERMISSIONS.appointments.read
+    },
+    {
+      label: 'nav.budgets',
+      icon: 'i-lucide-file-text',
+      to: '/budgets',
+      permission: PERMISSIONS.budget.read
     }
   ]
 })

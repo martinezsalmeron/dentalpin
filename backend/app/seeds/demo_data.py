@@ -1023,3 +1023,305 @@ def generate_odontogram_data() -> dict:
         "tooth_records": tooth_records,
         "treatments": treatments,
     }
+
+
+# =============================================================================
+# Budget Seed Data
+# =============================================================================
+
+# Fixed UUIDs for budgets
+BUDGET_IDS = [UUID(f"aa00bc99-9c0b-4ef8-bb6d-6bb9bd380b{i:02x}") for i in range(10)]
+
+# Fixed UUIDs for budget items
+BUDGET_ITEM_IDS = [UUID(f"bb00bc99-9c0b-4ef8-bb6d-6bb9bd380c{i:02x}") for i in range(50)]
+
+# Fixed UUIDs for budget signatures
+BUDGET_SIGNATURE_IDS = [UUID(f"cc00bc99-9c0b-4ef8-bb6d-6bb9bd380d{i:02x}") for i in range(10)]
+
+# Budget scenarios for different patients
+BUDGET_SCENARIOS = [
+    # Budget 0: Draft budget for patient 3 (Carmen/Emma - sensitivity)
+    {
+        "patient_idx": 3,
+        "status": "draft",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "DX-RXPAN", "qty": 1, "tooth": None},
+            {"code": "REST-COMP", "qty": 2, "tooth": 16},
+        ],
+        "global_discount": None,
+        "notes": {"es": "Presupuesto pendiente de revisión", "en": "Budget pending review"},
+    },
+    # Budget 1: Sent budget for patient 4 (David/William)
+    {
+        "patient_idx": 4,
+        "status": "sent",
+        "items": [
+            {"code": "PREV-LIMP", "qty": 1, "tooth": None},
+            {"code": "REST-COMP", "qty": 3, "tooth": 26},
+            {"code": "ENDO-UNI", "qty": 1, "tooth": 21},
+        ],
+        "global_discount": {"type": "percentage", "value": 5},
+        "notes": {"es": "Enviado por email", "en": "Sent via email"},
+    },
+    # Budget 2: Accepted budget for patient 6 (Javier/Daniel - diabetic)
+    {
+        "patient_idx": 6,
+        "status": "accepted",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "REST-CRO", "qty": 2, "tooth": 36},
+            {"code": "ENDO-MULTI", "qty": 1, "tooth": 36},
+        ],
+        "global_discount": None,
+        "notes": {
+            "es": "Paciente diabético - control especial",
+            "en": "Diabetic patient - special care",
+        },
+        "signature": True,
+    },
+    # Budget 3: In progress budget for patient 8 (Francisco/Alexander - allergic)
+    {
+        "patient_idx": 8,
+        "status": "in_progress",
+        "items": [
+            {"code": "PERIO-RAD", "qty": 4, "tooth": None},
+            {"code": "REST-COMP", "qty": 2, "tooth": 17},
+            {"code": "REST-COMP", "qty": 1, "tooth": 26},
+        ],
+        "global_discount": {"type": "absolute", "value": 50},
+        "notes": {"es": "Alérgico a penicilina", "en": "Allergic to penicillin"},
+        "signature": True,
+    },
+    # Budget 4: Completed budget for patient 10 (Antonio/Robert)
+    {
+        "patient_idx": 10,
+        "status": "completed",
+        "items": [
+            {"code": "PROT-PARC", "qty": 1, "tooth": None},
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+        ],
+        "global_discount": None,
+        "notes": {"es": "Prótesis parcial entregada", "en": "Partial denture delivered"},
+        "signature": True,
+    },
+    # Budget 5: Rejected budget for patient 7 (Isabel/Mia)
+    {
+        "patient_idx": 7,
+        "status": "rejected",
+        "items": [
+            {"code": "EST-BLANQ-C", "qty": 1, "tooth": None},
+            {"code": "REST-VEN", "qty": 4, "tooth": 11},
+        ],
+        "global_discount": None,
+        "notes": {"es": "Rechazado por precio", "en": "Rejected due to price"},
+    },
+    # Budget 6: Partially accepted for patient 9 (Rosa/Charlotte - hypertensive)
+    {
+        "patient_idx": 9,
+        "status": "partially_accepted",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None, "item_status": "accepted"},
+            {"code": "REST-CRO", "qty": 1, "tooth": 46, "item_status": "accepted"},
+            {"code": "REST-CRO", "qty": 1, "tooth": 36, "item_status": "pending"},
+            {"code": "ENDO-MULTI", "qty": 1, "tooth": 36, "item_status": "pending"},
+        ],
+        "global_discount": {"type": "percentage", "value": 10},
+        "notes": {"es": "Solo acepta primera fase", "en": "Only accepts first phase"},
+        "signature": True,
+    },
+]
+
+
+def generate_budgets_data(catalog_items_map: dict[str, dict]) -> dict:
+    """Generate budget seed data.
+
+    Args:
+        catalog_items_map: Dictionary mapping internal_code to catalog item data
+                          (must include id, default_price, vat_type_id, vat_rate)
+
+    Returns:
+        Dictionary with:
+        - budgets: List of Budget data
+        - items: List of BudgetItem data
+        - signatures: List of BudgetSignature data
+    """
+    from decimal import Decimal
+
+    budgets = []
+    items = []
+    signatures = []
+    patients_data = get_patients_data()
+
+    budget_idx = 0
+    item_idx = 0
+    signature_idx = 0
+
+    for scenario_idx, scenario in enumerate(BUDGET_SCENARIOS):
+        patient = patients_data[scenario["patient_idx"]]
+        budget_id = BUDGET_IDS[budget_idx]
+        budget_idx += 1
+
+        # Calculate budget number
+        budget_number = f"PRES-2024-{scenario_idx + 1:04d}"
+
+        # Dates
+        valid_from = date.today() - timedelta(days=30 - scenario_idx * 5)
+        valid_until = valid_from + timedelta(days=60)
+
+        # Create budget items and calculate totals
+        budget_items = []
+        subtotal = Decimal("0.00")
+
+        for item_data in scenario["items"]:
+            catalog_item = catalog_items_map.get(item_data["code"])
+            if not catalog_item:
+                continue  # Skip if catalog item not found
+
+            item_id = BUDGET_ITEM_IDS[item_idx]
+            item_idx += 1
+
+            unit_price = catalog_item["default_price"]
+            quantity = item_data["qty"]
+            vat_rate = catalog_item.get("vat_rate", 0.0) or 0.0
+
+            line_subtotal = unit_price * quantity
+            line_tax = line_subtotal * Decimal(str(vat_rate)) / 100
+            line_total = line_subtotal + line_tax
+
+            subtotal += line_subtotal
+
+            # Determine item status based on budget status and scenario
+            if scenario["status"] in ["draft", "sent"]:
+                item_status = "pending"
+            elif scenario["status"] == "rejected":
+                item_status = "rejected"
+            elif scenario["status"] == "partially_accepted":
+                item_status = item_data.get("item_status", "pending")
+            elif scenario["status"] in ["accepted", "in_progress"]:
+                item_status = "accepted"
+            elif scenario["status"] == "completed":
+                item_status = "completed"
+            else:
+                item_status = "pending"
+
+            budget_item = {
+                "id": item_id,
+                "clinic_id": CLINIC_ID,
+                "budget_id": budget_id,
+                "catalog_item_id": catalog_item["id"],
+                "unit_price": unit_price,
+                "quantity": quantity,
+                "discount_type": None,
+                "discount_value": None,
+                "vat_type_id": catalog_item.get("vat_type_id"),
+                "vat_rate": vat_rate,
+                "line_subtotal": line_subtotal,
+                "line_discount": Decimal("0.00"),
+                "line_tax": line_tax,
+                "line_total": line_total,
+                "tooth_number": item_data.get("tooth"),
+                "surfaces": None,
+                "tooth_treatment_id": None,
+                "item_status": item_status,
+                "accepted_at": datetime.now() - timedelta(days=10)
+                if item_status in ["accepted", "completed"]
+                else None,
+                "rejected_at": datetime.now() - timedelta(days=10)
+                if item_status == "rejected"
+                else None,
+                "treatment_started_at": datetime.now() - timedelta(days=5)
+                if item_status in ["in_progress", "completed"]
+                else None,
+                "treatment_completed_at": datetime.now() - timedelta(days=2)
+                if item_status == "completed"
+                else None,
+                "performed_by": USER_DENTIST_ID if item_status == "completed" else None,
+                "display_order": len(budget_items) + 1,
+                "notes": None,
+            }
+            budget_items.append(budget_item)
+            items.append(budget_item)
+
+        # Calculate totals
+        total_discount = Decimal("0.00")
+        global_discount_type = None
+        global_discount_value = None
+
+        if scenario.get("global_discount"):
+            global_discount_type = scenario["global_discount"]["type"]
+            global_discount_value = Decimal(str(scenario["global_discount"]["value"]))
+            if global_discount_type == "percentage":
+                total_discount = subtotal * global_discount_value / 100
+            else:
+                total_discount = global_discount_value
+
+        # Calculate total tax
+        total_tax = sum(Decimal(str(item["line_tax"])) for item in budget_items)
+        total = subtotal - total_discount + total_tax
+
+        budget = {
+            "id": budget_id,
+            "clinic_id": CLINIC_ID,
+            "patient_id": patient["id"],
+            "budget_number": budget_number,
+            "version": 1,
+            "parent_budget_id": None,
+            "status": scenario["status"],
+            "valid_from": valid_from,
+            "valid_until": valid_until,
+            "created_by": USER_DENTIST_ID,
+            "assigned_professional_id": USER_DENTIST_ID,
+            "global_discount_type": global_discount_type,
+            "global_discount_value": global_discount_value,
+            "subtotal": subtotal,
+            "total_discount": total_discount,
+            "total_tax": total_tax,
+            "total": total,
+            "currency": t({"es": "EUR", "en": "USD"}),
+            "internal_notes": t(scenario["notes"]) if scenario.get("notes") else None,
+            "patient_notes": None,
+            "insurance_estimate": None,
+            "deleted_at": None,
+        }
+        budgets.append(budget)
+
+        # Create signature if needed
+        if scenario.get("signature") and scenario["status"] not in ["draft", "sent", "rejected"]:
+            signature_id = BUDGET_SIGNATURE_IDS[signature_idx]
+            signature_idx += 1
+
+            # Determine which items were signed
+            signed_items = [
+                str(item["id"])
+                for item in budget_items
+                if item["item_status"] in ["accepted", "completed", "in_progress"]
+            ]
+
+            signature = {
+                "id": signature_id,
+                "clinic_id": CLINIC_ID,
+                "budget_id": budget_id,
+                "signature_type": "partial_acceptance"
+                if scenario["status"] == "partially_accepted"
+                else "full_acceptance",
+                "signed_items": signed_items,
+                "signed_by_name": f"{patient['first_name']} {patient['last_name']}",
+                "signed_by_email": patient.get("email"),
+                "relationship_to_patient": "patient",
+                "signature_method": "click_accept",
+                "signature_data": {"accepted_terms": True, "timestamp": datetime.now().isoformat()},
+                "ip_address": "192.168.1.100",
+                "user_agent": "Mozilla/5.0 (Demo Browser)",
+                "signed_at": datetime.now() - timedelta(days=15),
+                "external_signature_id": None,
+                "external_provider": None,
+                "document_hash": None,
+            }
+            signatures.append(signature)
+
+    return {
+        "budgets": budgets,
+        "items": items,
+        "signatures": signatures,
+    }

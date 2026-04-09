@@ -29,6 +29,11 @@ export const PERMISSIONS = {
     read: 'catalog.read',
     write: 'catalog.write',
     admin: 'catalog.admin'
+  },
+  budget: {
+    read: 'budget.read',
+    write: 'budget.write',
+    admin: 'budget.admin'
   }
 } as const
 
@@ -36,7 +41,8 @@ export const PERMISSIONS = {
 export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/patients': PERMISSIONS.patients.read,
   '/appointments': PERMISSIONS.appointments.read,
-  '/settings/users': PERMISSIONS.users.write
+  '/settings/users': PERMISSIONS.users.write,
+  '/budgets': PERMISSIONS.budget.read
 }
 
 // Helper to get permission for a resource action

@@ -7,6 +7,7 @@
     "dashboard": "Home",
     "patients": "Patients",
     "appointments": "Schedule",
+    "budgets": "Quotes",
     "settings": "Settings",
     "catalog": "Catalog"
   },
@@ -54,11 +55,14 @@
       "info": "Info",
       "odontogram": "Dental Chart",
       "history": "History",
-      "appointments": "Appointments"
+      "appointments": "Appointments",
+      "budgets": "Budgets"
     },
     "historyPlaceholder": "Clinical notes available in future version",
     "noAppointments": "This patient has no appointments",
-    "scheduleAppointment": "Schedule appointment"
+    "scheduleAppointment": "Schedule appointment",
+    "noBudgets": "This patient has no budgets",
+    "createBudget": "Create budget"
   },
   "odontogram": {
     "title": "Dental Chart",
@@ -513,5 +517,178 @@
     "createError": "Error creating VAT type",
     "updateError": "Error updating VAT type",
     "deleteError": "Error deleting VAT type"
+  },
+  "budget": {
+    "title": "Quotes",
+    "description": "Manage treatment quotes for patients",
+    "new": "New quote",
+    "edit": "Edit quote",
+    "view": "View quote",
+    "delete": "Delete quote",
+    "duplicate": "Create new version",
+    "noItems": "No quotes",
+    "empty": "No quotes registered",
+    "emptyAction": "Create first quote",
+    "searchPlaceholder": "Search by number or patient...",
+    "budgetNumber": "Number",
+    "version": "Version",
+    "patient": "Patient",
+    "selectPatient": "Select patient",
+    "selectPatientHint": "Search and select the patient for this quote",
+    "professional": "Professional",
+    "validFrom": "Valid from",
+    "validUntil": "Valid until",
+    "validUntilHint": "Leave empty for quote without expiration date",
+    "noExpiry": "No expiration date",
+    "createAndAddItems": "Create and add treatments",
+    "subtotal": "Subtotal",
+    "totalDiscount": "Total discount",
+    "totalTax": "Total VAT",
+    "total": "Total",
+    "globalDiscount": "Global discount",
+    "discountType": "Discount type",
+    "discountValue": "Discount value",
+    "percentage": "Percentage",
+    "absolute": "Absolute",
+    "internalNotes": "Internal notes",
+    "internalNotesPlaceholder": "Notes only visible to staff...",
+    "patientNotes": "Patient notes",
+    "patientNotesPlaceholder": "Notes visible on the quote...",
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "partially_accepted": "Partially accepted",
+      "accepted": "Accepted",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "invoiced": "Invoiced",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "itemStatus": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "in_progress": "In progress",
+      "completed": "Completed"
+    },
+    "actions": {
+      "send": "Send to patient",
+      "accept": "Accept quote",
+      "acceptPartial": "Accept selected",
+      "reject": "Reject",
+      "cancel": "Cancel quote",
+      "complete": "Mark completed",
+      "duplicate": "Create new version",
+      "downloadPdf": "Download PDF",
+      "previewPdf": "Preview PDF",
+      "startTreatment": "Start treatment",
+      "completeTreatment": "Complete treatment"
+    },
+    "items": {
+      "title": "Treatments",
+      "add": "Add treatment",
+      "remove": "Remove treatment",
+      "edit": "Edit treatment",
+      "empty": "No treatments in this quote",
+      "addFromCatalog": "Add from catalog",
+      "addFromOdontogram": "Add from dental chart",
+      "treatment": "Treatment",
+      "searchCatalog": "Search in treatment catalog...",
+      "unitPrice": "Unit price",
+      "quantity": "Quantity",
+      "discount": "Discount",
+      "lineTotal": "Line total",
+      "tooth": "Tooth",
+      "toothNumber": "Tooth number",
+      "toothNumberPlaceholder": "E.g.: 11, 21, 36...",
+      "surfaces": "Surfaces",
+      "notes": "Notes",
+      "notesPlaceholder": "Notes about this treatment..."
+    },
+    "signature": {
+      "title": "Digital signature",
+      "signedBy": "Signed by",
+      "email": "Email",
+      "relationship": "Relationship to patient",
+      "patient": "Patient",
+      "guardian": "Legal guardian",
+      "representative": "Representative",
+      "accept": "I accept the terms of the quote",
+      "signHere": "Sign here",
+      "clear": "Clear signature"
+    },
+    "history": {
+      "title": "Change history",
+      "noChanges": "No changes recorded",
+      "actions": {
+        "created": "Quote created",
+        "updated": "Quote updated",
+        "status_changed": "Status changed",
+        "item_added": "Treatment added",
+        "item_removed": "Treatment removed",
+        "signed": "Quote signed",
+        "sent": "Quote sent",
+        "duplicated": "New version created",
+        "deleted": "Quote deleted",
+        "item_treatment_started": "Treatment started",
+        "item_treatment_completed": "Treatment completed"
+      }
+    },
+    "versions": {
+      "title": "Versions",
+      "current": "Current",
+      "viewVersion": "View version"
+    },
+    "confirmations": {
+      "send": "Send quote to patient?",
+      "sendDescription": "The quote will be marked as sent.",
+      "reject": "Reject quote?",
+      "rejectDescription": "This action cannot be undone.",
+      "cancel": "Cancel quote?",
+      "cancelDescription": "This action cannot be undone.",
+      "delete": "Delete quote?",
+      "deleteDescription": "This action cannot be undone."
+    },
+    "messages": {
+      "created": "Quote created",
+      "updated": "Quote updated",
+      "deleted": "Quote deleted",
+      "sent": "Quote sent",
+      "accepted": "Quote accepted",
+      "rejected": "Quote rejected",
+      "cancelled": "Quote cancelled",
+      "completed": "Quote completed",
+      "duplicated": "New version created",
+      "itemAdded": "Treatment added",
+      "itemUpdated": "Treatment updated",
+      "itemRemoved": "Treatment removed",
+      "treatmentStarted": "Treatment started",
+      "treatmentCompleted": "Treatment completed"
+    },
+    "errors": {
+      "load": "Error loading quotes",
+      "create": "Error creating quote",
+      "update": "Error updating quote",
+      "delete": "Error deleting quote",
+      "send": "Error sending quote",
+      "accept": "Error accepting quote",
+      "reject": "Error rejecting quote",
+      "notFound": "Quote not found",
+      "onlyDraft": "Only draft quotes can be edited"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "showExpired": "Show expired",
+      "advanced": "Advanced filters",
+      "clear": "Clear filters"
+    },
+    "pdf": {
+      "generating": "Generating PDF...",
+      "downloadError": "Error downloading PDF"
+    }
   }
 }
