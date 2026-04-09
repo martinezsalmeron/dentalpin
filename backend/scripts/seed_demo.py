@@ -6,13 +6,23 @@ This script creates a complete demo environment including:
 - 5 users (admin, dentist, hygienist, assistant, receptionist)
 - 15 patients of varied ages
 - 35-40 appointments across past, current, and next week
+- Odontogram data (tooth records and treatments for each patient)
+- Treatment catalog with categories and items
 
 Usage:
+    # Default (English)
     docker-compose exec -T backend python scripts/seed_demo.py
+
+    # Spanish
+    docker-compose exec -T backend python scripts/seed_demo.py --lang es
+
+    # English (explicit)
+    docker-compose exec -T backend python scripts/seed_demo.py --lang en
 
 All users have password: demo1234
 """
 
+import argparse
 import asyncio
 
 from sqlalchemy import select
@@ -21,13 +31,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth.models import Clinic, ClinicMembership, User
 from app.core.auth.service import hash_password
 from app.database import async_session_maker
+from app.modules.catalog.seed import seed_catalog
 from app.modules.clinical.models import Appointment, Patient
+from app.modules.odontogram.models import ToothRecord, ToothTreatment
 from app.seeds.demo_data import (
-    CLINIC_DATA,
     CLINIC_ID,
-    PATIENTS_DATA,
-    USERS_DATA,
     generate_appointments,
+    generate_odontogram_data,
+    get_clinic_data,
+    get_patients_data,
+    get_users_data,
+    set_language,
 )
 
 
@@ -39,15 +53,16 @@ async def check_existing_data(db: AsyncSession) -> bool:
 
 async def seed_clinic(db: AsyncSession) -> Clinic:
     """Create the demo clinic."""
+    clinic_data = get_clinic_data()
     clinic = Clinic(
-        id=CLINIC_DATA["id"],
-        name=CLINIC_DATA["name"],
-        tax_id=CLINIC_DATA["tax_id"],
-        address=CLINIC_DATA["address"],
-        phone=CLINIC_DATA["phone"],
-        email=CLINIC_DATA["email"],
-        settings=CLINIC_DATA["settings"],
-        cabinets=CLINIC_DATA["cabinets"],
+        id=clinic_data["id"],
+        name=clinic_data["name"],
+        tax_id=clinic_data["tax_id"],
+        address=clinic_data["address"],
+        phone=clinic_data["phone"],
+        email=clinic_data["email"],
+        settings=clinic_data["settings"],
+        cabinets=clinic_data["cabinets"],
     )
     db.add(clinic)
     await db.flush()
@@ -58,7 +73,8 @@ async def seed_clinic(db: AsyncSession) -> Clinic:
 async def seed_users(db: AsyncSession, password_hash: str) -> list[User]:
     """Create demo users with their clinic memberships."""
     users = []
-    for user_data in USERS_DATA:
+    users_data = get_users_data()
+    for user_data in users_data:
         user = User(
             id=user_data["id"],
             email=user_data["email"],
@@ -89,7 +105,8 @@ async def seed_users(db: AsyncSession, password_hash: str) -> list[User]:
 async def seed_patients(db: AsyncSession) -> list[Patient]:
     """Create demo patients."""
     patients = []
-    for patient_data in PATIENTS_DATA:
+    patients_data = get_patients_data()
+    for patient_data in patients_data:
         patient = Patient(
             id=patient_data["id"],
             clinic_id=CLINIC_ID,
@@ -145,10 +162,111 @@ async def seed_appointments(db: AsyncSession) -> list[Appointment]:
     return appointments
 
 
-async def main():
+async def seed_odontogram(db: AsyncSession) -> dict:
+    """Create demo odontogram data (tooth records and treatments).
+
+    Returns:
+        Dictionary with counts of created records.
+    """
+    odontogram_data = generate_odontogram_data()
+
+    # Create tooth records
+    tooth_records = []
+    for record_data in odontogram_data["tooth_records"]:
+        record = ToothRecord(
+            id=record_data["id"],
+            clinic_id=record_data["clinic_id"],
+            patient_id=record_data["patient_id"],
+            tooth_number=record_data["tooth_number"],
+            tooth_type=record_data["tooth_type"],
+            general_condition=record_data["general_condition"],
+            surfaces=record_data["surfaces"],
+            notes=record_data["notes"],
+            is_displaced=record_data["is_displaced"],
+            is_rotated=record_data["is_rotated"],
+            displacement_notes=record_data["displacement_notes"],
+        )
+        db.add(record)
+        tooth_records.append(record)
+
+    await db.flush()
+
+    # Create treatments
+    treatments = []
+    for treatment_data in odontogram_data["treatments"]:
+        treatment = ToothTreatment(
+            id=treatment_data["id"],
+            clinic_id=treatment_data["clinic_id"],
+            patient_id=treatment_data["patient_id"],
+            tooth_record_id=treatment_data["tooth_record_id"],
+            tooth_number=treatment_data["tooth_number"],
+            treatment_type=treatment_data["treatment_type"],
+            treatment_category=treatment_data["treatment_category"],
+            surfaces=treatment_data["surfaces"],
+            status=treatment_data["status"],
+            recorded_at=treatment_data["recorded_at"],
+            performed_at=treatment_data["performed_at"],
+            performed_by=treatment_data["performed_by"],
+            catalog_item_id=treatment_data["catalog_item_id"],
+            budget_item_id=treatment_data["budget_item_id"],
+            source_module=treatment_data["source_module"],
+            notes=treatment_data["notes"],
+            deleted_at=treatment_data["deleted_at"],
+        )
+        db.add(treatment)
+        treatments.append(treatment)
+
+    await db.flush()
+
+    # Count patients with odontogram data
+    patient_ids = set(r.patient_id for r in tooth_records)
+
+    # Count by status
+    existing_count = sum(1 for t in treatments if t.status == "existing")
+    planned_count = sum(1 for t in treatments if t.status == "planned")
+
+    print(f"  Created {len(tooth_records)} tooth records for {len(patient_ids)} patients")
+    print(f"  Created {len(treatments)} treatments:")
+    print(f"    - existing: {existing_count}")
+    print(f"    - planned: {planned_count}")
+
+    return {
+        "tooth_records": len(tooth_records),
+        "treatments": len(treatments),
+        "patients": len(patient_ids),
+    }
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Seed DentalPin with demo data",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python scripts/seed_demo.py              # Default (English)
+  python scripts/seed_demo.py --lang es    # Spanish
+  python scripts/seed_demo.py --lang en    # English (explicit)
+        """,
+    )
+    parser.add_argument(
+        "--lang",
+        "-l",
+        choices=["en", "es"],
+        default="en",
+        help="Language for demo data (default: en)",
+    )
+    return parser.parse_args()
+
+
+async def main(lang: str = "en"):
     """Main seed function."""
+    # Set language for demo data
+    set_language(lang)
+    lang_name = "English" if lang == "en" else "Spanish"
+
     print("\n" + "=" * 60)
-    print("DentalPin Demo Data Seeder")
+    print(f"DentalPin Demo Data Seeder ({lang_name})")
     print("=" * 60 + "\n")
 
     async with async_session_maker() as db:
@@ -166,17 +284,25 @@ async def main():
 
         try:
             # Seed in order (respecting foreign keys)
-            print("[1/4] Creating clinic...")
+            print("[1/6] Creating clinic...")
             await seed_clinic(db)
 
-            print("\n[2/4] Creating users...")
+            print("\n[2/6] Creating users...")
             await seed_users(db, password_hash)
 
-            print("\n[3/4] Creating patients...")
+            print("\n[3/6] Creating patients...")
             await seed_patients(db)
 
-            print("\n[4/4] Creating appointments...")
+            print("\n[4/6] Creating appointments...")
             await seed_appointments(db)
+
+            print("\n[5/6] Creating odontogram data...")
+            await seed_odontogram(db)
+
+            print("\n[6/6] Creating treatment catalog...")
+            catalog_result = await seed_catalog(db, CLINIC_ID, lang=lang)
+            print(f"  Created {catalog_result['categories']} categories")
+            print(f"  Created {catalog_result['items']} catalog items")
 
             # Commit all changes
             await db.commit()
@@ -190,16 +316,18 @@ async def main():
             raise
 
     # Print credentials summary
+    users_data = get_users_data()
     print("\n" + "-" * 60)
     print("DEMO CREDENTIALS (all passwords: demo1234)")
     print("-" * 60)
     print(f"{'Email':<30} {'Role':<15} {'Name'}")
     print("-" * 60)
-    for user in USERS_DATA:
+    for user in users_data:
         print(f"{user['email']:<30} {user['role']:<15} {user['first_name']} {user['last_name']}")
     print("-" * 60)
     print("\nOpen http://localhost:3000 to access the application.\n")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    args = parse_args()
+    asyncio.run(main(lang=args.lang))
