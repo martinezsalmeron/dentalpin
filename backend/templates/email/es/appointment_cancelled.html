@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Cita cancelada - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<h2>Hola {{ patient_name }},</h2>
+
+<p>Te informamos que tu cita ha sido cancelada.</p>
+
+<div class="info-box">
+    <div class="info-row">
+        <div style="flex: 1;">
+            <div class="label">Fecha</div>
+            <div class="value">{{ appointment_date }}</div>
+        </div>
+        <div style="flex: 1;">
+            <div class="label">Hora</div>
+            <div class="value">{{ appointment_time }}</div>
+        </div>
+    </div>
+    {% if professional_name %}
+    <div class="info-row">
+        <div>
+            <div class="label">Profesional</div>
+            <div class="value">{{ professional_name }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if cancellation_reason %}
+<div class="alert alert-warning">
+    <strong>Motivo:</strong> {{ cancellation_reason }}
+</div>
+{% endif %}
+
+<p>Si deseas reprogramar tu cita, no dudes en contactarnos.</p>
+
+{% if clinic_phone %}
+<div class="button-container">
+    <a href="tel:{{ clinic_phone }}" class="button">Agendar nueva cita</a>
+</div>
+{% endif %}
+
+<p>Disculpa las molestias ocasionadas.</p>
+{% endblock %}

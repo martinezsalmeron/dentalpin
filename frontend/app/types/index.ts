@@ -866,3 +866,160 @@ export interface BudgetVersionList {
   versions: BudgetVersion[]
   current_version: number
 }
+
+// ============================================================================
+// Notification Types
+// ============================================================================
+
+export interface EmailTemplate {
+  id: string
+  clinic_id?: string
+  template_key: string
+  locale: string
+  subject: string
+  body_html: string
+  body_text?: string
+  variables?: Record<string, unknown>
+  description?: string
+  is_system: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface EmailTemplateCreate {
+  template_key: string
+  locale?: string
+  subject: string
+  body_html: string
+  body_text?: string
+  variables?: Record<string, unknown>
+  description?: string
+  is_active?: boolean
+}
+
+export interface EmailTemplateUpdate {
+  subject?: string
+  body_html?: string
+  body_text?: string
+  variables?: Record<string, unknown>
+  description?: string
+  is_active?: boolean
+}
+
+export interface NotificationPreference {
+  id: string
+  clinic_id: string
+  patient_id?: string
+  user_id?: string
+  email_enabled: boolean
+  preferences: Record<string, boolean>
+  preferred_locale: string
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationPreferenceUpdate {
+  email_enabled?: boolean
+  preferences?: Record<string, boolean>
+  preferred_locale?: string
+}
+
+export interface NotificationTypeSettings {
+  auto_send: boolean
+  enabled: boolean
+  hours_before?: number
+}
+
+export interface ClinicNotificationSettings {
+  id: string
+  clinic_id: string
+  settings: Record<string, NotificationTypeSettings>
+  created_at: string
+  updated_at: string
+}
+
+export interface ClinicNotificationSettingsUpdate {
+  settings: Record<string, Partial<NotificationTypeSettings>>
+}
+
+export interface EmailLog {
+  id: string
+  clinic_id: string
+  recipient_email: string
+  patient_id?: string
+  template_key: string
+  subject: string
+  status: 'pending' | 'sent' | 'failed' | 'skipped'
+  provider: string
+  provider_message_id?: string
+  error_message?: string
+  created_at: string
+  sent_at?: string
+  triggered_by_event?: string
+}
+
+export interface ManualSendRequest {
+  notification_type: string
+  patient_id?: string
+  appointment_id?: string
+  budget_id?: string
+  custom_context?: Record<string, unknown>
+}
+
+export interface ManualSendResponse {
+  success: boolean
+  message: string
+  log_id?: string
+}
+
+export interface TestEmailRequest {
+  to_email: string
+}
+
+export interface TestEmailResponse {
+  success: boolean
+  message: string
+  provider: string
+}
+
+// SMTP Settings types
+export type SmtpProvider = 'smtp' | 'console' | 'disabled'
+
+export interface SmtpSettings {
+  provider: SmtpProvider
+  host: string | null
+  port: number | null
+  username: string | null
+  has_password: boolean
+  use_tls: boolean
+  use_ssl: boolean
+  from_email: string | null
+  from_name: string | null
+  is_active: boolean
+  is_verified: boolean
+  last_verified_at: string | null
+}
+
+export interface SmtpSettingsUpdate {
+  provider?: SmtpProvider
+  host?: string
+  port?: number
+  username?: string
+  password?: string
+  use_tls?: boolean
+  use_ssl?: boolean
+  from_email?: string
+  from_name?: string
+}
+
+export interface SmtpTestRequest {
+  host: string
+  port: number
+  username?: string
+  password?: string
+  use_tls: boolean
+  use_ssl: boolean
+  from_email: string
+  to_email: string
+}

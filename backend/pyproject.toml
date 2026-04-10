@@ -16,10 +16,13 @@ dependencies = [
     "pydantic[email]>=2.5.0",
     "pydantic-settings>=2.1.0",
     "python-jose[cryptography]>=3.3.0",
+    "cryptography>=42.0.0",
     "bcrypt>=4.0.0",
     "python-multipart>=0.0.6",
     "alembic>=1.13.0",
     "slowapi>=0.1.9",
+    "weasyprint>=62.0",
+    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]

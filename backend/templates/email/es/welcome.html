@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Bienvenido a {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<h2>¡Bienvenido {{ patient_name }}!</h2>
+
+<p>Gracias por registrarte en {{ clinic_name }}. Estamos encantados de poder ayudarte a cuidar tu salud dental.</p>
+
+<div class="alert alert-success">
+    Tu ficha de paciente ha sido creada correctamente en nuestro sistema.
+</div>
+
+<h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 16px; font-weight: 600;">¿Qué puedes hacer ahora?</h3>
+
+<ul style="padding-left: 20px; color: #3f3f46;">
+    <li style="margin-bottom: 8px;">Agendar tu primera cita de valoración</li>
+    <li style="margin-bottom: 8px;">Consultar nuestros servicios y tratamientos</li>
+    <li style="margin-bottom: 8px;">Contactarnos para cualquier duda</li>
+</ul>
+
+{% if clinic_phone %}
+<div class="button-container">
+    <a href="tel:{{ clinic_phone }}" class="button">Agendar mi primera cita</a>
+</div>
+{% endif %}
+
+<div class="info-box">
+    <div class="label">Nuestros horarios de atención</div>
+    <div class="value">{{ clinic_hours | default('Lunes a Viernes: 9:00 - 20:00') }}</div>
+</div>
+
+<p>No dudes en contactarnos si tienes alguna pregunta. Estamos aquí para ayudarte.</p>
+
+<p>¡Te esperamos!</p>
+{% endblock %}

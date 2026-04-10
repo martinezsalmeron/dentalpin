@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Recordatorio de cita - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<h2>Hola {{ patient_name }},</h2>
+
+<p>Te recordamos que tienes una cita programada:</p>
+
+<div class="info-box">
+    <div class="info-row">
+        <div style="flex: 1;">
+            <div class="label">Fecha</div>
+            <div class="value">{{ appointment_date }}</div>
+        </div>
+        <div style="flex: 1;">
+            <div class="label">Hora</div>
+            <div class="value">{{ appointment_time }}</div>
+        </div>
+    </div>
+    {% if professional_name %}
+    <div class="info-row">
+        <div>
+            <div class="label">Profesional</div>
+            <div class="value">{{ professional_name }}</div>
+        </div>
+    </div>
+    {% endif %}
+    {% if cabinet_name %}
+    <div class="info-row">
+        <div>
+            <div class="label">Consultorio</div>
+            <div class="value">{{ cabinet_name }}</div>
+        </div>
+    </div>
+    {% endif %}
+    {% if treatment_type %}
+    <div class="info-row">
+        <div>
+            <div class="label">Tratamiento</div>
+            <div class="value">{{ treatment_type }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="alert alert-info">
+    <strong>Recuerda:</strong> Por favor llega 10 minutos antes de tu cita.
+</div>
+
+{% if notes %}
+<p><strong>Notas:</strong> {{ notes }}</p>
+{% endif %}
+
+<p>Si no puedes asistir, por favor avísanos con anticipación para poder reasignar el horario.</p>
+
+{% if clinic_phone %}
+<div class="button-container">
+    <a href="tel:{{ clinic_phone }}" class="button">Confirmar asistencia</a>
+</div>
+{% endif %}
+
+<p>¡Te esperamos!</p>
+{% endblock %}

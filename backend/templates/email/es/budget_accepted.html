@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Presupuesto aceptado - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<h2>Hola {{ patient_name }},</h2>
+
+<p>Hemos registrado la aceptación de tu presupuesto. Gracias por confiar en nosotros.</p>
+
+<div class="info-box">
+    <div class="info-row">
+        <div style="flex: 1;">
+            <div class="label">N° Presupuesto</div>
+            <div class="value">{{ budget_number }}</div>
+        </div>
+        <div style="flex: 1;">
+            <div class="label">Fecha aceptación</div>
+            <div class="value">{{ accepted_date }}</div>
+        </div>
+    </div>
+    <div class="info-row">
+        <div>
+            <div class="label">Total del tratamiento</div>
+            <div class="value" style="font-size: 20px; color: #3b82f6;">{{ total }} €</div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-success">
+    <strong>¡Siguiente paso!</strong> Nos pondremos en contacto contigo para programar las citas necesarias para tu tratamiento.
+</div>
+
+{% if notes %}
+<p><strong>Notas:</strong> {{ notes }}</p>
+{% endif %}
+
+<p>Si tienes alguna pregunta o deseas agendar tu primera cita, contáctanos.</p>
+
+{% if clinic_phone %}
+<div class="button-container">
+    <a href="tel:{{ clinic_phone }}" class="button">Agendar cita</a>
+</div>
+{% endif %}
+
+<p>¡Gracias por elegirnos!</p>
+{% endblock %}

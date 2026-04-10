@@ -26,6 +26,21 @@ class Settings(BaseSettings):
     # Testing
     TESTING: bool = False
 
+    # Email configuration
+    EMAIL_ENABLED: bool = True
+    EMAIL_PROVIDER: str = "console"  # console, smtp (sendgrid, mailgun in future)
+
+    # SMTP configuration
+    EMAIL_SMTP_HOST: str = "smtp.gmail.com"
+    EMAIL_SMTP_PORT: int = 587
+    EMAIL_SMTP_TLS: bool = True
+    EMAIL_SMTP_USER: str = ""
+    EMAIL_SMTP_PASSWORD: str = ""
+
+    # Default sender
+    EMAIL_FROM_ADDRESS: str = "noreply@dentalpin.com"
+    EMAIL_FROM_NAME: str = "DentalPin"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         """Parse ALLOWED_ORIGINS as comma-separated list."""

@@ -34,6 +34,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "odontogram.*",  # Full odontogram access
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.*",  # Full budget access
+        "notifications.preferences.*",  # Can manage patient notification preferences
+        "notifications.send",  # Can send manual notifications
     ],
     "hygienist": [
         "clinical.patients.read",
@@ -50,6 +52,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.read",  # Can view budgets
         "budget.write",  # Can create/edit budgets
+        "notifications.preferences.*",  # Can manage patient notification preferences
+        "notifications.send",  # Can send manual notifications
     ],
     "receptionist": [
         "clinical.patients.*",
@@ -57,6 +61,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "catalog.read",  # Can view catalog for budgeting
         "budget.read",  # Can view budgets
         "budget.write",  # Can create/edit budgets
+        "notifications.preferences.*",  # Can manage patient notification preferences
+        "notifications.send",  # Can send manual notifications
         # No odontogram access for receptionists
     ],
 }
