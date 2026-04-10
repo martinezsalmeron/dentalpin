@@ -321,6 +321,21 @@ async def update_clinic(
     if data.name is not None:
         clinic.name = data.name
 
+    if data.tax_id is not None:
+        clinic.tax_id = data.tax_id
+
+    if data.phone is not None:
+        clinic.phone = data.phone
+
+    if data.email is not None:
+        clinic.email = data.email
+
+    if data.address is not None:
+        # Merge with existing address for partial updates
+        existing_address = clinic.address or {}
+        new_address = data.address.model_dump(exclude_unset=True)
+        clinic.address = {**existing_address, **new_address}
+
     await db.commit()
     await db.refresh(clinic)
 

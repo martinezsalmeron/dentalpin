@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Cabinet, CabinetCreate, UserCreate, UserRole, UserUpdate } from '~/types'
+import type { Cabinet, CabinetCreate, ClinicAddress, ClinicUpdate, UserCreate, UserRole, UserUpdate } from '~/types'
 import type { ClinicUser } from '~/composables/useUsers'
 
 const { t } = useI18n()
@@ -77,10 +77,19 @@ const cabinetColors = [
   '#F97316' // orange
 ]
 
-// Clinic name edit state
-const isEditingClinicName = ref(false)
-const editClinicName = ref('')
-const isSavingClinicName = ref(false)
+// Clinic info modal state
+const showClinicInfoModal = ref(false)
+const isSavingClinicInfo = ref(false)
+const clinicInfoForm = ref({
+  name: '',
+  tax_id: '',
+  street: '',
+  city: '',
+  postal_code: '',
+  country: '',
+  phone: '',
+  email: ''
+})
 
 // Fetch users when admin visits the page
 onMounted(() => {
@@ -187,28 +196,6 @@ function getRoleLabel(role: UserRole): string {
   return t(`settings.roles.${role}`)
 }
 
-// Clinic name functions
-function startEditingClinicName() {
-  editClinicName.value = clinic.currentClinic.value?.name || ''
-  isEditingClinicName.value = true
-}
-
-function cancelEditingClinicName() {
-  isEditingClinicName.value = false
-  editClinicName.value = ''
-}
-
-async function saveClinicName() {
-  if (!editClinicName.value.trim()) return
-
-  isSavingClinicName.value = true
-  const result = await clinic.updateClinic({ name: editClinicName.value.trim() })
-  isSavingClinicName.value = false
-  if (result) {
-    isEditingClinicName.value = false
-  }
-}
-
 // Cabinet functions
 function openCreateCabinetModal() {
   newCabinet.value = {
@@ -271,6 +258,54 @@ async function handleDeleteCabinet() {
     cabinetToDelete.value = null
   }
 }
+
+// Clinic info functions
+function formatAddress(address?: Record<string, string>): string {
+  if (!address) return '-'
+  const parts = []
+  if (address.street) parts.push(address.street)
+  const cityLine = [address.postal_code, address.city].filter(Boolean).join(' ')
+  if (cityLine) parts.push(cityLine)
+  if (address.country) parts.push(address.country)
+  return parts.length > 0 ? parts.join(', ') : '-'
+}
+
+function openClinicInfoModal() {
+  const c = clinic.currentClinic.value
+  clinicInfoForm.value = {
+    name: c?.name || '',
+    tax_id: c?.tax_id || '',
+    street: c?.address?.street || '',
+    city: c?.address?.city || '',
+    postal_code: c?.address?.postal_code || '',
+    country: c?.address?.country || '',
+    phone: c?.phone || '',
+    email: c?.email || ''
+  }
+  showClinicInfoModal.value = true
+}
+
+async function handleSaveClinicInfo() {
+  isSavingClinicInfo.value = true
+  const address: ClinicAddress = {
+    street: clinicInfoForm.value.street || undefined,
+    city: clinicInfoForm.value.city || undefined,
+    postal_code: clinicInfoForm.value.postal_code || undefined,
+    country: clinicInfoForm.value.country || undefined
+  }
+  const updateData: ClinicUpdate = {
+    name: clinicInfoForm.value.name || undefined,
+    tax_id: clinicInfoForm.value.tax_id || undefined,
+    address,
+    phone: clinicInfoForm.value.phone || undefined,
+    email: clinicInfoForm.value.email || undefined
+  }
+  const result = await clinic.updateClinic(updateData)
+  isSavingClinicInfo.value = false
+  if (result) {
+    showClinicInfoModal.value = false
+  }
+}
 </script>
 
 <template>
@@ -283,17 +318,117 @@ async function handleDeleteCabinet() {
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Clinic info -->
+      <!-- Clinic Information (admin only) -->
+      <UCard v-if="isAdmin">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-lucide-building-2"
+                class="w-5 h-5 text-primary-500"
+              />
+              <h2 class="font-semibold text-gray-900 dark:text-white">
+                {{ t('settings.clinicInfo') }}
+              </h2>
+            </div>
+            <UButton
+              icon="i-lucide-pencil"
+              size="xs"
+              variant="ghost"
+              @click="openClinicInfoModal"
+            >
+              {{ t('settings.editClinicInfo') }}
+            </UButton>
+          </div>
+        </template>
+
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          {{ t('settings.clinicInfoDescription') }}
+        </p>
+
+        <div
+          v-if="clinic.isLoading.value"
+          class="space-y-3"
+        >
+          <USkeleton class="h-4 w-24" />
+          <USkeleton class="h-4 w-48" />
+        </div>
+
+        <div
+          v-else-if="clinic.currentClinic.value"
+          class="space-y-3"
+        >
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {{ t('settings.clinicName') }}
+              </label>
+              <p class="text-gray-900 dark:text-white">
+                {{ clinic.currentClinic.value.name || '-' }}
+              </p>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {{ t('settings.taxId') }}
+              </label>
+              <p class="text-gray-900 dark:text-white">
+                {{ clinic.currentClinic.value.tax_id || '-' }}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+              {{ t('settings.street') }}
+            </label>
+            <p class="text-gray-900 dark:text-white">
+              {{ formatAddress(clinic.currentClinic.value.address) }}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {{ t('settings.phone') }}
+              </label>
+              <p class="text-gray-900 dark:text-white">
+                {{ clinic.currentClinic.value.phone || '-' }}
+              </p>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {{ t('common.email') }}
+              </label>
+              <p class="text-gray-900 dark:text-white">
+                {{ clinic.currentClinic.value.email || '-' }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </UCard>
+
+      <!-- Cabinets -->
       <UCard>
         <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon
-              name="i-lucide-building-2"
-              class="w-5 h-5 text-primary-500"
-            />
-            <h2 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('settings.clinic') }}
-            </h2>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-lucide-door-open"
+                class="w-5 h-5 text-primary-500"
+              />
+              <h2 class="font-semibold text-gray-900 dark:text-white">
+                {{ t('settings.cabinets') }}
+              </h2>
+            </div>
+            <UButton
+              v-if="isAdmin"
+              icon="i-lucide-plus"
+              size="xs"
+              variant="ghost"
+              @click="openCreateCabinetModal"
+            >
+              {{ t('settings.addCabinet') }}
+            </UButton>
           </div>
         </template>
 
@@ -306,119 +441,47 @@ async function handleDeleteCabinet() {
         </div>
 
         <div
-          v-else-if="clinic.currentClinic.value"
-          class="space-y-4"
+          v-else
+          class="space-y-2"
         >
-          <div>
-            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-              {{ t('settings.clinicName') }}
-            </label>
-            <div
-              v-if="isEditingClinicName"
-              class="flex items-center gap-2 mt-1"
-            >
-              <UInput
-                v-model="editClinicName"
-                class="flex-1"
-                @keyup.enter="saveClinicName"
-                @keyup.escape="cancelEditingClinicName"
+          <div
+            v-for="cabinet in clinic.cabinets.value"
+            :key="cabinet.name"
+            class="flex items-center justify-between py-1"
+          >
+            <div class="flex items-center gap-2">
+              <span
+                class="w-3 h-3 rounded-full"
+                :style="{ backgroundColor: cabinet.color }"
               />
-              <UButton
-                icon="i-lucide-check"
-                size="xs"
-                color="primary"
-                :loading="isSavingClinicName"
-                @click="saveClinicName"
-              />
-              <UButton
-                icon="i-lucide-x"
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                @click="cancelEditingClinicName"
-              />
+              <span class="text-gray-900 dark:text-white">{{ cabinet.name }}</span>
             </div>
             <div
-              v-else
-              class="flex items-center gap-2"
+              v-if="isAdmin"
+              class="flex items-center gap-1"
             >
-              <p class="text-gray-900 dark:text-white">
-                {{ clinic.currentClinic.value.name }}
-              </p>
               <UButton
-                v-if="isAdmin"
                 icon="i-lucide-pencil"
                 size="xs"
                 variant="ghost"
                 color="neutral"
-                @click="startEditingClinicName"
+                @click="openEditCabinetModal(cabinet)"
+              />
+              <UButton
+                icon="i-lucide-trash-2"
+                size="xs"
+                variant="ghost"
+                color="error"
+                @click="openDeleteCabinetModal(cabinet)"
               />
             </div>
           </div>
-
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {{ t('settings.cabinets') }}
-              </label>
-              <UButton
-                v-if="isAdmin"
-                icon="i-lucide-plus"
-                size="xs"
-                variant="ghost"
-                @click="openCreateCabinetModal"
-              >
-                {{ t('settings.addCabinet') }}
-              </UButton>
-            </div>
-            <div class="space-y-2">
-              <div
-                v-for="cabinet in clinic.cabinets.value"
-                :key="cabinet.name"
-                class="flex items-center justify-between py-1"
-              >
-                <div class="flex items-center gap-2">
-                  <span
-                    class="w-3 h-3 rounded-full"
-                    :style="{ backgroundColor: cabinet.color }"
-                  />
-                  <span class="text-gray-900 dark:text-white">{{ cabinet.name }}</span>
-                </div>
-                <div
-                  v-if="isAdmin"
-                  class="flex items-center gap-1"
-                >
-                  <UButton
-                    icon="i-lucide-pencil"
-                    size="xs"
-                    variant="ghost"
-                    color="neutral"
-                    @click="openEditCabinetModal(cabinet)"
-                  />
-                  <UButton
-                    icon="i-lucide-trash-2"
-                    size="xs"
-                    variant="ghost"
-                    color="error"
-                    @click="openDeleteCabinetModal(cabinet)"
-                  />
-                </div>
-              </div>
-              <span
-                v-if="clinic.cabinets.value.length === 0"
-                class="text-gray-500 dark:text-gray-400"
-              >
-                {{ t('settings.noCabinets') }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div
-          v-else
-          class="text-gray-500 dark:text-gray-400"
-        >
-          {{ t('common.noData') }}
+          <span
+            v-if="clinic.cabinets.value.length === 0"
+            class="text-gray-500 dark:text-gray-400"
+          >
+            {{ t('settings.noCabinets') }}
+          </span>
         </div>
       </UCard>
 
@@ -1013,6 +1076,88 @@ async function handleDeleteCabinet() {
               {{ t('common.delete') }}
             </UButton>
           </div>
+        </UCard>
+      </template>
+    </UModal>
+
+    <!-- Edit Clinic Info Modal -->
+    <UModal v-model:open="showClinicInfoModal">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-lucide-building-2"
+                class="w-5 h-5 text-primary-500"
+              />
+              <h3 class="font-semibold text-gray-900 dark:text-white">
+                {{ t('settings.editClinicInfo') }}
+              </h3>
+            </div>
+          </template>
+
+          <form
+            class="space-y-4"
+            @submit.prevent="handleSaveClinicInfo"
+          >
+            <div class="grid grid-cols-2 gap-4">
+              <UFormField :label="t('settings.clinicName')">
+                <UInput
+                  v-model="clinicInfoForm.name"
+                  required
+                />
+              </UFormField>
+              <UFormField :label="t('settings.taxId')">
+                <UInput v-model="clinicInfoForm.tax_id" />
+              </UFormField>
+            </div>
+
+            <UFormField :label="t('settings.street')">
+              <UInput v-model="clinicInfoForm.street" />
+            </UFormField>
+
+            <div class="grid grid-cols-3 gap-4">
+              <UFormField :label="t('settings.postalCode')">
+                <UInput v-model="clinicInfoForm.postal_code" />
+              </UFormField>
+              <UFormField :label="t('settings.city')">
+                <UInput v-model="clinicInfoForm.city" />
+              </UFormField>
+              <UFormField :label="t('settings.country')">
+                <UInput v-model="clinicInfoForm.country" />
+              </UFormField>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <UFormField :label="t('settings.phone')">
+                <UInput
+                  v-model="clinicInfoForm.phone"
+                  type="tel"
+                />
+              </UFormField>
+              <UFormField :label="t('common.email')">
+                <UInput
+                  v-model="clinicInfoForm.email"
+                  type="email"
+                />
+              </UFormField>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4">
+              <UButton
+                variant="ghost"
+                @click="showClinicInfoModal = false"
+              >
+                {{ t('common.cancel') }}
+              </UButton>
+              <UButton
+                type="submit"
+                :loading="isSavingClinicInfo"
+              >
+                {{ t('settings.saveChanges') }}
+              </UButton>
+            </div>
+          </form>
         </UCard>
       </template>
     </UModal>

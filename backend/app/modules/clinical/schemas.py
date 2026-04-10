@@ -123,11 +123,24 @@ class AppointmentResponse(BaseModel):
         from_attributes = True
 
 
-# Clinic update schema
+# Clinic update schemas
+class AddressUpdate(BaseModel):
+    """Schema for address fields."""
+
+    street: str | None = Field(default=None, max_length=200)
+    city: str | None = Field(default=None, max_length=100)
+    postal_code: str | None = Field(default=None, max_length=20)
+    country: str | None = Field(default=None, max_length=100)
+
+
 class ClinicUpdate(BaseModel):
     """Schema for updating clinic info."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
+    tax_id: str | None = Field(default=None, max_length=20)
+    address: AddressUpdate | None = None
+    phone: str | None = Field(default=None, max_length=20)
+    email: EmailStr | None = None
 
 
 # Cabinet schemas

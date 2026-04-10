@@ -20,6 +20,21 @@ class BudgetPDFService:
     """
 
     @staticmethod
+    def _format_address(address: dict | None) -> str:
+        """Format address dict as a readable string."""
+        if not address:
+            return ""
+        parts = []
+        if address.get("street"):
+            parts.append(address["street"])
+        city_line = " ".join(filter(None, [address.get("postal_code"), address.get("city")]))
+        if city_line:
+            parts.append(city_line)
+        if address.get("country"):
+            parts.append(address["country"])
+        return ", ".join(parts)
+
+    @staticmethod
     def generate_pdf(
         budget: Budget,
         clinic: "Clinic",
@@ -359,7 +374,9 @@ class BudgetPDFService:
                     <div class="clinic-name">{clinic.name if clinic else "Dental Clinic"}</div>
                     <div class="clinic-details">
                         {
-            clinic.address if hasattr(clinic, "address") and clinic.address else ""
+            BudgetPDFService._format_address(clinic.address)
+            if hasattr(clinic, "address") and clinic.address
+            else ""
         }<br>
                         {clinic.phone if hasattr(clinic, "phone") and clinic.phone else ""}
                         {f" | {clinic.email}" if hasattr(clinic, "email") and clinic.email else ""}

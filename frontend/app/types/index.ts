@@ -32,8 +32,19 @@ export interface CabinetUpdate {
   color?: string
 }
 
+export interface ClinicAddress {
+  street?: string
+  city?: string
+  postal_code?: string
+  country?: string
+}
+
 export interface ClinicUpdate {
   name?: string
+  tax_id?: string
+  address?: ClinicAddress
+  phone?: string
+  email?: string
 }
 
 export interface Clinic {
