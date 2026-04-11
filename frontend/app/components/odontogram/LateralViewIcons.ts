@@ -73,25 +73,23 @@ export const LATERAL_ICONS: Record<string, LateralIconConfig> = {
     fillOpacity: 0.7
   },
 
-  // Rotated - Curved arrow above crown
+  // Rotated - Circular arrow at crown center
   rotated: {
-    path: 'M -6,0 A 6,6 0 1,1 6,0 M 3,-3 L 6,0 L 3,3',
-    width: 16,
-    height: 12,
-    anchorPosition: 'aboveCrown',
-    offsetY: 5,
-    strokeWidth: 1.5,
+    path: 'M 0,-10 A 10,10 0 1,1 -10,0 M -10,0 L -12,-7 M -10,0 L -3,-2',
+    width: 24,
+    height: 24,
+    anchorPosition: 'crownCenter',
+    strokeWidth: 2.5,
     fillOpacity: 0
   },
 
-  // Displaced - Straight arrow beside crown
+  // Displaced - Horizontal arrow beside crown
   displaced: {
-    path: 'M 0,-8 L 0,8 M -3,5 L 0,8 L 3,5',
-    width: 8,
-    height: 20,
+    path: 'M -16,0 L 16,0 M 10,-6 L 16,0 L 10,6',
+    width: 36,
+    height: 14,
     anchorPosition: 'besideCrown',
-    offsetX: 3,
-    strokeWidth: 1.5,
+    strokeWidth: 3,
     fillOpacity: 0
   },
 

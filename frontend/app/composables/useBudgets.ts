@@ -47,6 +47,8 @@ const STATUS_COLORS: Record<BudgetStatus, string> = {
 
 export function useBudgets() {
   const api = useApi()
+  const config = useRuntimeConfig()
+  const auth = useAuth()
 
   // State
   const budgets = useState<BudgetListItem[]>('budgets:list', () => [])
@@ -392,11 +394,15 @@ export function useBudgets() {
   // ============================================================================
 
   async function downloadPDF(id: string, locale: string = 'es'): Promise<void> {
+    // Use the proper API base URL from config
+    const baseUrl = config.public.apiBaseUrl
+    const token = auth.accessToken.value
+
     const response = await fetch(
-      `/api/v1/budget/budgets/${id}/pdf?locale=${locale}`,
+      `${baseUrl}/api/v1/budget/budgets/${id}/pdf?locale=${locale}`,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
+          Authorization: `Bearer ${token}`
         }
       }
     )
@@ -422,7 +428,8 @@ export function useBudgets() {
   }
 
   function getPDFPreviewUrl(id: string, locale: string = 'es'): string {
-    return `/api/v1/budget/budgets/${id}/pdf/preview?locale=${locale}`
+    const baseUrl = config.public.apiBaseUrl
+    return `${baseUrl}/api/v1/budget/budgets/${id}/pdf/preview?locale=${locale}`
   }
 
   // ============================================================================

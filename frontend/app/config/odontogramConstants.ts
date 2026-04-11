@@ -372,11 +372,15 @@ export const STATUS_STYLES: Record<TreatmentStatus, {
   planned: {
     fill: 'solid',
     opacity: 0.7,
-    border: '#EF4444',
-    borderWidth: 1.5,
-    borderDash: '4,2'
+    border: null,
+    borderWidth: 0
   }
 }
+
+/**
+ * Color for the "P" indicator on planned treatments
+ */
+export const PLANNED_INDICATOR_COLOR = '#EF4444'
 
 // ============================================================================
 // Tooth Categories
@@ -497,14 +501,6 @@ export const TREATMENT_CATEGORIES: Array<{
     ]
   }
 ]
-
-// Position actions are now part of diagnostico category
-export const POSITION_ACTIONS = ['rotated', 'displaced'] as const
-export type PositionAction = typeof POSITION_ACTIONS[number]
-
-export function isPositionAction(action: string): boolean {
-  return (POSITION_ACTIONS as readonly string[]).includes(action)
-}
 
 // ============================================================================
 // Tooth Name i18n Keys

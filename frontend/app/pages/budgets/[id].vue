@@ -27,6 +27,25 @@ const {
   canComplete
 } = useBudgets()
 
+// Check if budget can be invoiced (has accepted items with uninvoiced quantity)
+function canInvoice(): boolean {
+  if (!currentBudget.value) return false
+  // Budget must be in a state that allows invoicing
+  if (!['accepted', 'partially_accepted', 'in_progress', 'completed'].includes(currentBudget.value.status)) {
+    return false
+  }
+  // Must have at least one item with available quantity to invoice
+  return currentBudget.value.items.some(item =>
+    ['accepted', 'in_progress', 'completed'].includes(item.item_status)
+    && item.quantity > (item.invoiced_quantity || 0)
+  )
+}
+
+function goToCreateInvoice() {
+  if (!currentBudget.value) return
+  router.push(`/invoices/from-budget/${currentBudget.value.id}`)
+}
+
 const budgetId = computed(() => route.params.id as string)
 
 // Load budget
@@ -382,6 +401,16 @@ function getItemName(item: BudgetItem): string {
             @click="openSignatureModal('reject')"
           >
             {{ t('budget.actions.reject') }}
+          </UButton>
+
+          <UButton
+            v-if="canInvoice() && can('billing.write')"
+            color="primary"
+            variant="outline"
+            icon="i-lucide-receipt"
+            @click="goToCreateInvoice"
+          >
+            {{ t('invoice.fromBudget') }}
           </UButton>
 
           <UButton

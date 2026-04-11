@@ -12,6 +12,7 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
+    from app.modules.catalog.models import TreatmentCatalogItem
     from app.modules.clinical.models import Patient
 
 
@@ -83,6 +84,11 @@ class ToothTreatment(Base, TimestampMixin):
     performed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     performed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
 
+    # Integration with catalog module
+    catalog_item_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("treatment_catalog_items.id"), index=True, default=None
+    )  # FK to catalog item for pricing/nomenclature
+
     # Integration with budget module
     budget_item_id: Mapped[UUID | None] = mapped_column(
         UUID(as_uuid=True)
@@ -101,12 +107,14 @@ class ToothTreatment(Base, TimestampMixin):
     patient: Mapped["Patient"] = relationship()
     tooth_record: Mapped["ToothRecord"] = relationship(back_populates="treatments")
     performer: Mapped["User | None"] = relationship(foreign_keys=[performed_by])
+    catalog_item: Mapped["TreatmentCatalogItem | None"] = relationship()
 
     __table_args__ = (
         Index("idx_tooth_treatments_patient", "patient_id"),
         Index("idx_tooth_treatments_tooth_record", "tooth_record_id"),
         Index("idx_tooth_treatments_status", "patient_id", "status"),
         Index("idx_tooth_treatments_budget", "budget_item_id"),
+        Index("idx_tooth_treatments_catalog", "catalog_item_id"),
     )
 
 

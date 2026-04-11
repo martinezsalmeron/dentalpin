@@ -54,8 +54,11 @@ Clinics deserve better than closed, expensive software from the last decade. Den
 # Start services
 docker-compose up -d
 
-# Seed demo data
+# Seed demo data (English by default)
 ./scripts/seed-demo.sh
+
+# Or seed in Spanish
+./scripts/seed-demo.sh --lang es
 ```
 
 Open http://localhost:3000
@@ -64,13 +67,13 @@ Open http://localhost:3000
 
 All users have password: `demo1234`
 
-| Email | Role | Name |
-|-------|------|------|
-| admin@demo.clinic | admin | Admin Demo |
-| dentist@demo.clinic | dentist | Dra. María García López |
-| hygienist@demo.clinic | hygienist | Carlos López Martínez |
-| assistant@demo.clinic | assistant | Ana Martínez Ruiz |
-| receptionist@demo.clinic | receptionist | Laura Sánchez Pérez |
+| Email | Role | Name (EN) | Name (ES) |
+|-------|------|-----------|-----------|
+| admin@demo.clinic | admin | Admin Demo | Admin Demo |
+| dentist@demo.clinic | dentist | Sarah Johnson | María García López |
+| hygienist@demo.clinic | hygienist | Michael Williams | Carlos López Martínez |
+| assistant@demo.clinic | assistant | Emily Davis | Ana Martínez Ruiz |
+| receptionist@demo.clinic | receptionist | Jessica Brown | Laura Sánchez Pérez |
 
 See [docs/DEMO.md](docs/DEMO.md) for full details on demo data.
 
@@ -121,8 +124,11 @@ npm run dev
 # Reset database and run migrations
 ./scripts/reset-db.sh
 
-# Seed demo data (after reset or fresh install)
+# Seed demo data (English - default)
 ./scripts/seed-demo.sh
+
+# Seed demo data (Spanish)
+./scripts/seed-demo.sh --lang es
 
 # Full setup (reset + seed in one command)
 ./scripts/setup-demo.sh

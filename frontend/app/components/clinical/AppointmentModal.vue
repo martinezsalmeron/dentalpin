@@ -405,6 +405,7 @@ function closeModal() {
                 :items="durationOptions"
                 value-key="value"
                 label-key="label"
+                :placeholder="t('appointments.selectDuration')"
               />
             </UFormField>
 

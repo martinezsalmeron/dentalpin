@@ -5,8 +5,6 @@ import { TREATMENT_COLORS } from '~/config/odontogramConstants'
 const props = defineProps<{
   toothNumber: number
   treatments: Treatment[]
-  isDisplaced?: boolean
-  isRotated?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -85,28 +83,6 @@ function handleEditClick(event: Event, treatment: Treatment) {
       <div class="flex items-center gap-2">
         <span class="tooth-number-badge">{{ toothNumber }}</span>
         <span class="tooth-name">{{ getToothName(toothNumber) }}</span>
-      </div>
-      <!-- Position indicators -->
-      <div
-        v-if="isDisplaced || isRotated"
-        class="position-badges"
-      >
-        <UBadge
-          v-if="isRotated"
-          color="violet"
-          variant="subtle"
-          size="xs"
-        >
-          {{ t('odontogram.position.rotated') }}
-        </UBadge>
-        <UBadge
-          v-if="isDisplaced"
-          color="amber"
-          variant="subtle"
-          size="xs"
-        >
-          {{ t('odontogram.position.displaced') }}
-        </UBadge>
       </div>
     </div>
 
@@ -257,12 +233,6 @@ function handleEditClick(event: Event, treatment: Treatment) {
 
 :root.dark .tooth-name {
   color: #E5E7EB;
-}
-
-.position-badges {
-  display: flex;
-  gap: 4px;
-  margin-top: 2px;
 }
 
 .treatments-section {

@@ -3,33 +3,37 @@ import type { TreatmentStatus, TreatmentType } from '~/types'
 import { TREATMENT_ICONS, isSurfaceTreatment } from './TreatmentIcons'
 import {
   TREATMENT_CATEGORIES,
-  isPositionAction,
   getAllowedStatusesForTreatment,
-  getTreatmentColor,
-  type PositionAction
+  getTreatmentColor
 } from '~/config/odontogramConstants'
 
 const props = defineProps<{
   selectedTreatment?: TreatmentType | null
   selectedStatus: TreatmentStatus
   disabled?: boolean
-  // Position action mode
-  selectedPositionAction?: PositionAction | null
 }>()
 
 const emit = defineEmits<{
   'update:selectedTreatment': [treatment: TreatmentType | null]
   'update:selectedStatus': [status: TreatmentStatus]
-  'update:selectedPositionAction': [action: PositionAction | null]
   'treatmentSelect': [treatment: TreatmentType]
-  'positionActionSelect': [action: PositionAction]
   'cancel': []
 }>()
 
 const { t } = useI18n()
 
-// Active category tab
-const activeCategory = ref('common')
+// Catalog integration - fetch treatments from catalog with fallback to constants
+const treatmentCatalog = useTreatmentCatalog()
+
+// Fetch treatments on mount (will use fallback if catalog is empty)
+onMounted(async () => {
+  if (!treatmentCatalog.initialized.value) {
+    await treatmentCatalog.fetchTreatments()
+  }
+})
+
+// Active category tab - default to diagnostic treatments
+const activeCategory = ref('diagnostico')
 
 // All status options
 const allStatusOptions: Array<{ value: TreatmentStatus, labelKey: string, color: string }> = [
@@ -37,27 +41,50 @@ const allStatusOptions: Array<{ value: TreatmentStatus, labelKey: string, color:
   { value: 'planned', labelKey: 'odontogram.status.planned', color: 'red' }
 ]
 
+// Get allowed statuses for a treatment (catalog-aware)
+function getEffectiveAllowedStatuses(treatment: string): TreatmentStatus[] {
+  // Check if treatment is diagnostic from catalog
+  if (treatmentCatalog.treatmentIsDiagnostic(treatment)) {
+    return ['existing']
+  }
+  // Fall back to constants
+  return getAllowedStatusesForTreatment(treatment)
+}
+
 // Filtered status options based on selected treatment
 const statusOptions = computed(() => {
-  if (!props.selectedTreatment && !props.selectedPositionAction) {
+  if (!props.selectedTreatment) {
     return allStatusOptions
   }
-  const treatmentType = props.selectedTreatment || props.selectedPositionAction
-  if (!treatmentType) return allStatusOptions
-
-  const allowedStatuses = getAllowedStatusesForTreatment(treatmentType)
+  const allowedStatuses = getEffectiveAllowedStatuses(props.selectedTreatment)
   return allStatusOptions.filter(opt => allowedStatuses.includes(opt.value))
 })
 
-// Current category treatments
+// Categories from catalog (with fallback to constants)
+const categories = computed(() => {
+  const catalogCategories = treatmentCatalog.clinicalCategories.value
+  if (catalogCategories.length > 0) {
+    return catalogCategories
+  }
+  return TREATMENT_CATEGORIES.map(c => c.key)
+})
+
+// Current category treatments - uses catalog if available, fallback to constants
 const currentTreatments = computed(() => {
+  const catalogTreatments = treatmentCatalog.getTreatmentsForCategory(activeCategory.value)
+  if (catalogTreatments.length > 0) {
+    // Return treatment types from catalog (for odontogram compatibility)
+    return catalogTreatments.map(t => t.odontogram_treatment_type)
+  }
+
+  // Fallback to constants
   const category = TREATMENT_CATEGORIES.find(c => c.key === activeCategory.value)
   return category?.treatments || []
 })
 
 function selectTreatment(treatment: string) {
   // Check allowed statuses and auto-set if restricted
-  const allowedStatuses = getAllowedStatusesForTreatment(treatment)
+  const allowedStatuses = getEffectiveAllowedStatuses(treatment)
   if (allowedStatuses.length === 1 && !allowedStatuses.includes(props.selectedStatus)) {
     // Auto-select the only allowed status (e.g., existing for diagnostic)
     emit('update:selectedStatus', allowedStatuses[0])
@@ -66,18 +93,8 @@ function selectTreatment(treatment: string) {
     emit('update:selectedStatus', allowedStatuses[0])
   }
 
-  // Check if this is a position action (rotate/displace)
-  if (isPositionAction(treatment)) {
-    // Clear any selected treatment
-    emit('update:selectedTreatment', null)
-    emit('update:selectedPositionAction', treatment as PositionAction)
-    emit('positionActionSelect', treatment as PositionAction)
-  } else {
-    // Clear any selected position action
-    emit('update:selectedPositionAction', null)
-    emit('update:selectedTreatment', treatment as TreatmentType)
-    emit('treatmentSelect', treatment as TreatmentType)
-  }
+  emit('update:selectedTreatment', treatment as TreatmentType)
+  emit('treatmentSelect', treatment as TreatmentType)
 }
 
 function selectStatus(status: TreatmentStatus) {
@@ -86,26 +103,36 @@ function selectStatus(status: TreatmentStatus) {
 
 function handleCancel() {
   emit('update:selectedTreatment', null)
-  emit('update:selectedPositionAction', null)
   emit('cancel')
 }
 
-// Check if a treatment or position action is selected
+// Check if a treatment is selected
 function isSelected(item: string): boolean {
-  if (isPositionAction(item)) {
-    return props.selectedPositionAction === item
-  }
   return props.selectedTreatment === item
 }
 
-// Check if any mode is active (treatment or position action)
-const hasActiveMode = computed(() =>
-  props.selectedTreatment !== null || props.selectedPositionAction !== null
-)
+// Check if any treatment is selected
+const hasActiveMode = computed(() => props.selectedTreatment !== null)
 
-// Get treatment label
+// Get treatment label - tries catalog first, then i18n fallback
 function getTreatmentLabel(treatment: string): string {
+  // Try to get name from catalog
+  const catalogName = treatmentCatalog.getTreatmentName(treatment)
+  if (catalogName && catalogName !== treatment) {
+    return catalogName
+  }
+  // Fall back to i18n
   return t(`odontogram.treatments.types.${treatment}`, treatment)
+}
+
+// Get category label - catalog aware
+function getCategoryLabel(categoryKey: string): string {
+  const label = treatmentCatalog.getCategoryLabel(categoryKey)
+  // If label looks like an i18n key, translate it
+  if (label.startsWith('odontogram.')) {
+    return t(label, categoryKey)
+  }
+  return label
 }
 </script>
 
@@ -140,14 +167,14 @@ function getTreatmentLabel(treatment: string): string {
       <!-- Category Tabs -->
       <div class="category-tabs">
         <button
-          v-for="category in TREATMENT_CATEGORIES"
-          :key="category.key"
+          v-for="categoryKey in categories"
+          :key="categoryKey"
           type="button"
           class="category-tab"
-          :class="{ active: activeCategory === category.key }"
-          @click="activeCategory = category.key"
+          :class="{ active: activeCategory === categoryKey }"
+          @click="activeCategory = categoryKey"
         >
-          {{ t(category.labelKey, category.key) }}
+          {{ getCategoryLabel(categoryKey) }}
         </button>
       </div>
 
@@ -198,8 +225,7 @@ function getTreatmentLabel(treatment: string): string {
         class="treatment-btn"
         :class="{
           'selected': isSelected(treatment),
-          'is-surface': isSurfaceTreatment(treatment),
-          'is-position': isPositionAction(treatment)
+          'is-surface': isSurfaceTreatment(treatment)
         }"
         :title="getTreatmentLabel(treatment)"
         @click="selectTreatment(treatment)"
@@ -405,12 +431,13 @@ function getTreatmentLabel(treatment: string): string {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px;
+  padding: 8px 10px;
   border-radius: 8px;
   border: 2px solid transparent;
   background: white;
   transition: all 0.15s ease;
-  min-width: 60px;
+  min-width: 70px;
+  max-width: 100px;
 }
 
 :root.dark .treatment-btn {
@@ -444,14 +471,6 @@ function getTreatmentLabel(treatment: string): string {
   border-radius: 50%;
 }
 
-.treatment-btn.is-position {
-  border-style: dashed;
-}
-
-.treatment-btn.is-position.selected {
-  border-style: solid;
-}
-
 .treatment-icon {
   display: flex;
   align-items: center;
@@ -469,10 +488,10 @@ function getTreatmentLabel(treatment: string): string {
   font-size: 10px;
   font-weight: 500;
   color: #52525B;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 56px;
+  text-align: center;
+  line-height: 1.3;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 :root.dark .treatment-label {
