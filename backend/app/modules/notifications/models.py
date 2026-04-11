@@ -90,9 +90,7 @@ class NotificationPreference(Base, TimestampMixin):
     patient_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("patients.id"), index=True, default=None
     )
-    user_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("users.id"), index=True, default=None
-    )
+    user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), index=True, default=None)
 
     # Global email toggle
     email_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -119,13 +117,9 @@ class NotificationPreference(Base, TimestampMixin):
 
     __table_args__ = (
         # A patient can only have one preference record per clinic
-        UniqueConstraint(
-            "clinic_id", "patient_id", name="uq_notification_pref_clinic_patient"
-        ),
+        UniqueConstraint("clinic_id", "patient_id", name="uq_notification_pref_clinic_patient"),
         # A user can only have one preference record per clinic
-        UniqueConstraint(
-            "clinic_id", "user_id", name="uq_notification_pref_clinic_user"
-        ),
+        UniqueConstraint("clinic_id", "user_id", name="uq_notification_pref_clinic_user"),
         Index("idx_notification_preferences_clinic", "clinic_id"),
         Index("idx_notification_preferences_patient", "patient_id"),
         Index("idx_notification_preferences_user", "user_id"),
@@ -142,9 +136,7 @@ class ClinicNotificationSettings(Base, TimestampMixin):
     __tablename__ = "clinic_notification_settings"
 
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    clinic_id: Mapped[UUID] = mapped_column(
-        ForeignKey("clinics.id"), unique=True, index=True
-    )
+    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), unique=True, index=True)
 
     # Per-notification-type settings
     settings: Mapped[dict] = mapped_column(
@@ -175,9 +167,7 @@ class ClinicSmtpSettings(Base, TimestampMixin):
     __tablename__ = "clinic_smtp_settings"
 
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    clinic_id: Mapped[UUID] = mapped_column(
-        ForeignKey("clinics.id"), unique=True, index=True
-    )
+    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), unique=True, index=True)
 
     # Provider selection: smtp, console, disabled
     provider: Mapped[str] = mapped_column(String(20), default="smtp")
@@ -197,16 +187,12 @@ class ClinicSmtpSettings(Base, TimestampMixin):
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_verified_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     # Relationships
     clinic: Mapped["Clinic"] = relationship(foreign_keys=[clinic_id])
 
-    __table_args__ = (
-        Index("idx_clinic_smtp_settings_clinic", "clinic_id"),
-    )
+    __table_args__ = (Index("idx_clinic_smtp_settings_clinic", "clinic_id"),)
 
 
 class EmailLog(Base):
@@ -231,9 +217,7 @@ class EmailLog(Base):
     subject: Mapped[str] = mapped_column(String(255))
 
     # Status
-    status: Mapped[str] = mapped_column(
-        String(20), index=True
-    )  # pending, sent, failed, skipped
+    status: Mapped[str] = mapped_column(String(20), index=True)  # pending, sent, failed, skipped
 
     # Provider info
     provider: Mapped[str] = mapped_column(String(50))  # smtp, sendgrid, console

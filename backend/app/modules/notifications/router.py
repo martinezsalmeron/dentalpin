@@ -381,20 +381,14 @@ async def send_notification(
         if appointment.professional_id:
             from app.core.auth.models import User
 
-            result = await db.execute(
-                select(User).where(User.id == appointment.professional_id)
-            )
+            result = await db.execute(select(User).where(User.id == appointment.professional_id))
             professional = result.scalar_one_or_none()
             if professional:
-                context["professional_name"] = (
-                    f"{professional.first_name} {professional.last_name}"
-                )
+                context["professional_name"] = f"{professional.first_name} {professional.last_name}"
 
         # Use patient from appointment if not provided
         if not patient:
-            result = await db.execute(
-                select(Patient).where(Patient.id == appointment.patient_id)
-            )
+            result = await db.execute(select(Patient).where(Patient.id == appointment.patient_id))
             patient = result.scalar_one_or_none()
             if patient:
                 context["patient_name"] = f"{patient.first_name} {patient.last_name}"
@@ -435,9 +429,7 @@ async def send_notification(
 
         # Get budget items for budget_sent
         if data.notification_type == "budget_sent":
-            result = await db.execute(
-                select(BudgetItem).where(BudgetItem.budget_id == budget.id)
-            )
+            result = await db.execute(select(BudgetItem).where(BudgetItem.budget_id == budget.id))
             items = result.scalars().all()
 
             treatments = []
@@ -461,9 +453,7 @@ async def send_notification(
 
         # Use patient from budget if not provided
         if not patient:
-            result = await db.execute(
-                select(Patient).where(Patient.id == budget.patient_id)
-            )
+            result = await db.execute(select(Patient).where(Patient.id == budget.patient_id))
             patient = result.scalar_one_or_none()
             if patient:
                 context["patient_name"] = f"{patient.first_name} {patient.last_name}"

@@ -187,12 +187,8 @@ class ManualSendRequest(BaseModel):
     appointment_id: UUID | None = Field(
         default=None, description="Appointment ID (for appointment notifications)"
     )
-    budget_id: UUID | None = Field(
-        default=None, description="Budget ID (for budget notifications)"
-    )
-    custom_context: dict | None = Field(
-        default=None, description="Additional context variables"
-    )
+    budget_id: UUID | None = Field(default=None, description="Budget ID (for budget notifications)")
+    custom_context: dict | None = Field(default=None, description="Additional context variables")
 
 
 class ManualSendResponse(BaseModel):

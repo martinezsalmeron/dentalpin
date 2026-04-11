@@ -53,7 +53,9 @@ class NotificationHandlers:
                 )
                 patient = result.scalar_one_or_none()
                 if not patient or not patient.email:
-                    logger.info(f"Patient has no email, skipping notification: {appointment.patient_id}")
+                    logger.info(
+                        f"Patient has no email, skipping notification: {appointment.patient_id}"
+                    )
                     return
 
                 # Get clinic info
@@ -257,9 +259,7 @@ class NotificationHandlers:
                     return
 
                 # Get patient
-                result = await db.execute(
-                    select(Patient).where(Patient.id == budget.patient_id)
-                )
+                result = await db.execute(select(Patient).where(Patient.id == budget.patient_id))
                 patient = result.scalar_one_or_none()
                 if not patient or not patient.email:
                     return
@@ -355,9 +355,7 @@ class NotificationHandlers:
                     return
 
                 # Get patient
-                result = await db.execute(
-                    select(Patient).where(Patient.id == budget.patient_id)
-                )
+                result = await db.execute(select(Patient).where(Patient.id == budget.patient_id))
                 patient = result.scalar_one_or_none()
                 if not patient or not patient.email:
                     return

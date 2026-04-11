@@ -79,9 +79,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["patient_id"], ["patients.id"]),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "clinic_id", "patient_id", name="uq_notification_pref_clinic_patient"
-        ),
+        sa.UniqueConstraint("clinic_id", "patient_id", name="uq_notification_pref_clinic_patient"),
         sa.UniqueConstraint("clinic_id", "user_id", name="uq_notification_pref_clinic_user"),
     )
     op.create_index(

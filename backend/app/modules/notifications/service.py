@@ -64,9 +64,7 @@ class NotificationService:
         total = total_result.scalar() or 0
 
         # Get items
-        query = select(EmailTemplate).order_by(
-            EmailTemplate.template_key, EmailTemplate.locale
-        )
+        query = select(EmailTemplate).order_by(EmailTemplate.template_key, EmailTemplate.locale)
         for condition in conditions:
             query = query.where(condition)
 
@@ -624,9 +622,7 @@ class NotificationService:
                 locale = prefs.preferred_locale
 
         # Get template
-        template = await NotificationService.get_template(
-            db, clinic_id, notification_type, locale
-        )
+        template = await NotificationService.get_template(db, clinic_id, notification_type, locale)
 
         # Build subject from template or use default
         subject = template.subject if template else f"Notificación: {notification_type}"

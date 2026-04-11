@@ -50,8 +50,8 @@ EMAIL SENT (Console Provider)
 Message ID: {message_id}
 Sent at: {sent_at.isoformat()}
 
-From: {message.from_name or 'N/A'} <{message.from_email or 'default'}>
-To: {message.to_name or 'N/A'} <{message.to_email}>
+From: {message.from_name or "N/A"} <{message.from_email or "default"}>
+To: {message.to_name or "N/A"} <{message.to_email}>
 Subject: {message.subject}
 """
 
@@ -68,7 +68,7 @@ Subject: {message.subject}
 
         output += f"""
 --- BODY (TEXT) ---
-{message.body_text or '(no plain text version)'}
+{message.body_text or "(no plain text version)"}
 
 --- BODY (HTML) ---
 {message.body_html}

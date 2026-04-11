@@ -11,7 +11,9 @@ from app.modules.notifications.service import NotificationService
 
 
 @pytest.mark.asyncio
-async def test_get_clinic_settings(client: AsyncClient, auth_headers: dict, db_session: AsyncSession, test_clinic):
+async def test_get_clinic_settings(
+    client: AsyncClient, auth_headers: dict, db_session: AsyncSession, test_clinic
+):
     """Test getting clinic notification settings."""
     response = await client.get(
         "/api/v1/notifications/settings",
@@ -28,12 +30,14 @@ async def test_get_clinic_settings(client: AsyncClient, auth_headers: dict, db_s
 
 
 @pytest.mark.asyncio
-async def test_update_clinic_settings(client: AsyncClient, auth_headers: dict, db_session: AsyncSession, test_clinic):
+async def test_update_clinic_settings(
+    client: AsyncClient, auth_headers: dict, db_session: AsyncSession, test_clinic
+):
     """Test updating clinic notification settings."""
     update_data = {
         "settings": {
             "appointment_confirmation": {"auto_send": False},
-            "welcome": {"enabled": False}
+            "welcome": {"enabled": False},
         }
     }
 
@@ -76,10 +80,7 @@ async def test_update_patient_preferences(
     """Test updating patient notification preferences."""
     update_data = {
         "email_enabled": False,
-        "preferences": {
-            "appointment_confirmation": True,
-            "appointment_reminder": False
-        }
+        "preferences": {"appointment_confirmation": True, "appointment_reminder": False},
     }
 
     response = await client.put(
@@ -182,7 +183,7 @@ async def test_create_custom_template(client: AsyncClient, auth_headers: dict, t
         "locale": "es",
         "subject": "Test Subject",
         "body_html": "<html><body>Test</body></html>",
-        "description": "Test template"
+        "description": "Test template",
     }
 
     response = await client.post(

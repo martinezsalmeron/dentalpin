@@ -28,9 +28,7 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("clinic_id", sa.UUID(), nullable=False),
         # Provider selection
-        sa.Column(
-            "provider", sa.String(length=20), nullable=False, server_default="'smtp'"
-        ),
+        sa.Column("provider", sa.String(length=20), nullable=False, server_default="'smtp'"),
         # SMTP Configuration
         sa.Column("host", sa.String(length=255), nullable=True),
         sa.Column("port", sa.Integer(), nullable=False, server_default="587"),
