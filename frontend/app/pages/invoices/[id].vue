@@ -14,7 +14,7 @@ const {
   voidInvoice,
   recordPayment,
   voidPayment,
-  canEdit: _canEdit,
+  canEdit,
   canIssue,
   canRecordPayment,
   canVoid,
