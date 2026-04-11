@@ -709,6 +709,8 @@
     "empty": "No hay facturas registradas",
     "emptyAction": "Crear primera factura",
     "searchPlaceholder": "Buscar por número o paciente...",
+    "notFound": "Factura no encontrada",
+    "details": "Detalles",
     "invoiceNumber": "Número",
     "patient": "Paciente",
     "searchPatient": "Buscar paciente",
@@ -724,6 +726,8 @@
     "postalCode": "Código Postal",
     "province": "Provincia",
     "country": "País",
+    "linkedBudget": "Presupuesto vinculado",
+    "creditNoteFor": "Rectificativa de",
     "issueDate": "Fecha emisión",
     "dueDate": "Fecha vencimiento",
     "paymentTermDays": "Plazo de pago (días)",
@@ -731,8 +735,12 @@
     "discount": "Descuento",
     "tax": "IVA",
     "total": "Total",
+    "paid": "Pagado",
     "balance": "Pendiente",
+    "balanceDue": "Saldo pendiente",
     "overdue": "Vencida",
+    "tooth": "Diente",
+    "vat": "IVA",
     "items": "Líneas de factura",
     "addItem": "Añadir línea",
     "itemDescription": "Descripción",
@@ -769,6 +777,18 @@
       "previewPdf": "Vista previa PDF",
       "sendEmail": "Enviar por email"
     },
+    "recordPayment": "Registrar pago",
+    "paymentAmount": "Importe",
+    "paymentMethod": "Método de pago",
+    "paymentDate": "Fecha de pago",
+    "paymentReference": "Referencia",
+    "paymentReferencePlaceholder": "Nº transacción, recibo...",
+    "paymentNotes": "Notas del pago",
+    "paymentVoided": "Pago anulado",
+    "createCreditNote": "Crear rectificativa",
+    "creditNoteReason": "Motivo de rectificación",
+    "creditNoteReasonPlaceholder": "Describe el motivo de la rectificativa...",
+    "creditNoteInfo": "Se creará una nota de crédito por el importe total de la factura.",
     "payments": {
       "title": "Pagos",
       "add": "Registrar pago",
@@ -816,6 +836,9 @@
         "payment_voided": "Pago anulado",
         "credit_note_created": "Rectificativa creada"
       }
+    },
+    "prompts": {
+      "voidPaymentReason": "Introduce el motivo de anulación del pago"
     },
     "confirmations": {
       "issue": "¿Emitir factura?",
