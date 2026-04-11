@@ -9,6 +9,7 @@ This script creates a complete demo environment including:
 - Odontogram data (tooth records and treatments for each patient)
 - Treatment catalog with categories and items
 - 7 budgets with various statuses (draft, sent, accepted, etc.)
+- 8 invoices with various statuses (draft, issued, partial, paid) and payments
 
 Usage:
     # Default (English)
@@ -32,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth.models import Clinic, ClinicMembership, User
 from app.core.auth.service import hash_password
 from app.database import async_session_maker
+from app.modules.billing.models import Invoice, InvoiceItem, InvoiceSeries, Payment
 from app.modules.budget.models import Budget, BudgetItem, BudgetSignature
 from app.modules.catalog.models import TreatmentCatalogItem
 from app.modules.catalog.seed import seed_catalog
@@ -41,6 +43,7 @@ from app.seeds.demo_data import (
     CLINIC_ID,
     generate_appointments,
     generate_budgets_data,
+    generate_invoices_data,
     generate_odontogram_data,
     get_clinic_data,
     get_patients_data,
@@ -372,6 +375,158 @@ async def seed_budgets(db: AsyncSession) -> dict:
     }
 
 
+async def seed_invoices(db: AsyncSession) -> dict:
+    """Create demo invoices with items and payments.
+
+    Returns:
+        Dictionary with counts of created records.
+    """
+    # First, get catalog items to reference them in invoices
+    result = await db.execute(
+        select(TreatmentCatalogItem).where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
+    )
+    catalog_items = result.scalars().all()
+
+    # Build map of internal_code -> item data
+    catalog_items_map = {}
+    for item in catalog_items:
+        catalog_items_map[item.internal_code] = {
+            "id": item.id,
+            "default_price": item.default_price,
+            "vat_type_id": item.vat_type_id,
+            "vat_rate": item.vat_rate or 0.0,
+        }
+
+    # Generate invoice data
+    invoice_data = generate_invoices_data(catalog_items_map)
+
+    # Create invoice series
+    for series_dict in invoice_data["series"]:
+        series = InvoiceSeries(
+            id=series_dict["id"],
+            clinic_id=series_dict["clinic_id"],
+            prefix=series_dict["prefix"],
+            series_type=series_dict["series_type"],
+            description=series_dict["description"],
+            current_number=series_dict["current_number"],
+            reset_yearly=series_dict["reset_yearly"],
+            last_reset_year=series_dict["last_reset_year"],
+            is_default=series_dict["is_default"],
+            is_active=series_dict["is_active"],
+        )
+        db.add(series)
+
+    await db.flush()
+
+    # Create invoices
+    for invoice_dict in invoice_data["invoices"]:
+        invoice = Invoice(
+            id=invoice_dict["id"],
+            clinic_id=invoice_dict["clinic_id"],
+            patient_id=invoice_dict["patient_id"],
+            invoice_number=invoice_dict["invoice_number"],
+            series_id=invoice_dict["series_id"],
+            sequential_number=invoice_dict["sequential_number"],
+            budget_id=invoice_dict["budget_id"],
+            credit_note_for_id=invoice_dict["credit_note_for_id"],
+            status=invoice_dict["status"],
+            issue_date=invoice_dict["issue_date"],
+            due_date=invoice_dict["due_date"],
+            payment_term_days=invoice_dict["payment_term_days"],
+            billing_name=invoice_dict["billing_name"],
+            billing_tax_id=invoice_dict["billing_tax_id"],
+            billing_address=invoice_dict["billing_address"],
+            billing_email=invoice_dict["billing_email"],
+            subtotal=invoice_dict["subtotal"],
+            total_discount=invoice_dict["total_discount"],
+            total_tax=invoice_dict["total_tax"],
+            total=invoice_dict["total"],
+            total_paid=invoice_dict["total_paid"],
+            balance_due=invoice_dict["balance_due"],
+            currency=invoice_dict["currency"],
+            internal_notes=invoice_dict["internal_notes"],
+            public_notes=invoice_dict["public_notes"],
+            compliance_data=invoice_dict["compliance_data"],
+            document_hash=invoice_dict["document_hash"],
+            created_by=invoice_dict["created_by"],
+            issued_by=invoice_dict["issued_by"],
+            deleted_at=invoice_dict["deleted_at"],
+        )
+        db.add(invoice)
+
+    await db.flush()
+
+    # Create invoice items
+    for item_dict in invoice_data["items"]:
+        item = InvoiceItem(
+            id=item_dict["id"],
+            clinic_id=item_dict["clinic_id"],
+            invoice_id=item_dict["invoice_id"],
+            budget_item_id=item_dict["budget_item_id"],
+            catalog_item_id=item_dict["catalog_item_id"],
+            description=item_dict["description"],
+            internal_code=item_dict["internal_code"],
+            unit_price=item_dict["unit_price"],
+            quantity=item_dict["quantity"],
+            discount_type=item_dict["discount_type"],
+            discount_value=item_dict["discount_value"],
+            vat_type_id=item_dict["vat_type_id"],
+            vat_rate=item_dict["vat_rate"],
+            vat_exempt_reason=item_dict["vat_exempt_reason"],
+            line_subtotal=item_dict["line_subtotal"],
+            line_discount=item_dict["line_discount"],
+            line_tax=item_dict["line_tax"],
+            line_total=item_dict["line_total"],
+            tooth_number=item_dict["tooth_number"],
+            surfaces=item_dict["surfaces"],
+            display_order=item_dict["display_order"],
+        )
+        db.add(item)
+
+    await db.flush()
+
+    # Create payments
+    for payment_dict in invoice_data["payments"]:
+        payment = Payment(
+            id=payment_dict["id"],
+            clinic_id=payment_dict["clinic_id"],
+            invoice_id=payment_dict["invoice_id"],
+            amount=payment_dict["amount"],
+            payment_method=payment_dict["payment_method"],
+            payment_date=payment_dict["payment_date"],
+            reference=payment_dict["reference"],
+            notes=payment_dict["notes"],
+            recorded_by=payment_dict["recorded_by"],
+            is_voided=payment_dict["is_voided"],
+            voided_at=payment_dict["voided_at"],
+            voided_by=payment_dict["voided_by"],
+            void_reason=payment_dict["void_reason"],
+        )
+        db.add(payment)
+
+    await db.flush()
+
+    # Count by status
+    status_counts = {}
+    for invoice in invoice_data["invoices"]:
+        status = invoice["status"]
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    print(f"  Created {len(invoice_data['series'])} invoice series")
+    print(f"  Created {len(invoice_data['invoices'])} invoices:")
+    for status, count in sorted(status_counts.items()):
+        print(f"    - {status}: {count}")
+    print(f"  Created {len(invoice_data['items'])} invoice items")
+    print(f"  Created {len(invoice_data['payments'])} payments")
+
+    return {
+        "series": len(invoice_data["series"]),
+        "invoices": len(invoice_data["invoices"]),
+        "items": len(invoice_data["items"]),
+        "payments": len(invoice_data["payments"]),
+    }
+
+
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -419,28 +574,31 @@ async def main(lang: str = "en"):
 
         try:
             # Seed in order (respecting foreign keys)
-            print("[1/7] Creating clinic...")
+            print("[1/8] Creating clinic...")
             await seed_clinic(db)
 
-            print("\n[2/7] Creating users...")
+            print("\n[2/8] Creating users...")
             await seed_users(db, password_hash)
 
-            print("\n[3/7] Creating patients...")
+            print("\n[3/8] Creating patients...")
             await seed_patients(db)
 
-            print("\n[4/7] Creating appointments...")
+            print("\n[4/8] Creating appointments...")
             await seed_appointments(db)
 
-            print("\n[5/7] Creating odontogram data...")
+            print("\n[5/8] Creating odontogram data...")
             await seed_odontogram(db)
 
-            print("\n[6/7] Creating treatment catalog...")
+            print("\n[6/8] Creating treatment catalog...")
             catalog_result = await seed_catalog(db, CLINIC_ID, lang=lang)
             print(f"  Created {catalog_result['categories']} categories")
             print(f"  Created {catalog_result['items']} catalog items")
 
-            print("\n[7/7] Creating budgets...")
+            print("\n[7/8] Creating budgets...")
             await seed_budgets(db)
+
+            print("\n[8/8] Creating invoices...")
+            await seed_invoices(db)
 
             # Commit all changes
             await db.commit()

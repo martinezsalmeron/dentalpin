@@ -204,6 +204,9 @@ class BudgetItem(Base, TimestampMixin):
     # Treatment tracking
     performed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), default=None)
 
+    # Billing tracking (for partial invoicing)
+    invoiced_quantity: Mapped[int] = mapped_column(Integer, default=0)
+
     # Display
     display_order: Mapped[int] = mapped_column(Integer, default=0)
     notes: Mapped[str | None] = mapped_column(Text, default=None)

@@ -669,6 +669,8 @@ export interface BudgetItem {
   treatment_started_at?: string
   treatment_completed_at?: string
   performed_by?: string
+  // Invoice tracking
+  invoiced_quantity: number
   // Display
   display_order: number
   notes?: string
@@ -1022,4 +1024,374 @@ export interface SmtpTestRequest {
   use_ssl: boolean
   from_email: string
   to_email: string
+}
+
+// ============================================================================
+// Billing Types
+// ============================================================================
+
+export type InvoiceStatus = 'draft' | 'issued' | 'partial' | 'paid' | 'cancelled' | 'voided'
+
+export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'direct_debit' | 'other'
+
+export type SeriesType = 'invoice' | 'credit_note'
+
+// Invoice Series
+export interface InvoiceSeries {
+  id: string
+  clinic_id: string
+  prefix: string
+  series_type: SeriesType
+  description?: string
+  current_number: number
+  reset_yearly: boolean
+  last_reset_year?: number
+  is_default: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface InvoiceSeriesCreate {
+  prefix: string
+  series_type: SeriesType
+  description?: string
+  reset_yearly?: boolean
+  is_default?: boolean
+}
+
+export interface InvoiceSeriesUpdate {
+  description?: string
+  reset_yearly?: boolean
+  is_default?: boolean
+  is_active?: boolean
+}
+
+// Invoice Item
+export interface InvoiceItem {
+  id: string
+  invoice_id: string
+  budget_item_id?: string
+  catalog_item_id?: string
+  // Description
+  description: string
+  internal_code?: string
+  // Pricing
+  unit_price: number
+  quantity: number
+  // Discounts
+  discount_type?: DiscountType
+  discount_value?: number
+  // VAT
+  vat_type_id?: string
+  vat_rate: number
+  vat_exempt_reason?: string
+  // Calculated totals
+  line_subtotal: number
+  line_discount: number
+  line_tax: number
+  line_total: number
+  // Dental context
+  tooth_number?: number
+  surfaces?: string[]
+  // Display
+  display_order: number
+  // Timestamps
+  created_at: string
+  updated_at: string
+  // Related
+  catalog_item?: CatalogItemBrief
+  vat_type?: VatTypeBrief
+}
+
+export interface InvoiceItemCreate {
+  description: string
+  internal_code?: string
+  catalog_item_id?: string
+  unit_price: number
+  quantity?: number
+  discount_type?: DiscountType
+  discount_value?: number
+  vat_type_id?: string
+  vat_exempt_reason?: string
+  tooth_number?: number
+  surfaces?: string[]
+  display_order?: number
+}
+
+export interface InvoiceItemFromBudget {
+  budget_item_id: string
+  quantity?: number
+}
+
+export interface InvoiceItemUpdate {
+  description?: string
+  unit_price?: number
+  quantity?: number
+  discount_type?: DiscountType
+  discount_value?: number
+  vat_type_id?: string
+  vat_exempt_reason?: string
+  display_order?: number
+}
+
+// Payment
+export interface Payment {
+  id: string
+  invoice_id: string
+  amount: number
+  payment_method: PaymentMethod
+  payment_date: string
+  reference?: string
+  notes?: string
+  recorded_by: string
+  created_at: string
+  // Voiding
+  is_voided: boolean
+  voided_at?: string
+  voided_by?: string
+  void_reason?: string
+  // Related
+  recorder?: UserBrief
+  voider?: UserBrief
+}
+
+export interface PaymentCreate {
+  amount: number
+  payment_method: PaymentMethod
+  payment_date?: string
+  reference?: string
+  notes?: string
+}
+
+export interface PaymentVoidRequest {
+  reason: string
+}
+
+// Invoice History
+export interface InvoiceHistoryEntry {
+  id: string
+  invoice_id: string
+  action: string
+  changed_by: string
+  changed_at: string
+  previous_state?: Record<string, unknown>
+  new_state?: Record<string, unknown>
+  notes?: string
+  user?: UserBrief
+}
+
+// Invoice Brief (for references)
+export interface InvoiceBrief {
+  id: string
+  invoice_number: string
+  status: InvoiceStatus
+  total: number
+  issue_date?: string
+}
+
+// Billing Address
+export interface BillingAddress {
+  street?: string
+  city?: string
+  postal_code?: string
+  province?: string
+  country?: string
+}
+
+// Invoice
+export interface Invoice {
+  id: string
+  clinic_id: string
+  patient_id: string
+  // Identification
+  invoice_number: string
+  sequential_number: number
+  series_id: string
+  // Links
+  budget_id?: string
+  credit_note_for_id?: string
+  // Status
+  status: InvoiceStatus
+  // Dates
+  issue_date?: string
+  due_date?: string
+  payment_term_days: number
+  // Billing data
+  billing_name: string
+  billing_tax_id?: string
+  billing_address?: BillingAddress
+  billing_email?: string
+  // Totals
+  subtotal: number
+  total_discount: number
+  total_tax: number
+  total: number
+  total_paid: number
+  balance_due: number
+  currency: string
+  // Notes
+  internal_notes?: string
+  public_notes?: string
+  // Extensibility
+  compliance_data?: Record<string, unknown>
+  document_hash?: string
+  // Audit
+  created_by: string
+  issued_by?: string
+  // Timestamps
+  created_at: string
+  updated_at: string
+  deleted_at?: string
+  // Related
+  patient?: PatientBrief
+  creator?: UserBrief
+  issuer?: UserBrief
+  budget?: BudgetBrief
+  credit_note_for?: InvoiceBrief
+}
+
+export interface InvoiceDetail extends Invoice {
+  items: InvoiceItem[]
+  payments: Payment[]
+}
+
+export interface InvoiceListItem {
+  id: string
+  invoice_number: string
+  status: InvoiceStatus
+  issue_date?: string
+  due_date?: string
+  total: number
+  total_paid: number
+  balance_due: number
+  currency: string
+  created_at: string
+  patient?: PatientBrief
+  creator?: UserBrief
+}
+
+export interface BudgetBrief {
+  id: string
+  budget_number: string
+  status: BudgetStatus
+  total: number
+}
+
+export interface InvoiceCreate {
+  patient_id: string
+  series_id?: string
+  billing_name?: string
+  billing_tax_id?: string
+  billing_address?: BillingAddress
+  billing_email?: string
+  payment_term_days?: number
+  due_date?: string
+  internal_notes?: string
+  public_notes?: string
+  items?: InvoiceItemCreate[]
+}
+
+export interface InvoiceFromBudgetCreate {
+  items: InvoiceItemFromBudget[]
+  billing_name?: string
+  billing_tax_id?: string
+  billing_address?: BillingAddress
+  billing_email?: string
+  payment_term_days?: number
+  due_date?: string
+  internal_notes?: string
+  public_notes?: string
+}
+
+export interface InvoiceUpdate {
+  billing_name?: string
+  billing_tax_id?: string
+  billing_address?: BillingAddress
+  billing_email?: string
+  payment_term_days?: number
+  due_date?: string
+  internal_notes?: string
+  public_notes?: string
+}
+
+// Workflow
+export interface InvoiceIssueRequest {
+  issue_date?: string
+}
+
+export interface CreditNoteItemSelect {
+  invoice_item_id: string
+  quantity?: number
+}
+
+export interface CreditNoteCreate {
+  reason: string
+  items?: CreditNoteItemSelect[]
+  internal_notes?: string
+  public_notes?: string
+}
+
+// Settings
+export interface BillingSettings {
+  default_payment_term_days: number
+  invoice_footer_text?: string
+  bank_account_info?: string
+}
+
+export interface BillingSettingsUpdate {
+  default_payment_term_days?: number
+  invoice_footer_text?: string
+  bank_account_info?: string
+}
+
+// Report Types
+export interface VatSummaryItem {
+  vat_type_id?: string
+  vat_rate: number
+  vat_name: string
+  base_amount: number
+  tax_amount: number
+  total_amount: number
+}
+
+export interface BillingSummary {
+  period_start: string
+  period_end: string
+  total_invoiced: number
+  total_paid: number
+  total_pending: number
+  invoice_count: number
+  paid_count: number
+  overdue_count: number
+  vat_breakdown: VatSummaryItem[]
+}
+
+export interface OverdueInvoice {
+  id: string
+  invoice_number: string
+  patient_name: string
+  issue_date: string
+  due_date: string
+  days_overdue: number
+  balance_due: number
+}
+
+export interface PaymentMethodSummary {
+  payment_method: string
+  total_amount: number
+  payment_count: number
+}
+
+export interface ProfessionalBillingSummary {
+  professional_id: string
+  professional_name: string
+  total_invoiced: number
+  invoice_count: number
+}
+
+export interface NumberingGap {
+  series_prefix: string
+  year: number
+  missing_numbers: number[]
 }

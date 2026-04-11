@@ -48,6 +48,18 @@ registerModule({
       icon: 'i-lucide-file-text',
       to: '/budgets',
       permission: PERMISSIONS.budget.read
+    },
+    {
+      label: 'nav.invoices',
+      icon: 'i-lucide-receipt',
+      to: '/invoices',
+      permission: PERMISSIONS.billing.read
+    },
+    {
+      label: 'nav.billingReports',
+      icon: 'i-lucide-bar-chart-3',
+      to: '/invoices/reports',
+      permission: PERMISSIONS.billing.read
     }
   ]
 })

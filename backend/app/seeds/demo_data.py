@@ -1325,3 +1325,344 @@ def generate_budgets_data(catalog_items_map: dict[str, dict]) -> dict:
         "items": items,
         "signatures": signatures,
     }
+
+
+# =============================================================================
+# Invoice Seed Data
+# =============================================================================
+
+# Fixed UUIDs for invoice series
+INVOICE_SERIES_IDS = [UUID(f"fa00bc99-9c0b-4ef8-bb6d-6bb9bd380e{i:02x}") for i in range(5)]
+
+# Fixed UUIDs for invoices
+INVOICE_IDS = [UUID(f"fb00bc99-9c0b-4ef8-bb6d-6bb9bd380f{i:02x}") for i in range(20)]
+
+# Fixed UUIDs for invoice items
+INVOICE_ITEM_IDS = [UUID(f"fc00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(100)]
+
+# Fixed UUIDs for payments
+PAYMENT_IDS = [UUID(f"fd00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(30)]
+
+# Invoice scenarios for different patients
+INVOICE_SCENARIOS = [
+    # Invoice 0: Draft invoice for patient 2 (Miguel/James)
+    {
+        "patient_idx": 2,
+        "status": "draft",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "PREV-LIMP", "qty": 1, "tooth": None},
+        ],
+        "payments": [],
+        "notes": {"es": "Borrador - pendiente de emitir", "en": "Draft - pending issuance"},
+    },
+    # Invoice 1: Issued invoice for patient 3 (Carmen/Emma) - no payments yet
+    {
+        "patient_idx": 3,
+        "status": "issued",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "REST-COMP", "qty": 2, "tooth": 16},
+        ],
+        "payments": [],
+        "notes": {"es": "Emitida - pendiente de pago", "en": "Issued - pending payment"},
+    },
+    # Invoice 2: Partially paid invoice for patient 5 (Elena/Sophia)
+    {
+        "patient_idx": 5,
+        "status": "partial",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "DX-RXPAN", "qty": 1, "tooth": None},
+            {"code": "REST-COMP", "qty": 3, "tooth": 26},
+        ],
+        "payments": [
+            {"method": "card", "percent": 50},  # 50% of total
+        ],
+        "notes": {"es": "Pago parcial recibido", "en": "Partial payment received"},
+    },
+    # Invoice 3: Fully paid invoice for patient 6 (Javier/Daniel)
+    {
+        "patient_idx": 6,
+        "status": "paid",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "REST-CRO", "qty": 2, "tooth": 36},
+        ],
+        "payments": [
+            {"method": "bank_transfer", "percent": 100},
+        ],
+        "notes": {"es": "Pagado por transferencia", "en": "Paid by bank transfer"},
+    },
+    # Invoice 4: Paid invoice for patient 8 (Francisco/Alexander) - multiple payments
+    {
+        "patient_idx": 8,
+        "status": "paid",
+        "items": [
+            {"code": "PERIO-RAD", "qty": 4, "tooth": None},
+            {"code": "REST-COMP", "qty": 2, "tooth": 17},
+        ],
+        "payments": [
+            {"method": "cash", "percent": 40},
+            {"method": "card", "percent": 60},
+        ],
+        "notes": {"es": "Pagado en dos plazos", "en": "Paid in two installments"},
+    },
+    # Invoice 5: Paid invoice for patient 10 (Antonio/Robert)
+    {
+        "patient_idx": 10,
+        "status": "paid",
+        "items": [
+            {"code": "PROT-PARC", "qty": 1, "tooth": None},
+        ],
+        "payments": [
+            {"method": "direct_debit", "percent": 100},
+        ],
+        "notes": None,
+    },
+    # Invoice 6: Overdue issued invoice for patient 12 (José Luis/Richard)
+    {
+        "patient_idx": 12,
+        "status": "issued",
+        "overdue": True,
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "ENDO-MULTI", "qty": 1, "tooth": 46},
+        ],
+        "payments": [],
+        "notes": {"es": "Factura vencida", "en": "Overdue invoice"},
+    },
+    # Invoice 7: Paid invoice from last month for patient 9 (Rosa/Charlotte)
+    {
+        "patient_idx": 9,
+        "status": "paid",
+        "items": [
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "REST-CRO", "qty": 1, "tooth": 46},
+        ],
+        "payments": [
+            {"method": "card", "percent": 100},
+        ],
+        "notes": None,
+    },
+]
+
+
+def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
+    """Generate invoice seed data.
+
+    Args:
+        catalog_items_map: Dictionary mapping internal_code to catalog item data
+                          (must include id, default_price, vat_type_id, vat_rate)
+
+    Returns:
+        Dictionary with:
+        - series: List of InvoiceSeries data
+        - invoices: List of Invoice data
+        - items: List of InvoiceItem data
+        - payments: List of Payment data
+    """
+    from decimal import Decimal
+
+    series = []
+    invoices = []
+    items = []
+    payments = []
+    patients_data = get_patients_data()
+
+    current_year = date.today().year
+
+    # Create invoice series
+    series_data = [
+        {
+            "id": INVOICE_SERIES_IDS[0],
+            "prefix": "FAC",
+            "series_type": "invoice",
+            "description": t({"es": "Serie principal de facturas", "en": "Main invoice series"}),
+            "current_number": len(INVOICE_SCENARIOS) + 1,
+            "is_default": True,
+        },
+        {
+            "id": INVOICE_SERIES_IDS[1],
+            "prefix": "RECT",
+            "series_type": "credit_note",
+            "description": t({"es": "Notas de crédito", "en": "Credit notes"}),
+            "current_number": 1,
+            "is_default": True,
+        },
+    ]
+
+    for s in series_data:
+        series.append(
+            {
+                "id": s["id"],
+                "clinic_id": CLINIC_ID,
+                "prefix": s["prefix"],
+                "series_type": s["series_type"],
+                "description": s["description"],
+                "current_number": s["current_number"],
+                "reset_yearly": True,
+                "last_reset_year": current_year,
+                "is_default": s["is_default"],
+                "is_active": True,
+            }
+        )
+
+    invoice_idx = 0
+    item_idx = 0
+    payment_idx = 0
+
+    for scenario_idx, scenario in enumerate(INVOICE_SCENARIOS):
+        patient = patients_data[scenario["patient_idx"]]
+        invoice_id = INVOICE_IDS[invoice_idx]
+        invoice_idx += 1
+
+        # Calculate invoice number
+        invoice_number = f"FAC-{current_year}-{scenario_idx + 1:04d}"
+        sequential_number = scenario_idx + 1
+
+        # Dates based on status
+        is_overdue = scenario.get("overdue", False)
+        if scenario["status"] == "draft":
+            issue_date = None
+            due_date = None
+            days_ago = 5
+        elif is_overdue:
+            issue_date = date.today() - timedelta(days=45)
+            due_date = date.today() - timedelta(days=15)  # 15 days overdue
+            days_ago = 45
+        else:
+            days_ago = (7 - scenario_idx) * 3 + 5  # Spread out over time
+            issue_date = date.today() - timedelta(days=days_ago)
+            due_date = issue_date + timedelta(days=30)
+
+        # Create invoice items and calculate totals
+        invoice_items = []
+        subtotal = Decimal("0.00")
+        total_tax = Decimal("0.00")
+
+        for item_data in scenario["items"]:
+            catalog_item = catalog_items_map.get(item_data["code"])
+            if not catalog_item:
+                continue  # Skip if catalog item not found
+
+            item_id = INVOICE_ITEM_IDS[item_idx]
+            item_idx += 1
+
+            unit_price = catalog_item["default_price"]
+            quantity = item_data["qty"]
+            vat_rate = catalog_item.get("vat_rate", 0.0) or 0.0
+
+            line_subtotal = unit_price * quantity
+            line_tax = line_subtotal * Decimal(str(vat_rate)) / 100
+            line_total = line_subtotal + line_tax
+
+            subtotal += line_subtotal
+            total_tax += line_tax
+
+            invoice_item = {
+                "id": item_id,
+                "clinic_id": CLINIC_ID,
+                "invoice_id": invoice_id,
+                "budget_item_id": None,
+                "catalog_item_id": catalog_item["id"],
+                "description": t(
+                    {
+                        "es": f"Tratamiento {item_data['code']}",
+                        "en": f"Treatment {item_data['code']}",
+                    }
+                ),
+                "internal_code": item_data["code"],
+                "unit_price": unit_price,
+                "quantity": quantity,
+                "discount_type": None,
+                "discount_value": None,
+                "vat_type_id": catalog_item.get("vat_type_id"),
+                "vat_rate": vat_rate,
+                "vat_exempt_reason": None,
+                "line_subtotal": line_subtotal,
+                "line_discount": Decimal("0.00"),
+                "line_tax": line_tax,
+                "line_total": line_total,
+                "tooth_number": item_data.get("tooth"),
+                "surfaces": None,
+                "display_order": len(invoice_items) + 1,
+            }
+            invoice_items.append(invoice_item)
+            items.append(invoice_item)
+
+        total = subtotal + total_tax
+
+        # Calculate payments and balance
+        total_paid = Decimal("0.00")
+        invoice_payments = []
+
+        for payment_data in scenario.get("payments", []):
+            payment_id = PAYMENT_IDS[payment_idx]
+            payment_idx += 1
+
+            payment_amount = (total * payment_data["percent"]) / 100
+            total_paid += payment_amount
+
+            payment_date = issue_date + timedelta(days=3) if issue_date else date.today()
+
+            payment = {
+                "id": payment_id,
+                "clinic_id": CLINIC_ID,
+                "invoice_id": invoice_id,
+                "amount": payment_amount,
+                "payment_method": payment_data["method"],
+                "payment_date": payment_date,
+                "reference": f"REF-{payment_idx:04d}",
+                "notes": None,
+                "recorded_by": USER_RECEPTIONIST_ID,
+                "is_voided": False,
+                "voided_at": None,
+                "voided_by": None,
+                "void_reason": None,
+            }
+            invoice_payments.append(payment)
+            payments.append(payment)
+
+        balance_due = total - total_paid
+
+        invoice = {
+            "id": invoice_id,
+            "clinic_id": CLINIC_ID,
+            "patient_id": patient["id"],
+            "invoice_number": invoice_number,
+            "series_id": INVOICE_SERIES_IDS[0],
+            "sequential_number": sequential_number,
+            "budget_id": None,
+            "credit_note_for_id": None,
+            "status": scenario["status"],
+            "issue_date": issue_date,
+            "due_date": due_date,
+            "payment_term_days": 30,
+            "billing_name": f"{patient['first_name']} {patient['last_name']}",
+            "billing_tax_id": None,
+            "billing_address": None,
+            "billing_email": patient.get("email"),
+            "subtotal": subtotal,
+            "total_discount": Decimal("0.00"),
+            "total_tax": total_tax,
+            "total": total,
+            "total_paid": total_paid,
+            "balance_due": balance_due,
+            "currency": t({"es": "EUR", "en": "USD"}),
+            "internal_notes": t(scenario["notes"]) if scenario.get("notes") else None,
+            "public_notes": None,
+            "compliance_data": None,
+            "document_hash": None,
+            "created_by": USER_RECEPTIONIST_ID,
+            "issued_by": USER_RECEPTIONIST_ID if scenario["status"] != "draft" else None,
+            "deleted_at": None,
+        }
+        invoices.append(invoice)
+
+    return {
+        "series": series,
+        "invoices": invoices,
+        "items": items,
+        "payments": payments,
+    }

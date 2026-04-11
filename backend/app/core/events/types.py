@@ -22,14 +22,30 @@ class EventType:
     # Treatment events (for future use)
     TREATMENT_COMPLETED = "treatment.completed"
 
-    # Budget events (for future use)
+    # Budget events
     BUDGET_CREATED = "budget.created"
+    BUDGET_SENT = "budget.sent"
     BUDGET_ACCEPTED = "budget.accepted"
     BUDGET_REJECTED = "budget.rejected"
 
-    # Invoice events (for future use)
+    # Email events
+    EMAIL_SENT = "email.sent"
+    EMAIL_FAILED = "email.failed"
+
+    # Invoice events
     INVOICE_CREATED = "invoice.created"
+    INVOICE_ISSUED = "invoice.issued"
     INVOICE_PAID = "invoice.paid"
+    INVOICE_PARTIAL_PAID = "invoice.partial_paid"
+    INVOICE_CANCELLED = "invoice.cancelled"
+    INVOICE_VOIDED = "invoice.voided"
+
+    # Payment events
+    PAYMENT_RECORDED = "payment.recorded"
+    PAYMENT_VOIDED = "payment.voided"
+
+    # Credit note events
+    CREDIT_NOTE_ISSUED = "credit_note.issued"
 
     # Odontogram events
     ODONTOGRAM_SURFACE_UPDATED = "odontogram.surface.updated"
