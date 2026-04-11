@@ -519,7 +519,7 @@ function goToCreditNoteFor() {
           <UCard v-if="currentInvoice.payments && currentInvoice.payments.length > 0">
             <template #header>
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                {{ t('invoice.payments') }}
+                {{ t('invoice.payments.title') }}
               </h3>
             </template>
 
