@@ -97,6 +97,16 @@ const tabs = computed(() => {
     })
   }
 
+  // Add billing tab if user has permission
+  if (can(PERMISSIONS.billing.read)) {
+    baseTabs.push({
+      value: 'billing',
+      label: t('patientDetail.tabs.billing'),
+      icon: 'i-lucide-receipt',
+      slot: 'billing'
+    })
+  }
+
   baseTabs.push(
     { value: 'history', label: t('patientDetail.tabs.history'), icon: 'i-lucide-history', slot: 'history' },
     { value: 'appointments', label: t('patientDetail.tabs.appointments'), icon: 'i-lucide-calendar', slot: 'appointments' }
@@ -763,6 +773,13 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
                 {{ t('patientDetail.createBudget') }}
               </UButton>
             </div>
+          </UCard>
+        </template>
+
+        <!-- Billing tab content -->
+        <template #billing>
+          <UCard class="mt-4">
+            <PatientBillingSummary :patient-id="patientId" />
           </UCard>
         </template>
 

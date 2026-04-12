@@ -219,6 +219,14 @@ export function useNotificationSettings() {
   }
 
   /**
+   * Check if auto_send is enabled for a notification type
+   */
+  function getAutoSendStatus(notificationType: string): boolean {
+    const typeSettings = getTypeSettings(notificationType)
+    return typeSettings.enabled && typeSettings.auto_send
+  }
+
+  /**
    * Update a single notification type's settings
    */
   async function updateTypeSettings(
@@ -355,6 +363,7 @@ export function useNotificationSettings() {
     getTypeSettings,
     shouldShowManualSend,
     isNotificationEnabled,
+    getAutoSendStatus,
     updateTypeSettings
   }
 }

@@ -1404,3 +1404,16 @@ export interface NumberingGap {
   year: number
   missing_numbers: number[]
 }
+
+export interface PatientBillingSummary {
+  patient_id: string
+  currency: string
+  // Budget metrics
+  total_budgeted: number
+  work_in_progress: number
+  work_completed: number
+  // Invoice metrics
+  total_invoiced: number
+  total_paid: number
+  balance_pending: number
+}

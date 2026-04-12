@@ -7,6 +7,7 @@ const props = defineProps<{
   placeholder?: string
   emptyLabel?: string
   gridCols?: number
+  inModal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -171,12 +172,18 @@ defineExpose({
       </template>
     </UInput>
 
-    <!-- Dropdown panel - teleported to body to avoid overflow clipping -->
-    <Teleport to="body">
+    <!-- Dropdown panel - teleported to body unless in modal -->
+    <Teleport
+      to="body"
+      :disabled="inModal"
+    >
       <div
         v-if="isOpen && !modelValue"
-        :style="dropdownStyle"
-        class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden"
+        :style="inModal ? {} : dropdownStyle"
+        :class="[
+          'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden',
+          inModal ? 'absolute left-0 right-0 top-full mt-1 z-50' : ''
+        ]"
       >
         <!-- Loading state -->
         <div
@@ -210,7 +217,8 @@ defineExpose({
               :class="index === highlightedIndex
                 ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-700'
                 : 'hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent'"
-              @mousedown.prevent="selectItem(item)"
+              @mousedown.prevent.stop
+              @click.stop="selectItem(item)"
               @mouseenter="highlightedIndex = index"
             >
               <slot

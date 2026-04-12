@@ -14,6 +14,7 @@ from app.config import settings
 from app.core.auth.router import limiter
 from app.core.auth.router import router as auth_router
 from app.core.plugins.loader import ModuleLoader
+from app.core.scheduler import init_scheduler, shutdown_scheduler
 from app.core.schemas import ErrorResponse
 from app.database import engine
 
@@ -26,9 +27,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     loader.discover_modules()
     loader.load_modules(app)
 
+    # Initialize scheduler for background jobs
+    init_scheduler()
+
     yield
 
     # Shutdown
+    shutdown_scheduler()
     await engine.dispose()
 
 

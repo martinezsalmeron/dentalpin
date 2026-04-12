@@ -23,6 +23,7 @@ import type {
   NumberingGap,
   OverdueInvoice,
   PaginatedResponse,
+  PatientBillingSummary,
   Payment,
   PaymentCreate,
   PaymentMethodSummary,
@@ -551,6 +552,18 @@ export function useInvoices() {
     }
   }
 
+  async function fetchPatientSummary(patientId: string): Promise<PatientBillingSummary | null> {
+    try {
+      const response = await api.get<ApiResponse<PatientBillingSummary>>(
+        `/api/v1/billing/patients/${patientId}/summary`
+      )
+      return response.data
+    } catch (e) {
+      console.error('Failed to fetch patient billing summary:', e)
+      return null
+    }
+  }
+
   // ============================================================================
   // PDF
   // ============================================================================
@@ -700,6 +713,7 @@ export function useInvoices() {
     fetchByProfessional,
     fetchVatSummary,
     fetchGaps,
+    fetchPatientSummary,
 
     // PDF
     downloadPDF,

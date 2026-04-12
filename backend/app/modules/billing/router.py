@@ -36,6 +36,7 @@ from .schemas import (
     InvoiceUpdate,
     NumberingGap,
     OverdueInvoice,
+    PatientBillingSummary,
     PaymentCreate,
     PaymentMethodSummary,
     PaymentResponse,
@@ -937,6 +938,28 @@ async def update_billing_settings(
             bank_account_info=billing_settings.get("bank_account_info"),
         )
     )
+
+
+# ============================================================================
+# Patient Billing Summary
+# ============================================================================
+
+
+@router.get("/patients/{patient_id}/summary", response_model=ApiResponse[PatientBillingSummary])
+async def get_patient_billing_summary(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("billing.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PatientBillingSummary]:
+    """Get billing summary for a specific patient.
+
+    Returns aggregated metrics for budgets and invoices.
+    """
+    from .service import BillingReportService
+
+    summary = await BillingReportService.get_patient_summary(db, ctx.clinic_id, patient_id)
+    return ApiResponse(data=PatientBillingSummary(**summary))
 
 
 # ============================================================================

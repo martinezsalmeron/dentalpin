@@ -69,13 +69,26 @@
       "odontogram": "Odontograma",
       "history": "Historial",
       "appointments": "Citas",
-      "budgets": "Presupuestos"
+      "budgets": "Presupuestos",
+      "billing": "Facturación"
     },
     "historyPlaceholder": "Notas clínicas disponibles en futura versión",
     "noAppointments": "Este paciente no tiene citas",
     "scheduleAppointment": "Agendar cita",
     "noBudgets": "Este paciente no tiene presupuestos",
     "createBudget": "Crear presupuesto"
+  },
+  "patientBilling": {
+    "totalBudgeted": "Total presupuestado",
+    "workInProgress": "Trabajo en curso",
+    "workCompleted": "Trabajo completado",
+    "totalInvoiced": "Total facturado",
+    "totalPaid": "Total pagado",
+    "balancePending": "Pendiente de cobro",
+    "invoices": "Facturas",
+    "createInvoice": "Crear factura",
+    "noInvoices": "Este paciente no tiene facturas",
+    "pending": "Pendiente"
   },
   "odontogram": {
     "title": "Odontograma",
@@ -282,9 +295,11 @@
     "scheduled": "Programada",
     "confirmed": "Confirmada",
     "inProgress": "En curso",
+    "in_progress": "En curso",
     "completed": "Completada",
     "cancelled": "Cancelada",
     "noShow": "No se presentó",
+    "no_show": "No se presentó",
     "created": "Cita creada",
     "saved": "Cita guardada",
     "updated": "Cita actualizada",

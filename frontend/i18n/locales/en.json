@@ -69,13 +69,26 @@
       "odontogram": "Dental Chart",
       "history": "History",
       "appointments": "Appointments",
-      "budgets": "Budgets"
+      "budgets": "Budgets",
+      "billing": "Billing"
     },
     "historyPlaceholder": "Clinical notes available in future version",
     "noAppointments": "This patient has no appointments",
     "scheduleAppointment": "Schedule appointment",
     "noBudgets": "This patient has no budgets",
     "createBudget": "Create budget"
+  },
+  "patientBilling": {
+    "totalBudgeted": "Total budgeted",
+    "workInProgress": "Work in progress",
+    "workCompleted": "Work completed",
+    "totalInvoiced": "Total invoiced",
+    "totalPaid": "Total paid",
+    "balancePending": "Balance pending",
+    "invoices": "Invoices",
+    "createInvoice": "Create invoice",
+    "noInvoices": "This patient has no invoices",
+    "pending": "Pending"
   },
   "odontogram": {
     "title": "Dental Chart",
@@ -289,9 +302,11 @@
     "scheduled": "Scheduled",
     "confirmed": "Confirmed",
     "inProgress": "In progress",
+    "in_progress": "In progress",
     "completed": "Completed",
     "cancelled": "Cancelled",
     "noShow": "No show",
+    "no_show": "No show",
     "created": "Appointment created",
     "saved": "Appointment saved",
     "updated": "Appointment updated",

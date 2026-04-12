@@ -4,6 +4,7 @@ import type { Patient, PaginatedResponse, ApiResponse } from '~/types'
 const props = defineProps<{
   modelValue?: Patient | null
   placeholder?: string
+  inModal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -112,6 +113,7 @@ watch(() => props.modelValue, (newVal) => {
       :placeholder="placeholder || t('patients.searchPlaceholder')"
       :empty-label="t('selector.noRecentPatients')"
       :grid-cols="2"
+      :in-modal="inModal"
       @update:model-value="handleSelect"
       @search="handleSearch"
     >

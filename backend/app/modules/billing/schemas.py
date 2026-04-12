@@ -644,6 +644,23 @@ class BillingSettingsUpdate(BaseModel):
 # ============================================================================
 
 
+class PatientBillingSummary(BaseModel):
+    """Schema for patient billing summary in profile."""
+
+    patient_id: UUID
+    currency: str
+
+    # Budget metrics
+    total_budgeted: Decimal
+    work_in_progress: Decimal
+    work_completed: Decimal
+
+    # Invoice metrics
+    total_invoiced: Decimal
+    total_paid: Decimal
+    balance_pending: Decimal
+
+
 class InvoiceSearchParams(BaseModel):
     """Search parameters for invoices."""
 

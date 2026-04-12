@@ -908,6 +908,80 @@ class BillingReportService:
     """Service for billing reports."""
 
     @staticmethod
+    async def get_patient_summary(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+    ) -> dict[str, Any]:
+        """Get billing summary for a specific patient.
+
+        Returns:
+            - currency: Clinic currency
+            - total_budgeted: Sum of all budgets
+            - work_in_progress: Sum of accepted budgets
+            - work_completed: Sum of completed budgets
+            - total_invoiced: Sum of issued invoices
+            - total_paid: Sum of payments
+            - balance_pending: total_invoiced - total_paid
+        """
+        from sqlalchemy import case
+
+        from app.core.auth.models import Clinic
+        from app.modules.budget.models import Budget
+
+        # Get clinic currency
+        clinic_result = await db.execute(select(Clinic).where(Clinic.id == clinic_id))
+        clinic = clinic_result.scalar_one()
+        currency = clinic.settings.get("currency", "EUR") if clinic.settings else "EUR"
+
+        # Budget aggregation
+        budget_result = await db.execute(
+            select(
+                func.coalesce(func.sum(Budget.total), 0).label("total_budgeted"),
+                func.coalesce(
+                    func.sum(case((Budget.status == "accepted", Budget.total), else_=0)), 0
+                ).label("work_in_progress"),
+                func.coalesce(
+                    func.sum(case((Budget.status == "completed", Budget.total), else_=0)), 0
+                ).label("work_completed"),
+            ).where(
+                Budget.clinic_id == clinic_id,
+                Budget.patient_id == patient_id,
+                Budget.deleted_at.is_(None),
+            )
+        )
+        budget_totals = budget_result.one()
+
+        # Invoice aggregation (only issued, partial, paid)
+        invoice_result = await db.execute(
+            select(
+                func.coalesce(func.sum(Invoice.total), 0).label("total_invoiced"),
+                func.coalesce(func.sum(Invoice.total_paid), 0).label("total_paid"),
+            ).where(
+                Invoice.clinic_id == clinic_id,
+                Invoice.patient_id == patient_id,
+                Invoice.status.in_(["issued", "partial", "paid"]),
+                Invoice.deleted_at.is_(None),
+            )
+        )
+        invoice_totals = invoice_result.one()
+
+        total_invoiced = invoice_totals.total_invoiced
+        total_paid = invoice_totals.total_paid
+        balance_pending = total_invoiced - total_paid
+
+        return {
+            "patient_id": patient_id,
+            "currency": currency,
+            "total_budgeted": budget_totals.total_budgeted,
+            "work_in_progress": budget_totals.work_in_progress,
+            "work_completed": budget_totals.work_completed,
+            "total_invoiced": total_invoiced,
+            "total_paid": total_paid,
+            "balance_pending": balance_pending,
+        }
+
+    @staticmethod
     async def get_summary(
         db: AsyncSession,
         clinic_id: UUID,
