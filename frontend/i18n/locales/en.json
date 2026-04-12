@@ -280,6 +280,10 @@
     "startTime": "Start time",
     "duration": "Duration",
     "treatmentType": "Treatment type",
+    "treatments": "Treatments",
+    "addTreatment": "Add treatment",
+    "selectTreatment": "Select treatment",
+    "estimatedDuration": "Estimated duration",
     "notes": "Notes",
     "status": "Status",
     "scheduled": "Scheduled",
@@ -301,7 +305,13 @@
     "overlapWarning": "Overlaps detected",
     "overlapProfessional": "Professional has {count} appointment(s) at this time",
     "overlapCabinet": "Cabinet has {count} appointment(s) at this time",
-    "selectDuration": "Select duration..."
+    "selectDuration": "Select duration...",
+    "sendEmail": "Send email",
+    "sendConfirmationEmail": "Send confirmation",
+    "resendConfirmation": "Resend confirmation",
+    "sendReminderEmail": "Send reminder",
+    "emailSent": "Email sent successfully",
+    "automatic": "automatic"
   },
   "dashboard": {
     "title": "Home",

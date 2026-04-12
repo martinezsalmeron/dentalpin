@@ -273,6 +273,10 @@
     "startTime": "Hora inicio",
     "duration": "Duración",
     "treatmentType": "Tipo de tratamiento",
+    "treatments": "Tratamientos",
+    "addTreatment": "Agregar tratamiento",
+    "selectTreatment": "Seleccionar tratamiento",
+    "estimatedDuration": "Duración estimada",
     "notes": "Notas",
     "status": "Estado",
     "scheduled": "Programada",
@@ -294,7 +298,13 @@
     "overlapWarning": "Se detectaron solapamientos",
     "overlapProfessional": "El profesional tiene {count} cita(s) en este horario",
     "overlapCabinet": "El gabinete tiene {count} cita(s) en este horario",
-    "selectDuration": "Seleccionar duración..."
+    "selectDuration": "Seleccionar duración...",
+    "sendEmail": "Enviar email",
+    "sendConfirmationEmail": "Enviar confirmación",
+    "resendConfirmation": "Reenviar confirmación",
+    "sendReminderEmail": "Enviar recordatorio",
+    "emailSent": "Email enviado correctamente",
+    "automatic": "automático"
   },
   "dashboard": {
     "title": "Inicio",

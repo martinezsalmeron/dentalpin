@@ -1,9 +1,10 @@
 """Pydantic schemas for clinical module."""
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 # Billing address schema
@@ -83,6 +84,7 @@ class PatientBrief(BaseModel):
     first_name: str
     last_name: str
     phone: str | None
+    email: str | None
 
     class Config:
         from_attributes = True
@@ -99,6 +101,35 @@ class ProfessionalBrief(BaseModel):
         from_attributes = True
 
 
+# Treatment brief for appointment responses
+class AppointmentTreatmentBrief(BaseModel):
+    """Brief treatment info for appointment responses."""
+
+    id: UUID
+    catalog_item_id: UUID
+    internal_code: str
+    names: dict[str, str]
+    default_price: float | None = None
+    default_duration_minutes: int | None = None
+
+    @classmethod
+    def from_appointment_treatment(cls, apt_treatment: "Any") -> "AppointmentTreatmentBrief":
+        """Create from AppointmentTreatment model with catalog_item loaded."""
+        catalog_item = apt_treatment.catalog_item
+        return cls(
+            id=apt_treatment.id,
+            catalog_item_id=apt_treatment.catalog_item_id,
+            internal_code=catalog_item.internal_code if catalog_item else "",
+            names=catalog_item.names if catalog_item else {},
+            default_price=float(catalog_item.default_price)
+            if catalog_item and catalog_item.default_price
+            else None,
+            default_duration_minutes=catalog_item.default_duration_minutes
+            if catalog_item
+            else None,
+        )
+
+
 # Appointment schemas
 class AppointmentCreate(BaseModel):
     """Schema for creating an appointment."""
@@ -108,7 +139,8 @@ class AppointmentCreate(BaseModel):
     cabinet: str = Field(min_length=1, max_length=50)
     start_time: datetime
     end_time: datetime
-    treatment_type: str | None = Field(default=None, max_length=100)
+    treatment_type: str | None = Field(default=None, max_length=100)  # Legacy field
+    treatment_ids: list[UUID] | None = None  # New: list of catalog item IDs
     notes: str | None = None
     color: str | None = Field(default=None, max_length=7)
 
@@ -121,7 +153,8 @@ class AppointmentUpdate(BaseModel):
     cabinet: str | None = Field(default=None, min_length=1, max_length=50)
     start_time: datetime | None = None
     end_time: datetime | None = None
-    treatment_type: str | None = Field(default=None, max_length=100)
+    treatment_type: str | None = Field(default=None, max_length=100)  # Legacy field
+    treatment_ids: list[UUID] | None = None  # New: list of catalog item IDs
     status: str | None = None
     notes: str | None = None
     color: str | None = Field(default=None, max_length=7)
@@ -137,7 +170,7 @@ class AppointmentResponse(BaseModel):
     cabinet: str
     start_time: datetime
     end_time: datetime
-    treatment_type: str | None
+    treatment_type: str | None  # Legacy field
     status: str
     notes: str | None
     color: str | None
@@ -145,6 +178,39 @@ class AppointmentResponse(BaseModel):
     updated_at: datetime
     patient: PatientBrief | None = None
     professional: ProfessionalBrief | None = None
+    treatments: list[AppointmentTreatmentBrief] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_treatments(cls, data: Any) -> Any:
+        """Convert AppointmentTreatment models to AppointmentTreatmentBrief."""
+        # Handle ORM model
+        if hasattr(data, "treatments"):
+            treatments_raw = data.treatments
+            if treatments_raw:
+                data_dict = {
+                    "id": data.id,
+                    "clinic_id": data.clinic_id,
+                    "patient_id": data.patient_id,
+                    "professional_id": data.professional_id,
+                    "cabinet": data.cabinet,
+                    "start_time": data.start_time,
+                    "end_time": data.end_time,
+                    "treatment_type": data.treatment_type,
+                    "status": data.status,
+                    "notes": data.notes,
+                    "color": data.color,
+                    "created_at": data.created_at,
+                    "updated_at": data.updated_at,
+                    "patient": data.patient,
+                    "professional": data.professional,
+                    "treatments": [
+                        AppointmentTreatmentBrief.from_appointment_treatment(t)
+                        for t in treatments_raw
+                    ],
+                }
+                return data_dict
+        return data
 
     class Config:
         from_attributes = True

@@ -273,6 +273,7 @@ class CatalogItemBrief(BaseModel):
     internal_code: str
     names: dict[str, str]
     default_price: Decimal | None
+    default_duration_minutes: int | None
     is_active: bool
 
     class Config:

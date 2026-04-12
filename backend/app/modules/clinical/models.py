@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,7 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
+    from app.modules.catalog.models import TreatmentCatalogItem
 
 
 class Patient(Base, TimestampMixin):
@@ -72,6 +73,13 @@ class Appointment(Base, TimestampMixin):
     patient: Mapped["Patient | None"] = relationship(back_populates="appointments")
     professional: Mapped["User"] = relationship()
 
+    # Treatments (many-to-many via junction table)
+    treatments: Mapped[list["AppointmentTreatment"]] = relationship(
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+        order_by="AppointmentTreatment.display_order",
+    )
+
     # Partial unique index for conflict detection (excludes cancelled appointments)
     __table_args__ = (
         Index(
@@ -84,3 +92,23 @@ class Appointment(Base, TimestampMixin):
             postgresql_where=(status != "cancelled"),
         ),
     )
+
+
+class AppointmentTreatment(Base):
+    """Junction table for appointment-treatment relationship."""
+
+    __tablename__ = "appointment_treatments"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    appointment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("appointments.id", ondelete="CASCADE"), index=True
+    )
+    catalog_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("treatment_catalog_items.id", ondelete="CASCADE")
+    )
+    display_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    appointment: Mapped["Appointment"] = relationship(back_populates="treatments")
+    catalog_item: Mapped["TreatmentCatalogItem"] = relationship()

@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.core.auth.models import ClinicMembership
 from app.core.events import EventType, event_bus
 
-from .models import Appointment, Patient
+from .models import Appointment, AppointmentTreatment, Patient
 
 
 class PatientService:
@@ -191,7 +191,13 @@ class AppointmentService:
 
         query = (
             select(Appointment)
-            .options(selectinload(Appointment.patient), selectinload(Appointment.professional))
+            .options(
+                selectinload(Appointment.patient),
+                selectinload(Appointment.professional),
+                selectinload(Appointment.treatments).selectinload(
+                    AppointmentTreatment.catalog_item
+                ),
+            )
             .where(Appointment.clinic_id == clinic_id)
         )
 
@@ -227,7 +233,13 @@ class AppointmentService:
         """Get an appointment by ID."""
         result = await db.execute(
             select(Appointment)
-            .options(selectinload(Appointment.patient), selectinload(Appointment.professional))
+            .options(
+                selectinload(Appointment.patient),
+                selectinload(Appointment.professional),
+                selectinload(Appointment.treatments).selectinload(
+                    AppointmentTreatment.catalog_item
+                ),
+            )
             .where(
                 Appointment.id == appointment_id,
                 Appointment.clinic_id == clinic_id,
@@ -274,6 +286,9 @@ class AppointmentService:
         data: dict,
     ) -> Appointment:
         """Create an appointment. Raises IntegrityError on conflict."""
+        # Extract treatment_ids before creating appointment
+        treatment_ids = data.pop("treatment_ids", None)
+
         appointment = Appointment(clinic_id=clinic_id, **data)
         db.add(appointment)
 
@@ -282,6 +297,17 @@ class AppointmentService:
         except IntegrityError:
             await db.rollback()
             raise
+
+        # Add treatments if provided
+        if treatment_ids:
+            for order, catalog_item_id in enumerate(treatment_ids):
+                treatment = AppointmentTreatment(
+                    appointment_id=appointment.id,
+                    catalog_item_id=catalog_item_id,
+                    display_order=order,
+                )
+                db.add(treatment)
+            await db.flush()
 
         event_bus.publish(
             EventType.APPOINTMENT_SCHEDULED,
@@ -293,8 +319,11 @@ class AppointmentService:
             },
         )
 
-        # Refresh to load relationships
-        await db.refresh(appointment, ["patient", "professional"])
+        # Refresh to load relationships including treatments
+        await db.refresh(appointment, ["patient", "professional", "treatments"])
+        # Also load catalog_item for each treatment
+        for treatment in appointment.treatments:
+            await db.refresh(treatment, ["catalog_item"])
 
         return appointment
 
@@ -307,6 +336,9 @@ class AppointmentService:
         """Update an appointment."""
         old_status = appointment.status
 
+        # Extract treatment_ids before updating other fields
+        treatment_ids = data.pop("treatment_ids", None)
+
         for key, value in data.items():
             if value is not None:
                 setattr(appointment, key, value)
@@ -316,6 +348,28 @@ class AppointmentService:
         except IntegrityError:
             await db.rollback()
             raise
+
+        # Update treatments if provided
+        if treatment_ids is not None:
+            # Remove existing treatments
+            for existing in list(appointment.treatments):
+                await db.delete(existing)
+            await db.flush()
+
+            # Add new treatments
+            for order, catalog_item_id in enumerate(treatment_ids):
+                treatment = AppointmentTreatment(
+                    appointment_id=appointment.id,
+                    catalog_item_id=catalog_item_id,
+                    display_order=order,
+                )
+                db.add(treatment)
+            await db.flush()
+
+            # Refresh treatments
+            await db.refresh(appointment, ["treatments"])
+            for treatment in appointment.treatments:
+                await db.refresh(treatment, ["catalog_item"])
 
         # Publish appropriate event based on status change
         new_status = appointment.status

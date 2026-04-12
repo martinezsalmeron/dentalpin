@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Appointment, AppointmentCreate, Patient } from '~/types'
+import type { Appointment, AppointmentCreate, Patient, TreatmentCatalogItem } from '~/types'
 
 const props = defineProps<{
   open: boolean
@@ -22,6 +22,8 @@ const auth = useAuth()
 const clinic = useClinic()
 const { createAppointment, updateAppointment, cancelAppointment } = useAppointments()
 const { professionals, fetchProfessionals, getProfessionalColor } = useProfessionals()
+const { fetchSettings, getAutoSendStatus } = useNotificationSettings()
+const { sendConfirmation, sendReminder, isSending: isSendingEmail } = useNotificationSend()
 
 // Format date as YYYY-MM-DD in local timezone (not UTC)
 function formatLocalDate(date: Date): string {
@@ -35,16 +37,17 @@ function formatLocalDate(date: Date): string {
 const isSubmitting = ref(false)
 const selectedPatient = ref<Patient | null>(null)
 const selectedProfessionalId = ref<string>('')
+const sendConfirmationEmail = ref(true)
+const selectedTreatments = ref<TreatmentCatalogItem[]>([])
 const formData = reactive({
   date: '',
   startTime: '09:00',
   duration: 30,
   cabinet: '',
-  treatmentType: '',
   notes: ''
 })
 
-// Duration options
+// Duration options (in minutes)
 const durationOptions = [
   { value: 15, label: '15 min' },
   { value: 30, label: '30 min' },
@@ -53,6 +56,20 @@ const durationOptions = [
   { value: 90, label: '90 min' },
   { value: 120, label: '120 min' }
 ]
+const validDurations = durationOptions.map(d => d.value)
+
+// Edit mode check
+const isEditMode = computed(() => !!props.appointment)
+
+// Auto-update duration based on selected treatments
+watch(selectedTreatments, (treatments) => {
+  const totalMinutes = treatments.reduce((acc, t) => acc + (t.default_duration_minutes || 0), 0)
+  if (totalMinutes > 0) {
+    formData.duration = validDurations.reduce((prev, curr) =>
+      Math.abs(curr - totalMinutes) < Math.abs(prev - totalMinutes) ? curr : prev
+    )
+  }
+})
 
 // Cabinet options from clinic
 const cabinetOptions = computed(() => {
@@ -72,7 +89,6 @@ const professionalOptions = computed(() => {
 })
 
 // Computed
-const isEditMode = computed(() => !!props.appointment)
 const modalTitle = computed(() =>
   isEditMode.value ? t('appointments.edit') : t('appointments.create')
 )
@@ -80,6 +96,11 @@ const modalTitle = computed(() =>
 const canSave = computed(() => {
   return selectedPatient.value && formData.date && formData.startTime && formData.cabinet && selectedProfessionalId.value
 })
+
+// Email notification computed properties
+const autoSendEnabled = computed(() => getAutoSendStatus('appointment_confirmation'))
+const patientHasEmail = computed(() => !!selectedPatient.value?.email)
+const appointmentPatientHasEmail = computed(() => !!props.appointment?.patient?.email)
 
 // Check for overlapping appointments
 const overlappingAppointments = computed(() => {
@@ -131,15 +152,33 @@ const overlappingAppointments = computed(() => {
   return { sameProfessional, sameCabinet }
 })
 
+// Track initial overlaps when modal opens (to avoid warning about pre-existing overlaps)
+const initialOverlapIds = ref<{ professional: Set<string>, cabinet: Set<string> }>({
+  professional: new Set(),
+  cabinet: new Set()
+})
+// Flag to know when initial data has been loaded
+const initialDataLoaded = ref(false)
 // Track if we've already shown the overlap warning for current config
 const lastOverlapWarningKey = ref('')
 
-// Show toast when overlap is detected
+// Show toast when NEW overlaps are detected (not pre-existing ones)
 watch(overlappingAppointments, (overlaps) => {
-  const hasProfessionalOverlap = overlaps.sameProfessional.length > 0
-  const hasCabinetOverlap = overlaps.sameCabinet.length > 0
+  // Don't check until initial data is loaded
+  if (!initialDataLoaded.value) return
 
-  if (!hasProfessionalOverlap && !hasCabinetOverlap) {
+  // Filter out overlaps that existed when modal opened
+  const newProfessionalOverlaps = overlaps.sameProfessional.filter(
+    apt => !initialOverlapIds.value.professional.has(apt.id)
+  )
+  const newCabinetOverlaps = overlaps.sameCabinet.filter(
+    apt => !initialOverlapIds.value.cabinet.has(apt.id)
+  )
+
+  const hasNewProfessionalOverlap = newProfessionalOverlaps.length > 0
+  const hasNewCabinetOverlap = newCabinetOverlaps.length > 0
+
+  if (!hasNewProfessionalOverlap && !hasNewCabinetOverlap) {
     lastOverlapWarningKey.value = ''
     return
   }
@@ -152,11 +191,11 @@ watch(overlappingAppointments, (overlaps) => {
 
   // Build warning message
   const warnings: string[] = []
-  if (hasProfessionalOverlap) {
-    warnings.push(t('appointments.overlapProfessional', { count: overlaps.sameProfessional.length }))
+  if (hasNewProfessionalOverlap) {
+    warnings.push(t('appointments.overlapProfessional', { count: newProfessionalOverlaps.length }))
   }
-  if (hasCabinetOverlap) {
-    warnings.push(t('appointments.overlapCabinet', { count: overlaps.sameCabinet.length }))
+  if (hasNewCabinetOverlap) {
+    warnings.push(t('appointments.overlapCabinet', { count: newCabinetOverlaps.length }))
   }
 
   toast.add({
@@ -170,8 +209,13 @@ watch(overlappingAppointments, (overlaps) => {
 // Watch for initial values
 watch(() => props.open, async (isOpen) => {
   if (isOpen) {
-    // Fetch professionals when modal opens
-    await fetchProfessionals()
+    // Reset flags when modal opens
+    initialDataLoaded.value = false
+    lastOverlapWarningKey.value = ''
+    initialOverlapIds.value = { professional: new Set(), cabinet: new Set() }
+
+    // Fetch professionals and notification settings when modal opens
+    await Promise.all([fetchProfessionals(), fetchSettings()])
 
     if (props.appointment) {
       // Edit mode - populate from appointment
@@ -181,16 +225,35 @@ watch(() => props.open, async (isOpen) => {
       formData.date = apt.start_time.split('T')[0] ?? ''
       formData.startTime = apt.start_time.split('T')[1]?.substring(0, 5) ?? '09:00'
       formData.cabinet = apt.cabinet
-      formData.treatmentType = apt.treatment_type || ''
       formData.notes = apt.notes || ''
 
-      // Calculate duration from start/end time
+      // Load treatments from appointment
+      if (apt.treatments && apt.treatments.length > 0) {
+        selectedTreatments.value = apt.treatments.map(t => ({
+          id: t.catalog_item_id,
+          clinic_id: apt.clinic_id,
+          category_id: '',
+          internal_code: t.internal_code,
+          names: t.names,
+          default_price: t.default_price,
+          currency: 'EUR',
+          requires_appointment: true,
+          treatment_scope: 'whole_tooth' as const,
+          is_diagnostic: false,
+          requires_surfaces: false,
+          is_active: true,
+          is_system: false,
+          created_at: '',
+          updated_at: ''
+        }))
+      } else {
+        selectedTreatments.value = []
+      }
+
+      // Calculate duration from start/end time, rounded to nearest valid option
       const start = new Date(apt.start_time)
       const end = new Date(apt.end_time)
       const calculatedDuration = Math.round((end.getTime() - start.getTime()) / 60000)
-
-      // Round to nearest valid option (15, 30, 45, 60, 90, 120)
-      const validDurations = [15, 30, 45, 60, 90, 120]
       formData.duration = validDurations.reduce((prev, curr) =>
         Math.abs(curr - calculatedDuration) < Math.abs(prev - calculatedDuration) ? curr : prev
       )
@@ -226,9 +289,24 @@ watch(() => props.open, async (isOpen) => {
       selectedPatient.value = null
       formData.duration = clinic.slotDuration.value || 30
       formData.cabinet = clinic.cabinets.value[0]?.name || ''
-      formData.treatmentType = ''
       formData.notes = ''
+      selectedTreatments.value = []
+      // Reset email checkbox for create mode
+      sendConfirmationEmail.value = true
     }
+
+    // Wait for next tick so overlappingAppointments computed can recalculate
+    await nextTick()
+
+    // Capture initial overlaps (these existed before user made changes)
+    const currentOverlaps = overlappingAppointments.value
+    initialOverlapIds.value = {
+      professional: new Set(currentOverlaps.sameProfessional.map(apt => apt.id)),
+      cabinet: new Set(currentOverlaps.sameCabinet.map(apt => apt.id))
+    }
+
+    // Now enable overlap warnings for new overlaps only
+    initialDataLoaded.value = true
   }
 })
 
@@ -264,7 +342,9 @@ async function handleSave() {
       cabinet: formData.cabinet,
       start_time: startTime,
       end_time: calculateEndTime(),
-      treatment_type: formData.treatmentType || undefined,
+      treatment_ids: selectedTreatments.value.length > 0
+        ? selectedTreatments.value.map(t => t.id)
+        : undefined,
       notes: formData.notes || undefined
     }
 
@@ -284,6 +364,11 @@ async function handleSave() {
         description: t('appointments.created'),
         color: 'success'
       })
+
+      // Send confirmation email if checkbox is checked, auto_send is off, and patient has email
+      if (!autoSendEnabled.value && sendConfirmationEmail.value && patientHasEmail.value) {
+        await sendConfirmation(savedAppointment.id, savedAppointment.patient_id || '')
+      }
     }
 
     emit('saved', savedAppointment)
@@ -360,104 +445,106 @@ function closeModal() {
           </div>
         </template>
 
-        <form
-          class="space-y-4"
-          @submit.prevent="handleSave"
-        >
-          <!-- Patient search -->
-          <UFormField
-            :label="t('appointments.selectPatient')"
-            required
+        <div class="max-h-[60vh] overflow-y-auto pr-1">
+          <form
+            class="space-y-4"
+            @submit.prevent="handleSave"
           >
-            <PatientVisualSelector v-model="selectedPatient" />
-          </UFormField>
-
-          <!-- Date and Time -->
-          <div class="grid grid-cols-2 gap-4">
+            <!-- Patient search -->
             <UFormField
-              :label="t('appointments.date')"
+              :label="t('appointments.selectPatient')"
               required
             >
-              <UInput
-                v-model="formData.date"
-                type="date"
-                required
+              <PatientVisualSelector
+                v-model="selectedPatient"
+                in-modal
               />
             </UFormField>
 
+            <!-- Treatments from catalog -->
+            <UFormField :label="t('appointments.treatments')">
+              <TreatmentMultiSelector v-model="selectedTreatments" />
+            </UFormField>
+
+            <!-- Date and Time -->
+            <div class="grid grid-cols-2 gap-4">
+              <UFormField
+                :label="t('appointments.date')"
+                required
+              >
+                <UInput
+                  v-model="formData.date"
+                  type="date"
+                  required
+                />
+              </UFormField>
+
+              <UFormField
+                :label="t('appointments.startTime')"
+                required
+              >
+                <UInput
+                  v-model="formData.startTime"
+                  type="time"
+                  required
+                />
+              </UFormField>
+            </div>
+
+            <!-- Duration and Cabinet -->
+            <div class="grid grid-cols-2 gap-4">
+              <UFormField :label="t('appointments.duration')">
+                <USelect
+                  v-model="formData.duration"
+                  :items="durationOptions"
+                  value-key="value"
+                  label-key="label"
+                  :placeholder="t('appointments.selectDuration')"
+                />
+              </UFormField>
+
+              <UFormField
+                :label="t('appointments.cabinet')"
+                required
+              >
+                <USelect
+                  v-model="formData.cabinet"
+                  :items="cabinetOptions"
+                  value-key="value"
+                  label-key="label"
+                  :placeholder="t('appointments.cabinet')"
+                />
+              </UFormField>
+            </div>
+
+            <!-- Professional -->
             <UFormField
-              :label="t('appointments.startTime')"
+              :label="t('appointments.professional')"
               required
             >
-              <UInput
-                v-model="formData.startTime"
-                type="time"
-                required
-              />
-            </UFormField>
-          </div>
-
-          <!-- Duration and Cabinet -->
-          <div class="grid grid-cols-2 gap-4">
-            <UFormField :label="t('appointments.duration')">
               <USelect
-                v-model="formData.duration"
-                :items="durationOptions"
+                v-model="selectedProfessionalId"
+                :items="professionalOptions"
                 value-key="value"
                 label-key="label"
-                :placeholder="t('appointments.selectDuration')"
+                :placeholder="t('appointments.selectProfessional')"
               />
             </UFormField>
 
-            <UFormField
-              :label="t('appointments.cabinet')"
-              required
-            >
-              <USelect
-                v-model="formData.cabinet"
-                :items="cabinetOptions"
-                value-key="value"
-                label-key="label"
-                :placeholder="t('appointments.cabinet')"
+            <!-- Notes -->
+            <UFormField :label="t('appointments.notes')">
+              <UTextarea
+                v-model="formData.notes"
+                :placeholder="t('appointments.notes')"
+                :rows="3"
               />
             </UFormField>
-          </div>
-
-          <!-- Professional -->
-          <UFormField
-            :label="t('appointments.professional')"
-            required
-          >
-            <USelect
-              v-model="selectedProfessionalId"
-              :items="professionalOptions"
-              value-key="value"
-              label-key="label"
-              :placeholder="t('appointments.selectProfessional')"
-            />
-          </UFormField>
-
-          <!-- Treatment type -->
-          <UFormField :label="t('appointments.treatmentType')">
-            <UInput
-              v-model="formData.treatmentType"
-              :placeholder="t('appointments.treatmentType')"
-            />
-          </UFormField>
-
-          <!-- Notes -->
-          <UFormField :label="t('appointments.notes')">
-            <UTextarea
-              v-model="formData.notes"
-              :placeholder="t('appointments.notes')"
-              :rows="3"
-            />
-          </UFormField>
-        </form>
+          </form>
+        </div>
 
         <template #footer>
           <div class="flex justify-between">
-            <div>
+            <div class="flex items-center gap-2">
               <UButton
                 v-if="isEditMode && appointment?.status !== 'cancelled'"
                 variant="outline"
@@ -467,8 +554,52 @@ function closeModal() {
               >
                 {{ t('appointments.cancel') }}
               </UButton>
+
+              <!-- Email dropdown in edit mode -->
+              <UDropdownMenu v-if="isEditMode && appointmentPatientHasEmail">
+                <UButton
+                  variant="outline"
+                  icon="i-lucide-mail"
+                  :loading="isSendingEmail"
+                >
+                  {{ t('appointments.sendEmail') }}
+                </UButton>
+                <template #content>
+                  <UDropdownMenuContent>
+                    <UDropdownMenuItem
+                      icon="i-lucide-check-circle"
+                      @click="sendConfirmation(appointment!.id, appointment!.patient_id!)"
+                    >
+                      {{ t('appointments.resendConfirmation') }}
+                    </UDropdownMenuItem>
+                    <UDropdownMenuItem
+                      icon="i-lucide-clock"
+                      @click="sendReminder(appointment!.id, appointment!.patient_id!)"
+                    >
+                      {{ t('appointments.sendReminderEmail') }}
+                    </UDropdownMenuItem>
+                  </UDropdownMenuContent>
+                </template>
+              </UDropdownMenu>
             </div>
-            <div class="flex gap-3">
+            <div class="flex items-center gap-3">
+              <!-- Checkbox for sending confirmation when creating -->
+              <div
+                v-if="!isEditMode && patientHasEmail"
+                class="flex items-center gap-2"
+              >
+                <UCheckbox
+                  v-model="sendConfirmationEmail"
+                  :disabled="autoSendEnabled"
+                />
+                <span class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ t('appointments.sendConfirmationEmail') }}
+                  <span
+                    v-if="autoSendEnabled"
+                    class="text-xs"
+                  >({{ t('appointments.automatic') }})</span>
+                </span>
+              </div>
               <UButton
                 variant="outline"
                 color="neutral"

@@ -162,6 +162,15 @@ export interface PatientUpdate extends Partial<PatientCreate> {
   status?: 'active' | 'archived'
 }
 
+// Appointment treatment brief (from catalog)
+export interface AppointmentTreatmentBrief {
+  id: string
+  catalog_item_id: string
+  internal_code: string
+  names: Record<string, string>
+  default_price?: number
+}
+
 // Appointment types
 export interface Appointment {
   id: string
@@ -171,7 +180,8 @@ export interface Appointment {
   cabinet: string
   start_time: string
   end_time: string
-  treatment_type?: string
+  treatment_type?: string // Legacy field
+  treatments?: AppointmentTreatmentBrief[] // New: treatments from catalog
   status: 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
   notes?: string
   color?: string
@@ -187,7 +197,8 @@ export interface AppointmentCreate {
   cabinet: string
   start_time: string
   end_time: string
-  treatment_type?: string
+  treatment_type?: string // Legacy field
+  treatment_ids?: string[] // New: list of catalog item IDs
   notes?: string
   color?: string
 }
@@ -631,6 +642,7 @@ export interface PatientBrief {
   id: string
   first_name: string
   last_name: string
+  phone?: string
   email?: string
 }
 
