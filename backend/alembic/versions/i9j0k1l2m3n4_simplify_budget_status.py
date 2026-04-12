@@ -17,10 +17,11 @@ Revises: 9ac13662ae08
 Create Date: 2025-01-15 10:00:00.000000
 """
 
-from typing import Sequence
+from collections.abc import Sequence
+
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic
 revision: str = "i9j0k1l2m3n4"
@@ -109,43 +110,29 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Re-add the columns
-    op.add_column('budget_items', sa.Column(
-        'item_status',
-        sa.String(20),
-        nullable=False,
-        server_default='pending'
-    ))
-    op.add_column('budget_items', sa.Column(
-        'treatment_started_at',
-        sa.DateTime(timezone=True),
-        nullable=True
-    ))
-    op.add_column('budget_items', sa.Column(
-        'treatment_completed_at',
-        sa.DateTime(timezone=True),
-        nullable=True
-    ))
-    op.add_column('budget_items', sa.Column(
-        'performed_by',
-        sa.dialects.postgresql.UUID(as_uuid=True),
-        nullable=True
-    ))
-    op.add_column('budget_items', sa.Column(
-        'accepted_at',
-        sa.DateTime(timezone=True),
-        nullable=True
-    ))
-    op.add_column('budget_items', sa.Column(
-        'rejected_at',
-        sa.DateTime(timezone=True),
-        nullable=True
-    ))
+    op.add_column(
+        "budget_items",
+        sa.Column("item_status", sa.String(20), nullable=False, server_default="pending"),
+    )
+    op.add_column(
+        "budget_items", sa.Column("treatment_started_at", sa.DateTime(timezone=True), nullable=True)
+    )
+    op.add_column(
+        "budget_items",
+        sa.Column("treatment_completed_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.add_column(
+        "budget_items",
+        sa.Column("performed_by", sa.dialects.postgresql.UUID(as_uuid=True), nullable=True),
+    )
+    op.add_column(
+        "budget_items", sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True)
+    )
+    op.add_column(
+        "budget_items", sa.Column("rejected_at", sa.DateTime(timezone=True), nullable=True)
+    )
 
     # Re-create the index
-    op.create_index(
-        'idx_budget_items_status',
-        'budget_items',
-        ['budget_id', 'item_status']
-    )
+    op.create_index("idx_budget_items_status", "budget_items", ["budget_id", "item_status"])
 
     # Note: Cannot fully restore original data as it was deleted/modified

@@ -12,13 +12,13 @@ from pydantic import BaseModel, Field
 # ============================================================================
 
 BudgetStatus = Literal[
-    "draft",       # Initial state, editable
-    "sent",        # Sent to patient, awaiting response
-    "accepted",    # Patient accepted, ready for treatment/invoicing
-    "completed",   # All work done
-    "rejected",    # Patient rejected (terminal)
-    "expired",     # Validity period passed (terminal)
-    "cancelled",   # Cancelled before acceptance (terminal)
+    "draft",  # Initial state, editable
+    "sent",  # Sent to patient, awaiting response
+    "accepted",  # Patient accepted, ready for treatment/invoicing
+    "completed",  # All work done
+    "rejected",  # Patient rejected (terminal)
+    "expired",  # Validity period passed (terminal)
+    "cancelled",  # Cancelled before acceptance (terminal)
 ]
 
 DiscountType = Literal["percentage", "absolute"]

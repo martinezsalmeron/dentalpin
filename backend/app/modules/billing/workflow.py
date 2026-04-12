@@ -116,15 +116,15 @@ class InvoiceWorkflowService:
 
             from app.modules.clinical.models import Patient
 
-            result = await db.execute(
-                select(Patient).where(Patient.id == invoice.patient_id)
-            )
+            result = await db.execute(select(Patient).where(Patient.id == invoice.patient_id))
             patient = result.scalar_one_or_none()
             if not patient:
                 raise InvoiceWorkflowError("Patient not found")
 
             # Snapshot billing data from patient
-            invoice.billing_name = patient.billing_name or f"{patient.first_name} {patient.last_name}"
+            invoice.billing_name = (
+                patient.billing_name or f"{patient.first_name} {patient.last_name}"
+            )
             invoice.billing_tax_id = patient.billing_tax_id
             invoice.billing_address = patient.billing_address
             invoice.billing_email = patient.billing_email or patient.email

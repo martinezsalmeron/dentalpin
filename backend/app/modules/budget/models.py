@@ -224,9 +224,7 @@ class BudgetSignature(Base):
     )
 
     # Signature type
-    signature_type: Mapped[str] = mapped_column(
-        String(30)
-    )  # full_acceptance, rejection
+    signature_type: Mapped[str] = mapped_column(String(30))  # full_acceptance, rejection
 
     # Signed items (kept for historical records, all items now signed together)
     signed_items: Mapped[list | None] = mapped_column(JSONB, default=None)  # List of item IDs

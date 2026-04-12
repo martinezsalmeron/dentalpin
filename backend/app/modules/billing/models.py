@@ -114,7 +114,9 @@ class Invoice(Base, TimestampMixin):
     payment_term_days: Mapped[int] = mapped_column(Integer, default=30)
 
     # Billing data (null for drafts, snapshotted when issued)
-    billing_name: Mapped[str | None] = mapped_column(String(200), default=None)  # Nombre/razón social
+    billing_name: Mapped[str | None] = mapped_column(
+        String(200), default=None
+    )  # Nombre/razón social
     billing_tax_id: Mapped[str | None] = mapped_column(String(50), default=None)  # NIF/CIF
     billing_address: Mapped[dict | None] = mapped_column(
         JSONB, default=None

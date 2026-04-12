@@ -416,9 +416,7 @@ class NotificationHandlers:
                     "invoice_date": invoice.issue_date.strftime("%d/%m/%Y")
                     if invoice.issue_date
                     else None,
-                    "due_date": invoice.due_date.strftime("%d/%m/%Y")
-                    if invoice.due_date
-                    else None,
+                    "due_date": invoice.due_date.strftime("%d/%m/%Y") if invoice.due_date else None,
                     "items": invoice_items,
                     "subtotal": float(invoice.subtotal),
                     "total_discount": float(invoice.total_discount)
