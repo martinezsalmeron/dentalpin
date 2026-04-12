@@ -100,7 +100,6 @@ See [docs/DEMO.md](docs/DEMO.md) for full details on demo data.
 - **Payments** — Track partial payments, payment history, balance calculation
 
 ### Practice Management
-- **Multi-clinic Support** — Single installation can manage multiple clinic locations
 - **Role-based Access Control** — Five roles (admin, dentist, hygienist, assistant, receptionist) with granular permissions
 - **Cabinet/Room Management** — Define treatment rooms with schedules and colors
 - **Professional Management** — Assign appointments to specific dentists/hygienists
