@@ -35,7 +35,7 @@ class NotificationsModule(BaseModule):
 
     @property
     def dependencies(self) -> list[str]:
-        return ["clinical", "budget"]  # Needs patient and budget data
+        return ["clinical", "budget", "billing"]  # Needs patient, budget, and invoice data
 
     def get_models(self) -> list:
         return [
@@ -70,4 +70,5 @@ class NotificationsModule(BaseModule):
             "patient.created": NotificationHandlers.on_patient_created,
             "budget.sent": NotificationHandlers.on_budget_sent,
             "budget.accepted": NotificationHandlers.on_budget_accepted,
+            "invoice.sent": NotificationHandlers.on_invoice_sent,
         }

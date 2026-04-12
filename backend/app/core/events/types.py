@@ -35,6 +35,7 @@ class EventType:
     # Invoice events
     INVOICE_CREATED = "invoice.created"
     INVOICE_ISSUED = "invoice.issued"
+    INVOICE_SENT = "invoice.sent"
     INVOICE_PAID = "invoice.paid"
     INVOICE_PARTIAL_PAID = "invoice.partial_paid"
     INVOICE_CANCELLED = "invoice.cancelled"

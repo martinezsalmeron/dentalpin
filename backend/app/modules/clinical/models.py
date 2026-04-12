@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
@@ -29,6 +29,12 @@ class Patient(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="active")  # active, archived
 
+    # Billing data
+    billing_name: Mapped[str | None] = mapped_column(String(200), default=None)
+    billing_tax_id: Mapped[str | None] = mapped_column(String(50), default=None)
+    billing_address: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    billing_email: Mapped[str | None] = mapped_column(String(255), default=None)
+
     # Relationships
     clinic: Mapped["Clinic"] = relationship(back_populates="patients")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="patient")
@@ -36,6 +42,11 @@ class Patient(Base, TimestampMixin):
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def has_complete_billing_info(self) -> bool:
+        """Check if patient has minimum billing info for invoicing."""
+        return bool(self.billing_name and self.billing_tax_id)
 
 
 class Appointment(Base, TimestampMixin):

@@ -551,7 +551,6 @@ class InvoiceService:
         created_by: UUID,
         patient_id: UUID,
         series_id: UUID | None = None,
-        billing_data: dict | None = None,
         payment_term_days: int = 30,
         due_date: date | None = None,
         notes: dict | None = None,
@@ -561,8 +560,11 @@ class InvoiceService:
         Invoice number is NOT assigned here - it will be assigned when the
         invoice is issued via InvoiceWorkflowService.issue_invoice().
         This prevents gaps in numbering when drafts are cancelled.
+
+        Billing data is NOT stored for drafts - it comes dynamically from the
+        patient. When the invoice is issued, billing data is snapshotted.
         """
-        # Get patient info for default billing data
+        # Verify patient exists
         from app.modules.clinical.models import Patient
 
         result = await db.execute(
@@ -575,11 +577,7 @@ class InvoiceService:
         if not patient:
             raise ValueError("Patient not found")
 
-        # Default billing data from patient
-        billing_name = billing_data.get("billing_name") if billing_data else None
-        if not billing_name:
-            billing_name = f"{patient.first_name} {patient.last_name}"
-
+        # Draft invoices don't store billing data - it comes from patient dynamically
         invoice = Invoice(
             clinic_id=clinic_id,
             patient_id=patient_id,
@@ -589,10 +587,10 @@ class InvoiceService:
             status="draft",
             payment_term_days=payment_term_days,
             due_date=due_date,
-            billing_name=billing_name,
-            billing_tax_id=billing_data.get("billing_tax_id") if billing_data else None,
-            billing_address=billing_data.get("billing_address") if billing_data else None,
-            billing_email=billing_data.get("billing_email") or patient.email,
+            billing_name=None,  # Comes from patient for drafts
+            billing_tax_id=None,
+            billing_address=None,
+            billing_email=None,
             internal_notes=notes.get("internal_notes") if notes else None,
             public_notes=notes.get("public_notes") if notes else None,
             created_by=created_by,
@@ -619,7 +617,11 @@ class InvoiceService:
         updated_by: UUID,
         data: dict,
     ) -> Invoice:
-        """Update an invoice (only drafts)."""
+        """Update an invoice (only drafts).
+
+        For drafts, billing data is not stored - it comes from the patient.
+        Patient can be changed for draft invoices.
+        """
         from .workflow import InvoiceWorkflowService
 
         if not InvoiceWorkflowService.can_edit(invoice):
@@ -627,21 +629,29 @@ class InvoiceService:
 
         previous_state = {}
 
-        if "billing_name" in data and data["billing_name"]:
-            previous_state["billing_name"] = invoice.billing_name
-            invoice.billing_name = data["billing_name"]
+        # Handle patient change (only for drafts without budget link)
+        if "patient_id" in data and data["patient_id"]:
+            new_patient_id = data["patient_id"]
+            if new_patient_id != invoice.patient_id:
+                # Can't change patient if linked to a budget
+                if invoice.budget_id:
+                    raise ValueError("Cannot change patient for invoice linked to a budget")
 
-        if "billing_tax_id" in data:
-            previous_state["billing_tax_id"] = invoice.billing_tax_id
-            invoice.billing_tax_id = data["billing_tax_id"]
+                # Verify new patient exists
+                from app.modules.clinical.models import Patient
 
-        if "billing_address" in data:
-            previous_state["billing_address"] = invoice.billing_address
-            invoice.billing_address = data["billing_address"]
+                result = await db.execute(
+                    select(Patient).where(
+                        Patient.id == new_patient_id,
+                        Patient.clinic_id == invoice.clinic_id,
+                    )
+                )
+                new_patient = result.scalar_one_or_none()
+                if not new_patient:
+                    raise ValueError("Patient not found")
 
-        if "billing_email" in data:
-            previous_state["billing_email"] = invoice.billing_email
-            invoice.billing_email = data["billing_email"]
+                previous_state["patient_id"] = str(invoice.patient_id)
+                invoice.patient_id = new_patient_id
 
         if "payment_term_days" in data and data["payment_term_days"] is not None:
             previous_state["payment_term_days"] = invoice.payment_term_days
@@ -670,7 +680,7 @@ class InvoiceService:
                 action="updated",
                 changed_by=updated_by,
                 previous_state=previous_state,
-                new_state={k: getattr(invoice, k) for k in previous_state.keys()},
+                new_state={k: str(getattr(invoice, k)) for k in previous_state.keys()},
             )
 
         return invoice
@@ -706,7 +716,6 @@ class InvoiceService:
         created_by: UUID,
         budget_id: UUID,
         items: list[dict],
-        billing_data: dict | None = None,
         payment_term_days: int | None = None,
         due_date: date | None = None,
         notes: dict | None = None,
@@ -720,13 +729,12 @@ class InvoiceService:
             budget_id: Budget to invoice from
             items: List of items to invoice:
                    [{"budget_item_id": UUID, "quantity": int | None}, ...]
-            billing_data: Optional billing data override
             payment_term_days: Optional payment term override
             due_date: Optional due date
             notes: Optional notes
 
         Returns:
-            Created invoice
+            Created invoice (draft, billing data from patient)
         """
         from app.modules.budget.models import Budget, BudgetItem
 
@@ -745,17 +753,16 @@ class InvoiceService:
         if not budget:
             raise ValueError("Budget not found")
 
-        # Validate budget status
-        if budget.status not in ["accepted", "partially_accepted", "in_progress", "completed"]:
+        # Validate budget status (must be accepted or completed)
+        if budget.status not in ["accepted", "completed"]:
             raise ValueError(f"Cannot invoice budget with status '{budget.status}'")
 
-        # Create invoice
+        # Create invoice (billing data comes from patient dynamically for drafts)
         invoice = await InvoiceService.create_invoice(
             db,
             clinic_id=clinic_id,
             created_by=created_by,
             patient_id=budget.patient_id,
-            billing_data=billing_data,
             payment_term_days=payment_term_days or 30,
             due_date=due_date,
             notes=notes,
@@ -773,11 +780,6 @@ class InvoiceService:
 
             if not budget_item:
                 raise ValueError(f"Budget item {budget_item_id} not found")
-
-            if budget_item.item_status not in ["accepted", "in_progress", "completed"]:
-                raise ValueError(
-                    f"Budget item {budget_item_id} is not accepted (status: {budget_item.item_status})"
-                )
 
             # Calculate available quantity
             invoiced_qty = getattr(budget_item, "invoiced_quantity", 0) or 0
@@ -835,19 +837,6 @@ class InvoiceService:
 
         # Recalculate invoice totals
         await InvoiceService.recalculate_totals(db, invoice)
-
-        # Check if budget is fully invoiced
-        all_invoiced = all(
-            (getattr(bi, "invoiced_quantity", 0) or 0) >= bi.quantity
-            for bi in budget.items
-            if bi.item_status in ["accepted", "in_progress", "completed"]
-        )
-
-        if all_invoiced and budget.status == "completed":
-            from app.modules.budget.workflow import BudgetWorkflowService
-
-            if BudgetWorkflowService.can_transition(budget.status, "invoiced"):
-                budget.status = "invoiced"
 
         await db.flush()
 

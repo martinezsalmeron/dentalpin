@@ -8,7 +8,7 @@ This script creates a complete demo environment including:
 - 35-40 appointments across past, current, and next week
 - Odontogram data (tooth records and treatments for each patient)
 - Treatment catalog with categories and items
-- 7 budgets with various statuses (draft, sent, accepted, etc.)
+- 7 budgets with various statuses (draft, accepted, completed, etc.)
 - 8 invoices with various statuses (draft, issued, partial, paid) and payments
 
 Usage:
@@ -319,12 +319,7 @@ async def seed_budgets(db: AsyncSession) -> dict:
             tooth_number=item_dict["tooth_number"],
             surfaces=item_dict["surfaces"],
             tooth_treatment_id=item_dict["tooth_treatment_id"],
-            item_status=item_dict["item_status"],
-            accepted_at=item_dict["accepted_at"],
-            rejected_at=item_dict["rejected_at"],
-            treatment_started_at=item_dict["treatment_started_at"],
-            treatment_completed_at=item_dict["treatment_completed_at"],
-            performed_by=item_dict["performed_by"],
+            invoiced_quantity=item_dict.get("invoiced_quantity", 0),
             display_order=item_dict["display_order"],
             notes=item_dict["notes"],
         )

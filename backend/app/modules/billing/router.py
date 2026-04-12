@@ -29,6 +29,7 @@ from .schemas import (
     InvoiceItemUpdate,
     InvoiceListResponse,
     InvoiceResponse,
+    InvoiceSendRequest,
     InvoiceSeriesCreate,
     InvoiceSeriesResponse,
     InvoiceSeriesUpdate,
@@ -196,19 +197,12 @@ async def create_invoice(
     _: Annotated[None, Depends(require_permission("billing.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[InvoiceResponse]:
-    """Create a new invoice manually."""
-    try:
-        billing_data = None
-        if data.billing_name or data.billing_tax_id or data.billing_address or data.billing_email:
-            billing_data = {
-                "billing_name": data.billing_name,
-                "billing_tax_id": data.billing_tax_id,
-                "billing_address": data.billing_address.model_dump()
-                if data.billing_address
-                else None,
-                "billing_email": data.billing_email,
-            }
+    """Create a new invoice manually.
 
+    Draft invoices don't store billing data - it comes from patient dynamically.
+    When issued, billing data is snapshotted from patient.
+    """
+    try:
         notes = {
             "internal_notes": data.internal_notes,
             "public_notes": data.public_notes,
@@ -220,7 +214,6 @@ async def create_invoice(
             created_by=ctx.user_id,
             patient_id=data.patient_id,
             series_id=data.series_id,
-            billing_data=billing_data,
             payment_term_days=data.payment_term_days,
             due_date=data.due_date,
             notes=notes,
@@ -231,7 +224,11 @@ async def create_invoice(
             await InvoiceItemService.create_item(db, ctx.clinic_id, invoice, item_data.model_dump())
 
         await db.commit()
-        await db.refresh(invoice)
+
+        # Reload with relationships for response
+        invoice = await InvoiceService.get_invoice(
+            db, ctx.clinic_id, invoice.id, include_items=False, include_payments=False
+        )
 
         return ApiResponse(data=InvoiceResponse.model_validate(invoice))
     except ValueError as e:
@@ -250,19 +247,12 @@ async def create_invoice_from_budget(
     _: Annotated[None, Depends(require_permission("billing.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[InvoiceResponse]:
-    """Create an invoice from a budget with partial invoicing support."""
-    try:
-        billing_data = None
-        if data.billing_name or data.billing_tax_id or data.billing_address or data.billing_email:
-            billing_data = {
-                "billing_name": data.billing_name,
-                "billing_tax_id": data.billing_tax_id,
-                "billing_address": data.billing_address.model_dump()
-                if data.billing_address
-                else None,
-                "billing_email": data.billing_email,
-            }
+    """Create an invoice from a budget with partial invoicing support.
 
+    Draft invoices don't store billing data - it comes from patient dynamically.
+    When issued, billing data is snapshotted from patient.
+    """
+    try:
         notes = {
             "internal_notes": data.internal_notes,
             "public_notes": data.public_notes,
@@ -279,14 +269,17 @@ async def create_invoice_from_budget(
             created_by=ctx.user_id,
             budget_id=budget_id,
             items=items,
-            billing_data=billing_data,
             payment_term_days=data.payment_term_days,
             due_date=data.due_date,
             notes=notes,
         )
 
         await db.commit()
-        await db.refresh(invoice)
+
+        # Reload with relationships for response
+        invoice = await InvoiceService.get_invoice(
+            db, ctx.clinic_id, invoice.id, include_items=False, include_payments=False
+        )
 
         return ApiResponse(data=InvoiceResponse.model_validate(invoice))
     except ValueError as e:
@@ -301,7 +294,10 @@ async def update_invoice(
     _: Annotated[None, Depends(require_permission("billing.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[InvoiceResponse]:
-    """Update an invoice (only drafts)."""
+    """Update an invoice (only drafts).
+
+    Draft invoices can have patient changed. Billing data comes from patient.
+    """
     invoice = await InvoiceService.get_invoice(
         db, ctx.clinic_id, invoice_id, include_items=False, include_payments=False
     )
@@ -310,11 +306,13 @@ async def update_invoice(
 
     try:
         update_data = data.model_dump(exclude_unset=True)
-        if "billing_address" in update_data and update_data["billing_address"]:
-            update_data["billing_address"] = update_data["billing_address"]
-
         invoice = await InvoiceService.update_invoice(db, invoice, ctx.user_id, update_data)
         await db.commit()
+
+        # Reload to get updated patient data
+        invoice = await InvoiceService.get_invoice(
+            db, ctx.clinic_id, invoice_id, include_items=False, include_payments=False
+        )
         return ApiResponse(data=InvoiceResponse.model_validate(invoice))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -513,6 +511,73 @@ async def issue_invoice(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/invoices/{invoice_id}/send-email", response_model=ApiResponse[InvoiceResponse])
+async def send_invoice_email(
+    invoice_id: UUID,
+    data: InvoiceSendRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("billing.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[InvoiceResponse]:
+    """Send an invoice by email to the patient.
+
+    Only issued/partial/paid invoices can be sent (not drafts or voided).
+    """
+    invoice = await InvoiceService.get_invoice(
+        db, ctx.clinic_id, invoice_id, include_items=True, include_payments=False
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Can only send non-draft invoices
+    if invoice.status not in ["issued", "partial", "paid"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot send invoice with status '{invoice.status}'. Invoice must be issued first.",
+        )
+
+    # Check patient has email
+    patient = invoice.patient
+    if data.send_email and (not patient or not patient.email):
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot send email: patient has no email address",
+        )
+
+    # Publish event for notifications module
+    from app.core.events import EventType, event_bus
+
+    event_bus.publish(
+        EventType.INVOICE_SENT,
+        {
+            "clinic_id": str(ctx.clinic_id),
+            "invoice_id": str(invoice.id),
+            "patient_id": str(invoice.patient_id),
+            "send_method": "email" if data.send_email else "manual",
+            "recipient_email": patient.email if patient and data.send_email else None,
+            "custom_message": data.custom_message,
+        },
+    )
+
+    # Add history entry
+    await InvoiceHistoryService.add_entry(
+        db,
+        clinic_id=invoice.clinic_id,
+        invoice_id=invoice.id,
+        action="sent",
+        changed_by=ctx.user_id,
+        previous_state={},
+        new_state={
+            "send_method": "email" if data.send_email else "manual",
+            "recipient_email": patient.email if patient and data.send_email else None,
+        },
+    )
+
+    await db.commit()
+
+    return ApiResponse(data=InvoiceResponse.model_validate(invoice))
+
+
 @router.post("/invoices/{invoice_id}/void", response_model=ApiResponse[InvoiceResponse])
 async def void_invoice(
     invoice_id: UUID,
@@ -575,6 +640,12 @@ async def create_credit_note(
             items=items,
         )
         await db.commit()
+
+        # Reload with relationships for response
+        credit_note = await InvoiceService.get_invoice(
+            db, ctx.clinic_id, credit_note.id, include_items=False, include_payments=False
+        )
+
         return ApiResponse(data=InvoiceResponse.model_validate(credit_note))
     except InvoiceWorkflowError as e:
         raise HTTPException(status_code=400, detail=str(e))

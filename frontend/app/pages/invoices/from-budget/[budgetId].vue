@@ -20,18 +20,8 @@ const vatTypes = ref<VatType[]>([])
 // Selected items with quantities to invoice
 const selectedItems = ref<Map<string, number>>(new Map())
 
-// Form data for billing override
+// Form data (no billing fields - billing comes from patient)
 const form = ref({
-  billing_name: '',
-  billing_tax_id: '',
-  billing_email: '',
-  billing_address: {
-    street: '',
-    city: '',
-    postal_code: '',
-    province: '',
-    country: 'ES'
-  },
   payment_term_days: 30,
   due_date: '',
   internal_notes: '',
@@ -49,17 +39,12 @@ onMounted(async () => {
     budget.value = budgetData
     vatTypes.value = vatResponse.data
 
-    if (budgetData?.patient) {
-      // Pre-fill billing data from patient
-      form.value.billing_name = `${budgetData.patient.first_name} ${budgetData.patient.last_name}`
-      form.value.billing_email = budgetData.patient.email || ''
-    }
-
     // Pre-select all items that have available quantity
+    // All items are invoiceable once budget is accepted (no item-level rejection)
     if (budgetData?.items) {
       budgetData.items.forEach((item) => {
         const availableQty = getAvailableQuantity(item)
-        if (availableQty > 0 && item.item_status !== 'rejected') {
+        if (availableQty > 0) {
           selectedItems.value.set(item.id, availableQty)
         }
       })
@@ -82,12 +67,10 @@ function getAvailableQuantity(item: BudgetItem): number {
   return item.quantity - (item.invoiced_quantity || 0)
 }
 
-// Check if item is invoiceable (accepted status and has available quantity)
+// Check if item is invoiceable (has available quantity)
+// All items are invoiceable once budget is accepted (regardless of treatment status)
 function isInvoiceable(item: BudgetItem): boolean {
-  return (
-    ['accepted', 'in_progress', 'completed'].includes(item.item_status)
-    && getAvailableQuantity(item) > 0
-  )
+  return getAvailableQuantity(item) > 0
 }
 
 // Toggle item selection
@@ -201,12 +184,9 @@ async function handleSubmit() {
       ([budget_item_id, quantity]) => ({ budget_item_id, quantity })
     )
 
+    // Billing data comes from patient (not stored until invoice is issued)
     const invoice = await createFromBudget(budgetId, {
       items,
-      billing_name: form.value.billing_name || undefined,
-      billing_tax_id: form.value.billing_tax_id || undefined,
-      billing_email: form.value.billing_email || undefined,
-      billing_address: form.value.billing_address.street ? form.value.billing_address : undefined,
       payment_term_days: form.value.payment_term_days,
       due_date: form.value.due_date || undefined,
       internal_notes: form.value.internal_notes || undefined,
@@ -360,7 +340,7 @@ function goBack() {
                       v-if="!isInvoiceable(item)"
                       class="text-red-500"
                     >
-                      {{ item.item_status === 'rejected' ? t('budget.itemStatus.rejected') : t('invoice.availableQuantity') + ': 0' }}
+                      {{ t('invoice.availableQuantity') }}: 0
                     </span>
                   </div>
                 </div>
@@ -404,33 +384,72 @@ function goBack() {
           </div>
         </UCard>
 
-        <!-- Billing data override -->
+        <!-- Billing data (from patient - read-only) -->
+        <UCard v-if="budget?.patient">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900 dark:text-white">
+                {{ t('invoice.billingData') }}
+              </h3>
+              <UBadge
+                color="info"
+                variant="subtle"
+              >
+                {{ t('invoice.fromPatient') }}
+              </UBadge>
+            </div>
+          </template>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-gray-500">
+                {{ t('invoice.billingName') }}
+              </p>
+              <p class="font-medium text-gray-900 dark:text-white">
+                {{ budget.patient.billing_name || `${budget.patient.first_name} ${budget.patient.last_name}` }}
+              </p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">
+                {{ t('invoice.taxId') }}
+              </p>
+              <p class="font-medium text-gray-900 dark:text-white">
+                {{ budget.patient.billing_tax_id || '-' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">
+                {{ t('invoice.billingEmail') }}
+              </p>
+              <p class="font-medium text-gray-900 dark:text-white">
+                {{ budget.patient.billing_email || budget.patient.email || '-' }}
+              </p>
+            </div>
+            <div v-if="budget.patient.billing_address">
+              <p class="text-sm text-gray-500">
+                {{ t('invoice.billingAddress') }}
+              </p>
+              <p class="font-medium text-gray-900 dark:text-white">
+                {{ budget.patient.billing_address.street }},
+                {{ budget.patient.billing_address.postal_code }} {{ budget.patient.billing_address.city }}
+              </p>
+            </div>
+          </div>
+
+          <p class="mt-4 text-xs text-gray-500 italic">
+            {{ t('invoice.billingFromPatientHint') }}
+          </p>
+        </UCard>
+
+        <!-- Payment terms -->
         <UCard>
           <template #header>
             <h3 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('invoice.billingData') }}
+              {{ t('invoice.paymentTerms') }}
             </h3>
           </template>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <UFormField :label="t('invoice.billingName')">
-              <UInput v-model="form.billing_name" />
-            </UFormField>
-
-            <UFormField :label="t('invoice.taxId')">
-              <UInput
-                v-model="form.billing_tax_id"
-                placeholder="NIF/CIF"
-              />
-            </UFormField>
-
-            <UFormField :label="t('invoice.billingEmail')">
-              <UInput
-                v-model="form.billing_email"
-                type="email"
-              />
-            </UFormField>
-
             <UFormField :label="t('invoice.paymentTermDays')">
               <UInput
                 v-model.number="form.payment_term_days"
@@ -552,7 +571,7 @@ function goBack() {
               <span class="font-medium">{{ budget.budget_number }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('budget.status.title') || 'Estado' }}</span>
+              <span class="text-gray-500">{{ t('budget.status.title') }}</span>
               <UBadge
                 variant="subtle"
                 size="xs"

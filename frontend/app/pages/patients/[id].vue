@@ -11,6 +11,10 @@ const { can } = usePermissions()
 
 const patientId = route.params.id as string
 
+// Handle returnTo query param (from invoice edit page)
+const returnTo = computed(() => route.query.returnTo as string | undefined)
+const openBillingEdit = computed(() => route.query.tab === 'billing')
+
 // Fetch patient
 const { data: patient, status, refresh } = await useAsyncData(
   `patient:${patientId}`,
@@ -67,6 +71,7 @@ const budgets = computed(() => budgetsData.value?.data || [])
 
 // Tabs - computed to filter by permissions
 const activeTab = ref('info')
+
 const tabs = computed(() => {
   const baseTabs = [
     { value: 'info', label: t('patientDetail.tabs.info'), icon: 'i-lucide-user', slot: 'info' }
@@ -112,7 +117,18 @@ const editForm = reactive<PatientUpdate>({
   phone: '',
   email: '',
   date_of_birth: '',
-  notes: ''
+  notes: '',
+  // Billing fields
+  billing_name: '',
+  billing_tax_id: '',
+  billing_email: '',
+  billing_address: {
+    street: '',
+    city: '',
+    postal_code: '',
+    province: '',
+    country: 'ES'
+  }
 })
 
 function startEditing() {
@@ -123,6 +139,17 @@ function startEditing() {
     editForm.email = patient.value.email || ''
     editForm.date_of_birth = patient.value.date_of_birth || ''
     editForm.notes = patient.value.notes || ''
+    // Billing fields
+    editForm.billing_name = patient.value.billing_name || ''
+    editForm.billing_tax_id = patient.value.billing_tax_id || ''
+    editForm.billing_email = patient.value.billing_email || ''
+    editForm.billing_address = patient.value.billing_address || {
+      street: '',
+      city: '',
+      postal_code: '',
+      province: '',
+      country: 'ES'
+    }
   }
   isEditing.value = true
 }
@@ -131,8 +158,24 @@ function cancelEditing() {
   isEditing.value = false
 }
 
+// Auto-start editing billing if coming from invoice edit
+watch(
+  () => patient.value,
+  (newPatient) => {
+    if (openBillingEdit.value && newPatient && !isEditing.value) {
+      startEditing()
+    }
+  },
+  { immediate: true }
+)
+
 async function savePatient() {
   isSubmitting.value = true
+
+  // Prepare billing address (only send if has content)
+  const billingAddress = editForm.billing_address?.street
+    ? editForm.billing_address
+    : null
 
   try {
     await api.put(
@@ -143,7 +186,11 @@ async function savePatient() {
         phone: editForm.phone || null,
         email: editForm.email || null,
         date_of_birth: editForm.date_of_birth || null,
-        notes: editForm.notes || null
+        notes: editForm.notes || null,
+        billing_name: editForm.billing_name || null,
+        billing_tax_id: editForm.billing_tax_id || null,
+        billing_email: editForm.billing_email || null,
+        billing_address: billingAddress
       }
     )
 
@@ -263,13 +310,32 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
 
     <!-- Patient content -->
     <template v-else-if="patient">
+      <!-- Return to invoice banner -->
+      <div
+        v-if="returnTo"
+        class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center justify-between"
+      >
+        <span class="text-blue-800 dark:text-blue-200 text-sm">
+          {{ t('patients.editingBillingForInvoice') }}
+        </span>
+        <UButton
+          variant="soft"
+          color="primary"
+          size="sm"
+          icon="i-lucide-arrow-left"
+          :to="returnTo"
+        >
+          {{ t('patients.returnToInvoice') }}
+        </UButton>
+      </div>
+
       <!-- Page header -->
       <div class="flex items-center gap-4">
         <UButton
           variant="ghost"
           color="neutral"
           icon="i-lucide-arrow-left"
-          to="/patients"
+          :to="returnTo || '/patients'"
         />
         <div class="flex-1">
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -367,6 +433,88 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
                 </p>
               </div>
 
+              <!-- Billing Section -->
+              <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {{ t('patients.billingSection') }}
+                  </h3>
+                  <UBadge
+                    v-if="patient.has_complete_billing_info"
+                    color="success"
+                    variant="subtle"
+                  >
+                    <UIcon
+                      name="i-lucide-check"
+                      class="w-3 h-3 mr-1"
+                    />
+                    {{ t('patients.billingComplete') }}
+                  </UBadge>
+                  <UBadge
+                    v-else
+                    color="warning"
+                    variant="subtle"
+                  >
+                    <UIcon
+                      name="i-lucide-alert-triangle"
+                      class="w-3 h-3 mr-1"
+                    />
+                    {{ t('patients.billingIncomplete') }}
+                  </UBadge>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {{ t('patients.billingName') }}
+                    </label>
+                    <p class="text-gray-900 dark:text-white">
+                      {{ patient.billing_name || '-' }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {{ t('patients.billingTaxId') }}
+                    </label>
+                    <p class="text-gray-900 dark:text-white">
+                      {{ patient.billing_tax_id || '-' }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {{ t('patients.billingEmail') }}
+                    </label>
+                    <p class="text-gray-900 dark:text-white">
+                      {{ patient.billing_email || '-' }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {{ t('patients.billingAddress') }}
+                    </label>
+                    <p
+                      v-if="patient.billing_address"
+                      class="text-gray-900 dark:text-white"
+                    >
+                      {{ patient.billing_address.street || '' }}
+                      <br v-if="patient.billing_address.city || patient.billing_address.postal_code">
+                      {{ patient.billing_address.postal_code }} {{ patient.billing_address.city }}
+                      <br v-if="patient.billing_address.province">
+                      {{ patient.billing_address.province }}
+                    </p>
+                    <p
+                      v-else
+                      class="text-gray-900 dark:text-white"
+                    >
+                      -
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div class="flex justify-end">
                 <UButton
                   icon="i-lucide-pencil"
@@ -432,6 +580,68 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
                   :rows="4"
                 />
               </UFormField>
+
+              <!-- Billing Section in Edit Mode -->
+              <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  {{ t('patients.billingSection') }}
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  {{ t('patients.billingSectionHint') }}
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <UFormField :label="t('patients.billingName')">
+                    <UInput
+                      v-model="editForm.billing_name"
+                      :placeholder="t('patients.billingNamePlaceholder')"
+                    />
+                  </UFormField>
+
+                  <UFormField :label="t('patients.billingTaxId')">
+                    <UInput
+                      v-model="editForm.billing_tax_id"
+                      placeholder="NIF/CIF"
+                    />
+                  </UFormField>
+
+                  <UFormField :label="t('patients.billingEmail')">
+                    <UInput
+                      v-model="editForm.billing_email"
+                      type="email"
+                    />
+                  </UFormField>
+                </div>
+
+                <div class="mt-4">
+                  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    {{ t('patients.billingAddress') }}
+                  </h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                      <UFormField :label="t('invoice.street')">
+                        <UInput v-model="editForm.billing_address!.street" />
+                      </UFormField>
+                    </div>
+
+                    <UFormField :label="t('invoice.city')">
+                      <UInput v-model="editForm.billing_address!.city" />
+                    </UFormField>
+
+                    <UFormField :label="t('invoice.postalCode')">
+                      <UInput v-model="editForm.billing_address!.postal_code" />
+                    </UFormField>
+
+                    <UFormField :label="t('invoice.province')">
+                      <UInput v-model="editForm.billing_address!.province" />
+                    </UFormField>
+
+                    <UFormField :label="t('invoice.country')">
+                      <UInput v-model="editForm.billing_address!.country" />
+                    </UFormField>
+                  </div>
+                </div>
+              </div>
 
               <div class="flex justify-end gap-3">
                 <UButton

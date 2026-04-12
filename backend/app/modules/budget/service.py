@@ -161,56 +161,6 @@ class BudgetItemService:
         await db.flush()
 
     @staticmethod
-    async def accept_item(
-        db: AsyncSession,
-        item: BudgetItem,
-    ) -> BudgetItem:
-        """Mark an item as accepted."""
-        item.item_status = "accepted"
-        item.accepted_at = datetime.now(UTC)
-        await db.flush()
-        return item
-
-    @staticmethod
-    async def reject_item(
-        db: AsyncSession,
-        item: BudgetItem,
-    ) -> BudgetItem:
-        """Mark an item as rejected."""
-        item.item_status = "rejected"
-        item.rejected_at = datetime.now(UTC)
-        await db.flush()
-        return item
-
-    @staticmethod
-    async def start_treatment(
-        db: AsyncSession,
-        item: BudgetItem,
-        performed_by: UUID | None = None,
-    ) -> BudgetItem:
-        """Mark an item's treatment as started."""
-        item.item_status = "in_progress"
-        item.treatment_started_at = datetime.now(UTC)
-        if performed_by:
-            item.performed_by = performed_by
-        await db.flush()
-        return item
-
-    @staticmethod
-    async def complete_treatment(
-        db: AsyncSession,
-        item: BudgetItem,
-        performed_by: UUID | None = None,
-    ) -> BudgetItem:
-        """Mark an item's treatment as completed."""
-        item.item_status = "completed"
-        item.treatment_completed_at = datetime.now(UTC)
-        if performed_by:
-            item.performed_by = performed_by
-        await db.flush()
-        return item
-
-    @staticmethod
     def _calculate_line_totals(item: BudgetItem) -> None:
         """Calculate line totals for an item."""
         # Line subtotal = unit_price * quantity
@@ -366,7 +316,6 @@ class BudgetService:
             query = query.options(
                 joinedload(Budget.items).joinedload(BudgetItem.catalog_item),
                 joinedload(Budget.items).joinedload(BudgetItem.vat_type),
-                joinedload(Budget.items).joinedload(BudgetItem.performer),
                 joinedload(Budget.signatures),
             )
 
@@ -595,7 +544,6 @@ class BudgetService:
                 surfaces=source_item.surfaces,
                 display_order=source_item.display_order,
                 notes=source_item.notes,
-                item_status="pending",  # Reset status
             )
             db.add(new_item)
 

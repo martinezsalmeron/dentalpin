@@ -8,27 +8,22 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 # ============================================================================
-# Budget Status Types
+# Budget Status Types (Simplified)
 # ============================================================================
 
 BudgetStatus = Literal[
-    "draft",
-    "sent",
-    "partially_accepted",
-    "accepted",
-    "in_progress",
-    "completed",
-    "invoiced",
-    "rejected",
-    "expired",
-    "cancelled",
+    "draft",       # Initial state, editable
+    "sent",        # Sent to patient, awaiting response
+    "accepted",    # Patient accepted, ready for treatment/invoicing
+    "completed",   # All work done
+    "rejected",    # Patient rejected (terminal)
+    "expired",     # Validity period passed (terminal)
+    "cancelled",   # Cancelled before acceptance (terminal)
 ]
-
-ItemStatus = Literal["pending", "accepted", "rejected", "in_progress", "completed"]
 
 DiscountType = Literal["percentage", "absolute"]
 
-SignatureType = Literal["full_acceptance", "partial_acceptance", "rejection"]
+SignatureType = Literal["full_acceptance", "rejection"]
 
 SignatureMethod = Literal["click_accept", "drawn", "external_provider"]
 
@@ -167,13 +162,8 @@ class BudgetItemResponse(BaseModel):
     # Odontogram integration
     tooth_treatment_id: UUID | None
 
-    # Status
-    item_status: str
-    accepted_at: datetime | None
-    rejected_at: datetime | None
-    treatment_started_at: datetime | None
-    treatment_completed_at: datetime | None
-    performed_by: UUID | None
+    # Billing tracking (for partial invoicing)
+    invoiced_quantity: int
 
     # Display
     display_order: int
@@ -186,7 +176,6 @@ class BudgetItemResponse(BaseModel):
     # Related
     catalog_item: CatalogItemBrief | None = None
     vat_type: VatTypeBrief | None = None
-    performer: UserBrief | None = None
 
     class Config:
         from_attributes = True
@@ -203,9 +192,6 @@ class SignatureCreate(BaseModel):
     signed_by_name: str = Field(min_length=1, max_length=200)
     signed_by_email: str | None = None
     relationship_to_patient: RelationshipToPatient = "patient"
-
-    # For partial acceptance, list of item IDs to accept
-    item_ids: list[UUID] | None = None
 
     # Signature data (for drawn signatures)
     signature_data: dict | None = None
@@ -432,13 +418,6 @@ class BudgetCancelRequest(BaseModel):
     """Schema for cancelling a budget."""
 
     reason: str | None = None
-
-
-class ItemStatusUpdateRequest(BaseModel):
-    """Schema for updating item status."""
-
-    performed_by: UUID | None = None
-    notes: str | None = None
 
 
 # ============================================================================

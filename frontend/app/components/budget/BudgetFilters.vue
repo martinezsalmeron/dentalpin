@@ -41,9 +41,7 @@ watch(localFilters, (newVal) => {
 const statusOptions = computed(() => [
   { label: t('budget.status.draft'), value: 'draft' as BudgetStatus },
   { label: t('budget.status.sent'), value: 'sent' as BudgetStatus },
-  { label: t('budget.status.partially_accepted'), value: 'partially_accepted' as BudgetStatus },
   { label: t('budget.status.accepted'), value: 'accepted' as BudgetStatus },
-  { label: t('budget.status.in_progress'), value: 'in_progress' as BudgetStatus },
   { label: t('budget.status.completed'), value: 'completed' as BudgetStatus },
   { label: t('budget.status.rejected'), value: 'rejected' as BudgetStatus },
   { label: t('budget.status.expired'), value: 'expired' as BudgetStatus },

@@ -15,7 +15,6 @@ import type {
   BudgetStatus,
   BudgetUpdate,
   BudgetVersionList,
-  ItemStatusUpdateRequest,
   PaginatedResponse
 } from '~/types'
 
@@ -35,11 +34,8 @@ export interface BudgetListParams {
 const STATUS_COLORS: Record<BudgetStatus, string> = {
   draft: 'gray',
   sent: 'blue',
-  partially_accepted: 'amber',
   accepted: 'green',
-  in_progress: 'purple',
   completed: 'emerald',
-  invoiced: 'teal',
   rejected: 'red',
   expired: 'orange',
   cancelled: 'neutral'
@@ -248,18 +244,6 @@ export function useBudgets() {
     return response.data
   }
 
-  async function acceptBudgetPartial(id: string, data: BudgetAcceptRequest): Promise<Budget> {
-    const response = await api.post<ApiResponse<Budget>>(
-      `/api/v1/budget/budgets/${id}/accept-partial`,
-      data as unknown as Record<string, unknown>
-    )
-
-    // Update local state
-    updateBudgetStatus(id, response.data.status)
-
-    return response.data
-  }
-
   async function rejectBudget(id: string, data: BudgetRejectRequest = {}): Promise<Budget> {
     const response = await api.post<ApiResponse<Budget>>(
       `/api/v1/budget/budgets/${id}/reject`,
@@ -317,46 +301,6 @@ export function useBudgets() {
       creator: response.data.creator
     }
     budgets.value = [listItem, ...budgets.value]
-
-    return response.data
-  }
-
-  // ============================================================================
-  // Item Status Operations
-  // ============================================================================
-
-  async function startItemTreatment(
-    budgetId: string,
-    itemId: string,
-    data: ItemStatusUpdateRequest = {}
-  ): Promise<BudgetItem> {
-    const response = await api.post<ApiResponse<BudgetItem>>(
-      `/api/v1/budget/budgets/${budgetId}/items/${itemId}/start-treatment`,
-      data as unknown as Record<string, unknown>
-    )
-
-    // Refetch budget
-    if (currentBudget.value?.id === budgetId) {
-      await fetchBudget(budgetId)
-    }
-
-    return response.data
-  }
-
-  async function completeItemTreatment(
-    budgetId: string,
-    itemId: string,
-    data: ItemStatusUpdateRequest = {}
-  ): Promise<BudgetItem> {
-    const response = await api.post<ApiResponse<BudgetItem>>(
-      `/api/v1/budget/budgets/${budgetId}/items/${itemId}/complete-treatment`,
-      data as unknown as Record<string, unknown>
-    )
-
-    // Refetch budget
-    if (currentBudget.value?.id === budgetId) {
-      await fetchBudget(budgetId)
-    }
 
     return response.data
   }
@@ -449,19 +393,19 @@ export function useBudgets() {
   }
 
   function canAccept(budget: Budget | BudgetDetail | BudgetListItem): boolean {
-    return ['sent', 'partially_accepted'].includes(budget.status)
+    return ['draft', 'sent'].includes(budget.status)
   }
 
   function canReject(budget: Budget | BudgetDetail | BudgetListItem): boolean {
-    return ['sent', 'partially_accepted'].includes(budget.status)
+    return ['draft', 'sent'].includes(budget.status)
   }
 
   function canCancel(budget: Budget | BudgetDetail | BudgetListItem): boolean {
-    return !['invoiced', 'rejected', 'expired', 'cancelled'].includes(budget.status)
+    return !['completed', 'rejected', 'expired', 'cancelled'].includes(budget.status)
   }
 
   function canComplete(budget: Budget | BudgetDetail | BudgetListItem): boolean {
-    return budget.status === 'in_progress'
+    return budget.status === 'accepted'
   }
 
   function canDuplicate(_budget: Budget | BudgetDetail | BudgetListItem): boolean {
@@ -501,15 +445,10 @@ export function useBudgets() {
     // Workflow
     sendBudget,
     acceptBudget,
-    acceptBudgetPartial,
     rejectBudget,
     cancelBudget,
     completeBudget,
     duplicateBudget,
-
-    // Item status
-    startItemTreatment,
-    completeItemTreatment,
 
     // Versions and history
     fetchVersions,

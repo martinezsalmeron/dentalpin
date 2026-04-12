@@ -1052,17 +1052,17 @@ BUDGET_SCENARIOS = [
         "global_discount": None,
         "notes": {"es": "Presupuesto pendiente de revisión", "en": "Budget pending review"},
     },
-    # Budget 1: Sent budget for patient 4 (David/William)
+    # Budget 1: Draft budget for patient 4 (David/William)
     {
         "patient_idx": 4,
-        "status": "sent",
+        "status": "draft",
         "items": [
             {"code": "PREV-LIMP", "qty": 1, "tooth": None},
             {"code": "REST-COMP", "qty": 3, "tooth": 26},
             {"code": "ENDO-UNI", "qty": 1, "tooth": 21},
         ],
         "global_discount": {"type": "percentage", "value": 5},
-        "notes": {"es": "Enviado por email", "en": "Sent via email"},
+        "notes": {"es": "Pendiente de aceptación", "en": "Pending acceptance"},
     },
     # Budget 2: Accepted budget for patient 6 (Javier/Daniel - diabetic)
     {
@@ -1080,10 +1080,10 @@ BUDGET_SCENARIOS = [
         },
         "signature": True,
     },
-    # Budget 3: In progress budget for patient 8 (Francisco/Alexander - allergic)
+    # Budget 3: Accepted budget for patient 8 (Francisco/Alexander - allergic)
     {
         "patient_idx": 8,
-        "status": "in_progress",
+        "status": "accepted",
         "items": [
             {"code": "PERIO-RAD", "qty": 4, "tooth": None},
             {"code": "REST-COMP", "qty": 2, "tooth": 17},
@@ -1116,18 +1116,18 @@ BUDGET_SCENARIOS = [
         "global_discount": None,
         "notes": {"es": "Rechazado por precio", "en": "Rejected due to price"},
     },
-    # Budget 6: Partially accepted for patient 9 (Rosa/Charlotte - hypertensive)
+    # Budget 6: Accepted for patient 9 (Rosa/Charlotte - hypertensive)
     {
         "patient_idx": 9,
-        "status": "partially_accepted",
+        "status": "accepted",
         "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None, "item_status": "accepted"},
-            {"code": "REST-CRO", "qty": 1, "tooth": 46, "item_status": "accepted"},
-            {"code": "REST-CRO", "qty": 1, "tooth": 36, "item_status": "pending"},
-            {"code": "ENDO-MULTI", "qty": 1, "tooth": 36, "item_status": "pending"},
+            {"code": "DX-VISIT", "qty": 1, "tooth": None},
+            {"code": "REST-CRO", "qty": 1, "tooth": 46},
+            {"code": "REST-CRO", "qty": 1, "tooth": 36},
+            {"code": "ENDO-MULTI", "qty": 1, "tooth": 36},
         ],
         "global_discount": {"type": "percentage", "value": 10},
-        "notes": {"es": "Solo acepta primera fase", "en": "Only accepts first phase"},
+        "notes": {"es": "Tratamiento en curso", "en": "Treatment in progress"},
         "signature": True,
     },
 ]
@@ -1191,20 +1191,6 @@ def generate_budgets_data(catalog_items_map: dict[str, dict]) -> dict:
 
             subtotal += line_subtotal
 
-            # Determine item status based on budget status and scenario
-            if scenario["status"] in ["draft", "sent"]:
-                item_status = "pending"
-            elif scenario["status"] == "rejected":
-                item_status = "rejected"
-            elif scenario["status"] == "partially_accepted":
-                item_status = item_data.get("item_status", "pending")
-            elif scenario["status"] in ["accepted", "in_progress"]:
-                item_status = "accepted"
-            elif scenario["status"] == "completed":
-                item_status = "completed"
-            else:
-                item_status = "pending"
-
             budget_item = {
                 "id": item_id,
                 "clinic_id": CLINIC_ID,
@@ -1223,20 +1209,7 @@ def generate_budgets_data(catalog_items_map: dict[str, dict]) -> dict:
                 "tooth_number": item_data.get("tooth"),
                 "surfaces": None,
                 "tooth_treatment_id": None,
-                "item_status": item_status,
-                "accepted_at": datetime.now() - timedelta(days=10)
-                if item_status in ["accepted", "completed"]
-                else None,
-                "rejected_at": datetime.now() - timedelta(days=10)
-                if item_status == "rejected"
-                else None,
-                "treatment_started_at": datetime.now() - timedelta(days=5)
-                if item_status in ["in_progress", "completed"]
-                else None,
-                "treatment_completed_at": datetime.now() - timedelta(days=2)
-                if item_status == "completed"
-                else None,
-                "performed_by": USER_DENTIST_ID if item_status == "completed" else None,
+                "invoiced_quantity": 0,
                 "display_order": len(budget_items) + 1,
                 "notes": None,
             }
@@ -1286,25 +1259,19 @@ def generate_budgets_data(catalog_items_map: dict[str, dict]) -> dict:
         }
         budgets.append(budget)
 
-        # Create signature if needed
-        if scenario.get("signature") and scenario["status"] not in ["draft", "sent", "rejected"]:
+        # Create signature if needed (for accepted budgets)
+        if scenario.get("signature") and scenario["status"] not in ["draft", "rejected"]:
             signature_id = BUDGET_SIGNATURE_IDS[signature_idx]
             signature_idx += 1
 
-            # Determine which items were signed
-            signed_items = [
-                str(item["id"])
-                for item in budget_items
-                if item["item_status"] in ["accepted", "completed", "in_progress"]
-            ]
+            # All items are signed together when budget is accepted
+            signed_items = [str(item["id"]) for item in budget_items]
 
             signature = {
                 "id": signature_id,
                 "clinic_id": CLINIC_ID,
                 "budget_id": budget_id,
-                "signature_type": "partial_acceptance"
-                if scenario["status"] == "partially_accepted"
-                else "full_acceptance",
+                "signature_type": "full_acceptance",
                 "signed_items": signed_items,
                 "signed_by_name": f"{patient['first_name']} {patient['last_name']}",
                 "signed_by_email": patient.get("email"),

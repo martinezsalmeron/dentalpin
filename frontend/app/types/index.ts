@@ -116,6 +116,14 @@ export interface UserUpdate {
 }
 
 // Patient types
+export interface PatientBillingAddress {
+  street?: string
+  city?: string
+  postal_code?: string
+  province?: string
+  country?: string
+}
+
 export interface Patient {
   id: string
   clinic_id: string
@@ -126,6 +134,12 @@ export interface Patient {
   date_of_birth?: string
   notes?: string
   status: 'active' | 'archived'
+  // Billing fields
+  billing_name?: string
+  billing_tax_id?: string
+  billing_address?: PatientBillingAddress
+  billing_email?: string
+  has_complete_billing_info: boolean
   created_at: string
   updated_at: string
 }
@@ -137,6 +151,11 @@ export interface PatientCreate {
   email?: string
   date_of_birth?: string
   notes?: string
+  // Billing fields
+  billing_name?: string
+  billing_tax_id?: string
+  billing_address?: PatientBillingAddress
+  billing_email?: string
 }
 
 export interface PatientUpdate extends Partial<PatientCreate> {
@@ -587,31 +606,21 @@ export interface OdontogramTreatment {
 }
 
 // ============================================================================
-// Budget Types
+// Budget Types (Simplified)
 // ============================================================================
 
 export type BudgetStatus
-  = | 'draft'
-    | 'sent'
-    | 'partially_accepted'
-    | 'accepted'
-    | 'in_progress'
-    | 'completed'
-    | 'invoiced'
-    | 'rejected'
-    | 'expired'
-    | 'cancelled'
-
-export type BudgetItemStatus
-  = | 'pending'
-    | 'accepted'
-    | 'rejected'
-    | 'in_progress'
-    | 'completed'
+  = | 'draft' // Initial state, editable
+    | 'sent' // Sent to patient, awaiting response
+    | 'accepted' // Patient accepted, ready for treatment/invoicing
+    | 'completed' // All work done
+    | 'rejected' // Patient rejected (terminal)
+    | 'expired' // Validity period passed (terminal)
+    | 'cancelled' // Cancelled before acceptance (terminal)
 
 export type DiscountType = 'percentage' | 'absolute'
 
-export type SignatureType = 'full_acceptance' | 'partial_acceptance' | 'rejection'
+export type SignatureType = 'full_acceptance' | 'rejection'
 
 export type SignatureMethod = 'click_accept' | 'drawn' | 'external_provider'
 
@@ -662,13 +671,6 @@ export interface BudgetItem {
   surfaces?: string[]
   // Odontogram integration
   tooth_treatment_id?: string
-  // Status
-  item_status: BudgetItemStatus
-  accepted_at?: string
-  rejected_at?: string
-  treatment_started_at?: string
-  treatment_completed_at?: string
-  performed_by?: string
   // Invoice tracking
   invoiced_quantity: number
   // Display
@@ -680,7 +682,6 @@ export interface BudgetItem {
   // Related
   catalog_item?: CatalogItemBrief
   vat_type?: VatTypeBrief
-  performer?: UserBrief
 }
 
 export interface BudgetItemCreate {
@@ -730,7 +731,6 @@ export interface SignatureCreate {
   signed_by_name: string
   signed_by_email?: string
   relationship_to_patient?: RelationshipToPatient
-  item_ids?: string[]
   signature_data?: Record<string, unknown>
 }
 
@@ -844,13 +844,13 @@ export interface BudgetRejectRequest {
   signature?: SignatureCreate
 }
 
-export interface BudgetCancelRequest {
-  reason?: string
+export interface BudgetSendRequest {
+  send_email?: boolean
+  custom_message?: string
 }
 
-export interface ItemStatusUpdateRequest {
-  performed_by?: string
-  notes?: string
+export interface BudgetCancelRequest {
+  reason?: string
 }
 
 // Versions
@@ -1281,10 +1281,7 @@ export interface BudgetBrief {
 export interface InvoiceCreate {
   patient_id: string
   series_id?: string
-  billing_name?: string
-  billing_tax_id?: string
-  billing_address?: BillingAddress
-  billing_email?: string
+  // Billing data removed - drafts get it from patient dynamically
   payment_term_days?: number
   due_date?: string
   internal_notes?: string
@@ -1294,10 +1291,7 @@ export interface InvoiceCreate {
 
 export interface InvoiceFromBudgetCreate {
   items: InvoiceItemFromBudget[]
-  billing_name?: string
-  billing_tax_id?: string
-  billing_address?: BillingAddress
-  billing_email?: string
+  // Billing data removed - drafts get it from patient dynamically
   payment_term_days?: number
   due_date?: string
   internal_notes?: string
@@ -1305,10 +1299,8 @@ export interface InvoiceFromBudgetCreate {
 }
 
 export interface InvoiceUpdate {
-  billing_name?: string
-  billing_tax_id?: string
-  billing_address?: BillingAddress
-  billing_email?: string
+  patient_id?: string // Can change patient for draft invoices (without budget)
+  // Billing data removed - drafts get it from patient dynamically
   payment_term_days?: number
   due_date?: string
   internal_notes?: string
@@ -1318,6 +1310,11 @@ export interface InvoiceUpdate {
 // Workflow
 export interface InvoiceIssueRequest {
   issue_date?: string
+}
+
+export interface InvoiceSendRequest {
+  send_email: boolean
+  custom_message?: string
 }
 
 export interface CreditNoteItemSelect {

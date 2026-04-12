@@ -27,17 +27,16 @@ const {
   canComplete
 } = useBudgets()
 
-// Check if budget can be invoiced (has accepted items with uninvoiced quantity)
+// Check if budget can be invoiced (budget accepted and has uninvoiced items)
 function canInvoice(): boolean {
   if (!currentBudget.value) return false
-  // Budget must be in a state that allows invoicing
-  if (!['accepted', 'partially_accepted', 'in_progress', 'completed'].includes(currentBudget.value.status)) {
+  // Budget must be accepted or completed to be invoiced
+  if (!['accepted', 'completed'].includes(currentBudget.value.status)) {
     return false
   }
   // Must have at least one item with available quantity to invoice
   return currentBudget.value.items.some(item =>
-    ['accepted', 'in_progress', 'completed'].includes(item.item_status)
-    && item.quantity > (item.invoiced_quantity || 0)
+    item.quantity > (item.invoiced_quantity || 0)
   )
 }
 
@@ -68,7 +67,14 @@ onMounted(() => {
 // Modal states
 const isAddItemModalOpen = ref(false)
 const isSignatureModalOpen = ref(false)
+const isSendModalOpen = ref(false)
 const signatureAction = ref<'accept' | 'reject'>('accept')
+
+// Send form
+const sendForm = reactive({
+  send_email: false,
+  custom_message: ''
+})
 
 // Edit state
 const isEditing = ref(false)
@@ -149,27 +155,6 @@ async function handleRemoveItem(item: BudgetItem) {
 }
 
 // Workflow actions
-async function handleSend() {
-  if (!currentBudget.value) return
-  if (!confirm(t('budget.confirmations.send'))) return
-
-  try {
-    await sendBudget(currentBudget.value.id)
-    toast.add({
-      title: t('common.success'),
-      description: t('budget.messages.sent'),
-      color: 'success'
-    })
-    await loadBudget()
-  } catch {
-    toast.add({
-      title: t('common.error'),
-      description: t('budget.errors.send'),
-      color: 'error'
-    })
-  }
-}
-
 function openSignatureModal(action: 'accept' | 'reject') {
   signatureAction.value = action
   isSignatureModalOpen.value = true
@@ -241,6 +226,42 @@ async function handleCancel() {
       color: 'error'
     })
   }
+}
+
+async function handleSend() {
+  if (!currentBudget.value) return
+
+  try {
+    await sendBudget(currentBudget.value.id, {
+      send_email: sendForm.send_email,
+      custom_message: sendForm.custom_message || undefined
+    })
+
+    const message = sendForm.send_email
+      ? t('budget.messages.sentByEmail')
+      : t('budget.messages.sentManually')
+
+    toast.add({
+      title: t('common.success'),
+      description: message,
+      color: 'success'
+    })
+
+    isSendModalOpen.value = false
+    resetSendForm()
+    await loadBudget()
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('budget.errors.send'),
+      color: 'error'
+    })
+  }
+}
+
+function resetSendForm() {
+  sendForm.send_email = false
+  sendForm.custom_message = ''
 }
 
 async function handleComplete() {
@@ -379,7 +400,7 @@ function getItemName(item: BudgetItem): string {
             v-if="canSend(currentBudget) && can('budget.write')"
             color="primary"
             icon="i-lucide-send"
-            @click="handleSend"
+            @click="isSendModalOpen = true"
           >
             {{ t('budget.actions.send') }}
           </UButton>
@@ -631,17 +652,6 @@ function getItemName(item: BudgetItem): string {
                   <p class="font-semibold">
                     {{ formatCurrency(item.line_total, currentBudget.currency) }}
                   </p>
-                  <span
-                    class="text-xs px-2 py-1 rounded"
-                    :class="{
-                      'bg-gray-100 text-gray-700': item.item_status === 'pending',
-                      'bg-green-100 text-green-700': item.item_status === 'accepted' || item.item_status === 'completed',
-                      'bg-red-100 text-red-700': item.item_status === 'rejected',
-                      'bg-purple-100 text-purple-700': item.item_status === 'in_progress'
-                    }"
-                  >
-                    {{ t(`budget.itemStatus.${item.item_status}`) }}
-                  </span>
                 </div>
                 <UButton
                   v-if="canEdit(currentBudget) && can('budget.write')"
@@ -708,13 +718,13 @@ function getItemName(item: BudgetItem): string {
                 </p>
               </div>
               <div v-if="currentBudget.creator">
-                <span class="text-gray-500">{{ t('common.createdBy') || 'Creado por' }}</span>
+                <span class="text-gray-500">{{ t('common.createdBy') }}</span>
                 <p class="font-medium">
                   {{ currentBudget.creator.first_name }} {{ currentBudget.creator.last_name }}
                 </p>
               </div>
               <div>
-                <span class="text-gray-500">{{ t('common.date') || 'Fecha' }}</span>
+                <span class="text-gray-500">{{ t('common.date') }}</span>
                 <p class="font-medium">
                   {{ formatDate(currentBudget.created_at) }}
                 </p>
@@ -732,6 +742,92 @@ function getItemName(item: BudgetItem): string {
       :currency="currentBudget?.currency"
       @added="handleItemAdded"
     />
+
+    <!-- Send Modal -->
+    <UModal v-model:open="isSendModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold">
+                {{ t('budget.actions.send') }}
+              </h2>
+              <UButton
+                variant="ghost"
+                color="neutral"
+                icon="i-lucide-x"
+                @click="isSendModalOpen = false"
+              />
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <p class="text-gray-600 dark:text-gray-400">
+              {{ t('budget.send.description') }}
+            </p>
+
+            <div class="flex items-center gap-3">
+              <UCheckbox
+                v-model="sendForm.send_email"
+                :label="t('budget.send.sendByEmail')"
+              />
+            </div>
+
+            <div
+              v-if="sendForm.send_email"
+              class="space-y-3"
+            >
+              <p
+                v-if="currentBudget?.patient?.email"
+                class="text-sm text-gray-500"
+              >
+                {{ t('budget.send.willSendTo') }}: <strong>{{ currentBudget.patient.email }}</strong>
+              </p>
+              <p
+                v-else
+                class="text-sm text-amber-600"
+              >
+                {{ t('budget.send.noPatientEmail') }}
+              </p>
+
+              <UFormField :label="t('budget.send.customMessage')">
+                <UTextarea
+                  v-model="sendForm.custom_message"
+                  :placeholder="t('budget.send.customMessagePlaceholder')"
+                  :rows="3"
+                />
+              </UFormField>
+            </div>
+
+            <p
+              v-if="!sendForm.send_email"
+              class="text-sm text-gray-500"
+            >
+              {{ t('budget.send.manualNote') }}
+            </p>
+          </div>
+
+          <template #footer>
+            <div class="flex justify-end gap-3">
+              <UButton
+                variant="outline"
+                color="neutral"
+                @click="isSendModalOpen = false"
+              >
+                {{ t('common.cancel') }}
+              </UButton>
+              <UButton
+                color="primary"
+                :disabled="sendForm.send_email && !currentBudget?.patient?.email"
+                @click="handleSend"
+              >
+                {{ sendForm.send_email ? t('budget.send.sendEmail') : t('budget.send.markAsSent') }}
+              </UButton>
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
 
     <!-- Signature Modal -->
     <UModal v-model:open="isSignatureModalOpen">

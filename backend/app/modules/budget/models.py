@@ -49,10 +49,10 @@ class Budget(Base, TimestampMixin):
         ForeignKey("budgets.id"), index=True, default=None
     )  # For version chain
 
-    # Status workflow
+    # Status workflow (simplified)
     status: Mapped[str] = mapped_column(
         String(30), default="draft"
-    )  # draft, sent, partially_accepted, accepted, in_progress, completed, invoiced, rejected, expired, cancelled
+    )  # draft, accepted, completed, rejected, expired, cancelled
 
     # Validity period
     valid_from: Mapped[date] = mapped_column(Date)
@@ -186,24 +186,6 @@ class BudgetItem(Base, TimestampMixin):
         ForeignKey("tooth_treatments.id"), index=True, default=None
     )
 
-    # Item status (independent from budget status)
-    item_status: Mapped[str] = mapped_column(
-        String(20), default="pending"
-    )  # pending, accepted, rejected, in_progress, completed
-
-    # Status timestamps
-    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
-    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
-    treatment_started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
-    treatment_completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
-
-    # Treatment tracking
-    performed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), default=None)
-
     # Billing tracking (for partial invoicing)
     invoiced_quantity: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -217,12 +199,10 @@ class BudgetItem(Base, TimestampMixin):
     catalog_item: Mapped["TreatmentCatalogItem"] = relationship()
     vat_type: Mapped["VatType | None"] = relationship()
     tooth_treatment: Mapped["ToothTreatment | None"] = relationship()
-    performer: Mapped["User | None"] = relationship(foreign_keys=[performed_by])
 
     __table_args__ = (
         Index("idx_budget_items_budget", "budget_id"),
         Index("idx_budget_items_catalog", "catalog_item_id"),
-        Index("idx_budget_items_status", "budget_id", "item_status"),
         Index("idx_budget_items_tooth", "budget_id", "tooth_number"),
         Index("idx_budget_items_tooth_treatment", "tooth_treatment_id"),
     )
@@ -246,9 +226,9 @@ class BudgetSignature(Base):
     # Signature type
     signature_type: Mapped[str] = mapped_column(
         String(30)
-    )  # full_acceptance, partial_acceptance, rejection
+    )  # full_acceptance, rejection
 
-    # Signed items (for partial acceptance)
+    # Signed items (kept for historical records, all items now signed together)
     signed_items: Mapped[list | None] = mapped_column(JSONB, default=None)  # List of item IDs
 
     # Signer information

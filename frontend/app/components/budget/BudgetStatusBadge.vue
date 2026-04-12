@@ -11,11 +11,8 @@ const { t } = useI18n()
 const colorMap: Record<BudgetStatus, string> = {
   draft: 'gray',
   sent: 'blue',
-  partially_accepted: 'amber',
   accepted: 'green',
-  in_progress: 'purple',
   completed: 'emerald',
-  invoiced: 'teal',
   rejected: 'red',
   expired: 'orange',
   cancelled: 'neutral'

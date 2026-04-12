@@ -12,6 +12,7 @@ const {
   fetchInvoice,
   issueInvoice,
   voidInvoice,
+  sendInvoice,
   recordPayment,
   voidPayment,
   createCreditNote,
@@ -21,6 +22,7 @@ const {
   canRecordPayment,
   canVoid,
   canCreateCreditNote,
+  canSend,
   getPaymentMethodLabel,
   formatCurrency
 } = useInvoices()
@@ -30,8 +32,10 @@ const invoiceId = computed(() => route.params.id as string)
 // Modal states
 const showPaymentModal = ref(false)
 const showCreditNoteModal = ref(false)
+const showSendModal = ref(false)
 const isProcessing = ref(false)
 const isDownloadingPdf = ref(false)
+const isSending = ref(false)
 
 // Payment form
 const paymentForm = ref({
@@ -46,6 +50,12 @@ const paymentForm = ref({
 const creditNoteForm = ref({
   reason: '',
   items: [] as { invoice_item_id: string, quantity?: number }[]
+})
+
+// Send form
+const sendForm = ref({
+  send_email: true,
+  custom_message: ''
 })
 
 // Payment method options
@@ -75,6 +85,14 @@ function isOverdue(): boolean {
   return new Date(currentInvoice.value.due_date) < new Date()
 }
 
+// Check if billing data is incomplete (for drafts, check patient billing info)
+const hasBillingDataIncomplete = computed(() => {
+  if (!currentInvoice.value) return false
+  if (currentInvoice.value.status !== 'draft') return false
+  // For drafts, billing comes from patient - check patient's billing completeness
+  return currentInvoice.value.patient?.has_complete_billing_info === false
+})
+
 // Get status badge color
 function getStatusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -91,6 +109,17 @@ function getStatusBadgeColor(status: string): string {
 // Actions
 async function handleIssue() {
   if (!currentInvoice.value) return
+
+  // Check billing data is complete before issuing
+  if (hasBillingDataIncomplete.value) {
+    toast.add({
+      title: t('common.error'),
+      description: t('invoice.errors.billingIncomplete'),
+      color: 'error'
+    })
+    return
+  }
+
   if (!confirm(t('invoice.confirmations.issue'))) return
 
   isProcessing.value = true
@@ -247,6 +276,45 @@ async function handleCreateCreditNote() {
   }
 }
 
+function openSendModal() {
+  sendForm.value = {
+    send_email: true,
+    custom_message: ''
+  }
+  showSendModal.value = true
+}
+
+async function handleSend() {
+  if (!currentInvoice.value) return
+
+  isSending.value = true
+  try {
+    await sendInvoice(invoiceId.value, {
+      send_email: sendForm.value.send_email,
+      custom_message: sendForm.value.custom_message || undefined
+    })
+
+    const message = sendForm.value.send_email
+      ? t('invoice.messages.sentByEmail')
+      : t('invoice.messages.sentManually')
+
+    toast.add({
+      title: t('common.success'),
+      description: message,
+      color: 'success'
+    })
+    showSendModal.value = false
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('invoice.errors.send'),
+      color: 'error'
+    })
+  } finally {
+    isSending.value = false
+  }
+}
+
 async function handleDownloadPDF() {
   if (!currentInvoice.value) return
 
@@ -375,6 +443,14 @@ function goToCreditNoteFor() {
             {{ t('invoice.actions.downloadPdf') }}
           </UButton>
           <UButton
+            v-if="canSend(currentInvoice) && can('billing.write')"
+            variant="outline"
+            icon="i-lucide-mail"
+            @click="openSendModal"
+          >
+            {{ t('invoice.actions.sendEmail') }}
+          </UButton>
+          <UButton
             v-if="canIssue(currentInvoice) && can('billing.write')"
             color="primary"
             icon="i-lucide-send"
@@ -445,12 +521,39 @@ function goToCreditNoteFor() {
                   {{ formatDate(currentInvoice.due_date) }}
                 </dd>
               </div>
+              <!-- Billing data incomplete warning -->
+              <div
+                v-if="hasBillingDataIncomplete"
+                class="col-span-2 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-800 dark:text-amber-200"
+              >
+                <UIcon
+                  name="i-lucide-alert-triangle"
+                  class="w-5 h-5 flex-shrink-0"
+                />
+                <div class="flex-1">
+                  <p class="font-medium">
+                    {{ t('invoice.billingDataIncomplete') }}
+                  </p>
+                  <p class="text-sm text-amber-600 dark:text-amber-300">
+                    {{ t('invoice.billingDataIncompleteHint') }}
+                  </p>
+                </div>
+                <UButton
+                  size="sm"
+                  variant="outline"
+                  color="amber"
+                  @click="router.push(`/patients/${currentInvoice.patient?.id}`)"
+                >
+                  {{ t('invoice.editPatientBilling') }}
+                </UButton>
+              </div>
+
               <div>
                 <dt class="text-sm text-gray-500 dark:text-gray-400">
                   {{ t('invoice.billingName') }}
                 </dt>
                 <dd class="font-medium text-gray-900 dark:text-white">
-                  {{ currentInvoice.billing_name }}
+                  {{ currentInvoice.billing_name || '-' }}
                 </dd>
               </div>
               <div v-if="currentInvoice.billing_tax_id">
@@ -785,6 +888,79 @@ function goToCreditNoteFor() {
             @click="handleCreateCreditNote"
           >
             {{ t('invoice.actions.createCreditNote') }}
+          </UButton>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- Send Invoice Modal -->
+    <UModal
+      v-model:open="showSendModal"
+      :title="t('invoice.send.title')"
+    >
+      <template #body>
+        <div class="space-y-4 p-4">
+          <p class="text-gray-600 dark:text-gray-400">
+            {{ t('invoice.send.description') }}
+          </p>
+
+          <div class="flex items-center gap-3">
+            <UCheckbox
+              v-model="sendForm.send_email"
+              :label="t('invoice.send.sendByEmail')"
+            />
+          </div>
+
+          <div
+            v-if="sendForm.send_email"
+            class="space-y-3"
+          >
+            <p
+              v-if="currentInvoice?.patient?.email"
+              class="text-sm text-gray-500"
+            >
+              {{ t('invoice.send.willSendTo') }}: <strong>{{ currentInvoice.patient.email }}</strong>
+            </p>
+            <p
+              v-else
+              class="text-sm text-amber-600"
+            >
+              {{ t('invoice.send.noPatientEmail') }}
+            </p>
+
+            <UFormField :label="t('invoice.send.customMessage')">
+              <UTextarea
+                v-model="sendForm.custom_message"
+                :placeholder="t('invoice.send.customMessagePlaceholder')"
+                :rows="3"
+              />
+            </UFormField>
+          </div>
+
+          <p
+            v-if="!sendForm.send_email"
+            class="text-sm text-gray-500"
+          >
+            {{ t('invoice.send.manualNote') }}
+          </p>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            @click="showSendModal = false"
+          >
+            {{ t('common.cancel') }}
+          </UButton>
+          <UButton
+            color="primary"
+            :loading="isSending"
+            :disabled="sendForm.send_email && !currentInvoice?.patient?.email"
+            @click="handleSend"
+          >
+            {{ sendForm.send_email ? t('invoice.send.sendEmail') : t('invoice.send.markAsSent') }}
           </UButton>
         </div>
       </template>

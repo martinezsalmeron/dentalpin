@@ -242,10 +242,22 @@ class NotificationHandlers:
 
     @staticmethod
     async def _handle_budget_sent(data: dict[str, Any]) -> None:
-        """Async handler for budget sent."""
+        """Async handler for budget sent.
+
+        Only sends email if send_method is "email".
+        Manual sends (printed/handed) don't trigger email.
+        """
         from app.modules.budget.models import Budget, BudgetItem
         from app.modules.clinical.models import Patient
         from app.modules.notifications.service import NotificationService
+
+        # Only send email if explicitly requested
+        send_method = data.get("send_method", "manual")
+        if send_method != "email":
+            logger.info(
+                f"Budget sent manually (not by email), skipping notification: {data.get('budget_id')}"
+            )
+            return
 
         try:
             clinic_id = UUID(data["clinic_id"])
@@ -311,6 +323,7 @@ class NotificationHandlers:
                     if budget.valid_until
                     else None,
                     "notes": budget.patient_notes,
+                    "custom_message": data.get("custom_message"),
                     "clinic_name": clinic.name if clinic else "DentalPin",
                     "clinic_phone": clinic.phone if clinic else None,
                 }
@@ -327,6 +340,112 @@ class NotificationHandlers:
 
         except Exception as e:
             logger.error(f"Error handling budget.sent: {e}", exc_info=True)
+
+    @staticmethod
+    def on_invoice_sent(data: dict[str, Any]) -> None:
+        """Handle invoice.sent event.
+
+        Sends invoice email to patient.
+        """
+        asyncio.create_task(NotificationHandlers._handle_invoice_sent(data))
+
+    @staticmethod
+    async def _handle_invoice_sent(data: dict[str, Any]) -> None:
+        """Async handler for invoice sent.
+
+        Only sends email if send_method is "email".
+        Manual sends don't trigger email.
+        """
+        from app.modules.billing.models import Invoice, InvoiceItem
+        from app.modules.clinical.models import Patient
+        from app.modules.notifications.service import NotificationService
+
+        # Only send email if explicitly requested
+        send_method = data.get("send_method", "manual")
+        if send_method != "email":
+            logger.info(
+                f"Invoice sent manually (not by email), skipping notification: {data.get('invoice_id')}"
+            )
+            return
+
+        try:
+            clinic_id = UUID(data["clinic_id"])
+            invoice_id = UUID(data["invoice_id"])
+
+            async with async_session_maker() as db:
+                # Get invoice with items
+                result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
+                invoice = result.scalar_one_or_none()
+                if not invoice:
+                    return
+
+                # Get patient
+                result = await db.execute(select(Patient).where(Patient.id == invoice.patient_id))
+                patient = result.scalar_one_or_none()
+                if not patient or not patient.email:
+                    return
+
+                # Get clinic info
+                from app.core.auth.models import Clinic
+
+                result = await db.execute(select(Clinic).where(Clinic.id == clinic_id))
+                clinic = result.scalar_one_or_none()
+
+                # Get invoice items
+                result = await db.execute(
+                    select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
+                )
+                items = result.scalars().all()
+
+                # Build items list for template
+                invoice_items = []
+                for item in items:
+                    invoice_items.append(
+                        {
+                            "description": item.description,
+                            "quantity": item.quantity,
+                            "unit_price": float(item.unit_price),
+                            "line_total": float(item.line_total),
+                        }
+                    )
+
+                # Build context
+                context = {
+                    "patient_name": f"{patient.first_name} {patient.last_name}",
+                    "invoice_number": invoice.invoice_number,
+                    "invoice_date": invoice.issue_date.strftime("%d/%m/%Y")
+                    if invoice.issue_date
+                    else None,
+                    "due_date": invoice.due_date.strftime("%d/%m/%Y")
+                    if invoice.due_date
+                    else None,
+                    "items": invoice_items,
+                    "subtotal": float(invoice.subtotal),
+                    "total_discount": float(invoice.total_discount)
+                    if invoice.total_discount
+                    else None,
+                    "total_tax": float(invoice.total_tax) if invoice.total_tax else None,
+                    "total": float(invoice.total),
+                    "balance_due": float(invoice.balance_due),
+                    "billing_name": invoice.billing_name,
+                    "custom_message": data.get("custom_message"),
+                    "clinic_name": clinic.name if clinic else "DentalPin",
+                    "clinic_phone": clinic.phone if clinic else None,
+                    "clinic_address": clinic.address if clinic else None,
+                }
+
+                await NotificationService.send_notification(
+                    db=db,
+                    clinic_id=clinic_id,
+                    notification_type="invoice_sent",
+                    to_email=patient.email,
+                    context=context,
+                    patient_id=patient.id,
+                    triggered_by_event="invoice.sent",
+                )
+
+        except Exception as e:
+            logger.error(f"Error handling invoice.sent: {e}", exc_info=True)
 
     @staticmethod
     def on_budget_accepted(data: dict[str, Any]) -> None:

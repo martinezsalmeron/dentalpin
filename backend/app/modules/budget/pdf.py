@@ -549,7 +549,6 @@ class BudgetPDFService:
             "status": {
                 "draft": "Borrador",
                 "sent": "Enviado",
-                "partially_accepted": "Aceptado Parcial",
                 "accepted": "Aceptado",
                 "in_progress": "En Progreso",
                 "completed": "Completado",
@@ -589,7 +588,6 @@ class BudgetPDFService:
             "status": {
                 "draft": "Draft",
                 "sent": "Sent",
-                "partially_accepted": "Partially Accepted",
                 "accepted": "Accepted",
                 "in_progress": "In Progress",
                 "completed": "Completed",

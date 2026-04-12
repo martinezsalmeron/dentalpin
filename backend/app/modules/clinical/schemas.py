@@ -6,6 +6,17 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 
+# Billing address schema
+class BillingAddress(BaseModel):
+    """Schema for billing address."""
+
+    street: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+    province: str | None = None
+    country: str = "ES"
+
+
 # Patient schemas
 class PatientCreate(BaseModel):
     """Schema for creating a patient."""
@@ -16,6 +27,11 @@ class PatientCreate(BaseModel):
     email: EmailStr | None = None
     date_of_birth: date | None = None
     notes: str | None = None
+    # Billing fields
+    billing_name: str | None = Field(default=None, max_length=200)
+    billing_tax_id: str | None = Field(default=None, max_length=50)
+    billing_address: BillingAddress | None = None
+    billing_email: EmailStr | None = None
 
 
 class PatientUpdate(BaseModel):
@@ -28,6 +44,11 @@ class PatientUpdate(BaseModel):
     date_of_birth: date | None = None
     notes: str | None = None
     status: str | None = None
+    # Billing fields
+    billing_name: str | None = Field(default=None, max_length=200)
+    billing_tax_id: str | None = Field(default=None, max_length=50)
+    billing_address: BillingAddress | None = None
+    billing_email: EmailStr | None = None
 
 
 class PatientResponse(BaseModel):
@@ -42,6 +63,12 @@ class PatientResponse(BaseModel):
     date_of_birth: date | None
     notes: str | None
     status: str
+    # Billing fields
+    billing_name: str | None
+    billing_tax_id: str | None
+    billing_address: dict | None
+    billing_email: str | None
+    has_complete_billing_info: bool
     created_at: datetime
     updated_at: datetime
 

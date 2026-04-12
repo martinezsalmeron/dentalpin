@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Budget module manages dental treatment quotes with versioning, partial acceptance, digital signatures, and PDF generation. This document describes extension points for future modules and third-party integrations.
+The Budget module manages dental treatment quotes with versioning, digital signatures, and PDF generation. This document describes extension points for future modules and third-party integrations.
+
+**Note:** The workflow supports an optional `sent` state: `draft → [sent] → accepted → completed`. Treatment execution tracking is reserved for a future Treatment Plan module.
 
 ---
 
@@ -38,7 +40,7 @@ backend/app/modules/budget/
 | `budget_number` | String | "PRES-2024-0001" format |
 | `version` | Integer | Version number |
 | `parent_budget_id` | UUID | Previous version link |
-| `status` | String | Workflow state |
+| `status` | String | Workflow state (see section 3) |
 | `valid_from` | Date | Start of validity |
 | `valid_until` | Date | Expiration date |
 | `global_discount_type` | String | "percentage" or "absolute" |
@@ -62,10 +64,13 @@ backend/app/modules/budget/
 | `discount_value` | Decimal | Line discount |
 | `vat_type_id` | UUID | VAT type reference |
 | `vat_rate` | Float | VAT rate snapshot |
-| `line_total` | Decimal | Line total |
+| `line_subtotal` | Decimal | Before discount |
+| `line_discount` | Decimal | Discount amount |
+| `line_tax` | Decimal | VAT amount |
+| `line_total` | Decimal | Final line total |
 | `tooth_number` | Integer | FDI notation |
 | `surfaces` | JSONB | ["M", "O", "D"] |
-| `item_status` | String | Item workflow state |
+| `invoiced_quantity` | Integer | Qty already invoiced |
 
 ### BudgetSignature
 
@@ -73,7 +78,7 @@ backend/app/modules/budget/
 |-------|------|-------------|
 | `id` | UUID | Primary key |
 | `budget_id` | UUID | Signed budget |
-| `signature_type` | String | full/partial/rejection |
+| `signature_type` | String | full_acceptance / rejection |
 | `signed_items` | JSONB | Item IDs signed |
 | `signed_by_name` | String | Signer name |
 | `relationship_to_patient` | String | patient/guardian/representative |
@@ -86,23 +91,46 @@ backend/app/modules/budget/
 ## 3. Workflow States
 
 ```
-draft → sent → [accepted|partially_accepted|rejected]
-                    ↓
-               in_progress → completed → invoiced
-                    ↓
-               cancelled (from most states)
+draft ────────────────────────────────────────────┐
+  │                                               │
+  ├──→ sent ──→ accepted ──→ completed            │
+  │       │                                       │
+  │       ├──→ rejected (terminal)                │
+  │       │                                       │
+  │       └──→ expired (terminal, automatic)      │
+  │                                               │
+  ├──→ accepted ──→ completed (direct acceptance) │
+  │                                               │
+  ├──→ rejected (terminal)                        │
+  │                                               │
+  └──→ cancelled (terminal) ←─────────────────────┘
 ```
+
+### Status Descriptions
+
+| Status | Description |
+|--------|-------------|
+| `draft` | Initial state, budget is editable |
+| `sent` | Sent to patient (by email or manually), awaiting response |
+| `accepted` | Patient accepted, ready for treatment and invoicing |
+| `completed` | All work done (marked manually) |
+| `rejected` | Patient rejected the budget (terminal) |
+| `expired` | Validity period passed (terminal, automatic) |
+| `cancelled` | Cancelled by clinic (terminal) |
 
 ### Valid Transitions
 
 | From | To |
 |------|-----|
-| `draft` | `sent`, `cancelled` |
-| `sent` | `accepted`, `partially_accepted`, `rejected`, `expired`, `cancelled` |
-| `partially_accepted` | `accepted`, `rejected`, `cancelled` |
-| `accepted` | `in_progress`, `cancelled` |
-| `in_progress` | `completed`, `cancelled` |
-| `completed` | `invoiced` |
+| `draft` | `sent`, `accepted`, `rejected`, `cancelled` |
+| `sent` | `accepted`, `rejected`, `expired`, `cancelled` |
+| `accepted` | `completed`, `cancelled` |
+| `completed` | (terminal) |
+| `rejected` | (terminal) |
+| `expired` | (terminal) |
+| `cancelled` | (terminal) |
+
+**Note:** The `expired` status is set automatically by a scheduled job when `valid_until < today` for draft and sent budgets.
 
 ---
 
@@ -116,21 +144,18 @@ Other modules can subscribe to these events via the Event Bus.
 |-------|---------|------|
 | `budget.created` | `{budget_id, patient_id, clinic_id, total, items}` | New budget saved |
 | `budget.updated` | `{budget_id, changes}` | Budget modified |
-| `budget.sent` | `{budget_id, patient_id, sent_at}` | Sent to patient |
-| `budget.accepted` | `{budget_id, accepted_items, signature_id, total_accepted}` | Full acceptance |
-| `budget.partially_accepted` | `{budget_id, accepted_items, pending_items}` | Partial acceptance |
+| `budget.sent` | `{budget_id, send_method, recipient_email}` | Budget sent to patient |
+| `budget.accepted` | `{budget_id, signature_id, total}` | Budget accepted |
 | `budget.rejected` | `{budget_id, reason, rejected_at}` | Budget rejected |
 | `budget.cancelled` | `{budget_id, cancelled_by, reason}` | Budget cancelled |
-| `budget.completed` | `{budget_id, completed_at}` | All treatments done |
+| `budget.completed` | `{budget_id, completed_at}` | Budget marked complete |
 
 ### Budget Item Events
 
 | Event | Payload | When |
 |-------|---------|------|
 | `budget.item.added` | `{budget_id, item_id, catalog_item_id, price}` | Item added |
-| `budget.item.accepted` | `{item_id, budget_id, accepted_at}` | Item accepted |
-| `budget.item.treatment_started` | `{item_id, started_by, started_at}` | Treatment begins |
-| `budget.item.treatment_completed` | `{item_id, performed_by, tooth_treatment_id}` | Treatment done |
+| `budget.item.removed` | `{budget_id, item_id}` | Item removed |
 
 ### Example: Invoice Module Subscriber
 
@@ -138,14 +163,13 @@ Other modules can subscribe to these events via the Event Bus.
 class InvoiceModule(BaseModule):
     def get_event_handlers(self) -> dict:
         return {
-            "budget.accepted": self._create_proforma,
-            "budget.completed": self._generate_final_invoice,
+            "budget.accepted": self._notify_ready_for_invoice,
+            "budget.completed": self._check_pending_invoices,
         }
 
-    def _create_proforma(self, data: dict) -> None:
-        budget_id = data["budget_id"]
-        accepted_items = data["accepted_items"]
-        # Create invoice draft with accepted items
+    def _notify_ready_for_invoice(self, data: dict) -> None:
+        # Budget is now ready to be invoiced
+        pass
 ```
 
 ---
@@ -154,8 +178,8 @@ class InvoiceModule(BaseModule):
 
 | Event | Source Module | Action |
 |-------|---------------|--------|
-| `odontogram.treatment.performed` | Odontogram | Mark linked budget item as completed |
-| `appointment.completed` | Clinical | Check if appointment has budget items to update |
+| `odontogram.treatment.performed` | Odontogram | Reserved for future treatment plan integration |
+| `appointment.completed` | Clinical | Reserved for future integration |
 
 ---
 
@@ -188,7 +212,14 @@ else:
     return self._click_to_accept(budget, signer_info)
 ```
 
-### 6.3 PDF Template Customization
+### 6.3 Treatment Plan Module (Future)
+
+When a Treatment Plan module is implemented:
+- Budget items can be linked to treatment plan items
+- Treatment execution will be tracked in the plan, not the budget
+- Budget remains a commercial document (quote/invoice)
+
+### 6.4 PDF Template Customization
 
 ```python
 # Third-party module can add PDF context
@@ -220,9 +251,8 @@ class InsuranceModule(BaseModule):
 
 | Method | Endpoint | Permission | Description |
 |--------|----------|------------|-------------|
-| POST | `/budgets/{id}/send` | `budget.write` | Mark as sent |
+| POST | `/budgets/{id}/send` | `budget.write` | Send to patient (email or manual) |
 | POST | `/budgets/{id}/accept` | `budget.write` | Accept with signature |
-| POST | `/budgets/{id}/accept-partial` | `budget.write` | Accept specific items |
 | POST | `/budgets/{id}/reject` | `budget.write` | Reject |
 | POST | `/budgets/{id}/cancel` | `budget.write` | Cancel |
 | POST | `/budgets/{id}/complete` | `budget.write` | Mark completed |
@@ -242,6 +272,13 @@ class InsuranceModule(BaseModule):
 |--------|----------|------------|-------------|
 | GET | `/budgets/{id}/pdf` | `budget.read` | Download PDF |
 | GET | `/budgets/{id}/pdf/preview` | `budget.read` | Preview with watermark |
+
+### Versions & History
+
+| Method | Endpoint | Permission | Description |
+|--------|----------|------------|-------------|
+| GET | `/budgets/{id}/versions` | `budget.read` | List all versions |
+| GET | `/budgets/{id}/history` | `budget.read` | Audit history |
 
 ---
 
@@ -285,16 +322,26 @@ class InsuranceModule(BaseModule):
 
 ```typescript
 const {
+  // State
+  budgets, currentBudget, isLoading, error, total,
+
   // CRUD
-  fetchBudgets, createBudget, updateBudget, deleteBudget,
+  fetchBudgets, fetchBudget, createBudget, updateBudget, deleteBudget,
+
   // Items
   addItem, updateItem, removeItem,
+
   // Workflow
-  sendBudget, acceptBudget, rejectBudget, cancelBudget, completeBudget,
+  acceptBudget, rejectBudget, cancelBudget, completeBudget, duplicateBudget,
+
+  // Versions & History
+  fetchVersions, fetchHistory,
+
   // PDF
-  downloadPDF,
+  downloadPDF, getPDFPreviewUrl,
+
   // Helpers
-  canEdit, canSend, canAccept, getStatusColor
+  getStatusColor, canEdit, canAccept, canReject, canCancel, canComplete, canDuplicate
 } = useBudgets()
 ```
 
@@ -310,7 +357,7 @@ docker-compose exec backend python -m pytest tests/test_budget.py -v
 ### Key Test Cases
 
 - CRUD operations (create, read, update, delete)
-- Workflow transitions (send, accept, reject, cancel)
+- Workflow transitions (accept, reject, cancel, complete)
 - Item management (add, update, remove with totals)
 - Discount calculations (line and global)
 - Version duplication
@@ -335,9 +382,10 @@ When extending the budget module:
 | Module | Integration Type | Priority | Fields/Events Used |
 |--------|------------------|----------|-------------------|
 | **billing** | Bidirectional | P0 | budget.accepted → create invoice |
+| **treatment-plan** | Extends | P1 | Link items to treatment execution |
 | **insurance** | Extends | P1 | insurance_estimate, policy lookup |
 | **financing** | Extends | P1 | financing_plan_id, payment schedules |
 | **e-signature** | Replaces | P2 | external_signature_id, signature_method |
-| **communications** | Subscribes | P1 | budget.sent, budget.expired |
+| **communications** | Subscribes | P1 | budget.accepted, budget.expired |
 | **patient-portal** | Exposes | P2 | Token-based acceptance flow |
 | **analytics** | Reads | P2 | Budget conversion rates, avg values |

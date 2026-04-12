@@ -29,7 +29,6 @@ from .schemas import (
     BudgetUpdate,
     BudgetVersionListResponse,
     BudgetVersionResponse,
-    ItemStatusUpdateRequest,
 )
 from .service import BudgetHistoryService, BudgetItemService, BudgetService
 from .workflow import BudgetWorkflowError, BudgetWorkflowService
@@ -268,15 +267,41 @@ async def send_budget(
     _: Annotated[None, Depends(require_permission("budget.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[BudgetResponse]:
-    """Mark budget as sent to patient."""
+    """Mark budget as sent to patient.
+
+    Can be sent via email or marked as manually delivered (printed/handed).
+    Email sending is handled by the notifications module via the budget.sent event.
+    """
     budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
 
     try:
+        # Determine send method
+        send_method = "email" if data.send_email else "manual"
+        recipient_email = None
+
+        if data.send_email:
+            # Get patient email for sending
+            from app.modules.clinical.models import Patient
+
+            patient = await db.get(Patient, budget.patient_id)
+            if not patient or not patient.email:
+                raise BudgetWorkflowError("Patient has no email address")
+            recipient_email = patient.email
+
+        # This will publish the budget.sent event, which the notifications
+        # module will handle (sending email if send_method="email" and
+        # the clinic has budget_sent notifications enabled)
         budget = await BudgetWorkflowService.send_budget(
-            db, budget, ctx.user_id, data.send_email, data.custom_message
+            db,
+            budget,
+            ctx.user_id,
+            send_method=send_method,
+            recipient_email=recipient_email,
+            custom_message=data.custom_message,
         )
+
     except BudgetWorkflowError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -292,7 +317,10 @@ async def accept_budget(
     _: Annotated[None, Depends(require_permission("budget.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[BudgetResponse]:
-    """Accept entire budget with signature."""
+    """Accept entire budget with signature.
+
+    All items in the budget are accepted together. Partial acceptance is not supported.
+    """
     budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
@@ -305,49 +333,6 @@ async def accept_budget(
         budget = await BudgetWorkflowService.accept_budget(
             db,
             budget,
-            data.signature.model_dump(),
-            ctx.user_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-    except BudgetWorkflowError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    return ApiResponse(data=BudgetResponse.model_validate(budget))
-
-
-@router.post(
-    "/budgets/{budget_id}/accept-partial",
-    response_model=ApiResponse[BudgetResponse],
-)
-async def accept_budget_partial(
-    budget_id: UUID,
-    data: BudgetAcceptRequest,
-    request: Request,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("budget.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[BudgetResponse]:
-    """Accept specific items from a budget (partial acceptance)."""
-    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
-    if not budget:
-        raise HTTPException(status_code=404, detail="Budget not found")
-
-    if not data.signature.item_ids:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="item_ids required for partial acceptance",
-        )
-
-    # Get client info for audit
-    ip_address = request.client.host if request.client else None
-    user_agent = request.headers.get("user-agent")
-
-    try:
-        budget = await BudgetWorkflowService.accept_items(
-            db,
-            budget,
-            data.signature.item_ids,
             data.signature.model_dump(),
             ctx.user_id,
             ip_address=ip_address,
@@ -459,75 +444,6 @@ async def duplicate_budget(
         db, ctx.clinic_id, new_budget.id, include_items=True
     )
     return ApiResponse(data=BudgetDetailResponse.model_validate(new_budget))
-
-
-# ============================================================================
-# Item Status Endpoints
-# ============================================================================
-
-
-@router.post(
-    "/budgets/{budget_id}/items/{item_id}/start-treatment",
-    response_model=ApiResponse[BudgetItemResponse],
-)
-async def start_item_treatment(
-    budget_id: UUID,
-    item_id: UUID,
-    data: ItemStatusUpdateRequest,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("budget.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[BudgetItemResponse]:
-    """Start treatment for a budget item."""
-    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
-    if not budget:
-        raise HTTPException(status_code=404, detail="Budget not found")
-
-    # Find item
-    item = next((i for i in budget.items if i.id == item_id), None)
-    if not item:
-        raise HTTPException(status_code=404, detail="Budget item not found")
-
-    try:
-        item = await BudgetWorkflowService.start_item_treatment(
-            db, budget, item, data.performed_by or ctx.user_id
-        )
-    except BudgetWorkflowError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    return ApiResponse(data=BudgetItemResponse.model_validate(item))
-
-
-@router.post(
-    "/budgets/{budget_id}/items/{item_id}/complete-treatment",
-    response_model=ApiResponse[BudgetItemResponse],
-)
-async def complete_item_treatment(
-    budget_id: UUID,
-    item_id: UUID,
-    data: ItemStatusUpdateRequest,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("budget.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[BudgetItemResponse]:
-    """Complete treatment for a budget item."""
-    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
-    if not budget:
-        raise HTTPException(status_code=404, detail="Budget not found")
-
-    # Find item
-    item = next((i for i in budget.items if i.id == item_id), None)
-    if not item:
-        raise HTTPException(status_code=404, detail="Budget item not found")
-
-    try:
-        item = await BudgetWorkflowService.complete_item_treatment(
-            db, budget, item, data.performed_by or ctx.user_id
-        )
-    except BudgetWorkflowError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    return ApiResponse(data=BudgetItemResponse.model_validate(item))
 
 
 # ============================================================================

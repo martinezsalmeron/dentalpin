@@ -17,6 +17,7 @@ import type {
   InvoiceSeries,
   InvoiceSeriesCreate,
   InvoiceSeriesUpdate,
+  InvoiceSendRequest,
   InvoiceStatus,
   InvoiceUpdate,
   NumberingGap,
@@ -333,6 +334,15 @@ export function useInvoices() {
     return response.data
   }
 
+  async function sendInvoice(id: string, data: InvoiceSendRequest): Promise<Invoice> {
+    const response = await api.post<ApiResponse<Invoice>>(
+      `/api/v1/billing/invoices/${id}/send-email`,
+      data as unknown as Record<string, unknown>
+    )
+
+    return response.data
+  }
+
   async function createCreditNote(id: string, data: CreditNoteCreate): Promise<Invoice> {
     const response = await api.post<ApiResponse<Invoice>>(
       `/api/v1/billing/invoices/${id}/credit-note`,
@@ -617,6 +627,11 @@ export function useInvoices() {
     return ['issued', 'partial', 'paid'].includes(invoice.status) && !isCreditNote
   }
 
+  function canSend(invoice: Invoice | InvoiceDetail | InvoiceListItem): boolean {
+    // Can only send issued, partial, or paid invoices (not drafts or voided)
+    return ['issued', 'partial', 'paid'].includes(invoice.status)
+  }
+
   function formatCurrency(amount: number, currency: string = 'EUR'): string {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -663,6 +678,7 @@ export function useInvoices() {
     // Workflow
     issueInvoice,
     voidInvoice,
+    sendInvoice,
     createCreditNote,
 
     // Payments
@@ -697,6 +713,7 @@ export function useInvoices() {
     canRecordPayment,
     canVoid,
     canCreateCreditNote,
+    canSend,
     formatCurrency
   }
 }

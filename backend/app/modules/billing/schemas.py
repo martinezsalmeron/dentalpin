@@ -32,6 +32,12 @@ class PatientBrief(BaseModel):
     first_name: str
     last_name: str
     email: str | None = None
+    # Billing fields for draft invoices (dynamic billing data)
+    billing_name: str | None = None
+    billing_tax_id: str | None = None
+    billing_address: dict | None = None
+    billing_email: str | None = None
+    has_complete_billing_info: bool = False
 
     class Config:
         from_attributes = True
@@ -347,18 +353,16 @@ class BillingAddress(BaseModel):
 
 
 class InvoiceCreate(BaseModel):
-    """Schema for creating an invoice manually."""
+    """Schema for creating an invoice manually.
+
+    Billing data is NOT provided here - drafts get billing data from patient dynamically.
+    When issued, billing data is snapshotted from patient.
+    """
 
     patient_id: UUID
 
     # Series (if not provided, uses default)
     series_id: UUID | None = None
-
-    # Billing data (if not provided, uses patient data)
-    billing_name: str | None = None
-    billing_tax_id: str | None = None
-    billing_address: BillingAddress | None = None
-    billing_email: str | None = None
 
     # Payment terms
     payment_term_days: int = Field(default=30, ge=0)
@@ -373,16 +377,14 @@ class InvoiceCreate(BaseModel):
 
 
 class InvoiceFromBudgetCreate(BaseModel):
-    """Schema for creating an invoice from a budget."""
+    """Schema for creating an invoice from a budget.
+
+    Billing data is NOT provided here - drafts get billing data from patient dynamically.
+    When issued, billing data is snapshotted from patient.
+    """
 
     # Items to invoice (supports partial invoicing)
     items: list[InvoiceItemFromBudget]
-
-    # Override billing data (optional)
-    billing_name: str | None = None
-    billing_tax_id: str | None = None
-    billing_address: BillingAddress | None = None
-    billing_email: str | None = None
 
     # Payment terms
     payment_term_days: int | None = None
@@ -396,11 +398,8 @@ class InvoiceFromBudgetCreate(BaseModel):
 class InvoiceUpdate(BaseModel):
     """Schema for updating an invoice (only allowed in draft status)."""
 
-    # Billing data
-    billing_name: str | None = None
-    billing_tax_id: str | None = None
-    billing_address: BillingAddress | None = None
-    billing_email: str | None = None
+    # Patient (can be changed for drafts)
+    patient_id: UUID | None = None
 
     # Payment terms
     payment_term_days: int | None = Field(default=None, ge=0)
@@ -435,8 +434,8 @@ class InvoiceResponse(BaseModel):
     due_date: date | None
     payment_term_days: int
 
-    # Billing data
-    billing_name: str
+    # Billing data (null for drafts, populated from patient; snapshotted for issued)
+    billing_name: str | None
     billing_tax_id: str | None
     billing_address: dict | None
     billing_email: str | None
@@ -540,6 +539,13 @@ class CreditNoteCreate(BaseModel):
     # Notes
     internal_notes: str | None = None
     public_notes: str | None = None
+
+
+class InvoiceSendRequest(BaseModel):
+    """Schema for sending an invoice by email."""
+
+    send_email: bool = True  # If false, just marks as "sent" manually
+    custom_message: str | None = None
 
 
 # ============================================================================

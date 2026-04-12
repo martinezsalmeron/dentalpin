@@ -110,6 +110,36 @@ class InvoiceWorkflowService:
             if not invoice.items:
                 raise InvoiceWorkflowError("Cannot issue empty invoice")
 
+        # Snapshot billing data from patient (drafts don't store it)
+        if invoice.billing_name is None:
+            from sqlalchemy import select
+
+            from app.modules.clinical.models import Patient
+
+            result = await db.execute(
+                select(Patient).where(Patient.id == invoice.patient_id)
+            )
+            patient = result.scalar_one_or_none()
+            if not patient:
+                raise InvoiceWorkflowError("Patient not found")
+
+            # Snapshot billing data from patient
+            invoice.billing_name = patient.billing_name or f"{patient.first_name} {patient.last_name}"
+            invoice.billing_tax_id = patient.billing_tax_id
+            invoice.billing_address = patient.billing_address
+            invoice.billing_email = patient.billing_email or patient.email
+
+        # Validate billing data completeness
+        billing_errors = []
+        if not invoice.billing_name:
+            billing_errors.append("billing_name is required")
+        if not invoice.billing_tax_id:
+            billing_errors.append("billing_tax_id is required (update patient billing info)")
+        if billing_errors:
+            raise InvoiceWorkflowError(
+                f"Cannot issue invoice: incomplete billing data. {', '.join(billing_errors)}"
+            )
+
         # Assign invoice number if not already assigned (drafts don't have numbers)
         if invoice.invoice_number is None:
             from .service import InvoiceNumberService, InvoiceSeriesService
