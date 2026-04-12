@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { InvoiceItemCreate, Patient, VatType } from '~/types'
+import type { InvoiceItemCreate, Patient, VatType, TreatmentCatalogItem } from '~/types'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const { createInvoice } = useInvoices()
+const { searchItems, getItemName, formatPrice } = useCatalog()
 const api = useApi()
 
 // State
@@ -36,9 +37,17 @@ const form = ref({
 // Items
 const items = ref<InvoiceItemCreate[]>([])
 
+// Catalog search state
+const catalogSearchQuery = ref('')
+const catalogSearchResults = ref<TreatmentCatalogItem[]>([])
+const isCatalogSearching = ref(false)
+const selectedCatalogItem = ref<TreatmentCatalogItem | null>(null)
+
 // New item form
 const newItem = ref<InvoiceItemCreate>({
   description: '',
+  catalog_item_id: undefined,
+  internal_code: undefined,
   unit_price: 0,
   quantity: 1,
   vat_type_id: undefined,
@@ -73,6 +82,55 @@ watch(debouncedPatientSearch, async (search) => {
   }
 })
 
+// Debounced catalog search
+let catalogSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
+watch(catalogSearchQuery, (val) => {
+  if (catalogSearchTimeout) clearTimeout(catalogSearchTimeout)
+
+  if (val.length < 2) {
+    catalogSearchResults.value = []
+    return
+  }
+
+  catalogSearchTimeout = setTimeout(async () => {
+    await performCatalogSearch(val)
+  }, 300)
+})
+
+async function performCatalogSearch(query: string) {
+  isCatalogSearching.value = true
+  try {
+    const results = await searchItems(query, 20)
+    catalogSearchResults.value = results as unknown as TreatmentCatalogItem[]
+  } catch {
+    catalogSearchResults.value = []
+  } finally {
+    isCatalogSearching.value = false
+  }
+}
+
+function selectCatalogItem(item: TreatmentCatalogItem) {
+  selectedCatalogItem.value = item
+  newItem.value.catalog_item_id = item.id
+  newItem.value.description = getItemName(item)
+  newItem.value.internal_code = item.internal_code
+  newItem.value.unit_price = item.default_price || 0
+  newItem.value.vat_type_id = item.vat_type_id
+  catalogSearchQuery.value = getItemName(item)
+  catalogSearchResults.value = []
+}
+
+function clearCatalogSelection() {
+  selectedCatalogItem.value = null
+  newItem.value.catalog_item_id = undefined
+  newItem.value.description = ''
+  newItem.value.internal_code = undefined
+  newItem.value.unit_price = 0
+  newItem.value.vat_type_id = undefined
+  catalogSearchQuery.value = ''
+}
+
 // Load VAT types
 onMounted(async () => {
   try {
@@ -87,8 +145,13 @@ onMounted(async () => {
 function selectPatient(patient: Patient) {
   selectedPatient.value = patient
   form.value.patient_id = patient.id
-  form.value.billing_name = `${patient.first_name} ${patient.last_name}`
-  form.value.billing_email = patient.email || ''
+  // Auto-populate billing data: 1. Patient billing fields, 2. Patient personal info
+  form.value.billing_name = patient.billing_name || `${patient.first_name} ${patient.last_name}`
+  form.value.billing_tax_id = patient.billing_tax_id || ''
+  form.value.billing_email = patient.billing_email || patient.email || ''
+  if (patient.billing_address) {
+    form.value.billing_address = { ...patient.billing_address }
+  }
   patientSearch.value = ''
   patients.value = []
 }
@@ -101,22 +164,12 @@ function clearPatient() {
   form.value.billing_email = ''
 }
 
-// Get VAT type options
-const vatTypeOptions = computed(() =>
-  vatTypes.value
-    .filter(v => v.is_active)
-    .map(v => ({
-      label: `${v.names[locale.value] || v.names.es || 'IVA'} (${v.rate}%)`,
-      value: v.id
-    }))
-)
-
 // Add item
 function addItem() {
-  if (!newItem.value.description || newItem.value.unit_price <= 0) {
+  if (!newItem.value.catalog_item_id || !newItem.value.description) {
     toast.add({
       title: t('common.error'),
-      description: t('invoice.errors.itemRequired'),
+      description: t('invoice.errors.selectCatalogItem'),
       color: 'error'
     })
     return
@@ -128,8 +181,12 @@ function addItem() {
   })
 
   // Reset new item form
+  selectedCatalogItem.value = null
+  catalogSearchQuery.value = ''
   newItem.value = {
     description: '',
+    catalog_item_id: undefined,
+    internal_code: undefined,
     unit_price: 0,
     quantity: 1,
     vat_type_id: vatTypes.value.find(v => v.is_default)?.id,
@@ -304,11 +361,49 @@ function goBack() {
             class="flex items-center justify-between"
           >
             <div>
-              <p class="font-medium text-gray-900 dark:text-white">
-                {{ selectedPatient.last_name }}, {{ selectedPatient.first_name }}
-              </p>
+              <div class="flex items-center gap-2">
+                <p class="font-medium text-gray-900 dark:text-white">
+                  {{ selectedPatient.last_name }}, {{ selectedPatient.first_name }}
+                </p>
+                <UBadge
+                  v-if="selectedPatient.has_complete_billing_info"
+                  color="success"
+                  variant="subtle"
+                  size="xs"
+                >
+                  <UIcon
+                    name="i-lucide-check"
+                    class="w-3 h-3 mr-1"
+                  />
+                  {{ t('invoice.billingDataComplete') }}
+                </UBadge>
+                <UBadge
+                  v-else
+                  color="warning"
+                  variant="subtle"
+                  size="xs"
+                >
+                  <UIcon
+                    name="i-lucide-alert-triangle"
+                    class="w-3 h-3 mr-1"
+                  />
+                  {{ t('invoice.billingDataIncomplete') }}
+                </UBadge>
+              </div>
               <p class="text-sm text-gray-500">
                 {{ selectedPatient.email || selectedPatient.phone || '-' }}
+              </p>
+              <p
+                v-if="!selectedPatient.has_complete_billing_info"
+                class="text-xs text-amber-600 dark:text-amber-400 mt-1"
+              >
+                {{ t('invoice.billingDataIncompleteHint') }}
+                <NuxtLink
+                  :to="`/patients/${selectedPatient.id}`"
+                  class="underline"
+                >
+                  {{ t('invoice.editPatientBilling') }}
+                </NuxtLink>
               </p>
             </div>
             <UButton
@@ -410,45 +505,113 @@ function goBack() {
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               {{ t('invoice.addItem') }}
             </h4>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div class="md:col-span-2">
-                <UInput
-                  v-model="newItem.description"
-                  :placeholder="t('invoice.itemDescription')"
-                />
+
+            <!-- Catalog search -->
+            <div class="mb-4">
+              <UFormField :label="t('invoice.selectTreatment')">
+                <div class="relative">
+                  <UInput
+                    v-model="catalogSearchQuery"
+                    :placeholder="t('invoice.searchCatalog')"
+                    icon="i-lucide-search"
+                    :loading="isCatalogSearching"
+                    @focus="catalogSearchQuery.length >= 2 && performCatalogSearch(catalogSearchQuery)"
+                  >
+                    <template
+                      v-if="selectedCatalogItem"
+                      #trailing
+                    >
+                      <UButton
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-lucide-x"
+                        size="xs"
+                        class="-mr-2"
+                        @click.stop="clearCatalogSelection"
+                      />
+                    </template>
+                  </UInput>
+
+                  <!-- Search results dropdown -->
+                  <div
+                    v-if="catalogSearchResults.length > 0"
+                    class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
+                  >
+                    <div
+                      v-for="item in catalogSearchResults"
+                      :key="item.id"
+                      class="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      @click="selectCatalogItem(item)"
+                    >
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="font-medium text-gray-900 dark:text-white">
+                            {{ getItemName(item) }}
+                          </p>
+                          <p class="text-sm text-gray-500">
+                            {{ item.internal_code }}
+                          </p>
+                        </div>
+                        <span class="font-medium text-primary-600">
+                          {{ formatPrice(item.default_price, 'EUR') }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </UFormField>
+            </div>
+
+            <!-- Selected item info -->
+            <div
+              v-if="selectedCatalogItem"
+              class="p-3 mb-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
+            >
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ getItemName(selectedCatalogItem) }}
+                  </p>
+                  <p class="text-sm text-gray-500">
+                    {{ selectedCatalogItem.internal_code }}
+                  </p>
+                </div>
+                <span class="text-lg font-semibold text-primary-600">
+                  {{ formatPrice(selectedCatalogItem.default_price, 'EUR') }}
+                </span>
               </div>
-              <div>
+            </div>
+
+            <!-- Quantity and Price -->
+            <div
+              v-if="selectedCatalogItem"
+              class="grid grid-cols-2 gap-3"
+            >
+              <UFormField :label="t('invoice.itemQuantity')">
+                <UInput
+                  v-model.number="newItem.quantity"
+                  type="number"
+                  :min="1"
+                />
+              </UFormField>
+              <UFormField :label="t('invoice.itemPrice')">
                 <UInput
                   v-model.number="newItem.unit_price"
                   type="number"
                   :min="0"
                   step="0.01"
-                  :placeholder="t('invoice.itemPrice')"
                 />
-              </div>
-              <div>
-                <UInput
-                  v-model.number="newItem.quantity"
-                  type="number"
-                  :min="1"
-                  :placeholder="t('invoice.itemQuantity')"
-                />
-              </div>
-              <div class="md:col-span-2">
-                <USelectMenu
-                  v-model="newItem.vat_type_id"
-                  :items="vatTypeOptions"
-                  :placeholder="t('invoice.selectVatType')"
-                />
-              </div>
-              <div class="md:col-span-2 flex justify-end">
-                <UButton
-                  icon="i-lucide-plus"
-                  @click="addItem"
-                >
-                  {{ t('invoice.addItem') }}
-                </UButton>
-              </div>
+              </UFormField>
+            </div>
+
+            <div class="mt-4 flex justify-end">
+              <UButton
+                icon="i-lucide-plus"
+                :disabled="!selectedCatalogItem"
+                @click="addItem"
+              >
+                {{ t('invoice.addItem') }}
+              </UButton>
             </div>
           </div>
         </UCard>

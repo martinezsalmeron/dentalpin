@@ -50,7 +50,16 @@
     "archiveConfirm": "¿Archivar paciente {name}?",
     "archiveDescription": "Esta acción ocultará al paciente de las búsquedas. Las citas existentes no se eliminarán.",
     "cancel": "Cancelar",
-    "archive": "Archivar"
+    "archive": "Archivar",
+    "billingSection": "Datos de facturación",
+    "billingSectionHint": "Estos datos se usarán automáticamente al crear facturas para este paciente.",
+    "billingName": "Nombre/Razón social",
+    "billingNamePlaceholder": "Nombre o razón social para facturas",
+    "billingTaxId": "NIF/CIF",
+    "billingEmail": "Email de facturación",
+    "billingAddress": "Dirección de facturación",
+    "billingComplete": "Datos completos",
+    "billingIncomplete": "Faltan datos"
   },
   "patientDetail": {
     "tabs": {
@@ -723,6 +732,10 @@
     "taxId": "NIF/CIF",
     "billingEmail": "Email de facturación",
     "billingAddress": "Dirección de facturación",
+    "billingDataComplete": "Datos completos",
+    "billingDataIncomplete": "Faltan datos",
+    "billingDataIncompleteHint": "El paciente no tiene todos los datos de facturación.",
+    "editPatientBilling": "Editar datos del paciente",
     "street": "Dirección",
     "city": "Ciudad",
     "postalCode": "Código Postal",
@@ -745,6 +758,8 @@
     "vat": "IVA",
     "items": "Líneas de factura",
     "addItem": "Añadir línea",
+    "selectTreatment": "Tratamiento",
+    "searchCatalog": "Buscar tratamiento en el catálogo...",
     "itemDescription": "Descripción",
     "itemPrice": "Precio",
     "itemQuantity": "Cantidad",
@@ -878,6 +893,7 @@
       "patientRequired": "Debe seleccionar un paciente",
       "itemsRequired": "Debe añadir al menos una línea",
       "itemRequired": "Descripción y precio son obligatorios",
+      "selectCatalogItem": "Debe seleccionar un tratamiento del catálogo",
       "cannotEdit": "Solo se pueden editar facturas en borrador"
     },
     "newItemsPending": "Nuevas líneas pendientes de guardar",

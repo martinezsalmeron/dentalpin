@@ -50,7 +50,16 @@
     "archiveConfirm": "Archive patient {name}?",
     "archiveDescription": "This action will hide the patient from searches. Existing appointments will not be deleted.",
     "cancel": "Cancel",
-    "archive": "Archive"
+    "archive": "Archive",
+    "billingSection": "Billing information",
+    "billingSectionHint": "This data will be automatically used when creating invoices for this patient.",
+    "billingName": "Billing name",
+    "billingNamePlaceholder": "Name or company for invoices",
+    "billingTaxId": "Tax ID",
+    "billingEmail": "Billing email",
+    "billingAddress": "Billing address",
+    "billingComplete": "Complete",
+    "billingIncomplete": "Incomplete"
   },
   "patientDetail": {
     "tabs": {
@@ -818,6 +827,10 @@
     "taxId": "Tax ID",
     "billingEmail": "Billing email",
     "billingAddress": "Billing address",
+    "billingDataComplete": "Complete",
+    "billingDataIncomplete": "Incomplete",
+    "billingDataIncompleteHint": "The patient is missing some billing information.",
+    "editPatientBilling": "Edit patient data",
     "street": "Street",
     "city": "City",
     "postalCode": "Postal code",
@@ -847,6 +860,8 @@
     "publicNotesPlaceholder": "Notes visible on invoice...",
     "items": "Items",
     "addItem": "Add item",
+    "selectTreatment": "Treatment",
+    "searchCatalog": "Search treatment in catalog...",
     "itemDescription": "Description",
     "itemPrice": "Unit price",
     "itemQuantity": "Quantity",
@@ -1033,6 +1048,7 @@
       "patientRequired": "Patient is required",
       "itemsRequired": "At least one item is required",
       "itemRequired": "Description and price are required",
+      "selectCatalogItem": "Please select a treatment from the catalog",
       "cannotEdit": "Only draft invoices can be edited"
     },
     "newItemsPending": "New items pending save"
