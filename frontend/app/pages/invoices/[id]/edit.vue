@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import type { InvoiceItemCreate, VatType } from '~/types'
+import type { InvoiceItem, Patient } from '~/types'
 
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const toast = useToast()
-const api = useApi()
+
 const {
   currentInvoice,
   isLoading,
   fetchInvoice,
   updateInvoice,
-  addItem,
-  updateItem,
   removeItem,
   canEdit,
   formatCurrency
@@ -22,46 +20,62 @@ const invoiceId = computed(() => route.params.id as string)
 
 // State
 const isSaving = ref(false)
-const vatTypes = ref<VatType[]>([])
+const selectedPatient = ref<Patient | null>(null)
+const isChangingPatient = ref(false)
 
-// Form data
+// Form data (no billing fields - billing comes from patient)
 const form = ref({
-  billing_name: '',
-  billing_tax_id: '',
-  billing_email: '',
-  billing_address: {
-    street: '',
-    city: '',
-    postal_code: '',
-    province: '',
-    country: 'ES'
-  },
   payment_term_days: 30,
   due_date: '',
   internal_notes: '',
   public_notes: ''
 })
 
-// Track modified items for saving
-const modifiedItems = ref<Map<string, { description: string, unit_price: number, quantity: number, vat_type_id?: string }>>(new Map())
+// Track deleted items
 const deletedItemIds = ref<Set<string>>(new Set())
 
-// New item form
-const newItem = ref<InvoiceItemCreate>({
-  description: '',
-  unit_price: 0,
-  quantity: 1,
-  vat_type_id: undefined,
-  display_order: 0
-})
-const newItems = ref<InvoiceItemCreate[]>([])
+// Item modal state
+const isItemModalOpen = ref(false)
+const editingItem = ref<InvoiceItem | undefined>(undefined)
 
-// Load invoice and VAT types
+function openAddItemModal() {
+  editingItem.value = undefined
+  isItemModalOpen.value = true
+}
+
+function openEditItemModal(item: InvoiceItem) {
+  editingItem.value = item
+  isItemModalOpen.value = true
+}
+
+// Can change patient? Only for drafts without budget link
+const canChangePatient = computed(() => {
+  return currentInvoice.value?.status === 'draft' && !currentInvoice.value?.budget
+})
+
+// Get effective billing data (from patient for drafts)
+// Use selectedPatient if changed, otherwise use invoice patient
+const effectiveBillingData = computed(() => {
+  const patient = selectedPatient.value || currentInvoice.value?.patient
+  if (!patient) return null
+
+  return {
+    name: patient.billing_name || `${patient.first_name} ${patient.last_name}`,
+    tax_id: patient.billing_tax_id || '',
+    email: patient.billing_email || patient.email || '',
+    address: patient.billing_address || null
+  }
+})
+
+// When patient is selected via PatientSearch component
+function handlePatientChange(patient: Patient | null) {
+  selectedPatient.value = patient
+  isChangingPatient.value = false
+}
+
+// Load invoice
 onMounted(async () => {
-  const [invoice] = await Promise.all([
-    fetchInvoice(invoiceId.value),
-    loadVatTypes()
-  ])
+  const invoice = await fetchInvoice(invoiceId.value)
 
   if (!invoice) {
     toast.add({
@@ -83,43 +97,19 @@ onMounted(async () => {
     return
   }
 
-  // Populate form with invoice data
+  // Populate form with invoice data (no billing fields)
   form.value = {
-    billing_name: invoice.billing_name || '',
-    billing_tax_id: invoice.billing_tax_id || '',
-    billing_email: invoice.billing_email || '',
-    billing_address: invoice.billing_address || {
-      street: '',
-      city: '',
-      postal_code: '',
-      province: '',
-      country: 'ES'
-    },
     payment_term_days: invoice.payment_term_days || 30,
     due_date: invoice.due_date?.split('T')[0] || '',
     internal_notes: invoice.internal_notes || '',
     public_notes: invoice.public_notes || ''
   }
-})
 
-async function loadVatTypes() {
-  try {
-    const response = await api.get<{ data: VatType[] }>('/api/v1/catalog/vat-types')
-    vatTypes.value = response.data
-  } catch (e) {
-    console.error('Failed to load VAT types:', e)
+  // Set selectedPatient for PatientSearch component
+  if (invoice.patient) {
+    selectedPatient.value = invoice.patient as Patient
   }
-}
-
-// Get VAT type options
-const vatTypeOptions = computed(() =>
-  vatTypes.value
-    .filter(v => v.is_active)
-    .map(v => ({
-      label: `${v.names[locale.value] || v.names.es || 'IVA'} (${v.rate}%)`,
-      value: v.id
-    }))
-)
+})
 
 // Get current items (excluding deleted)
 const currentItems = computed(() => {
@@ -127,110 +117,34 @@ const currentItems = computed(() => {
   return currentInvoice.value.items.filter(item => !deletedItemIds.value.has(item.id))
 })
 
-// Track item changes
-function onItemChange(itemId: string, field: string, value: string | number) {
-  const item = currentInvoice.value?.items.find(i => i.id === itemId)
-  if (!item) return
-
-  const existing = modifiedItems.value.get(itemId) || {
-    description: item.description,
-    unit_price: item.unit_price,
-    quantity: item.quantity,
-    vat_type_id: item.vat_type_id
-  }
-
-  modifiedItems.value.set(itemId, {
-    ...existing,
-    [field]: value
-  })
-}
-
-// Get item value (modified or original)
-function getItemValue(itemId: string, field: 'description' | 'unit_price' | 'quantity' | 'vat_type_id') {
-  const modified = modifiedItems.value.get(itemId)
-  if (modified && field in modified) {
-    return modified[field]
-  }
-  const item = currentInvoice.value?.items.find(i => i.id === itemId)
-  return item ? item[field] : ''
-}
-
 // Mark item for deletion
 function markItemForDeletion(itemId: string) {
   deletedItemIds.value.add(itemId)
-  modifiedItems.value.delete(itemId)
 }
 
-// Add new item to pending list
-function addNewItem() {
-  if (!newItem.value.description || newItem.value.unit_price <= 0) {
-    toast.add({
-      title: t('common.error'),
-      description: t('invoice.errors.itemRequired'),
-      color: 'error'
-    })
-    return
+// Get item display name (from catalog if available)
+function getItemName(item: InvoiceItem): string {
+  if (item.catalog_item) {
+    return item.catalog_item.names[locale.value] || item.catalog_item.names.es || item.catalog_item.internal_code
   }
-
-  newItems.value.push({
-    ...newItem.value,
-    display_order: (currentItems.value.length || 0) + newItems.value.length
-  })
-
-  // Reset form
-  newItem.value = {
-    description: '',
-    unit_price: 0,
-    quantity: 1,
-    vat_type_id: vatTypes.value.find(v => v.is_default)?.id,
-    display_order: 0
-  }
+  return item.description
 }
 
-// Remove pending new item
-function removeNewItem(index: number) {
-  newItems.value.splice(index, 1)
+// Handle item saved from modal (add or edit)
+function handleItemSaved() {
+  isItemModalOpen.value = false
+  editingItem.value = undefined
+  fetchInvoice(invoiceId.value) // Refresh invoice data
 }
 
-// Calculate item total
-function getItemTotal(unitPrice: number, quantity: number, vatTypeId?: string): number {
-  const subtotal = unitPrice * quantity
-  const vatType = vatTypes.value.find(v => v.id === vatTypeId)
-  const vatRate = vatType?.rate || 0
-  const tax = subtotal * (vatRate / 100)
-  return subtotal + tax
-}
-
-// Calculate totals
+// Calculate totals (using server-side values, excluding deleted items)
 const totals = computed(() => {
   let subtotal = 0
   let totalTax = 0
 
-  // Existing items (excluding deleted)
   currentItems.value.forEach((item) => {
-    const modified = modifiedItems.value.get(item.id)
-    const unitPrice = modified?.unit_price ?? item.unit_price
-    const quantity = modified?.quantity ?? item.quantity
-    const vatTypeId = modified?.vat_type_id ?? item.vat_type_id
-
-    const itemSubtotal = unitPrice * quantity
-    const vatType = vatTypes.value.find(v => v.id === vatTypeId)
-    const vatRate = vatType?.rate || 0
-    const tax = itemSubtotal * (vatRate / 100)
-
-    subtotal += itemSubtotal
-    totalTax += tax
-  })
-
-  // New items
-  newItems.value.forEach((item) => {
-    const itemSubtotal = item.unit_price * (item.quantity || 1)
-    const vatType = vatTypes.value.find(v => v.id === item.vat_type_id)
-    const vatRate = vatType?.rate || 0
-    const tax = itemSubtotal * (vatRate / 100)
-
-    subtotal += itemSubtotal
-    totalTax += tax
+    subtotal += Number(item.line_subtotal) - Number(item.line_discount)
+    totalTax += Number(item.line_tax)
   })
 
   return {
@@ -242,8 +156,7 @@ const totals = computed(() => {
 
 // Save changes
 async function handleSave() {
-  const totalItems = currentItems.value.length + newItems.value.length
-  if (totalItems === 0) {
+  if (currentItems.value.length === 0) {
     toast.add({
       title: t('common.error'),
       description: t('invoice.errors.itemsRequired'),
@@ -255,12 +168,12 @@ async function handleSave() {
   isSaving.value = true
 
   try {
-    // 1. Update invoice details
+    // 1. Update invoice details (no billing fields - comes from patient)
+    const patientChanged = canChangePatient.value
+      && selectedPatient.value?.id !== currentInvoice.value?.patient?.id
+
     await updateInvoice(invoiceId.value, {
-      billing_name: form.value.billing_name || undefined,
-      billing_tax_id: form.value.billing_tax_id || undefined,
-      billing_email: form.value.billing_email || undefined,
-      billing_address: form.value.billing_address.street ? form.value.billing_address : undefined,
+      patient_id: patientChanged ? selectedPatient.value?.id : undefined,
       payment_term_days: form.value.payment_term_days,
       due_date: form.value.due_date || undefined,
       internal_notes: form.value.internal_notes || undefined,
@@ -270,16 +183,6 @@ async function handleSave() {
     // 2. Delete removed items
     for (const itemId of deletedItemIds.value) {
       await removeItem(invoiceId.value, itemId)
-    }
-
-    // 3. Update modified items
-    for (const [itemId, data] of modifiedItems.value.entries()) {
-      await updateItem(invoiceId.value, itemId, data)
-    }
-
-    // 4. Add new items
-    for (const item of newItems.value) {
-      await addItem(invoiceId.value, item)
     }
 
     toast.add({
@@ -334,16 +237,73 @@ function goBack() {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left column - Form -->
         <div class="lg:col-span-2 space-y-6">
-          <!-- Patient info (read-only) -->
+          <!-- Patient info -->
           <UCard>
             <template #header>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
-                {{ t('invoice.patient') }}
-              </h3>
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900 dark:text-white">
+                  {{ t('invoice.patient') }}
+                </h3>
+                <UBadge
+                  v-if="!canChangePatient && currentInvoice.budget"
+                  color="gray"
+                  variant="subtle"
+                >
+                  {{ t('invoice.linkedToBudget') }}
+                </UBadge>
+              </div>
             </template>
 
+            <!-- Patient selector (for drafts without budget) -->
+            <div v-if="canChangePatient">
+              <!-- Show current patient with change button -->
+              <div
+                v-if="selectedPatient && !isChangingPatient"
+                class="flex items-center justify-between"
+              >
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ selectedPatient.last_name }}, {{ selectedPatient.first_name }}
+                  </p>
+                  <p class="text-sm text-gray-500">
+                    {{ selectedPatient.email || '-' }}
+                  </p>
+                </div>
+                <UButton
+                  variant="outline"
+                  color="neutral"
+                  size="sm"
+                  icon="i-lucide-repeat"
+                  @click="isChangingPatient = true"
+                >
+                  {{ t('common.change') }}
+                </UButton>
+              </div>
+
+              <!-- Patient search (shown when no patient or changing) -->
+              <div v-else>
+                <UFormField :label="t('invoice.selectPatient')">
+                  <PatientVisualSelector
+                    :model-value="selectedPatient"
+                    @update:model-value="handlePatientChange"
+                  />
+                </UFormField>
+                <UButton
+                  v-if="isChangingPatient && selectedPatient"
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  class="mt-2"
+                  @click="isChangingPatient = false"
+                >
+                  {{ t('common.cancel') }}
+                </UButton>
+              </div>
+            </div>
+
+            <!-- Current patient display (read-only when linked to budget) -->
             <div
-              v-if="currentInvoice.patient"
+              v-else-if="currentInvoice.patient"
               class="flex items-center justify-between"
             >
               <div>
@@ -354,42 +314,97 @@ function goBack() {
                   {{ currentInvoice.patient.email || '-' }}
                 </p>
               </div>
-              <UBadge
-                color="gray"
-                variant="subtle"
-              >
-                {{ t('common.readOnly') }}
-              </UBadge>
             </div>
           </UCard>
 
-          <!-- Billing data -->
+          <!-- Billing data (from patient - read-only) -->
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900 dark:text-white">
+                  {{ t('invoice.billingData') }}
+                </h3>
+                <div class="flex items-center gap-2">
+                  <UBadge
+                    color="info"
+                    variant="subtle"
+                  >
+                    {{ t('invoice.fromPatient') }}
+                  </UBadge>
+                  <UButton
+                    v-if="currentInvoice?.patient?.id"
+                    variant="ghost"
+                    color="neutral"
+                    size="xs"
+                    icon="i-lucide-external-link"
+                    :to="`/patients/${currentInvoice.patient.id}?tab=billing&returnTo=${encodeURIComponent(route.fullPath)}`"
+                  >
+                    {{ t('invoice.editInPatient') }}
+                  </UButton>
+                </div>
+              </div>
+            </template>
+
+            <div
+              v-if="effectiveBillingData"
+              class="space-y-3"
+            >
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p class="text-sm text-gray-500">
+                    {{ t('invoice.billingName') }}
+                  </p>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ effectiveBillingData.name || '-' }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">
+                    {{ t('invoice.taxId') }}
+                  </p>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ effectiveBillingData.tax_id || '-' }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">
+                    {{ t('invoice.billingEmail') }}
+                  </p>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ effectiveBillingData.email || '-' }}
+                  </p>
+                </div>
+                <div v-if="effectiveBillingData.address">
+                  <p class="text-sm text-gray-500">
+                    {{ t('invoice.billingAddress') }}
+                  </p>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ effectiveBillingData.address.street }},
+                    {{ effectiveBillingData.address.postal_code }} {{ effectiveBillingData.address.city }}
+                  </p>
+                </div>
+              </div>
+
+              <p class="text-xs text-gray-500 italic">
+                {{ t('invoice.billingFromPatientHint') }}
+              </p>
+            </div>
+            <div v-else>
+              <p class="text-sm text-gray-500">
+                {{ t('invoice.noBillingData') }}
+              </p>
+            </div>
+          </UCard>
+
+          <!-- Payment terms -->
           <UCard>
             <template #header>
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                {{ t('invoice.billingData') }}
+                {{ t('invoice.paymentTerms') }}
               </h3>
             </template>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UFormField :label="t('invoice.billingName')">
-                <UInput v-model="form.billing_name" />
-              </UFormField>
-
-              <UFormField :label="t('invoice.taxId')">
-                <UInput
-                  v-model="form.billing_tax_id"
-                  placeholder="NIF/CIF"
-                />
-              </UFormField>
-
-              <UFormField :label="t('invoice.billingEmail')">
-                <UInput
-                  v-model="form.billing_email"
-                  type="email"
-                />
-              </UFormField>
-
               <UFormField :label="t('invoice.paymentTermDays')">
                 <UInput
                   v-model.number="form.payment_term_days"
@@ -410,160 +425,87 @@ function goBack() {
           <!-- Items -->
           <UCard>
             <template #header>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
-                {{ t('invoice.items') }}
-              </h3>
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900 dark:text-white">
+                  {{ t('invoice.items') }}
+                </h3>
+                <UButton
+                  icon="i-lucide-plus"
+                  size="sm"
+                  @click="openAddItemModal"
+                >
+                  {{ t('invoice.addItem') }}
+                </UButton>
+              </div>
             </template>
 
-            <!-- Existing items -->
+            <!-- Empty state -->
             <div
-              v-if="currentItems.length > 0"
-              class="divide-y divide-gray-200 dark:divide-gray-800 mb-6"
+              v-if="currentItems.length === 0"
+              class="text-center py-8 text-gray-500"
+            >
+              {{ t('budget.items.empty') }}
+            </div>
+
+            <!-- Items list (budget-style display) -->
+            <div
+              v-else
+              class="divide-y divide-gray-200 dark:divide-gray-800"
             >
               <div
                 v-for="item in currentItems"
                 :key="item.id"
-                class="py-3"
-              >
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                  <div class="md:col-span-4">
-                    <UFormField :label="t('invoice.itemDescription')">
-                      <UInput
-                        :model-value="getItemValue(item.id, 'description') as string"
-                        @update:model-value="onItemChange(item.id, 'description', $event)"
-                      />
-                    </UFormField>
-                  </div>
-                  <div class="md:col-span-2">
-                    <UFormField :label="t('invoice.itemPrice')">
-                      <UInput
-                        type="number"
-                        :min="0"
-                        step="0.01"
-                        :model-value="getItemValue(item.id, 'unit_price') as number"
-                        @update:model-value="onItemChange(item.id, 'unit_price', Number($event))"
-                      />
-                    </UFormField>
-                  </div>
-                  <div class="md:col-span-2">
-                    <UFormField :label="t('invoice.itemQuantity')">
-                      <UInput
-                        type="number"
-                        :min="1"
-                        :model-value="getItemValue(item.id, 'quantity') as number"
-                        @update:model-value="onItemChange(item.id, 'quantity', Number($event))"
-                      />
-                    </UFormField>
-                  </div>
-                  <div class="md:col-span-2">
-                    <UFormField :label="t('invoice.vat')">
-                      <USelectMenu
-                        :model-value="getItemValue(item.id, 'vat_type_id') as string"
-                        :items="vatTypeOptions"
-                        @update:model-value="onItemChange(item.id, 'vat_type_id', $event)"
-                      />
-                    </UFormField>
-                  </div>
-                  <div class="md:col-span-2 flex items-center justify-between">
-                    <span class="font-semibold text-gray-900 dark:text-white">
-                      {{ formatCurrency(getItemTotal(
-                        getItemValue(item.id, 'unit_price') as number,
-                        getItemValue(item.id, 'quantity') as number,
-                        getItemValue(item.id, 'vat_type_id') as string
-                      )) }}
-                    </span>
-                    <UButton
-                      variant="ghost"
-                      color="error"
-                      icon="i-lucide-trash-2"
-                      size="sm"
-                      @click="markItemForDeletion(item.id)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- New items pending -->
-            <div
-              v-if="newItems.length > 0"
-              class="divide-y divide-gray-200 dark:divide-gray-800 mb-6 border-l-4 border-green-500 pl-4"
-            >
-              <p class="text-sm text-green-600 mb-2">
-                {{ t('invoice.newItemsPending') }}
-              </p>
-              <div
-                v-for="(item, index) in newItems"
-                :key="`new-${index}`"
-                class="py-3 flex items-center justify-between"
+                class="py-4 flex items-start gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 px-4 transition-colors"
+                @click="openEditItemModal(item)"
               >
                 <div class="flex-1">
-                  <p class="font-medium text-gray-900 dark:text-white">
-                    {{ item.description }}
-                  </p>
-                  <p class="text-sm text-gray-500">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900 dark:text-white">
+                      {{ getItemName(item) }}
+                    </span>
+                    <span
+                      v-if="item.tooth_number"
+                      class="text-sm text-gray-500"
+                    >
+                      #{{ item.tooth_number }}
+                      <span v-if="item.surfaces?.length">({{ item.surfaces.join(', ') }})</span>
+                    </span>
+                  </div>
+                  <div class="text-sm text-gray-500 mt-1">
                     {{ item.quantity }} x {{ formatCurrency(item.unit_price) }}
+                    <span
+                      v-if="item.line_discount > 0"
+                      class="text-green-600"
+                    >
+                      -{{ formatCurrency(item.line_discount) }}
+                    </span>
+                  </div>
+                  <p
+                    v-if="item.catalog_item?.internal_code"
+                    class="text-xs text-gray-400 mt-1"
+                  >
+                    {{ item.catalog_item.internal_code }}
                   </p>
                 </div>
-                <div class="flex items-center gap-4">
-                  <span class="font-semibold text-gray-900 dark:text-white">
-                    {{ formatCurrency(getItemTotal(item.unit_price, item.quantity || 1, item.vat_type_id)) }}
-                  </span>
-                  <UButton
-                    variant="ghost"
-                    color="error"
-                    icon="i-lucide-trash-2"
-                    size="sm"
-                    @click="removeNewItem(index)"
-                  />
+                <div class="text-right">
+                  <p class="font-semibold text-gray-900 dark:text-white">
+                    {{ formatCurrency(item.line_total) }}
+                  </p>
                 </div>
-              </div>
-            </div>
-
-            <!-- Add new item -->
-            <div class="border-t border-gray-200 dark:border-gray-800 pt-4">
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t('invoice.addItem') }}
-              </h4>
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div class="md:col-span-2">
-                  <UInput
-                    v-model="newItem.description"
-                    :placeholder="t('invoice.itemDescription')"
-                  />
-                </div>
-                <div>
-                  <UInput
-                    v-model.number="newItem.unit_price"
-                    type="number"
-                    :min="0"
-                    step="0.01"
-                    :placeholder="t('invoice.itemPrice')"
-                  />
-                </div>
-                <div>
-                  <UInput
-                    v-model.number="newItem.quantity"
-                    type="number"
-                    :min="1"
-                    :placeholder="t('invoice.itemQuantity')"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <USelectMenu
-                    v-model="newItem.vat_type_id"
-                    :items="vatTypeOptions"
-                    :placeholder="t('invoice.selectVatType')"
-                  />
-                </div>
-                <div class="md:col-span-2 flex justify-end">
-                  <UButton
-                    icon="i-lucide-plus"
-                    @click="addNewItem"
-                  >
-                    {{ t('invoice.addItem') }}
-                  </UButton>
-                </div>
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-pencil"
+                  size="sm"
+                  @click.stop="openEditItemModal(item)"
+                />
+                <UButton
+                  variant="ghost"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  size="sm"
+                  @click.stop="markItemForDeletion(item.id)"
+                />
               </div>
             </div>
           </UCard>
@@ -644,5 +586,14 @@ function goBack() {
         </div>
       </div>
     </template>
+
+    <!-- Item Modal (Add/Edit) -->
+    <InvoiceItemModal
+      v-model:open="isItemModalOpen"
+      :invoice-id="invoiceId"
+      :currency="currentInvoice?.currency"
+      :edit-item="editingItem"
+      @saved="handleItemSaved"
+    />
   </div>
 </template>

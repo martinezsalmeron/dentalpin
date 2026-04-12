@@ -87,7 +87,7 @@ async function handleCreate() {
           :label="t('budget.patient')"
           required
         >
-          <PatientSearch
+          <PatientVisualSelector
             v-model="selectedPatient"
             :placeholder="t('budget.selectPatient')"
           />
@@ -95,27 +95,6 @@ async function handleCreate() {
             {{ t('budget.selectPatientHint') }}
           </p>
         </UFormField>
-
-        <!-- Patient info card -->
-        <div
-          v-if="selectedPatient"
-          class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-        >
-          <div class="flex items-center gap-3">
-            <UAvatar
-              :alt="selectedPatient.first_name"
-              size="lg"
-            />
-            <div>
-              <p class="font-medium text-gray-900 dark:text-white">
-                {{ selectedPatient.last_name }}, {{ selectedPatient.first_name }}
-              </p>
-              <p class="text-sm text-gray-500">
-                {{ selectedPatient.phone || selectedPatient.email || '-' }}
-              </p>
-            </div>
-          </div>
-        </div>
 
         <!-- Validity dates -->
         <div class="grid grid-cols-2 gap-4">

@@ -31,6 +31,18 @@ router = APIRouter()
 
 
 # Patient endpoints
+@router.get("/patients/recent", response_model=ApiResponse[list[PatientResponse]])
+async def get_recent_patients(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=8, ge=1, le=20),
+) -> ApiResponse[list[PatientResponse]]:
+    """Get recent patients (by last visit or creation date)."""
+    patients = await PatientService.get_recent_patients(db, ctx.clinic_id, limit)
+    return ApiResponse(data=[PatientResponse.model_validate(p) for p in patients])
+
+
 @router.get("/patients", response_model=PaginatedApiResponse[PatientResponse])
 async def list_patients(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],

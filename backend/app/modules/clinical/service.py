@@ -18,6 +18,44 @@ class PatientService:
     """Service for patient operations."""
 
     @staticmethod
+    async def get_recent_patients(
+        db: AsyncSession,
+        clinic_id: UUID,
+        limit: int = 8,
+    ) -> list[Patient]:
+        """Get patients with most recent appointments, falling back to newest patients."""
+        # Try to get patients ordered by last appointment date
+        subquery = (
+            select(
+                Appointment.patient_id,
+                func.max(Appointment.start_time).label("last_visit"),
+            )
+            .where(
+                Appointment.clinic_id == clinic_id,
+                Appointment.patient_id.isnot(None),
+            )
+            .group_by(Appointment.patient_id)
+            .subquery()
+        )
+
+        query = (
+            select(Patient)
+            .outerjoin(subquery, Patient.id == subquery.c.patient_id)
+            .where(
+                Patient.clinic_id == clinic_id,
+                Patient.status != "archived",
+            )
+            .order_by(
+                subquery.c.last_visit.desc().nulls_last(),
+                Patient.created_at.desc(),
+            )
+            .limit(limit)
+        )
+
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
     async def list_patients(
         db: AsyncSession,
         clinic_id: UUID,

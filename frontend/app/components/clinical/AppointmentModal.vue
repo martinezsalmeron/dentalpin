@@ -369,7 +369,7 @@ function closeModal() {
             :label="t('appointments.selectPatient')"
             required
           >
-            <PatientSearch v-model="selectedPatient" />
+            <PatientVisualSelector v-model="selectedPatient" />
           </UFormField>
 
           <!-- Date and Time -->

@@ -6,6 +6,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.modules.billing.models import InvoiceItem
+from app.modules.budget.models import BudgetItem
+
 from .models import TreatmentCatalogItem, TreatmentCategory, TreatmentOdontogramMapping, VatType
 
 # Default VAT types to seed for new clinics
@@ -510,6 +513,65 @@ class CatalogService:
             )
             .limit(limit)
         )
+        return list(result.unique().scalars().all())
+
+    @staticmethod
+    async def get_popular_items(
+        db: AsyncSession,
+        clinic_id: UUID,
+        limit: int = 8,
+    ) -> list[TreatmentCatalogItem]:
+        """Get popular catalog items by usage count in budgets and invoices."""
+        # Count usage in budget_items
+        budget_count = (
+            select(
+                BudgetItem.catalog_item_id,
+                func.count(BudgetItem.id).label("budget_count"),
+            )
+            .where(BudgetItem.clinic_id == clinic_id)
+            .group_by(BudgetItem.catalog_item_id)
+            .subquery()
+        )
+
+        # Count usage in invoice_items
+        invoice_count = (
+            select(
+                InvoiceItem.catalog_item_id,
+                func.count(InvoiceItem.id).label("invoice_count"),
+            )
+            .where(
+                InvoiceItem.clinic_id == clinic_id,
+                InvoiceItem.catalog_item_id.isnot(None),
+            )
+            .group_by(InvoiceItem.catalog_item_id)
+            .subquery()
+        )
+
+        # Join and sum counts
+        query = (
+            select(TreatmentCatalogItem)
+            .outerjoin(budget_count, TreatmentCatalogItem.id == budget_count.c.catalog_item_id)
+            .outerjoin(invoice_count, TreatmentCatalogItem.id == invoice_count.c.catalog_item_id)
+            .where(
+                TreatmentCatalogItem.clinic_id == clinic_id,
+                TreatmentCatalogItem.is_active.is_(True),
+                TreatmentCatalogItem.deleted_at.is_(None),
+            )
+            .options(
+                joinedload(TreatmentCatalogItem.category),
+                joinedload(TreatmentCatalogItem.vat_type_rel),
+            )
+            .order_by(
+                (
+                    func.coalesce(budget_count.c.budget_count, 0)
+                    + func.coalesce(invoice_count.c.invoice_count, 0)
+                ).desc(),
+                TreatmentCatalogItem.internal_code,
+            )
+            .limit(limit)
+        )
+
+        result = await db.execute(query)
         return list(result.unique().scalars().all())
 
 

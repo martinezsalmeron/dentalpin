@@ -53,6 +53,8 @@
     "archive": "Archive",
     "billingSection": "Billing information",
     "billingSectionHint": "This data will be automatically used when creating invoices for this patient.",
+    "editingBillingForInvoice": "Editing billing data. Changes will reflect in the invoice.",
+    "returnToInvoice": "Return to invoice",
     "billingName": "Billing name",
     "billingNamePlaceholder": "Name or company for invoices",
     "billingTaxId": "Tax ID",
@@ -373,11 +375,19 @@
       "userDeleted": "User removed from clinic"
     }
   },
+  "selector": {
+    "recentPatients": "Recent patients",
+    "commonTreatments": "Common treatments",
+    "noRecentPatients": "No recent patients",
+    "noCommonTreatments": "No common treatments",
+    "typeToSearch": "Type to search..."
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
+    "change": "Change",
     "back": "Back",
     "loading": "Loading...",
     "error": "Error",
@@ -413,7 +423,9 @@
     "password": "Password",
     "passwordPlaceholder": "Minimum 8 characters",
     "role": "Role",
-    "readOnly": "Read only"
+    "readOnly": "Read only",
+    "createdBy": "Created by",
+    "date": "Date"
   },
   "validation": {
     "required": "This field is required",
@@ -579,6 +591,7 @@
     "patientNotes": "Patient notes",
     "patientNotesPlaceholder": "Notes visible on the quote...",
     "status": {
+      "title": "Status",
       "draft": "Draft",
       "sent": "Sent",
       "partially_accepted": "Partially accepted",
@@ -675,11 +688,24 @@
       "delete": "Delete quote?",
       "deleteDescription": "This action cannot be undone."
     },
+    "send": {
+      "description": "You can send the quote by email or mark it as manually sent (printed or handed over).",
+      "sendByEmail": "Send by email",
+      "willSendTo": "Will be sent to",
+      "noPatientEmail": "Patient has no registered email",
+      "customMessage": "Custom message (optional)",
+      "customMessagePlaceholder": "Add a message for the patient...",
+      "manualNote": "The quote will be marked as sent without sending any email.",
+      "sendEmail": "Send email",
+      "markAsSent": "Mark as sent"
+    },
     "messages": {
       "created": "Quote created",
       "updated": "Quote updated",
       "deleted": "Quote deleted",
       "sent": "Quote sent",
+      "sentByEmail": "Quote sent by email",
+      "sentManually": "Quote marked as sent",
       "accepted": "Quote accepted",
       "rejected": "Quote rejected",
       "cancelled": "Quote cancelled",
@@ -831,6 +857,13 @@
     "billingDataIncomplete": "Incomplete",
     "billingDataIncompleteHint": "The patient is missing some billing information.",
     "editPatientBilling": "Edit patient data",
+    "fromPatient": "From patient",
+    "editInPatient": "Edit in profile",
+    "billingFromPatientHint": "This data comes from the patient's record. To modify it, edit the patient's billing information.",
+    "paymentTerms": "Payment terms",
+    "linkedToBudget": "Linked to budget",
+    "selectPatient": "Select patient",
+    "noBillingData": "No billing data",
     "street": "Street",
     "city": "City",
     "postalCode": "Postal code",
@@ -860,6 +893,7 @@
     "publicNotesPlaceholder": "Notes visible on invoice...",
     "items": "Items",
     "addItem": "Add item",
+    "editItem": "Edit item",
     "selectTreatment": "Treatment",
     "searchCatalog": "Search treatment in catalog...",
     "itemDescription": "Description",
@@ -884,7 +918,7 @@
       "createCreditNote": "Create credit note",
       "downloadPdf": "Download PDF",
       "previewPdf": "Preview PDF",
-      "sendByEmail": "Send by email"
+      "sendEmail": "Send by email"
     },
     "recordPayment": "Record payment",
     "paymentAmount": "Amount",
@@ -1029,7 +1063,23 @@
       "updated": "Invoice updated",
       "deleted": "Invoice deleted",
       "issued": "Invoice issued",
-      "voided": "Invoice voided"
+      "voided": "Invoice voided",
+      "itemAdded": "Item added",
+      "itemUpdated": "Item updated",
+      "sentByEmail": "Invoice sent by email",
+      "sentManually": "Invoice marked as sent"
+    },
+    "send": {
+      "title": "Send invoice",
+      "description": "You can send the invoice by email or mark it as sent manually (printed or delivered in person).",
+      "sendByEmail": "Send by email",
+      "willSendTo": "Will be sent to",
+      "noPatientEmail": "Patient has no email address",
+      "customMessage": "Custom message (optional)",
+      "customMessagePlaceholder": "Add a message for the patient...",
+      "manualNote": "The invoice will be marked as sent without sending any email.",
+      "sendEmail": "Send email",
+      "markAsSent": "Mark as sent"
     },
     "errors": {
       "load": "Error loading invoices",
@@ -1041,6 +1091,7 @@
       "recordPayment": "Error recording payment",
       "voidPayment": "Error voiding payment",
       "createCreditNote": "Error creating credit note",
+      "send": "Error sending invoice",
       "creditNoteReasonRequired": "Credit note reason is required",
       "notFound": "Invoice not found",
       "onlyDraft": "Only draft invoices can be edited",
@@ -1049,7 +1100,8 @@
       "itemsRequired": "At least one item is required",
       "itemRequired": "Description and price are required",
       "selectCatalogItem": "Please select a treatment from the catalog",
-      "cannotEdit": "Only draft invoices can be edited"
+      "cannotEdit": "Only draft invoices can be edited",
+      "billingIncomplete": "The invoice cannot be issued because billing data is incomplete. Please fill in the patient's billing information to continue."
     },
     "newItemsPending": "New items pending save"
   }

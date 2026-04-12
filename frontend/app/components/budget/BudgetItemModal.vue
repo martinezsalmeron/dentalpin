@@ -14,13 +14,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const toast = useToast()
-const { searchItems, getItemName, formatPrice } = useCatalog()
+const { formatPrice } = useCatalog()
 const { addItem } = useBudgets()
 
-// Search state
-const searchQuery = ref('')
-const searchResults = ref<TreatmentCatalogItem[]>([])
-const isSearching = ref(false)
+// Selection state
 const selectedItem = ref<TreatmentCatalogItem | null>(null)
 
 // Item form
@@ -36,46 +33,9 @@ const form = reactive<BudgetItemCreate>({
 
 const isSubmitting = ref(false)
 
-// Debounced search
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
-
-watch(searchQuery, (val) => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-
-  if (val.length < 2) {
-    searchResults.value = []
-    return
-  }
-
-  searchTimeout = setTimeout(async () => {
-    await performSearch(val)
-  }, 300)
-})
-
-async function performSearch(query: string) {
-  isSearching.value = true
-  try {
-    const results = await searchItems(query, 20)
-    // Cast to TreatmentCatalogItem for display
-    searchResults.value = results as unknown as TreatmentCatalogItem[]
-  } catch {
-    searchResults.value = []
-  } finally {
-    isSearching.value = false
-  }
-}
-
-function selectCatalogItem(item: TreatmentCatalogItem) {
+function handleItemSelect(item: TreatmentCatalogItem | null) {
   selectedItem.value = item
-  form.catalog_item_id = item.id
-  searchQuery.value = getItemName(item)
-  searchResults.value = []
-}
-
-function clearSelection() {
-  selectedItem.value = null
-  form.catalog_item_id = ''
-  searchQuery.value = ''
+  form.catalog_item_id = item?.id || ''
 }
 
 // Tooth surfaces
@@ -152,8 +112,6 @@ function close() {
 
 function resetForm() {
   selectedItem.value = null
-  searchQuery.value = ''
-  searchResults.value = []
   form.catalog_item_id = ''
   form.quantity = 1
   form.tooth_number = undefined
@@ -201,77 +159,12 @@ watch(() => props.open, (isOpen) => {
             :label="t('budget.items.treatment')"
             required
           >
-            <div class="relative">
-              <UInput
-                v-model="searchQuery"
-                :placeholder="t('budget.items.searchCatalog')"
-                icon="i-lucide-search"
-                :loading="isSearching"
-                @focus="searchQuery.length >= 2 && performSearch(searchQuery)"
-              >
-                <template
-                  v-if="selectedItem"
-                  #trailing
-                >
-                  <UButton
-                    variant="ghost"
-                    color="neutral"
-                    icon="i-lucide-x"
-                    size="xs"
-                    class="-mr-2"
-                    @click.stop="clearSelection"
-                  />
-                </template>
-              </UInput>
-
-              <!-- Search results dropdown -->
-              <div
-                v-if="searchResults.length > 0"
-                class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
-              >
-                <div
-                  v-for="item in searchResults"
-                  :key="item.id"
-                  class="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  @click="selectCatalogItem(item)"
-                >
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <p class="font-medium text-gray-900 dark:text-white">
-                        {{ getItemName(item) }}
-                      </p>
-                      <p class="text-sm text-gray-500">
-                        {{ item.internal_code }}
-                      </p>
-                    </div>
-                    <span class="font-medium text-primary-600">
-                      {{ formatPrice(item.default_price, currency || 'EUR') }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <TreatmentVisualSelector
+              :model-value="selectedItem"
+              :currency="currency"
+              @update:model-value="handleItemSelect"
+            />
           </UFormField>
-
-          <!-- Selected item info -->
-          <div
-            v-if="selectedItem"
-            class="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
-          >
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="font-medium text-gray-900 dark:text-white">
-                  {{ getItemName(selectedItem) }}
-                </p>
-                <p class="text-sm text-gray-500">
-                  {{ selectedItem.internal_code }}
-                </p>
-              </div>
-              <span class="text-lg font-semibold text-primary-600">
-                {{ formatPrice(selectedItem.default_price, currency || 'EUR') }}
-              </span>
-            </div>
-          </div>
 
           <!-- Quantity -->
           <div class="grid grid-cols-2 gap-4">

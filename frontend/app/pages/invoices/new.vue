@@ -1,19 +1,16 @@
 <script setup lang="ts">
-import type { InvoiceItemCreate, Patient, VatType, TreatmentCatalogItem } from '~/types'
+import type { InvoiceItemCreate, Patient, VatType } from '~/types'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const { createInvoice } = useInvoices()
-const { searchItems, getItemName, formatPrice } = useCatalog()
 const api = useApi()
 
 // State
 const isLoading = ref(false)
-const patients = ref<Patient[]>([])
 const vatTypes = ref<VatType[]>([])
 const selectedPatient = ref<Patient | null>(null)
-const patientSearch = ref('')
 
 // Form data
 const form = ref({
@@ -37,98 +34,18 @@ const form = ref({
 // Items
 const items = ref<InvoiceItemCreate[]>([])
 
-// Catalog search state
-const catalogSearchQuery = ref('')
-const catalogSearchResults = ref<TreatmentCatalogItem[]>([])
-const isCatalogSearching = ref(false)
-const selectedCatalogItem = ref<TreatmentCatalogItem | null>(null)
+// Item modal state
+const isItemModalOpen = ref(false)
 
-// New item form
-const newItem = ref<InvoiceItemCreate>({
-  description: '',
-  catalog_item_id: undefined,
-  internal_code: undefined,
-  unit_price: 0,
-  quantity: 1,
-  vat_type_id: undefined,
-  display_order: 0
-})
-
-// Debounced patient search
-const debouncedPatientSearch = ref('')
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
-
-watch(patientSearch, (val) => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    debouncedPatientSearch.value = val
-  }, 300)
-})
-
-// Search patients
-watch(debouncedPatientSearch, async (search) => {
-  if (search.length < 2) {
-    patients.value = []
-    return
-  }
-
-  try {
-    const response = await api.get<{ data: Patient[] }>(
-      `/api/v1/clinical/patients?search=${encodeURIComponent(search)}&page_size=10`
-    )
-    patients.value = response.data
-  } catch (e) {
-    console.error('Failed to search patients:', e)
-  }
-})
-
-// Debounced catalog search
-let catalogSearchTimeout: ReturnType<typeof setTimeout> | null = null
-
-watch(catalogSearchQuery, (val) => {
-  if (catalogSearchTimeout) clearTimeout(catalogSearchTimeout)
-
-  if (val.length < 2) {
-    catalogSearchResults.value = []
-    return
-  }
-
-  catalogSearchTimeout = setTimeout(async () => {
-    await performCatalogSearch(val)
-  }, 300)
-})
-
-async function performCatalogSearch(query: string) {
-  isCatalogSearching.value = true
-  try {
-    const results = await searchItems(query, 20)
-    catalogSearchResults.value = results as unknown as TreatmentCatalogItem[]
-  } catch {
-    catalogSearchResults.value = []
-  } finally {
-    isCatalogSearching.value = false
-  }
+function openAddItemModal() {
+  isItemModalOpen.value = true
 }
 
-function selectCatalogItem(item: TreatmentCatalogItem) {
-  selectedCatalogItem.value = item
-  newItem.value.catalog_item_id = item.id
-  newItem.value.description = getItemName(item)
-  newItem.value.internal_code = item.internal_code
-  newItem.value.unit_price = item.default_price || 0
-  newItem.value.vat_type_id = item.vat_type_id
-  catalogSearchQuery.value = getItemName(item)
-  catalogSearchResults.value = []
-}
-
-function clearCatalogSelection() {
-  selectedCatalogItem.value = null
-  newItem.value.catalog_item_id = undefined
-  newItem.value.description = ''
-  newItem.value.internal_code = undefined
-  newItem.value.unit_price = 0
-  newItem.value.vat_type_id = undefined
-  catalogSearchQuery.value = ''
+function handleItemAdded(item: InvoiceItemCreate) {
+  items.value.push({
+    ...item,
+    display_order: items.value.length
+  })
 }
 
 // Load VAT types
@@ -142,55 +59,22 @@ onMounted(async () => {
 })
 
 // When patient is selected
-function selectPatient(patient: Patient) {
+function handlePatientSelect(patient: Patient | null) {
   selectedPatient.value = patient
-  form.value.patient_id = patient.id
-  // Auto-populate billing data: 1. Patient billing fields, 2. Patient personal info
-  form.value.billing_name = patient.billing_name || `${patient.first_name} ${patient.last_name}`
-  form.value.billing_tax_id = patient.billing_tax_id || ''
-  form.value.billing_email = patient.billing_email || patient.email || ''
-  if (patient.billing_address) {
-    form.value.billing_address = { ...patient.billing_address }
-  }
-  patientSearch.value = ''
-  patients.value = []
-}
-
-// Clear patient selection
-function clearPatient() {
-  selectedPatient.value = null
-  form.value.patient_id = ''
-  form.value.billing_name = ''
-  form.value.billing_email = ''
-}
-
-// Add item
-function addItem() {
-  if (!newItem.value.catalog_item_id || !newItem.value.description) {
-    toast.add({
-      title: t('common.error'),
-      description: t('invoice.errors.selectCatalogItem'),
-      color: 'error'
-    })
-    return
-  }
-
-  items.value.push({
-    ...newItem.value,
-    display_order: items.value.length
-  })
-
-  // Reset new item form
-  selectedCatalogItem.value = null
-  catalogSearchQuery.value = ''
-  newItem.value = {
-    description: '',
-    catalog_item_id: undefined,
-    internal_code: undefined,
-    unit_price: 0,
-    quantity: 1,
-    vat_type_id: vatTypes.value.find(v => v.is_default)?.id,
-    display_order: 0
+  if (patient) {
+    form.value.patient_id = patient.id
+    // Auto-populate billing data: 1. Patient billing fields, 2. Patient personal info
+    form.value.billing_name = patient.billing_name || `${patient.first_name} ${patient.last_name}`
+    form.value.billing_tax_id = patient.billing_tax_id || ''
+    form.value.billing_email = patient.billing_email || patient.email || ''
+    if (patient.billing_address) {
+      form.value.billing_address = { ...patient.billing_address }
+    }
+  } else {
+    form.value.patient_id = ''
+    form.value.billing_name = ''
+    form.value.billing_tax_id = ''
+    form.value.billing_email = ''
   }
 }
 
@@ -327,92 +211,53 @@ function goBack() {
             </h3>
           </template>
 
-          <div v-if="!selectedPatient">
-            <UFormField :label="t('invoice.searchPatient')">
-              <UInput
-                v-model="patientSearch"
-                :placeholder="t('invoice.searchPatientPlaceholder')"
-                icon="i-lucide-search"
-              />
-            </UFormField>
+          <PatientVisualSelector
+            :model-value="selectedPatient"
+            @update:model-value="handlePatientSelect"
+          />
 
-            <div
-              v-if="patients.length > 0"
-              class="mt-2 divide-y divide-gray-200 dark:divide-gray-800 border border-gray-200 dark:border-gray-800 rounded-md"
-            >
-              <div
-                v-for="patient in patients"
-                :key="patient.id"
-                class="p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                @click="selectPatient(patient)"
-              >
-                <p class="font-medium text-gray-900 dark:text-white">
-                  {{ patient.last_name }}, {{ patient.first_name }}
-                </p>
-                <p class="text-sm text-gray-500">
-                  {{ patient.email || patient.phone || '-' }}
-                </p>
-              </div>
-            </div>
-          </div>
-
+          <!-- Billing info badges -->
           <div
-            v-else
-            class="flex items-center justify-between"
+            v-if="selectedPatient"
+            class="mt-2 flex items-center gap-2"
           >
-            <div>
-              <div class="flex items-center gap-2">
-                <p class="font-medium text-gray-900 dark:text-white">
-                  {{ selectedPatient.last_name }}, {{ selectedPatient.first_name }}
-                </p>
-                <UBadge
-                  v-if="selectedPatient.has_complete_billing_info"
-                  color="success"
-                  variant="subtle"
-                  size="xs"
-                >
-                  <UIcon
-                    name="i-lucide-check"
-                    class="w-3 h-3 mr-1"
-                  />
-                  {{ t('invoice.billingDataComplete') }}
-                </UBadge>
-                <UBadge
-                  v-else
-                  color="warning"
-                  variant="subtle"
-                  size="xs"
-                >
-                  <UIcon
-                    name="i-lucide-alert-triangle"
-                    class="w-3 h-3 mr-1"
-                  />
-                  {{ t('invoice.billingDataIncomplete') }}
-                </UBadge>
-              </div>
-              <p class="text-sm text-gray-500">
-                {{ selectedPatient.email || selectedPatient.phone || '-' }}
-              </p>
-              <p
-                v-if="!selectedPatient.has_complete_billing_info"
-                class="text-xs text-amber-600 dark:text-amber-400 mt-1"
-              >
-                {{ t('invoice.billingDataIncompleteHint') }}
-                <NuxtLink
-                  :to="`/patients/${selectedPatient.id}`"
-                  class="underline"
-                >
-                  {{ t('invoice.editPatientBilling') }}
-                </NuxtLink>
-              </p>
-            </div>
-            <UButton
-              variant="ghost"
-              color="neutral"
-              icon="i-lucide-x"
-              @click="clearPatient"
-            />
+            <UBadge
+              v-if="selectedPatient.has_complete_billing_info"
+              color="success"
+              variant="subtle"
+              size="xs"
+            >
+              <UIcon
+                name="i-lucide-check"
+                class="w-3 h-3 mr-1"
+              />
+              {{ t('invoice.billingDataComplete') }}
+            </UBadge>
+            <UBadge
+              v-else
+              color="warning"
+              variant="subtle"
+              size="xs"
+            >
+              <UIcon
+                name="i-lucide-alert-triangle"
+                class="w-3 h-3 mr-1"
+              />
+              {{ t('invoice.billingDataIncomplete') }}
+            </UBadge>
           </div>
+          <p
+            v-if="selectedPatient && !selectedPatient.has_complete_billing_info"
+            class="text-xs text-amber-600 dark:text-amber-400 mt-1"
+          >
+            {{ t('invoice.billingDataIncompleteHint') }}
+            <NuxtLink
+              :to="`/patients/${selectedPatient.id}`"
+              class="underline"
+            >
+              {{ t('invoice.editPatientBilling') }}
+            </NuxtLink>
+          </p>
         </UCard>
 
         <!-- Billing data -->
@@ -462,156 +307,91 @@ function goBack() {
         <!-- Items -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('invoice.items') }}
-            </h3>
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900 dark:text-white">
+                {{ t('invoice.items') }}
+              </h3>
+              <UButton
+                icon="i-lucide-plus"
+                size="sm"
+                @click="openAddItemModal"
+              >
+                {{ t('invoice.addItem') }}
+              </UButton>
+            </div>
           </template>
 
-          <!-- Existing items -->
+          <!-- Empty state -->
           <div
-            v-if="items.length > 0"
-            class="divide-y divide-gray-200 dark:divide-gray-800 mb-6"
+            v-if="items.length === 0"
+            class="text-center py-8 text-gray-500"
+          >
+            <UIcon
+              name="i-lucide-file-text"
+              class="w-12 h-12 mx-auto mb-3 text-gray-300"
+            />
+            <p>{{ t('budget.items.empty') }}</p>
+            <UButton
+              variant="outline"
+              class="mt-3"
+              icon="i-lucide-plus"
+              @click="openAddItemModal"
+            >
+              {{ t('invoice.addItem') }}
+            </UButton>
+          </div>
+
+          <!-- Items list -->
+          <div
+            v-else
+            class="divide-y divide-gray-200 dark:divide-gray-800"
           >
             <div
               v-for="(item, index) in items"
               :key="index"
-              class="py-3 flex items-center justify-between"
+              class="py-4 flex items-start gap-4"
             >
               <div class="flex-1">
-                <p class="font-medium text-gray-900 dark:text-white">
-                  {{ item.description }}
-                </p>
-                <p class="text-sm text-gray-500">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    {{ item.description }}
+                  </span>
+                  <span
+                    v-if="item.tooth_number"
+                    class="text-sm text-gray-500"
+                  >
+                    #{{ item.tooth_number }}
+                    <span v-if="item.surfaces?.length">({{ item.surfaces.join(', ') }})</span>
+                  </span>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">
                   {{ item.quantity }} x {{ formatCurrency(item.unit_price) }}
+                  <span
+                    v-if="item.discount_value"
+                    class="text-green-600"
+                  >
+                    - {{ item.discount_type === 'percentage' ? `${item.discount_value}%` : formatCurrency(item.discount_value) }}
+                  </span>
+                </p>
+                <p
+                  v-if="item.internal_code"
+                  class="text-xs text-gray-400 mt-1"
+                >
+                  {{ item.internal_code }}
                 </p>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="font-semibold text-gray-900 dark:text-white">
+              <div class="text-right">
+                <p class="font-semibold text-gray-900 dark:text-white">
                   {{ formatCurrency(getItemTotal(item)) }}
-                </span>
-                <UButton
-                  variant="ghost"
-                  color="error"
-                  icon="i-lucide-trash-2"
-                  size="sm"
-                  @click="removeItem(index)"
-                />
+                </p>
               </div>
-            </div>
-          </div>
-
-          <!-- Add new item -->
-          <div class="border-t border-gray-200 dark:border-gray-800 pt-4">
-            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              {{ t('invoice.addItem') }}
-            </h4>
-
-            <!-- Catalog search -->
-            <div class="mb-4">
-              <UFormField :label="t('invoice.selectTreatment')">
-                <div class="relative">
-                  <UInput
-                    v-model="catalogSearchQuery"
-                    :placeholder="t('invoice.searchCatalog')"
-                    icon="i-lucide-search"
-                    :loading="isCatalogSearching"
-                    @focus="catalogSearchQuery.length >= 2 && performCatalogSearch(catalogSearchQuery)"
-                  >
-                    <template
-                      v-if="selectedCatalogItem"
-                      #trailing
-                    >
-                      <UButton
-                        variant="ghost"
-                        color="neutral"
-                        icon="i-lucide-x"
-                        size="xs"
-                        class="-mr-2"
-                        @click.stop="clearCatalogSelection"
-                      />
-                    </template>
-                  </UInput>
-
-                  <!-- Search results dropdown -->
-                  <div
-                    v-if="catalogSearchResults.length > 0"
-                    class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
-                  >
-                    <div
-                      v-for="item in catalogSearchResults"
-                      :key="item.id"
-                      class="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                      @click="selectCatalogItem(item)"
-                    >
-                      <div class="flex items-center justify-between">
-                        <div>
-                          <p class="font-medium text-gray-900 dark:text-white">
-                            {{ getItemName(item) }}
-                          </p>
-                          <p class="text-sm text-gray-500">
-                            {{ item.internal_code }}
-                          </p>
-                        </div>
-                        <span class="font-medium text-primary-600">
-                          {{ formatPrice(item.default_price, 'EUR') }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </UFormField>
-            </div>
-
-            <!-- Selected item info -->
-            <div
-              v-if="selectedCatalogItem"
-              class="p-3 mb-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
-            >
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-white">
-                    {{ getItemName(selectedCatalogItem) }}
-                  </p>
-                  <p class="text-sm text-gray-500">
-                    {{ selectedCatalogItem.internal_code }}
-                  </p>
-                </div>
-                <span class="text-lg font-semibold text-primary-600">
-                  {{ formatPrice(selectedCatalogItem.default_price, 'EUR') }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Quantity and Price -->
-            <div
-              v-if="selectedCatalogItem"
-              class="grid grid-cols-2 gap-3"
-            >
-              <UFormField :label="t('invoice.itemQuantity')">
-                <UInput
-                  v-model.number="newItem.quantity"
-                  type="number"
-                  :min="1"
-                />
-              </UFormField>
-              <UFormField :label="t('invoice.itemPrice')">
-                <UInput
-                  v-model.number="newItem.unit_price"
-                  type="number"
-                  :min="0"
-                  step="0.01"
-                />
-              </UFormField>
-            </div>
-
-            <div class="mt-4 flex justify-end">
               <UButton
-                icon="i-lucide-plus"
-                :disabled="!selectedCatalogItem"
-                @click="addItem"
-              >
-                {{ t('invoice.addItem') }}
-              </UButton>
+                variant="ghost"
+                color="error"
+                icon="i-lucide-trash-2"
+                size="sm"
+                @click="removeItem(index)"
+              />
             </div>
           </div>
         </UCard>
@@ -692,5 +472,12 @@ function goBack() {
         </UCard>
       </div>
     </div>
+
+    <!-- Add Item Modal -->
+    <NewInvoiceItemModal
+      v-model:open="isItemModalOpen"
+      currency="EUR"
+      @added="handleItemAdded"
+    />
   </div>
 </template>

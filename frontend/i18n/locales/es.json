@@ -53,6 +53,8 @@
     "archive": "Archivar",
     "billingSection": "Datos de facturación",
     "billingSectionHint": "Estos datos se usarán automáticamente al crear facturas para este paciente.",
+    "editingBillingForInvoice": "Editando datos de facturación. Los cambios se reflejarán en la factura.",
+    "returnToInvoice": "Volver a factura",
     "billingName": "Nombre/Razón social",
     "billingNamePlaceholder": "Nombre o razón social para facturas",
     "billingTaxId": "NIF/CIF",
@@ -366,11 +368,19 @@
       "userDeleted": "Usuario eliminado de la clínica"
     }
   },
+  "selector": {
+    "recentPatients": "Pacientes recientes",
+    "commonTreatments": "Tratamientos frecuentes",
+    "noRecentPatients": "No hay pacientes recientes",
+    "noCommonTreatments": "No hay tratamientos frecuentes",
+    "typeToSearch": "Escribe para buscar..."
+  },
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "edit": "Editar",
+    "change": "Cambiar",
     "back": "Volver",
     "loading": "Cargando...",
     "error": "Error",
@@ -406,7 +416,9 @@
     "password": "Contraseña",
     "passwordPlaceholder": "Mínimo 8 caracteres",
     "role": "Rol",
-    "readOnly": "Solo lectura"
+    "readOnly": "Solo lectura",
+    "createdBy": "Creado por",
+    "date": "Fecha"
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -572,6 +584,7 @@
     "patientNotes": "Notas para el paciente",
     "patientNotesPlaceholder": "Observaciones visibles en el presupuesto...",
     "status": {
+      "title": "Estado",
       "draft": "Borrador",
       "sent": "Enviado",
       "partially_accepted": "Aceptado parcialmente",
@@ -668,11 +681,24 @@
       "delete": "¿Eliminar presupuesto?",
       "deleteDescription": "Esta acción no se puede deshacer."
     },
+    "send": {
+      "description": "Puedes enviar el presupuesto por email o marcarlo como enviado manualmente (impreso o entregado en mano).",
+      "sendByEmail": "Enviar por email",
+      "willSendTo": "Se enviará a",
+      "noPatientEmail": "El paciente no tiene email registrado",
+      "customMessage": "Mensaje personalizado (opcional)",
+      "customMessagePlaceholder": "Añade un mensaje para el paciente...",
+      "manualNote": "El presupuesto se marcará como enviado sin enviar ningún email.",
+      "sendEmail": "Enviar email",
+      "markAsSent": "Marcar como enviado"
+    },
     "messages": {
       "created": "Presupuesto creado",
       "updated": "Presupuesto actualizado",
       "deleted": "Presupuesto eliminado",
       "sent": "Presupuesto enviado",
+      "sentByEmail": "Presupuesto enviado por email",
+      "sentManually": "Presupuesto marcado como enviado",
       "accepted": "Presupuesto aceptado",
       "rejected": "Presupuesto rechazado",
       "cancelled": "Presupuesto cancelado",
@@ -736,6 +762,13 @@
     "billingDataIncomplete": "Faltan datos",
     "billingDataIncompleteHint": "El paciente no tiene todos los datos de facturación.",
     "editPatientBilling": "Editar datos del paciente",
+    "fromPatient": "Datos del paciente",
+    "editInPatient": "Editar en ficha",
+    "billingFromPatientHint": "Estos datos provienen de la ficha del paciente. Para modificarlos, edite los datos de facturación del paciente.",
+    "paymentTerms": "Condiciones de pago",
+    "linkedToBudget": "Vinculada a presupuesto",
+    "selectPatient": "Seleccionar paciente",
+    "noBillingData": "Sin datos de facturación",
     "street": "Dirección",
     "city": "Ciudad",
     "postalCode": "Código Postal",
@@ -758,6 +791,7 @@
     "vat": "IVA",
     "items": "Líneas de factura",
     "addItem": "Añadir línea",
+    "editItem": "Editar línea",
     "selectTreatment": "Tratamiento",
     "searchCatalog": "Buscar tratamiento en el catálogo...",
     "itemDescription": "Descripción",
@@ -875,7 +909,23 @@
       "voided": "Factura anulada",
       "paymentRecorded": "Pago registrado",
       "paymentVoided": "Pago anulado",
-      "creditNoteCreated": "Rectificativa creada"
+      "creditNoteCreated": "Rectificativa creada",
+      "itemAdded": "Tratamiento añadido",
+      "itemUpdated": "Tratamiento actualizado",
+      "sentByEmail": "Factura enviada por email",
+      "sentManually": "Factura marcada como enviada"
+    },
+    "send": {
+      "title": "Enviar factura",
+      "description": "Puedes enviar la factura por email o marcarla como enviada manualmente (impresa o entregada en mano).",
+      "sendByEmail": "Enviar por email",
+      "willSendTo": "Se enviará a",
+      "noPatientEmail": "El paciente no tiene email registrado",
+      "customMessage": "Mensaje personalizado (opcional)",
+      "customMessagePlaceholder": "Añade un mensaje para el paciente...",
+      "manualNote": "La factura se marcará como enviada sin enviar ningún email.",
+      "sendEmail": "Enviar email",
+      "markAsSent": "Marcar como enviada"
     },
     "errors": {
       "load": "Error al cargar facturas",
@@ -887,6 +937,7 @@
       "recordPayment": "Error al registrar pago",
       "voidPayment": "Error al anular pago",
       "createCreditNote": "Error al crear rectificativa",
+      "send": "Error al enviar factura",
       "creditNoteReasonRequired": "El motivo de la rectificativa es obligatorio",
       "notFound": "Factura no encontrada",
       "canOnlyDeleteDraft": "Solo se pueden eliminar facturas en borrador",
@@ -894,7 +945,8 @@
       "itemsRequired": "Debe añadir al menos una línea",
       "itemRequired": "Descripción y precio son obligatorios",
       "selectCatalogItem": "Debe seleccionar un tratamiento del catálogo",
-      "cannotEdit": "Solo se pueden editar facturas en borrador"
+      "cannotEdit": "Solo se pueden editar facturas en borrador",
+      "billingIncomplete": "La factura no puede emitirse porque los datos de facturación están incompletos. Rellena los datos del paciente para continuar."
     },
     "newItemsPending": "Nuevas líneas pendientes de guardar",
     "filters": {

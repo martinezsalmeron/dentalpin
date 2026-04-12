@@ -296,6 +296,18 @@ async def list_items(
     )
 
 
+@router.get("/items/popular", response_model=ApiResponse[list[CatalogItemBrief]])
+async def get_popular_items(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("catalog.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=8, ge=1, le=20),
+) -> ApiResponse[list[CatalogItemBrief]]:
+    """Get popular catalog items by usage frequency."""
+    items = await CatalogService.get_popular_items(db, ctx.clinic_id, limit)
+    return ApiResponse(data=[CatalogItemBrief.model_validate(i) for i in items])
+
+
 @router.get("/items/search", response_model=ApiResponse[list[CatalogItemBrief]])
 async def search_items(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
