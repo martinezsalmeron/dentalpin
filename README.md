@@ -86,12 +86,36 @@ See [docs/DEMO.md](docs/DEMO.md) for full details on demo data.
 | Database | PostgreSQL 15 |
 | Auth | JWT with refresh tokens |
 
-## Features (MVP)
+## Features
 
-- Patient management (create, search, view, edit)
-- Appointment calendar (weekly/daily view, drag & drop, conflict detection)
-- Multi-role support (admin, dentist, hygienist, assistant, receptionist)
-- Spanish localization
+### Clinical Management
+- **Patient Records** — Complete patient profiles with personal data, contact info, medical history, and notes
+- **Dental Chart (Odontogram)** — Interactive tooth diagram with treatment tracking per tooth/surface
+- **Appointment Calendar** — Weekly and daily views with drag & drop, professional columns, conflict detection
+- **Treatment Catalog** — Customizable catalog with codes, prices, VAT types, and categories
+
+### Financial Management
+- **Budgets/Estimates** — Create treatment budgets, track approval workflow (draft → pending → approved/rejected), patient signature capture, PDF generation
+- **Invoices** — Generate invoices from budgets or standalone, automatic numbering, multiple payment methods, PDF export
+- **Payments** — Track partial payments, payment history, balance calculation
+
+### Practice Management
+- **Multi-clinic Support** — Single installation can manage multiple clinic locations
+- **Role-based Access Control** — Five roles (admin, dentist, hygienist, assistant, receptionist) with granular permissions
+- **Cabinet/Room Management** — Define treatment rooms with schedules and colors
+- **Professional Management** — Assign appointments to specific dentists/hygienists
+
+### User Experience
+- **Visual Selectors** — Smart dropdowns showing recent patients and popular treatments
+- **Bilingual Interface** — Full Spanish and English localization
+- **Dark Mode** — System-aware theme switching
+- **Responsive Design** — Works on desktop and tablet
+
+### Technical Features
+- **Modular Architecture** — Plugin-based system for easy extensibility
+- **Event Bus** — Inter-module communication for notifications and integrations
+- **REST API** — Complete API with OpenAPI documentation
+- **Real-time Updates** — Reactive UI with optimistic updates
 
 ## Development
 
