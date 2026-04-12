@@ -612,7 +612,9 @@ export function useInvoices() {
   }
 
   function canCreateCreditNote(invoice: Invoice | InvoiceDetail | InvoiceListItem): boolean {
-    return ['issued', 'partial', 'paid'].includes(invoice.status)
+    // Can't create credit note for a credit note (check if it's already a rectificativa)
+    const isCreditNote = 'credit_note_for_id' in invoice && invoice.credit_note_for_id != null
+    return ['issued', 'partial', 'paid'].includes(invoice.status) && !isCreditNote
   }
 
   function formatCurrency(amount: number, currency: string = 'EUR'): string {

@@ -56,7 +56,14 @@ class InvoiceWorkflowService:
 
     @staticmethod
     def can_create_credit_note(invoice: Invoice) -> bool:
-        """Check if credit note can be created for invoice."""
+        """Check if credit note can be created for invoice.
+
+        Credit notes cannot be created for:
+        - Invoices that are not issued/partial/paid
+        - Invoices that are already credit notes (rectificativas)
+        """
+        if invoice.credit_note_for_id is not None:
+            return False
         return invoice.status in ["issued", "partial", "paid"]
 
     @staticmethod
@@ -67,26 +74,65 @@ class InvoiceWorkflowService:
         issue_date: date | None = None,
         hook_callback=None,
     ) -> Invoice:
-        """Issue an invoice (transition from draft to issued).
+        """Issue an invoice or credit note (transition from draft to issued).
+
+        For regular invoices:
+            - Status changes to "issued"
+            - balance_due is set to the total amount
+
+        For credit notes (rectificativas):
+            - Status changes to "issued"
+            - balance_due is NEGATIVE (represents credit in patient's favor)
+            - Original invoice status is NOT changed (both documents coexist)
+            - Country-specific hooks can modify original invoice if needed
 
         Args:
             db: Database session
-            invoice: Invoice to issue
+            invoice: Invoice or credit note to issue
             issued_by: User ID issuing the invoice
             issue_date: Issue date (defaults to today)
-            hook_callback: Optional compliance hook callback
+            hook_callback: Optional compliance hook callback for regular invoices.
+                          For credit notes, use on_credit_note_issued hook instead.
 
         Returns:
-            Updated invoice
+            Updated invoice with "issued" status
 
         Raises:
             InvoiceWorkflowError: If transition is not valid
+
+        See Also:
+            create_credit_note: For creating credit notes in draft status
+            hooks.BillingComplianceHook.on_credit_note_issued: For country-specific behavior
         """
         if not InvoiceWorkflowService.can_issue(invoice):
             if invoice.status != "draft":
                 raise InvoiceWorkflowError(f"Cannot issue invoice from status '{invoice.status}'")
             if not invoice.items:
                 raise InvoiceWorkflowError("Cannot issue empty invoice")
+
+        # Assign invoice number if not already assigned (drafts don't have numbers)
+        if invoice.invoice_number is None:
+            from .service import InvoiceNumberService, InvoiceSeriesService
+
+            # Determine series to use
+            series_id = invoice.series_id
+            if not series_id:
+                # Get default series based on invoice type
+                series_type = "credit_note" if invoice.credit_note_for_id else "invoice"
+                series = await InvoiceSeriesService.get_default_series(
+                    db, invoice.clinic_id, series_type
+                )
+                if not series:
+                    raise InvoiceWorkflowError(f"No default {series_type} series configured")
+                series_id = series.id
+
+            # Generate number
+            invoice_number, sequential_number = await InvoiceNumberService.generate_number(
+                db, invoice.clinic_id, series_id
+            )
+            invoice.invoice_number = invoice_number
+            invoice.sequential_number = sequential_number
+            invoice.series_id = series_id
 
         previous_status = invoice.status
         invoice.status = "issued"
@@ -125,6 +171,64 @@ class InvoiceWorkflowService:
                 "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
             },
         )
+
+        # =======================================================================
+        # Credit Note (Rectificativa) Special Logic
+        # =======================================================================
+        #
+        # When issuing a credit note, the following applies:
+        #
+        # 1. ORIGINAL INVOICE: Does NOT change status.
+        #    - Both invoices are valid fiscal documents that coexist.
+        #    - The patient's balance is calculated by summing all invoices.
+        #    - This is the standard behavior in most countries (Spain, EU, USA, UK).
+        #
+        # 2. CREDIT NOTE: Stays in "issued" status with NEGATIVE balance.
+        #    - total: negative amount (e.g., -100.00)
+        #    - total_paid: 0.00 (nothing has been paid yet)
+        #    - balance_due: negative (e.g., -100.00) = credit in patient's favor
+        #
+        # 3. BALANCE CALCULATION:
+        #    - Patient balance = sum of all invoice balance_due values
+        #    - Positive = patient owes money
+        #    - Negative = clinic owes patient (refund or credit for future)
+        #
+        # 4. COUNTRY-SPECIFIC BEHAVIOR:
+        #    - Some countries (e.g., Mexico, Argentina) may require cancelling
+        #      the original invoice. This should be handled by the compliance
+        #      hook (on_credit_note_issued) which receives both invoices and
+        #      can modify the original invoice's status if required.
+        #
+        # =======================================================================
+        if invoice.credit_note_for_id:
+            # Credit note stays in "issued" status with negative balance.
+            # The negative balance_due represents a credit in the patient's favor.
+            # total_paid starts at 0 - payments/refunds are recorded separately.
+            invoice.total_paid = Decimal("0.00")
+            invoice.balance_due = invoice.total  # Negative amount = credit
+
+            # Add history to original invoice (informational, no status change)
+            from sqlalchemy import select
+
+            result = await db.execute(
+                select(Invoice).where(Invoice.id == invoice.credit_note_for_id)
+            )
+            original_invoice = result.scalar_one_or_none()
+            if original_invoice:
+                await InvoiceHistoryService.add_entry(
+                    db,
+                    clinic_id=original_invoice.clinic_id,
+                    invoice_id=original_invoice.id,
+                    action="credit_note_issued",
+                    changed_by=issued_by,
+                    previous_state={},
+                    new_state={
+                        "credit_note_id": str(invoice.id),
+                        "credit_note_number": invoice.invoice_number,
+                        "credit_note_total": str(invoice.total),
+                    },
+                    notes="Credit note issued. Original invoice status unchanged.",
+                )
 
         await db.flush()
 
@@ -303,64 +407,56 @@ class InvoiceWorkflowService:
         reason: str,
         items: list[dict] | None = None,
         series_id: UUID | None = None,
-        hook_callback=None,
     ) -> Invoice:
-        """Create a credit note (rectificativa) for an invoice.
+        """Create a credit note (rectificativa) for an invoice in draft status.
+
+        The credit note is created in draft status so it can be reviewed and
+        edited before being issued via issue_invoice().
+
+        IMPORTANT - Fiscal treatment:
+            - The original invoice does NOT change status when the credit note
+              is issued. Both documents are valid and coexist.
+            - The patient's balance is calculated by summing all invoices
+              (original + credit notes). A negative balance means the clinic
+              owes the patient (refund or credit for future invoices).
+            - This is the standard behavior in most countries (Spain, EU, UK, USA).
+            - For countries that require cancelling the original invoice
+              (e.g., Mexico, Argentina), use the on_credit_note_issued hook.
 
         Args:
             db: Database session
             original_invoice: Invoice to rectify
             created_by: User creating the credit note
             reason: Reason for the credit note
-            items: Optional list of items to rectify (partial credit note)
-                   If None, rectifies entire invoice
+            items: Optional list of items to rectify (partial credit note).
+                   If None, rectifies the entire invoice amount.
             series_id: Optional series ID for credit note (uses default if not provided)
-            hook_callback: Optional compliance hook callback
 
         Returns:
-            New credit note invoice
+            New credit note invoice in draft status
+
+        See Also:
+            issue_invoice: To issue the credit note after editing
+            hooks.BillingComplianceHook.on_credit_note_issued: For country-specific behavior
         """
         if not InvoiceWorkflowService.can_create_credit_note(original_invoice):
             raise InvoiceWorkflowError(
                 f"Cannot create credit note for invoice with status '{original_invoice.status}'"
             )
 
-        from .service import InvoiceNumberService, InvoiceService
+        from .service import InvoiceService
 
-        # Get credit note series
-        if not series_id:
-            from sqlalchemy import select
-
-            from .models import InvoiceSeries
-
-            result = await db.execute(
-                select(InvoiceSeries).where(
-                    InvoiceSeries.clinic_id == original_invoice.clinic_id,
-                    InvoiceSeries.series_type == "credit_note",
-                    InvoiceSeries.is_default.is_(True),
-                    InvoiceSeries.is_active.is_(True),
-                )
-            )
-            series = result.scalar_one_or_none()
-            if not series:
-                raise InvoiceWorkflowError("No default credit note series configured")
-            series_id = series.id
-
-        # Generate credit note number
-        invoice_number, sequential_number = await InvoiceNumberService.generate_number(
-            db, original_invoice.clinic_id, series_id
-        )
-
-        # Create credit note
+        # Create credit note in draft status WITHOUT assigning number
+        # Number will be assigned when the credit note is issued via issue_invoice()
+        # The series_id can be pre-selected but number is generated on issue
         credit_note = Invoice(
             clinic_id=original_invoice.clinic_id,
             patient_id=original_invoice.patient_id,
-            invoice_number=invoice_number,
-            series_id=series_id,
-            sequential_number=sequential_number,
+            invoice_number=None,  # Assigned when issued
+            series_id=series_id,  # Can be pre-selected, defaults to credit_note series on issue
+            sequential_number=None,  # Assigned when issued
             credit_note_for_id=original_invoice.id,
-            status="issued",
-            issue_date=date.today(),
+            status="draft",
             payment_term_days=0,
             billing_name=original_invoice.billing_name,
             billing_tax_id=original_invoice.billing_tax_id,
@@ -370,7 +466,6 @@ class InvoiceWorkflowService:
             internal_notes=f"Nota de crédito por: {reason}",
             public_notes=f"Rectificación de factura {original_invoice.invoice_number}",
             created_by=created_by,
-            issued_by=created_by,
         )
         db.add(credit_note)
         await db.flush()
@@ -443,21 +538,6 @@ class InvoiceWorkflowService:
         # Calculate credit note totals
         await InvoiceService.recalculate_totals(db, credit_note)
 
-        # Credit note is "paid" because it's negative amount
-        credit_note.total_paid = credit_note.total
-        credit_note.balance_due = Decimal("0.00")
-        credit_note.status = "paid"
-
-        # Update original invoice status
-        original_invoice.status = "cancelled"
-
-        # Execute compliance hook if provided
-        if hook_callback:
-            compliance_data = await hook_callback(credit_note, original_invoice, db)
-            if compliance_data:
-                credit_note.compliance_data = credit_note.compliance_data or {}
-                credit_note.compliance_data.update(compliance_data)
-
         # Add history to credit note
         from .service import InvoiceHistoryService
 
@@ -468,22 +548,8 @@ class InvoiceWorkflowService:
             action="created",
             changed_by=created_by,
             new_state={
+                "status": "draft",
                 "credit_note_for": original_invoice.invoice_number,
-                "reason": reason,
-            },
-        )
-
-        # Add history to original invoice
-        await InvoiceHistoryService.add_entry(
-            db,
-            clinic_id=original_invoice.clinic_id,
-            invoice_id=original_invoice.id,
-            action="credit_note_created",
-            changed_by=created_by,
-            previous_state={"status": original_invoice.status},
-            new_state={
-                "status": "cancelled",
-                "credit_note_number": credit_note.invoice_number,
                 "reason": reason,
             },
         )

@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
@@ -450,12 +451,23 @@ async def issue_invoice(
     _: Annotated[None, Depends(require_permission("billing.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[InvoiceResponse]:
-    """Issue an invoice (transition from draft to issued)."""
+    """Issue an invoice or credit note (transition from draft to issued)."""
     invoice = await InvoiceService.get_invoice(
         db, ctx.clinic_id, invoice_id, include_items=True, include_payments=False
     )
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # If this is a credit note, load the original invoice for the hook
+    original_invoice = None
+    if invoice.credit_note_for_id:
+        original_invoice = await InvoiceService.get_invoice(
+            db,
+            ctx.clinic_id,
+            invoice.credit_note_for_id,
+            include_items=False,
+            include_payments=False,
+        )
 
     try:
         # Get compliance hook if available
@@ -477,13 +489,24 @@ async def issue_invoice(
             if not is_valid:
                 raise InvoiceWorkflowError(error)
 
-            # Set up hook callback
-            async def hook_callback(inv, db_session):
-                return await hook.on_invoice_issued(inv, db_session)
+            # Set up hook callback (for regular invoices only)
+            if not invoice.credit_note_for_id:
+
+                async def hook_callback(inv, db_session):
+                    return await hook.on_invoice_issued(inv, db_session)
 
         invoice = await InvoiceWorkflowService.issue_invoice(
             db, invoice, ctx.user_id, issue_date=data.issue_date, hook_callback=hook_callback
         )
+
+        # For credit notes, execute the credit note hook after issue
+        if hook and original_invoice:
+            compliance_data = await hook.on_credit_note_issued(invoice, original_invoice, db)
+            if compliance_data:
+                invoice.compliance_data = invoice.compliance_data or {}
+                invoice.compliance_data.update(compliance_data)
+                await db.flush()
+
         await db.commit()
         return ApiResponse(data=InvoiceResponse.model_validate(invoice))
     except InvoiceWorkflowError as e:
@@ -525,7 +548,11 @@ async def create_credit_note(
     _: Annotated[None, Depends(require_permission("billing.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[InvoiceResponse]:
-    """Create a credit note (rectificativa) for an invoice."""
+    """Create a credit note (rectificativa) for an invoice in draft status.
+
+    The credit note is created in draft status so it can be edited before
+    being issued. Use the /issue endpoint to finalize the credit note.
+    """
     invoice = await InvoiceService.get_invoice(
         db, ctx.clinic_id, invoice_id, include_items=True, include_payments=False
     )
@@ -533,18 +560,6 @@ async def create_credit_note(
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     try:
-        # Get compliance hook if available
-        hook = None
-        clinic = invoice.clinic
-        if clinic:
-            hook = BillingHookRegistry.get_for_clinic(clinic)
-
-        hook_callback = None
-        if hook:
-
-            async def hook_callback(credit_note, original, db_session):
-                return await hook.on_credit_note_issued(credit_note, original, db_session)
-
         items = None
         if data.items:
             items = [
@@ -558,7 +573,6 @@ async def create_credit_note(
             created_by=ctx.user_id,
             reason=data.reason,
             items=items,
-            hook_callback=hook_callback,
         )
         await db.commit()
         return ApiResponse(data=InvoiceResponse.model_validate(credit_note))
@@ -693,6 +707,89 @@ async def get_invoice_history(
 
     history = await InvoiceHistoryService.list_history(db, ctx.clinic_id, invoice_id)
     return ApiResponse(data=[InvoiceHistoryResponse.model_validate(h) for h in history])
+
+
+# ============================================================================
+# PDF Endpoints
+# ============================================================================
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+async def download_invoice_pdf(
+    invoice_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("billing.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    locale: str = Query(default="es", pattern="^(es|en)$"),
+) -> Response:
+    """Download invoice as PDF."""
+    invoice = await InvoiceService.get_invoice(
+        db, ctx.clinic_id, invoice_id, include_items=True, include_payments=False
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Get clinic for branding
+    from app.core.auth.models import Clinic
+
+    clinic = await db.get(Clinic, ctx.clinic_id)
+
+    from .pdf import InvoicePDFService
+
+    pdf_bytes = InvoicePDFService.generate_pdf(
+        invoice,
+        clinic,
+        is_preview=False,
+        locale=locale,
+    )
+
+    # Generate filename
+    if invoice.invoice_number:
+        filename = f"factura_{invoice.invoice_number}.pdf"
+    else:
+        filename = f"factura_borrador_{str(invoice.id)[:8]}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/invoices/{invoice_id}/pdf/preview")
+async def preview_invoice_pdf(
+    invoice_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("billing.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    locale: str = Query(default="es", pattern="^(es|en)$"),
+) -> Response:
+    """Preview invoice PDF (with watermark for drafts)."""
+    invoice = await InvoiceService.get_invoice(
+        db, ctx.clinic_id, invoice_id, include_items=True, include_payments=False
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Get clinic for branding
+    from app.core.auth.models import Clinic
+
+    clinic = await db.get(Clinic, ctx.clinic_id)
+
+    from .pdf import InvoicePDFService
+
+    pdf_bytes = InvoicePDFService.generate_pdf(
+        invoice,
+        clinic,
+        is_preview=True,
+        locale=locale,
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline"},
+    )
 
 
 # ============================================================================

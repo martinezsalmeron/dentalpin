@@ -32,7 +32,21 @@ function isActive(to: string): boolean {
   if (to === '/') {
     return route.path === '/'
   }
-  return route.path.startsWith(to)
+  // Exact match
+  if (route.path === to) {
+    return true
+  }
+  // Check if route starts with this path (potential child route)
+  if (route.path.startsWith(to + '/')) {
+    // But not if there's a more specific nav item that matches
+    const moreSpecificNavItem = navigationItems.value.find(item =>
+      item.to !== to
+      && item.to.length > to.length
+      && route.path.startsWith(item.to)
+    )
+    return !moreSpecificNavItem
+  }
+  return false
 }
 </script>
 

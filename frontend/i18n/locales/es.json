@@ -396,7 +396,8 @@
     "email": "Email",
     "password": "Contraseña",
     "passwordPlaceholder": "Mínimo 8 caracteres",
-    "role": "Rol"
+    "role": "Rol",
+    "readOnly": "Solo lectura"
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -710,6 +711,7 @@
     "emptyAction": "Crear primera factura",
     "searchPlaceholder": "Buscar por número o paciente...",
     "notFound": "Factura no encontrada",
+    "draftNoNumber": "Borrador",
     "details": "Detalles",
     "invoiceNumber": "Número",
     "patient": "Paciente",
@@ -870,12 +872,15 @@
       "recordPayment": "Error al registrar pago",
       "voidPayment": "Error al anular pago",
       "createCreditNote": "Error al crear rectificativa",
+      "creditNoteReasonRequired": "El motivo de la rectificativa es obligatorio",
       "notFound": "Factura no encontrada",
       "canOnlyDeleteDraft": "Solo se pueden eliminar facturas en borrador",
       "patientRequired": "Debe seleccionar un paciente",
       "itemsRequired": "Debe añadir al menos una línea",
-      "itemRequired": "Descripción y precio son obligatorios"
+      "itemRequired": "Descripción y precio son obligatorios",
+      "cannotEdit": "Solo se pueden editar facturas en borrador"
     },
+    "newItemsPending": "Nuevas líneas pendientes de guardar",
     "filters": {
       "allStatuses": "Todos los estados",
       "overdueOnly": "Solo vencidas",
@@ -924,7 +929,7 @@
       "totalCollected": "Total cobrado",
       "totalPaid": "Total cobrado",
       "totalPending": "Total pendiente",
-      "pending": "Pendiente",
+      "pending": "Pendiente de cobro",
       "invoices": "facturas",
       "paid": "pagadas",
       "payments": "pagos",

@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ============================================================================
 # Invoice Status and Payment Types
@@ -263,6 +263,16 @@ class PaymentCreate(BaseModel):
     reference: str | None = Field(default=None, max_length=100)
     notes: str | None = None
 
+    @field_validator("reference", "notes", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, v: str | None) -> str | None:
+        """Convert empty or whitespace-only strings to None for optional fields."""
+        if isinstance(v, str):
+            v = v.strip()
+            if v == "":
+                return None
+        return v
+
 
 class PaymentVoidRequest(BaseModel):
     """Schema for voiding a payment."""
@@ -408,10 +418,10 @@ class InvoiceResponse(BaseModel):
     clinic_id: UUID
     patient_id: UUID
 
-    # Identification
-    invoice_number: str
-    sequential_number: int
-    series_id: UUID
+    # Identification (null for drafts, assigned when issued)
+    invoice_number: str | None
+    sequential_number: int | None
+    series_id: UUID | None
 
     # Links
     budget_id: UUID | None
@@ -482,7 +492,7 @@ class InvoiceListResponse(BaseModel):
     """Schema for invoice list item (lighter than full response)."""
 
     id: UUID
-    invoice_number: str
+    invoice_number: str | None  # Null for drafts (assigned when issued)
     status: str
     issue_date: date | None
     due_date: date | None

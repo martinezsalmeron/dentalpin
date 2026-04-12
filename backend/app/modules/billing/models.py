@@ -84,10 +84,16 @@ class Invoice(Base, TimestampMixin):
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
     patient_id: Mapped[UUID] = mapped_column(ForeignKey("patients.id"), index=True)
 
-    # Identification
-    invoice_number: Mapped[str] = mapped_column(String(50))  # "FAC-2024-0001"
-    series_id: Mapped[UUID] = mapped_column(ForeignKey("invoice_series.id"), index=True)
-    sequential_number: Mapped[int] = mapped_column(Integer)  # For gap control
+    # Identification (assigned on issue, not on creation)
+    invoice_number: Mapped[str | None] = mapped_column(
+        String(50), default=None
+    )  # "FAC-2024-0001" - assigned when issued
+    series_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("invoice_series.id"), index=True, default=None
+    )
+    sequential_number: Mapped[int | None] = mapped_column(
+        Integer, default=None
+    )  # For gap control - assigned when issued
 
     # Links
     budget_id: Mapped[UUID | None] = mapped_column(
@@ -145,7 +151,7 @@ class Invoice(Base, TimestampMixin):
     # Relationships
     clinic: Mapped["Clinic"] = relationship(foreign_keys=[clinic_id])
     patient: Mapped["Patient"] = relationship()
-    series: Mapped["InvoiceSeries"] = relationship(back_populates="invoices")
+    series: Mapped["InvoiceSeries | None"] = relationship(back_populates="invoices")
     budget: Mapped["Budget | None"] = relationship()
     credit_note_for: Mapped["Invoice | None"] = relationship(
         remote_side="Invoice.id", foreign_keys=[credit_note_for_id]
@@ -169,7 +175,8 @@ class Invoice(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("clinic_id", "invoice_number", name="uq_invoice_clinic_number"),
+        # Note: uq_invoice_clinic_number replaced with partial unique index in migration
+        # ix_invoices_clinic_number_unique (WHERE invoice_number IS NOT NULL)
         Index("idx_invoices_clinic", "clinic_id"),
         Index("idx_invoices_clinic_patient", "clinic_id", "patient_id"),
         Index("idx_invoices_clinic_status", "clinic_id", "status"),

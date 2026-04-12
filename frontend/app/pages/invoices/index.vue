@@ -225,7 +225,7 @@ function getStatusBadgeColor(status: InvoiceStatus): string {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-3">
               <span class="font-medium text-gray-900 dark:text-white">
-                {{ invoice.invoice_number }}
+                {{ invoice.invoice_number || t('invoice.draftNoNumber') }}
               </span>
               <UBadge
                 :color="getStatusBadgeColor(invoice.status)"

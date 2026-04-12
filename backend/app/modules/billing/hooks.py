@@ -115,20 +115,60 @@ class BillingComplianceHook(ABC):
     async def on_credit_note_issued(
         self, credit_note: "Invoice", original_invoice: "Invoice", db: AsyncSession
     ) -> dict[str, Any]:
-        """Hook called after credit note is issued.
+        """Hook called after a credit note (rectificativa) is issued.
 
-        Similar to on_invoice_issued but receives the original invoice
-        for reference (some countries require linking rectificativas).
+        This hook is called AFTER the credit note transitions to "issued" status.
+        Use it for country-specific compliance requirements.
+
+        DEFAULT BEHAVIOR (no hook override):
+            - Original invoice: Status UNCHANGED (remains valid)
+            - Credit note: Status "issued" with negative balance
+            - Both documents coexist as valid fiscal documents
+            - Patient balance = sum of all invoice balances
+
+        COUNTRY-SPECIFIC OVERRIDES:
+            Some countries require different behavior. Override this hook to:
+
+            1. Cancel the original invoice (Mexico/SAT, Argentina/AFIP):
+               ```python
+               original_invoice.status = "cancelled"
+               ```
+
+            2. Submit to tax authority (TicketBAI, Verifactu, SAT):
+               ```python
+               return {"tax_id": "...", "qr_code": "..."}
+               ```
+
+            3. Link documents in external system:
+               ```python
+               return {"linked_to": original_invoice.invoice_number}
+               ```
 
         Args:
-            credit_note: The new credit note
-            original_invoice: The invoice being rectified
-            db: Database session
+            credit_note: The newly issued credit note (negative amounts)
+            original_invoice: The invoice being rectified (can be modified if needed)
+            db: Database session (for any additional queries/updates)
 
         Returns:
-            Dict of compliance data for the credit note
+            Dict of compliance data to store in credit_note.compliance_data
+
+        Example (Mexico SAT):
+            ```python
+            async def on_credit_note_issued(self, credit_note, original_invoice, db):
+                # Mexico requires cancelling the original CFDI
+                original_invoice.status = "cancelled"
+
+                # Submit to SAT and get response
+                sat_response = await self.sat_client.emit_egreso(
+                    credit_note, original_invoice
+                )
+                return {
+                    "cfdi_uuid": sat_response.uuid,
+                    "related_cfdi": original_invoice.compliance_data.get("cfdi_uuid"),
+                }
+            ```
         """
-        return {}  # Default: no compliance data
+        return {}  # Default: no compliance data, no status changes
 
     async def on_payment_recorded(
         self, invoice: "Invoice", payment_amount: float, db: AsyncSession

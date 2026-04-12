@@ -1204,10 +1204,10 @@ export interface Invoice {
   id: string
   clinic_id: string
   patient_id: string
-  // Identification
-  invoice_number: string
-  sequential_number: number
-  series_id: string
+  // Identification (null for drafts, assigned when issued)
+  invoice_number: string | null
+  sequential_number: number | null
+  series_id: string | null
   // Links
   budget_id?: string
   credit_note_for_id?: string
@@ -1258,7 +1258,7 @@ export interface InvoiceDetail extends Invoice {
 
 export interface InvoiceListItem {
   id: string
-  invoice_number: string
+  invoice_number: string | null // Null for drafts (assigned when issued)
   status: InvoiceStatus
   issue_date?: string
   due_date?: string

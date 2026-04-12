@@ -14,6 +14,8 @@ const {
   voidInvoice,
   recordPayment,
   voidPayment,
+  createCreditNote,
+  downloadPDF,
   canEdit,
   canIssue,
   canRecordPayment,
@@ -29,6 +31,7 @@ const invoiceId = computed(() => route.params.id as string)
 const showPaymentModal = ref(false)
 const showCreditNoteModal = ref(false)
 const isProcessing = ref(false)
+const isDownloadingPdf = ref(false)
 
 // Payment form
 const paymentForm = ref({
@@ -168,7 +171,7 @@ async function handleRecordPayment() {
   } catch {
     toast.add({
       title: t('common.error'),
-      description: t('invoice.errors.payment'),
+      description: t('invoice.errors.recordPayment'),
       color: 'error'
     })
   } finally {
@@ -221,7 +224,6 @@ async function handleCreateCreditNote() {
 
   isProcessing.value = true
   try {
-    const { createCreditNote } = useInvoices()
     const creditNote = await createCreditNote(invoiceId.value, {
       reason: creditNoteForm.value.reason,
       items: creditNoteForm.value.items.length > 0 ? creditNoteForm.value.items : undefined
@@ -237,11 +239,28 @@ async function handleCreateCreditNote() {
   } catch {
     toast.add({
       title: t('common.error'),
-      description: t('invoice.errors.creditNote'),
+      description: t('invoice.errors.createCreditNote'),
       color: 'error'
     })
   } finally {
     isProcessing.value = false
+  }
+}
+
+async function handleDownloadPDF() {
+  if (!currentInvoice.value) return
+
+  isDownloadingPdf.value = true
+  try {
+    await downloadPDF(invoiceId.value, locale.value)
+  } catch {
+    toast.add({
+      title: t('common.error'),
+      description: t('invoice.pdf.downloadError'),
+      color: 'error'
+    })
+  } finally {
+    isDownloadingPdf.value = false
   }
 }
 
@@ -307,7 +326,7 @@ function goToCreditNoteFor() {
           />
           <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              {{ currentInvoice.invoice_number }}
+              {{ currentInvoice.invoice_number || t('invoice.draftNoNumber') }}
               <UBadge
                 :color="getStatusBadgeColor(currentInvoice.status)"
                 variant="subtle"
@@ -322,8 +341,16 @@ function goToCreditNoteFor() {
                 {{ t('invoice.overdue') }}
               </UBadge>
             </h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {{ currentInvoice.patient?.first_name }} {{ currentInvoice.patient?.last_name }}
+            <p
+              v-if="currentInvoice.patient"
+              class="text-sm text-gray-500 dark:text-gray-400 mt-1"
+            >
+              <NuxtLink
+                :to="`/patients/${currentInvoice.patient.id}`"
+                class="hover:text-primary-600 dark:hover:text-primary-400 hover:underline"
+              >
+                {{ currentInvoice.patient.first_name }} {{ currentInvoice.patient.last_name }}
+              </NuxtLink>
             </p>
           </div>
         </div>
@@ -337,6 +364,15 @@ function goToCreditNoteFor() {
             @click="goToEdit"
           >
             {{ t('common.edit') }}
+          </UButton>
+          <UButton
+            v-if="currentInvoice.status !== 'draft' && can('billing.read')"
+            variant="outline"
+            icon="i-lucide-download"
+            :loading="isDownloadingPdf"
+            @click="handleDownloadPDF"
+          >
+            {{ t('invoice.actions.downloadPdf') }}
           </UButton>
           <UButton
             v-if="canIssue(currentInvoice) && can('billing.write')"
@@ -451,7 +487,7 @@ function goToCreditNoteFor() {
                     class="p-0"
                     @click="goToCreditNoteFor"
                   >
-                    {{ currentInvoice.credit_note_for.invoice_number }}
+                    {{ currentInvoice.credit_note_for.invoice_number || t('invoice.draftNoNumber') }}
                   </UButton>
                 </dd>
               </div>

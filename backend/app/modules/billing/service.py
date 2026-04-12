@@ -556,19 +556,12 @@ class InvoiceService:
         due_date: date | None = None,
         notes: dict | None = None,
     ) -> Invoice:
-        """Create a new invoice."""
-        # Get series (default if not specified)
-        if not series_id:
-            series = await InvoiceSeriesService.get_default_series(db, clinic_id, "invoice")
-            if not series:
-                raise ValueError("No default invoice series configured")
-            series_id = series.id
+        """Create a new invoice as a draft.
 
-        # Generate invoice number
-        invoice_number, sequential_number = await InvoiceNumberService.generate_number(
-            db, clinic_id, series_id
-        )
-
+        Invoice number is NOT assigned here - it will be assigned when the
+        invoice is issued via InvoiceWorkflowService.issue_invoice().
+        This prevents gaps in numbering when drafts are cancelled.
+        """
         # Get patient info for default billing data
         from app.modules.clinical.models import Patient
 
@@ -590,9 +583,9 @@ class InvoiceService:
         invoice = Invoice(
             clinic_id=clinic_id,
             patient_id=patient_id,
-            invoice_number=invoice_number,
-            series_id=series_id,
-            sequential_number=sequential_number,
+            invoice_number=None,  # Assigned when issued
+            series_id=series_id,  # Can be pre-selected, but number generated on issue
+            sequential_number=None,  # Assigned when issued
             status="draft",
             payment_term_days=payment_term_days,
             due_date=due_date,
@@ -614,7 +607,7 @@ class InvoiceService:
             invoice_id=invoice.id,
             action="created",
             changed_by=created_by,
-            new_state={"invoice_number": invoice_number},
+            new_state={"status": "draft"},
         )
 
         return invoice
@@ -935,12 +928,12 @@ class BillingReportService:
         """Get billing summary for a period.
 
         Returns:
-            - total_invoiced: Total amount invoiced (issued invoices)
-            - total_paid: Total amount paid
-            - total_pending: Total balance due
-            - invoice_count: Number of invoices issued
-            - paid_count: Number of fully paid invoices
-            - overdue_count: Number of overdue invoices
+            - total_invoiced: Total amount invoiced (issued invoices in period)
+            - total_paid: Total payments received in period
+            - total_pending: Total balance due (all outstanding invoices)
+            - invoice_count: Number of invoices issued in period
+            - paid_count: Number of fully paid invoices in period
+            - overdue_count: Number of overdue invoices (all time)
             - vat_breakdown: VAT breakdown by rate
         """
         # Get totals for issued invoices in the period
@@ -948,7 +941,6 @@ class BillingReportService:
             select(
                 func.count(Invoice.id).label("invoice_count"),
                 func.coalesce(func.sum(Invoice.total), 0).label("total_invoiced"),
-                func.coalesce(func.sum(Invoice.total_paid), 0).label("total_paid"),
                 func.coalesce(func.sum(Invoice.balance_due), 0).label("total_pending"),
             ).where(
                 Invoice.clinic_id == clinic_id,
@@ -959,6 +951,19 @@ class BillingReportService:
             )
         )
         totals = result.one()
+
+        # Get total payments received in the period (by payment_date)
+        result = await db.execute(
+            select(
+                func.coalesce(func.sum(Payment.amount), 0).label("total_paid"),
+            ).where(
+                Payment.clinic_id == clinic_id,
+                Payment.payment_date >= date_from,
+                Payment.payment_date <= date_to,
+                Payment.is_voided.is_(False),
+            )
+        )
+        payments_totals = result.one()
 
         # Count paid invoices
         result = await db.execute(
@@ -1034,7 +1039,7 @@ class BillingReportService:
             "period_start": date_from,
             "period_end": date_to,
             "total_invoiced": totals.total_invoiced,
-            "total_paid": totals.total_paid,
+            "total_paid": payments_totals.total_paid,
             "total_pending": totals.total_pending,
             "invoice_count": totals.invoice_count,
             "paid_count": paid_count,
@@ -1232,6 +1237,7 @@ class BillingReportService:
 
         for series in series_list:
             # Get all sequential numbers for this series, grouped by year
+            # Only include issued invoices (those with sequential_number assigned)
             result = await db.execute(
                 select(
                     func.extract("year", Invoice.created_at).label("year"),
@@ -1240,6 +1246,7 @@ class BillingReportService:
                 .where(
                     Invoice.clinic_id == clinic_id,
                     Invoice.series_id == series.id,
+                    Invoice.sequential_number.isnot(None),  # Only issued invoices
                     Invoice.deleted_at.is_(None),
                 )
                 .order_by("year", Invoice.sequential_number)
