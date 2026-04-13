@@ -273,6 +273,13 @@
       "title": "Change History",
       "noChanges": "No changes recorded",
       "treatmentAdded": "Treatment"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "viewingDate": "Viewing: {date}",
+      "viewingHistory": "You are viewing the historical state of the dental chart",
+      "returnToNow": "Return to current state",
+      "noHistory": "No prior history"
     }
   },
   "appointments": {
@@ -460,7 +467,9 @@
       "thursday": "Thursday",
       "friday": "Friday",
       "saturday": "Saturday"
-    }
+    },
+    "now": "Now",
+    "change": "change | changes"
   },
   "validation": {
     "required": "This field is required",

@@ -298,6 +298,7 @@ export interface ToothRecord {
 export interface OdontogramData {
   patient_id: string
   teeth: ToothRecord[]
+  treatments?: Treatment[]
   condition_colors: Record<ToothCondition, string>
   available_conditions: ToothCondition[]
   surfaces: Surface[]

@@ -1,9 +1,9 @@
 """Business logic service for odontogram module."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -365,6 +365,181 @@ class OdontogramService:
             )
         )
         return result.scalar_one_or_none()
+
+    # ========================================================================
+    # Timeline Methods
+    # ========================================================================
+
+    @staticmethod
+    async def get_timeline_dates(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+    ) -> list[dict]:
+        """Get distinct dates when odontogram was modified.
+
+        Returns dates from both OdontogramHistory (tooth changes) and
+        ToothTreatment (treatments added/recorded).
+        """
+        # Get dates from OdontogramHistory
+        history_dates = await db.execute(
+            select(
+                func.date(OdontogramHistory.changed_at).label("change_date"),
+                func.count().label("count"),
+            )
+            .where(
+                OdontogramHistory.clinic_id == clinic_id,
+                OdontogramHistory.patient_id == patient_id,
+            )
+            .group_by(func.date(OdontogramHistory.changed_at))
+        )
+        history_results = {row.change_date: row.count for row in history_dates.all()}
+
+        # Get dates from ToothTreatment (recorded_at)
+        treatment_dates = await db.execute(
+            select(
+                func.date(ToothTreatment.recorded_at).label("recorded_date"),
+                func.count().label("count"),
+            )
+            .where(
+                ToothTreatment.clinic_id == clinic_id,
+                ToothTreatment.patient_id == patient_id,
+            )
+            .group_by(func.date(ToothTreatment.recorded_at))
+        )
+        treatment_results = {row.recorded_date: row.count for row in treatment_dates.all()}
+
+        # Combine dates and counts
+        all_dates: dict[date, int] = {}
+        for d, count in history_results.items():
+            all_dates[d] = all_dates.get(d, 0) + count
+        for d, count in treatment_results.items():
+            all_dates[d] = all_dates.get(d, 0) + count
+
+        # Sort by date and format
+        sorted_dates = sorted(all_dates.items(), key=lambda x: x[0])
+        return [
+            {"date": d.isoformat(), "change_count": count}
+            for d, count in sorted_dates
+        ]
+
+    @staticmethod
+    async def get_odontogram_at_date(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+        target_date: date,
+    ) -> dict:
+        """Reconstruct odontogram state at a specific date.
+
+        Algorithm:
+        1. Get all OdontogramHistory entries with changed_at <= target_date
+        2. Get all ToothTreatment with recorded_at <= target_date AND
+           (deleted_at IS NULL OR deleted_at > target_date)
+        3. Build tooth states by replaying history chronologically
+        4. Return reconstructed teeth and treatments
+        """
+        # Convert date to datetime at end of day for inclusive comparison
+        target_datetime = datetime.combine(target_date, datetime.max.time())
+        target_datetime = target_datetime.replace(tzinfo=UTC)
+
+        # Get history up to target date, ordered chronologically
+        history_result = await db.execute(
+            select(OdontogramHistory)
+            .where(
+                OdontogramHistory.clinic_id == clinic_id,
+                OdontogramHistory.patient_id == patient_id,
+                OdontogramHistory.changed_at <= target_datetime,
+            )
+            .order_by(OdontogramHistory.changed_at.asc())
+        )
+        history_entries = list(history_result.scalars().all())
+
+        # Get treatments that existed at target date
+        # Include: recorded_at <= target AND (deleted_at is NULL OR deleted_at > target)
+        treatment_result = await db.execute(
+            select(ToothTreatment)
+            .options(selectinload(ToothTreatment.performer))
+            .where(
+                ToothTreatment.clinic_id == clinic_id,
+                ToothTreatment.patient_id == patient_id,
+                ToothTreatment.recorded_at <= target_datetime,
+                or_(
+                    ToothTreatment.deleted_at.is_(None),
+                    ToothTreatment.deleted_at > target_datetime,
+                ),
+            )
+        )
+        treatments = list(treatment_result.scalars().all())
+
+        # Reconstruct tooth states by replaying history
+        teeth_state: dict[int, dict] = {}
+
+        for entry in history_entries:
+            tooth_num = entry.tooth_number
+
+            if tooth_num not in teeth_state:
+                # Initialize tooth with default state
+                teeth_state[tooth_num] = {
+                    "tooth_number": tooth_num,
+                    "tooth_type": "permanent" if tooth_num < 50 else "deciduous",
+                    "general_condition": ToothCondition.HEALTHY.value,
+                    "surfaces": {
+                        "M": ToothCondition.HEALTHY.value,
+                        "D": ToothCondition.HEALTHY.value,
+                        "O": ToothCondition.HEALTHY.value,
+                        "V": ToothCondition.HEALTHY.value,
+                        "L": ToothCondition.HEALTHY.value,
+                    },
+                    "notes": None,
+                    "is_displaced": False,
+                    "is_rotated": False,
+                }
+
+            tooth = teeth_state[tooth_num]
+
+            # Apply change based on type
+            if entry.change_type == "created" and entry.new_condition:
+                tooth["general_condition"] = entry.new_condition
+            elif entry.change_type == "general_condition" and entry.new_condition:
+                tooth["general_condition"] = entry.new_condition
+            elif entry.change_type == "surface_update" and entry.surface and entry.new_condition:
+                tooth["surfaces"][entry.surface] = entry.new_condition
+            elif entry.change_type == "note" and entry.notes:
+                tooth["notes"] = entry.notes
+
+        # Convert to list of tooth records
+        reconstructed_teeth = list(teeth_state.values())
+
+        # Format treatments for response
+        formatted_treatments = []
+        for t in treatments:
+            formatted_treatments.append({
+                "id": t.id,
+                "tooth_record_id": t.tooth_record_id,
+                "tooth_number": t.tooth_number,
+                "treatment_type": t.treatment_type,
+                "treatment_category": t.treatment_category,
+                "surfaces": t.surfaces,
+                "status": t.status,
+                "recorded_at": t.recorded_at,
+                "performed_at": t.performed_at,
+                "performed_by": t.performed_by,
+                "performed_by_name": (
+                    f"{t.performer.first_name} {t.performer.last_name}"
+                    if t.performer else None
+                ),
+                "budget_item_id": t.budget_item_id,
+                "source_module": t.source_module,
+                "notes": t.notes,
+                "created_at": t.created_at,
+                "updated_at": t.updated_at,
+            })
+
+        return {
+            "teeth": reconstructed_teeth,
+            "treatments": formatted_treatments,
+        }
 
 
 class TreatmentService:

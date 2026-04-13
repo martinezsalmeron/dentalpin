@@ -1,5 +1,6 @@
 """FastAPI router for odontogram module."""
 
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -14,8 +15,13 @@ from app.modules.clinical.models import Patient
 from .constants import CONDITION_COLORS, SURFACES, ToothCondition, is_valid_tooth_number
 from .schemas import (
     BulkUpdateRequest,
+    HistoricalOdontogramResponse,
+    HistoricalToothRecordResponse,
+    HistoricalTreatmentResponse,
     HistoryEntryWithUser,
     OdontogramResponse,
+    TimelineDateEntry,
+    TimelineResponse,
     ToothRecordResponse,
     ToothRecordUpdate,
     ToothRecordWithTreatmentsResponse,
@@ -282,6 +288,72 @@ async def get_patient_odontogram_history(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+# ============================================================================
+# Timeline Endpoints
+# ============================================================================
+
+
+@router.get(
+    "/patients/{patient_id}/odontogram/timeline",
+    response_model=ApiResponse[TimelineResponse],
+)
+async def get_odontogram_timeline(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("odontogram.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TimelineResponse]:
+    """Get distinct dates when odontogram was modified.
+
+    Returns a list of dates with change counts, useful for building
+    a timeline slider to view historical states.
+    """
+    await validate_patient_access(db, ctx.clinic_id, patient_id)
+
+    dates = await OdontogramService.get_timeline_dates(db, ctx.clinic_id, patient_id)
+
+    return ApiResponse(
+        data=TimelineResponse(
+            dates=[TimelineDateEntry(**d) for d in dates],
+            total=len(dates),
+        )
+    )
+
+
+@router.get(
+    "/patients/{patient_id}/odontogram/at",
+    response_model=ApiResponse[HistoricalOdontogramResponse],
+)
+async def get_odontogram_at_date(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("odontogram.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    target_date: date = Query(..., alias="date", description="Date to view (YYYY-MM-DD)"),
+) -> ApiResponse[HistoricalOdontogramResponse]:
+    """Get reconstructed odontogram state at a specific date.
+
+    Reconstructs the odontogram state by replaying history up to
+    the target date. Useful for viewing patient's dental history evolution.
+    """
+    await validate_patient_access(db, ctx.clinic_id, patient_id)
+
+    historical_data = await OdontogramService.get_odontogram_at_date(
+        db, ctx.clinic_id, patient_id, target_date
+    )
+
+    return ApiResponse(
+        data=HistoricalOdontogramResponse(
+            patient_id=str(patient_id),
+            teeth=[HistoricalToothRecordResponse.model_validate(t) for t in historical_data["teeth"]],
+            treatments=[HistoricalTreatmentResponse.model_validate(t) for t in historical_data["treatments"]],
+            condition_colors=CONDITION_COLORS,
+            available_conditions=[c.value for c in ToothCondition],
+            surfaces=SURFACES,
+        )
     )
 
 

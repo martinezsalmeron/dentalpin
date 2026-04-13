@@ -146,11 +146,66 @@ class ToothRecordResponse(BaseModel):
     updated_at: datetime
 
 
+class HistoricalToothRecordResponse(BaseModel):
+    """Response schema for a historical/reconstructed tooth record.
+
+    Used when viewing odontogram at a past date. Does not include IDs
+    and timestamps since those are from reconstruction, not database.
+    """
+
+    tooth_number: int
+    tooth_type: str
+    general_condition: str
+    surfaces: dict[str, str]
+    notes: str | None = None
+    is_displaced: bool = False
+    is_rotated: bool = False
+
+
+class HistoricalTreatmentResponse(BaseModel):
+    """Response schema for a historical treatment.
+
+    Used when viewing odontogram at a past date.
+    """
+
+    id: UUID
+    tooth_record_id: UUID
+    tooth_number: int
+    treatment_type: str
+    treatment_category: str
+    surfaces: list[str] | None
+    status: str
+    recorded_at: datetime
+    performed_at: datetime | None
+    performed_by: UUID | None
+    performed_by_name: str | None = None
+    budget_item_id: UUID | None
+    source_module: str
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class OdontogramResponse(BaseModel):
     """Full odontogram response with all teeth."""
 
-    patient_id: UUID
+    patient_id: UUID | str
     teeth: list[ToothRecordResponse]
+    treatments: list["TreatmentResponse"] = Field(default_factory=list)
+    # Metadata for frontend
+    condition_colors: dict[str, str] = Field(default_factory=lambda: CONDITION_COLORS)
+    available_conditions: list[str] = Field(
+        default_factory=lambda: [c.value for c in ToothCondition]
+    )
+    surfaces: list[str] = Field(default_factory=lambda: SURFACES)
+
+
+class HistoricalOdontogramResponse(BaseModel):
+    """Response for historical odontogram state at a specific date."""
+
+    patient_id: str
+    teeth: list[HistoricalToothRecordResponse]
+    treatments: list[HistoricalTreatmentResponse] = Field(default_factory=list)
     # Metadata for frontend
     condition_colors: dict[str, str] = Field(default_factory=lambda: CONDITION_COLORS)
     available_conditions: list[str] = Field(
@@ -310,3 +365,26 @@ class TreatmentListFilter(BaseModel):
         if v not in valid_statuses:
             raise ValueError(f"Invalid status: {v}. Must be one of {valid_statuses}")
         return v
+
+
+# ============================================================================
+# Timeline Schemas
+# ============================================================================
+
+
+class TimelineDateEntry(BaseModel):
+    """Entry in timeline with date and change count."""
+
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    change_count: int = Field(..., description="Number of changes on this date")
+
+
+class TimelineResponse(BaseModel):
+    """Response schema for odontogram timeline."""
+
+    dates: list[TimelineDateEntry] = Field(default_factory=list)
+    total: int = Field(default=0, description="Total number of distinct dates")
+
+
+# Rebuild models to resolve forward references
+OdontogramResponse.model_rebuild()

@@ -266,6 +266,13 @@
       "title": "Historial de Cambios",
       "noChanges": "No hay cambios registrados",
       "treatmentAdded": "Tratamiento"
+    },
+    "timeline": {
+      "title": "Historial temporal",
+      "viewingDate": "Viendo: {date}",
+      "viewingHistory": "Estás viendo el estado histórico del odontograma",
+      "returnToNow": "Volver al estado actual",
+      "noHistory": "Sin historial previo"
     }
   },
   "appointments": {
@@ -453,7 +460,9 @@
       "thursday": "Jueves",
       "friday": "Viernes",
       "saturday": "Sábado"
-    }
+    },
+    "now": "Ahora",
+    "change": "cambio | cambios"
   },
   "validation": {
     "required": "Este campo es requerido",
