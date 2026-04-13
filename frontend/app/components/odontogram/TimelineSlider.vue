@@ -242,7 +242,10 @@ onUnmounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between h-8">
       <span class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-        <UIcon name="i-lucide-history" class="w-4 h-4 mr-1" />
+        <UIcon
+          name="i-lucide-history"
+          class="w-4 h-4 mr-1"
+        />
         {{ t('odontogram.timeline.title') }}
       </span>
 

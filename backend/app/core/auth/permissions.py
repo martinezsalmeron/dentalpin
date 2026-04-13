@@ -21,6 +21,9 @@ CORE_PERMISSIONS: Final[list[str]] = [
     "admin.users.write",
     "admin.clinic.read",
     "admin.clinic.write",
+    # Medical history permissions (part of clinical.patients.* scope)
+    "clinical.patients.medical.read",
+    "clinical.patients.medical.write",
 ]
 
 # Role -> permissions mapping
@@ -42,6 +45,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     ],
     "hygienist": [
         "clinical.patients.read",
+        "clinical.patients.medical.read",  # Can view medical history
         "clinical.appointments.*",
         "odontogram.read",
         "odontogram.write",
@@ -64,7 +68,10 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "reports.scheduling.read",  # Can view scheduling reports
     ],
     "receptionist": [
-        "clinical.patients.*",
+        "clinical.patients.read",
+        "clinical.patients.write",
+        "clinical.patients.medical.read",  # Can view medical history (for emergencies)
+        # No clinical.patients.medical.write - receptionist cannot edit medical history
         "clinical.appointments.*",
         "catalog.read",  # Can view catalog for budgeting
         "budget.read",  # Can view budgets

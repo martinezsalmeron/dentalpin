@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Patient, PatientUpdate, Appointment, BudgetListItem, PaginatedResponse, ApiResponse } from '~/types'
+import type { PatientExtended, Appointment, BudgetListItem, PaginatedResponse, ApiResponse } from '~/types'
 import { PERMISSIONS } from '~/config/permissions'
 
 const { t } = useI18n()
@@ -10,18 +10,19 @@ const toast = useToast()
 const { can } = usePermissions()
 
 const patientId = route.params.id as string
+const patientIdRef = computed(() => patientId)
 
 // Handle returnTo query param (from invoice edit page)
 const returnTo = computed(() => route.query.returnTo as string | undefined)
 const openBillingEdit = computed(() => route.query.tab === 'billing')
 
-// Fetch patient
+// Fetch patient (extended version with alerts)
 const { data: patient, status, refresh } = await useAsyncData(
   `patient:${patientId}`,
   async () => {
     try {
-      const response = await api.get<ApiResponse<Patient>>(
-        `/api/v1/clinical/patients/${patientId}`
+      const response = await api.get<ApiResponse<PatientExtended>>(
+        `/api/v1/clinical/patients/${patientId}/extended`
       )
       return response.data
     } catch (error: unknown) {
@@ -69,6 +70,9 @@ const { data: budgetsData, status: budgetsStatus } = await useAsyncData(
 
 const budgets = computed(() => budgetsData.value?.data || [])
 
+// Medical history composable
+const { medicalHistory, isSaving: isSavingMedical, saveMedicalHistory } = useMedicalHistory(patientIdRef)
+
 // Tabs - computed to filter by permissions
 const activeTab = ref('info')
 
@@ -86,6 +90,14 @@ const tabs = computed(() => {
       slot: 'odontogram'
     })
   }
+
+  // Add timeline tab
+  baseTabs.push({
+    value: 'timeline',
+    label: t('patientDetail.tabs.timeline'),
+    icon: 'i-lucide-history',
+    slot: 'timeline'
+  })
 
   // Add budgets tab if user has permission
   if (can(PERMISSIONS.budget.read)) {
@@ -107,121 +119,52 @@ const tabs = computed(() => {
     })
   }
 
-  baseTabs.push(
-    { value: 'history', label: t('patientDetail.tabs.history'), icon: 'i-lucide-history', slot: 'history' },
-    { value: 'appointments', label: t('patientDetail.tabs.appointments'), icon: 'i-lucide-calendar', slot: 'appointments' }
-  )
+  baseTabs.push({
+    value: 'appointments',
+    label: t('patientDetail.tabs.appointments'),
+    icon: 'i-lucide-calendar',
+    slot: 'appointments'
+  })
 
   return baseTabs
 })
 
-// Check if user can edit odontogram
+// Check permissions
 const canEditOdontogram = computed(() => can(PERMISSIONS.odontogram.write))
+const canEditMedicalHistory = computed(() => can(PERMISSIONS.medicalHistory.write))
+const canEditPatient = computed(() => can(PERMISSIONS.patients.write))
 
-// Edit mode
-const isEditing = ref(false)
+// Section edit modals state
+type SectionType = 'demographics' | 'emergency' | 'billing' | 'medical'
+const editModalOpen = ref(false)
+const editModalSection = ref<SectionType>('demographics')
 const isSubmitting = ref(false)
-const editForm = reactive<PatientUpdate>({
-  first_name: '',
-  last_name: '',
-  phone: '',
-  email: '',
-  date_of_birth: '',
-  notes: '',
-  // Billing fields
-  billing_name: '',
-  billing_tax_id: '',
-  billing_email: '',
-  billing_address: {
-    street: '',
-    city: '',
-    postal_code: '',
-    province: '',
-    country: 'ES'
-  }
-})
 
-function startEditing() {
-  if (patient.value) {
-    editForm.first_name = patient.value.first_name
-    editForm.last_name = patient.value.last_name
-    editForm.phone = patient.value.phone || ''
-    editForm.email = patient.value.email || ''
-    editForm.date_of_birth = patient.value.date_of_birth || ''
-    editForm.notes = patient.value.notes || ''
-    // Billing fields
-    editForm.billing_name = patient.value.billing_name || ''
-    editForm.billing_tax_id = patient.value.billing_tax_id || ''
-    editForm.billing_email = patient.value.billing_email || ''
-    editForm.billing_address = patient.value.billing_address || {
-      street: '',
-      city: '',
-      postal_code: '',
-      province: '',
-      country: 'ES'
-    }
-  }
-  isEditing.value = true
+function openSectionModal(section: SectionType) {
+  editModalSection.value = section
+  editModalOpen.value = true
 }
 
-function cancelEditing() {
-  isEditing.value = false
-}
-
-// Auto-start editing billing if coming from invoice edit
+// Auto-open billing modal if coming from invoice edit
 watch(
   () => patient.value,
   (newPatient) => {
-    if (openBillingEdit.value && newPatient && !isEditing.value) {
-      startEditing()
+    if (openBillingEdit.value && newPatient && !editModalOpen.value) {
+      openSectionModal('billing')
     }
   },
   { immediate: true }
 )
 
-async function savePatient() {
-  isSubmitting.value = true
+async function handleSectionSave(_section: SectionType, _data: Record<string, unknown>) {
+  // Refresh patient data after save
+  await refresh()
+}
 
-  // Prepare billing address (only send if has content)
-  const billingAddress = editForm.billing_address?.street
-    ? editForm.billing_address
-    : null
-
-  try {
-    await api.put(
-      `/api/v1/clinical/patients/${patientId}`,
-      {
-        first_name: editForm.first_name,
-        last_name: editForm.last_name,
-        phone: editForm.phone || null,
-        email: editForm.email || null,
-        date_of_birth: editForm.date_of_birth || null,
-        notes: editForm.notes || null,
-        billing_name: editForm.billing_name || null,
-        billing_tax_id: editForm.billing_tax_id || null,
-        billing_email: editForm.billing_email || null,
-        billing_address: billingAddress
-      }
-    )
-
-    toast.add({
-      title: t('common.success'),
-      description: t('patients.updated'),
-      color: 'success'
-    })
-
-    isEditing.value = false
-    await refresh()
-  } catch (error: unknown) {
-    const fetchError = error as { statusCode?: number, data?: { message?: string } }
-
-    toast.add({
-      title: t('common.error'),
-      description: fetchError.data?.message || t('common.serverError'),
-      color: 'error'
-    })
-  } finally {
-    isSubmitting.value = false
+async function handleMedicalSave() {
+  const success = await saveMedicalHistory()
+  if (success) {
+    editModalOpen.value = false
   }
 }
 
@@ -305,6 +248,14 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
     currency
   }).format(amount)
 }
+
+// Info tab accordion items - with edit buttons in headers
+const infoAccordionItems = computed(() => [
+  { label: t('patients.demographics'), icon: 'i-lucide-user', slot: 'demographics', defaultOpen: true },
+  { label: t('patients.emergencyContact.title'), icon: 'i-lucide-phone-call', slot: 'emergency' },
+  { label: t('patients.medicalHistory.title'), icon: 'i-lucide-heart-pulse', slot: 'medical' },
+  { label: t('patients.billingSection'), icon: 'i-lucide-receipt', slot: 'billing' }
+])
 </script>
 
 <template>
@@ -315,7 +266,10 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
       class="space-y-4"
     >
       <USkeleton class="h-8 w-48" />
-      <USkeleton class="h-64 w-full" />
+      <div class="flex gap-6">
+        <USkeleton class="h-96 w-64" />
+        <USkeleton class="h-96 flex-1" />
+      </div>
     </div>
 
     <!-- Patient content -->
@@ -353,7 +307,6 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
           </h1>
         </div>
         <UButton
-          v-if="!isEditing"
           variant="outline"
           color="neutral"
           icon="i-lucide-archive"
@@ -363,506 +316,420 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
         </UButton>
       </div>
 
-      <!-- Tabs with content -->
-      <UTabs
-        v-model="activeTab"
-        :items="tabs"
-        default-value="info"
-        class="w-full"
-      >
-        <!-- Info tab content -->
-        <template #info>
-          <UCard class="mt-4">
-            <!-- View mode -->
-            <div
-              v-if="!isEditing"
-              class="space-y-6"
-            >
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {{ t('patients.firstName') }}
-                  </label>
-                  <p class="text-gray-900 dark:text-white">
-                    {{ patient.first_name }}
-                  </p>
-                </div>
+      <!-- Main layout: Sidebar + Content -->
+      <div class="flex flex-col lg:flex-row gap-6">
+        <!-- Sticky Sidebar -->
+        <aside class="lg:w-72 lg:shrink-0">
+          <div class="lg:sticky lg:top-4">
+            <UCard>
+              <PatientQuickInfo :patient="patient" />
+            </UCard>
+          </div>
+        </aside>
 
-                <div>
-                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {{ t('patients.lastName') }}
-                  </label>
-                  <p class="text-gray-900 dark:text-white">
-                    {{ patient.last_name }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {{ t('patients.phone') }}
-                  </label>
-                  <p class="text-gray-900 dark:text-white">
-                    {{ patient.phone || '-' }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {{ t('patients.email') }}
-                  </label>
-                  <p class="text-gray-900 dark:text-white">
-                    {{ patient.email || '-' }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {{ t('patients.dateOfBirth') }}
-                  </label>
-                  <p class="text-gray-900 dark:text-white">
-                    {{ patient.date_of_birth ? formatDate(patient.date_of_birth) : '-' }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {{ t('patients.status') }}
-                  </label>
-                  <p class="text-gray-900 dark:text-white">
-                    {{ t(`patients.status${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}`) }}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('patients.notes') }}
-                </label>
-                <p class="text-gray-900 dark:text-white whitespace-pre-wrap">
-                  {{ patient.notes || '-' }}
-                </p>
-              </div>
-
-              <!-- Billing Section -->
-              <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-3 mb-4">
-                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    {{ t('patients.billingSection') }}
-                  </h3>
-                  <UBadge
-                    v-if="patient.has_complete_billing_info"
-                    color="success"
-                    variant="subtle"
+        <!-- Main Content with Tabs -->
+        <main class="flex-1 min-w-0">
+          <!-- Tabs -->
+          <UTabs
+            v-model="activeTab"
+            :items="tabs"
+            default-value="info"
+            class="w-full"
+            :ui="{ content: 'overflow-visible' }"
+          >
+            <!-- Info tab content -->
+            <template #info>
+              <div class="mt-4 space-y-4 overflow-visible">
+                <UCard>
+                  <UAccordion
+                    :items="infoAccordionItems"
+                    :ui="{ item: { base: 'border rounded-lg' } }"
+                    multiple
                   >
-                    <UIcon
-                      name="i-lucide-check"
-                      class="w-3 h-3 mr-1"
-                    />
-                    {{ t('patients.billingComplete') }}
-                  </UBadge>
-                  <UBadge
-                    v-else
-                    color="warning"
-                    variant="subtle"
-                  >
-                    <UIcon
-                      name="i-lucide-alert-triangle"
-                      class="w-3 h-3 mr-1"
-                    />
-                    {{ t('patients.billingIncomplete') }}
-                  </UBadge>
-                </div>
+                    <!-- Demographics Section -->
+                    <template #demographics>
+                      <div class="p-4">
+                        <div class="flex justify-end mb-3">
+                          <UButton
+                            v-if="canEditPatient"
+                            variant="soft"
+                            color="neutral"
+                            icon="i-lucide-pencil"
+                            size="xs"
+                            @click="openSectionModal('demographics')"
+                          >
+                            {{ t('common.edit') }}
+                          </UButton>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.firstName') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.first_name }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.lastName') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.last_name }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.phone') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.phone || '-' }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.email') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.email || '-' }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.dateOfBirth') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.date_of_birth ? formatDate(patient.date_of_birth) : '-' }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.gender.label') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.gender ? t(`patients.gender.${patient.gender}`) : '-' }}
+                            </p>
+                          </div>
+                          <div v-if="patient.national_id">
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.nationalId') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.national_id_type?.toUpperCase() }}: {{ patient.national_id }}
+                            </p>
+                          </div>
+                          <div v-if="patient.profession">
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.profession') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.profession }}
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          v-if="patient.notes"
+                          class="mt-4"
+                        >
+                          <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.notes') }}</label>
+                          <p class="text-gray-900 dark:text-white whitespace-pre-wrap">
+                            {{ patient.notes }}
+                          </p>
+                        </div>
+                      </div>
+                    </template>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {{ t('patients.billingName') }}
-                    </label>
-                    <p class="text-gray-900 dark:text-white">
-                      {{ patient.billing_name || '-' }}
-                    </p>
-                  </div>
+                    <!-- Emergency Contact Section -->
+                    <template #emergency>
+                      <div class="p-4">
+                        <div class="flex justify-end mb-3">
+                          <UButton
+                            v-if="canEditPatient"
+                            variant="soft"
+                            color="neutral"
+                            icon="i-lucide-pencil"
+                            size="xs"
+                            @click="openSectionModal('emergency')"
+                          >
+                            {{ t('common.edit') }}
+                          </UButton>
+                        </div>
+                        <EmergencyContactForm
+                          :model-value="patient.emergency_contact"
+                          readonly
+                        />
+                      </div>
+                    </template>
 
-                  <div>
-                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {{ t('patients.billingTaxId') }}
-                    </label>
-                    <p class="text-gray-900 dark:text-white">
-                      {{ patient.billing_tax_id || '-' }}
-                    </p>
-                  </div>
+                    <!-- Medical History Section -->
+                    <template #medical>
+                      <div class="p-4">
+                        <div class="flex justify-end mb-3">
+                          <UButton
+                            v-if="canEditMedicalHistory"
+                            variant="soft"
+                            color="neutral"
+                            icon="i-lucide-pencil"
+                            size="xs"
+                            @click="openSectionModal('medical')"
+                          >
+                            {{ t('common.edit') }}
+                          </UButton>
+                        </div>
+                        <MedicalHistoryForm
+                          :model-value="medicalHistory"
+                          readonly
+                        />
+                      </div>
+                    </template>
 
-                  <div>
-                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {{ t('patients.billingEmail') }}
-                    </label>
-                    <p class="text-gray-900 dark:text-white">
-                      {{ patient.billing_email || '-' }}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {{ t('patients.billingAddress') }}
-                    </label>
-                    <p
-                      v-if="patient.billing_address"
-                      class="text-gray-900 dark:text-white"
-                    >
-                      {{ patient.billing_address.street || '' }}
-                      <br v-if="patient.billing_address.city || patient.billing_address.postal_code">
-                      {{ patient.billing_address.postal_code }} {{ patient.billing_address.city }}
-                      <br v-if="patient.billing_address.province">
-                      {{ patient.billing_address.province }}
-                    </p>
-                    <p
-                      v-else
-                      class="text-gray-900 dark:text-white"
-                    >
-                      -
-                    </p>
-                  </div>
-                </div>
+                    <!-- Billing Section -->
+                    <template #billing>
+                      <div class="p-4">
+                        <div class="flex justify-between items-center mb-4">
+                          <div class="flex items-center gap-3">
+                            <UBadge
+                              v-if="patient.has_complete_billing_info"
+                              color="success"
+                              variant="subtle"
+                            >
+                              <UIcon
+                                name="i-lucide-check"
+                                class="w-3 h-3 mr-1"
+                              />
+                              {{ t('patients.billingComplete') }}
+                            </UBadge>
+                            <UBadge
+                              v-else
+                              color="warning"
+                              variant="subtle"
+                            >
+                              <UIcon
+                                name="i-lucide-alert-triangle"
+                                class="w-3 h-3 mr-1"
+                              />
+                              {{ t('patients.billingIncomplete') }}
+                            </UBadge>
+                          </div>
+                          <UButton
+                            v-if="canEditPatient"
+                            variant="soft"
+                            color="neutral"
+                            icon="i-lucide-pencil"
+                            size="xs"
+                            @click="openSectionModal('billing')"
+                          >
+                            {{ t('common.edit') }}
+                          </UButton>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingName') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.billing_name || '-' }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingTaxId') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.billing_tax_id || '-' }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingEmail') }}</label>
+                            <p class="text-gray-900 dark:text-white">
+                              {{ patient.billing_email || '-' }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingAddress') }}</label>
+                            <p
+                              v-if="patient.billing_address"
+                              class="text-gray-900 dark:text-white"
+                            >
+                              {{ patient.billing_address.street || '' }}
+                              <template v-if="patient.billing_address.city || patient.billing_address.postal_code">
+                                <br>{{ patient.billing_address.postal_code }} {{ patient.billing_address.city }}
+                              </template>
+                              <template v-if="patient.billing_address.province">
+                                <br>{{ patient.billing_address.province }}
+                              </template>
+                            </p>
+                            <p
+                              v-else
+                              class="text-gray-900 dark:text-white"
+                            >
+                              -
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </UAccordion>
+                </UCard>
               </div>
+            </template>
 
-              <div class="flex justify-end">
-                <UButton
-                  icon="i-lucide-pencil"
-                  @click="startEditing"
-                >
-                  {{ t('common.edit') }}
-                </UButton>
-              </div>
-            </div>
-
-            <!-- Edit mode -->
-            <form
-              v-else
-              class="space-y-4"
-              @submit.prevent="savePatient"
-            >
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <UFormField
-                  :label="t('patients.firstName')"
-                  required
-                >
-                  <UInput
-                    v-model="editForm.first_name"
-                    required
-                  />
-                </UFormField>
-
-                <UFormField
-                  :label="t('patients.lastName')"
-                  required
-                >
-                  <UInput
-                    v-model="editForm.last_name"
-                    required
-                  />
-                </UFormField>
-
-                <UFormField :label="t('patients.phone')">
-                  <UInput
-                    v-model="editForm.phone"
-                    type="tel"
-                  />
-                </UFormField>
-
-                <UFormField :label="t('patients.email')">
-                  <UInput
-                    v-model="editForm.email"
-                    type="email"
-                  />
-                </UFormField>
-
-                <UFormField :label="t('patients.dateOfBirth')">
-                  <UInput
-                    v-model="editForm.date_of_birth"
-                    type="date"
-                  />
-                </UFormField>
-              </div>
-
-              <UFormField :label="t('patients.notes')">
-                <UTextarea
-                  v-model="editForm.notes"
-                  :rows="4"
+            <!-- Odontogram tab content -->
+            <template #odontogram>
+              <UCard class="mt-4">
+                <OdontogramChart
+                  :patient-id="patientId"
+                  :readonly="!canEditOdontogram"
                 />
-              </UFormField>
+              </UCard>
+            </template>
 
-              <!-- Billing Section in Edit Mode -->
-              <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  {{ t('patients.billingSection') }}
-                </h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  {{ t('patients.billingSectionHint') }}
-                </p>
+            <!-- Timeline tab content -->
+            <template #timeline>
+              <UCard class="mt-4">
+                <PatientTimeline :patient-id="patientId" />
+              </UCard>
+            </template>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <UFormField :label="t('patients.billingName')">
-                    <UInput
-                      v-model="editForm.billing_name"
-                      :placeholder="t('patients.billingNamePlaceholder')"
-                    />
-                  </UFormField>
-
-                  <UFormField :label="t('patients.billingTaxId')">
-                    <UInput
-                      v-model="editForm.billing_tax_id"
-                      placeholder="NIF/CIF"
-                    />
-                  </UFormField>
-
-                  <UFormField :label="t('patients.billingEmail')">
-                    <UInput
-                      v-model="editForm.billing_email"
-                      type="email"
-                    />
-                  </UFormField>
+            <!-- Budgets tab content -->
+            <template #budgets>
+              <UCard class="mt-4">
+                <div
+                  v-if="budgetsStatus === 'pending'"
+                  class="space-y-3"
+                >
+                  <USkeleton
+                    v-for="i in 3"
+                    :key="i"
+                    class="h-12 w-full"
+                  />
                 </div>
-
-                <div class="mt-4">
-                  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    {{ t('patients.billingAddress') }}
-                  </h4>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="md:col-span-2">
-                      <UFormField :label="t('invoice.street')">
-                        <UInput v-model="editForm.billing_address!.street" />
-                      </UFormField>
-                    </div>
-
-                    <UFormField :label="t('invoice.city')">
-                      <UInput v-model="editForm.billing_address!.city" />
-                    </UFormField>
-
-                    <UFormField :label="t('invoice.postalCode')">
-                      <UInput v-model="editForm.billing_address!.postal_code" />
-                    </UFormField>
-
-                    <UFormField :label="t('invoice.province')">
-                      <UInput v-model="editForm.billing_address!.province" />
-                    </UFormField>
-
-                    <UFormField :label="t('invoice.country')">
-                      <UInput v-model="editForm.billing_address!.country" />
-                    </UFormField>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex justify-end gap-3">
-                <UButton
-                  variant="outline"
-                  color="neutral"
-                  @click="cancelEditing"
+                <div
+                  v-else-if="budgets.length === 0"
+                  class="text-center py-12"
                 >
-                  {{ t('common.cancel') }}
-                </UButton>
-                <UButton
-                  type="submit"
-                  :loading="isSubmitting"
-                  :disabled="!editForm.first_name || !editForm.last_name"
-                >
-                  {{ t('common.save') }}
-                </UButton>
-              </div>
-            </form>
-          </UCard>
-        </template>
-
-        <!-- Odontogram tab content -->
-        <template #odontogram>
-          <UCard class="mt-4">
-            <OdontogramChart
-              :patient-id="patientId"
-              :readonly="!canEditOdontogram"
-            />
-          </UCard>
-        </template>
-
-        <!-- Budgets tab content -->
-        <template #budgets>
-          <UCard class="mt-4">
-            <!-- Loading -->
-            <div
-              v-if="budgetsStatus === 'pending'"
-              class="space-y-3"
-            >
-              <USkeleton
-                v-for="i in 3"
-                :key="i"
-                class="h-12 w-full"
-              />
-            </div>
-
-            <!-- Empty state -->
-            <div
-              v-else-if="budgets.length === 0"
-              class="text-center py-12"
-            >
-              <UIcon
-                name="i-lucide-file-text"
-                class="w-12 h-12 text-gray-400 mx-auto mb-4"
-              />
-              <p class="text-gray-500 dark:text-gray-400 mb-4">
-                {{ t('patientDetail.noBudgets') }}
-              </p>
-              <UButton
-                v-if="can(PERMISSIONS.budget.write)"
-                :to="`/budgets/new?patient_id=${patientId}`"
-                icon="i-lucide-plus"
-              >
-                {{ t('patientDetail.createBudget') }}
-              </UButton>
-            </div>
-
-            <!-- Budgets list -->
-            <ul
-              v-else
-              class="divide-y divide-gray-200 dark:divide-gray-800"
-            >
-              <li
-                v-for="budget in budgets"
-                :key="budget.id"
-                class="py-4"
-              >
-                <NuxtLink
-                  :to="`/budgets/${budget.id}`"
-                  class="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 px-4 py-2 rounded-lg transition-colors"
-                >
-                  <div>
-                    <div class="flex items-center gap-3">
-                      <span class="font-medium text-gray-900 dark:text-white">
-                        {{ budget.budget_number }}
-                      </span>
-                      <span class="text-sm text-gray-500">
-                        v{{ budget.version }}
-                      </span>
-                      <BudgetStatusBadge :status="budget.status" />
-                    </div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {{ formatDate(budget.created_at) }}
-                    </p>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <span class="font-semibold text-gray-900 dark:text-white">
-                      {{ formatCurrency(budget.total, budget.currency) }}
-                    </span>
-                    <UIcon
-                      name="i-lucide-chevron-right"
-                      class="w-5 h-5 text-gray-400"
-                    />
-                  </div>
-                </NuxtLink>
-              </li>
-            </ul>
-
-            <!-- Create new budget button at bottom if there are budgets -->
-            <div
-              v-if="budgets.length > 0 && can(PERMISSIONS.budget.write)"
-              class="pt-4 border-t border-gray-200 dark:border-gray-800 mt-4"
-            >
-              <UButton
-                :to="`/budgets/new?patient_id=${patientId}`"
-                icon="i-lucide-plus"
-                variant="outline"
-              >
-                {{ t('patientDetail.createBudget') }}
-              </UButton>
-            </div>
-          </UCard>
-        </template>
-
-        <!-- Billing tab content -->
-        <template #billing>
-          <UCard class="mt-4">
-            <PatientBillingSummary :patient-id="patientId" />
-          </UCard>
-        </template>
-
-        <!-- History tab content -->
-        <template #history>
-          <UCard class="mt-4">
-            <div class="text-center py-12">
-              <UIcon
-                name="i-lucide-file-text"
-                class="w-12 h-12 text-gray-400 mx-auto mb-4"
-              />
-              <p class="text-gray-500 dark:text-gray-400">
-                {{ t('patientDetail.historyPlaceholder') }}
-              </p>
-            </div>
-          </UCard>
-        </template>
-
-        <!-- Appointments tab content -->
-        <template #appointments>
-          <UCard class="mt-4">
-            <!-- Loading -->
-            <div
-              v-if="appointmentsStatus === 'pending'"
-              class="space-y-3"
-            >
-              <USkeleton
-                v-for="i in 3"
-                :key="i"
-                class="h-12 w-full"
-              />
-            </div>
-
-            <!-- Empty state -->
-            <div
-              v-else-if="appointments.length === 0"
-              class="text-center py-12"
-            >
-              <UIcon
-                name="i-lucide-calendar"
-                class="w-12 h-12 text-gray-400 mx-auto mb-4"
-              />
-              <p class="text-gray-500 dark:text-gray-400 mb-4">
-                {{ t('patientDetail.noAppointments') }}
-              </p>
-              <UButton
-                to="/appointments"
-                icon="i-lucide-plus"
-              >
-                {{ t('patientDetail.scheduleAppointment') }}
-              </UButton>
-            </div>
-
-            <!-- Appointments list -->
-            <ul
-              v-else
-              class="divide-y divide-gray-200 dark:divide-gray-800"
-            >
-              <li
-                v-for="appointment in appointments"
-                :key="appointment.id"
-                class="py-4 flex items-center justify-between"
-              >
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-white">
-                    {{ formatDateTime(appointment.start_time) }}
+                  <UIcon
+                    name="i-lucide-file-text"
+                    class="w-12 h-12 text-gray-400 mx-auto mb-4"
+                  />
+                  <p class="text-gray-500 dark:text-gray-400 mb-4">
+                    {{ t('patientDetail.noBudgets') }}
                   </p>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ appointment.treatment_type || '-' }}
-                  </p>
+                  <UButton
+                    v-if="can(PERMISSIONS.budget.write)"
+                    :to="`/budgets/new?patient_id=${patientId}`"
+                    icon="i-lucide-plus"
+                  >
+                    {{ t('patientDetail.createBudget') }}
+                  </UButton>
                 </div>
-                <UBadge
-                  :color="getStatusColor(appointment.status)"
-                  variant="subtle"
+                <ul
+                  v-else
+                  class="divide-y divide-gray-200 dark:divide-gray-800"
                 >
-                  {{ t(`appointments.${appointment.status}`) }}
-                </UBadge>
-              </li>
-            </ul>
-          </UCard>
-        </template>
-      </UTabs>
+                  <li
+                    v-for="budget in budgets"
+                    :key="budget.id"
+                    class="py-4"
+                  >
+                    <NuxtLink
+                      :to="`/budgets/${budget.id}`"
+                      class="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 px-4 py-2 rounded-lg transition-colors"
+                    >
+                      <div>
+                        <div class="flex items-center gap-3">
+                          <span class="font-medium text-gray-900 dark:text-white">{{ budget.budget_number }}</span>
+                          <span class="text-sm text-gray-500">v{{ budget.version }}</span>
+                          <BudgetStatusBadge :status="budget.status" />
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(budget.created_at) }}</p>
+                      </div>
+                      <div class="flex items-center gap-4">
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ formatCurrency(budget.total, budget.currency) }}</span>
+                        <UIcon
+                          name="i-lucide-chevron-right"
+                          class="w-5 h-5 text-gray-400"
+                        />
+                      </div>
+                    </NuxtLink>
+                  </li>
+                </ul>
+                <div
+                  v-if="budgets.length > 0 && can(PERMISSIONS.budget.write)"
+                  class="pt-4 border-t border-gray-200 dark:border-gray-800 mt-4"
+                >
+                  <UButton
+                    :to="`/budgets/new?patient_id=${patientId}`"
+                    icon="i-lucide-plus"
+                    variant="outline"
+                  >
+                    {{ t('patientDetail.createBudget') }}
+                  </UButton>
+                </div>
+              </UCard>
+            </template>
+
+            <!-- Billing tab content -->
+            <template #billing>
+              <UCard class="mt-4">
+                <PatientBillingSummary :patient-id="patientId" />
+              </UCard>
+            </template>
+
+            <!-- Appointments tab content -->
+            <template #appointments>
+              <UCard class="mt-4">
+                <div
+                  v-if="appointmentsStatus === 'pending'"
+                  class="space-y-3"
+                >
+                  <USkeleton
+                    v-for="i in 3"
+                    :key="i"
+                    class="h-12 w-full"
+                  />
+                </div>
+                <div
+                  v-else-if="appointments.length === 0"
+                  class="text-center py-12"
+                >
+                  <UIcon
+                    name="i-lucide-calendar"
+                    class="w-12 h-12 text-gray-400 mx-auto mb-4"
+                  />
+                  <p class="text-gray-500 dark:text-gray-400 mb-4">
+                    {{ t('patientDetail.noAppointments') }}
+                  </p>
+                  <UButton
+                    to="/appointments"
+                    icon="i-lucide-plus"
+                  >
+                    {{ t('patientDetail.scheduleAppointment') }}
+                  </UButton>
+                </div>
+                <ul
+                  v-else
+                  class="divide-y divide-gray-200 dark:divide-gray-800"
+                >
+                  <li
+                    v-for="appointment in appointments"
+                    :key="appointment.id"
+                    class="py-4 flex items-center justify-between"
+                  >
+                    <div>
+                      <p class="font-medium text-gray-900 dark:text-white">
+                        {{ formatDateTime(appointment.start_time) }}
+                      </p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ appointment.treatment_type || '-' }}
+                      </p>
+                    </div>
+                    <UBadge
+                      :color="getStatusColor(appointment.status)"
+                      variant="subtle"
+                    >
+                      {{ t(`appointments.${appointment.status}`) }}
+                    </UBadge>
+                  </li>
+                </ul>
+              </UCard>
+            </template>
+          </UTabs>
+        </main>
+      </div>
     </template>
+
+    <!-- Section Edit Modal -->
+    <PatientSectionEditModal
+      v-if="patient"
+      v-model:open="editModalOpen"
+      :section="editModalSection"
+      :patient="patient"
+      :medical-history="medicalHistory"
+      :is-saving-medical="isSavingMedical"
+      @save="handleSectionSave"
+      @save-medical="handleMedicalSave"
+    />
 
     <!-- Archive confirmation modal -->
     <UModal v-model:open="isArchiveModalOpen">
@@ -873,11 +740,9 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
               {{ t('patients.archiveConfirm', { name: `${patient?.first_name} ${patient?.last_name}` }) }}
             </h2>
           </template>
-
           <p class="text-gray-500 dark:text-gray-400">
             {{ t('patients.archiveDescription') }}
           </p>
-
           <template #footer>
             <div class="flex justify-end gap-3">
               <UButton

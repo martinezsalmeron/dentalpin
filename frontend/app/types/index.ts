@@ -1418,3 +1418,161 @@ export interface PatientBillingSummary {
   total_paid: number
   balance_pending: number
 }
+
+// ============================================================================
+// Patient Extended Types (Medical History, Emergency Contact, Timeline)
+// ============================================================================
+
+// Patient Address
+export interface PatientAddress {
+  street?: string
+  city?: string
+  postal_code?: string
+  province?: string
+  country?: string
+}
+
+// Emergency Contact
+export interface EmergencyContact {
+  name: string
+  relationship?: string
+  phone: string
+  email?: string
+  is_legal_guardian: boolean
+}
+
+// Medical History Entry Types
+export interface AllergyEntry {
+  name: string
+  type?: string // drug, food, material, environmental
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  reaction?: string
+  notes?: string
+}
+
+export interface MedicationEntry {
+  name: string
+  dosage?: string
+  frequency?: string
+  start_date?: string
+  notes?: string
+}
+
+export interface SystemicDiseaseEntry {
+  name: string
+  type?: string // cardiovascular, respiratory, endocrine, etc.
+  diagnosis_date?: string
+  is_controlled: boolean
+  is_critical: boolean
+  medications?: string
+  notes?: string
+}
+
+export interface SurgicalHistoryEntry {
+  procedure: string
+  surgery_date?: string
+  complications?: string
+  notes?: string
+}
+
+// Full Medical History
+export interface MedicalHistory {
+  // Lists
+  allergies: AllergyEntry[]
+  medications: MedicationEntry[]
+  systemic_diseases: SystemicDiseaseEntry[]
+  surgical_history: SurgicalHistoryEntry[]
+
+  // Special conditions
+  is_pregnant: boolean
+  pregnancy_week?: number
+  is_lactating: boolean
+
+  // Anticoagulants
+  is_on_anticoagulants: boolean
+  anticoagulant_medication?: string
+  inr_value?: number
+  last_inr_date?: string
+
+  // Lifestyle
+  is_smoker: boolean
+  smoking_frequency?: string
+  alcohol_consumption?: string
+
+  // Dental specific
+  bruxism: boolean
+
+  // Anesthesia
+  adverse_reactions_to_anesthesia: boolean
+  anesthesia_reaction_details?: string
+
+  // Metadata
+  last_updated_at?: string
+  last_updated_by?: string
+}
+
+// Patient Alert
+export interface PatientAlert {
+  type: 'allergy' | 'pregnancy' | 'lactating' | 'anticoagulant' | 'anesthesia_reaction' | 'systemic_disease'
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  title: string
+  details?: string
+}
+
+// Extended Patient (with all new fields)
+export interface PatientExtended extends Patient {
+  // Extended demographics
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_say'
+  national_id?: string
+  national_id_type?: 'dni' | 'nie' | 'passport'
+  profession?: string
+  workplace?: string
+  preferred_language: string
+  address?: PatientAddress
+  photo_url?: string
+
+  // Emergency contact
+  emergency_contact?: EmergencyContact
+
+  // Computed alerts
+  active_alerts: PatientAlert[]
+}
+
+export interface PatientExtendedUpdate extends PatientUpdate {
+  // Extended demographics
+  gender?: string
+  national_id?: string
+  national_id_type?: string
+  profession?: string
+  workplace?: string
+  preferred_language?: string
+  address?: PatientAddress
+  photo_url?: string
+
+  // Emergency contact
+  emergency_contact?: EmergencyContact
+}
+
+// Timeline Types
+export type TimelineCategory = 'visit' | 'treatment' | 'financial' | 'communication' | 'medical'
+
+export interface TimelineEntry {
+  id: string
+  event_type: string
+  event_category: TimelineCategory
+  source_table: string
+  source_id: string
+  title: string
+  description?: string
+  event_data?: Record<string, unknown>
+  occurred_at: string
+  created_by?: string
+}
+
+export interface TimelineResponse {
+  entries: TimelineEntry[]
+  total: number
+  page: number
+  page_size: number
+  has_more: boolean
+}

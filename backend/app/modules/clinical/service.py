@@ -11,7 +11,8 @@ from sqlalchemy.orm import selectinload
 from app.core.auth.models import ClinicMembership
 from app.core.events import EventType, event_bus
 
-from .models import Appointment, AppointmentTreatment, Patient
+from .models import Appointment, AppointmentTreatment, Patient, PatientTimeline
+from .schemas import TimelineEntry
 
 
 class PatientService:
@@ -164,6 +165,29 @@ class PatientService:
         event_bus.publish(
             EventType.PATIENT_ARCHIVED,
             {"patient_id": str(patient.id)},
+        )
+
+        return patient
+
+    @staticmethod
+    async def update_medical_history(
+        db: AsyncSession,
+        patient: Patient,
+        medical_data: dict,
+        user_id: UUID,
+    ) -> Patient:
+        """Update patient medical history and publish event."""
+        patient.medical_history = medical_data
+        await db.flush()
+
+        # Publish event for timeline
+        event_bus.publish(
+            EventType.PATIENT_MEDICAL_UPDATED,
+            {
+                "patient_id": str(patient.id),
+                "clinic_id": str(patient.clinic_id),
+                "user_id": str(user_id),
+            },
         )
 
         return patient
@@ -412,3 +436,74 @@ class AppointmentService:
         )
 
         return appointment
+
+
+class TimelineService:
+    """Service for patient timeline operations."""
+
+    @staticmethod
+    async def get_timeline(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+        category: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[TimelineEntry], int]:
+        """Get timeline entries for a patient with optional category filter."""
+        page_size = min(max(page_size, 1), 100)
+        page = max(page, 1)
+        offset = (page - 1) * page_size
+
+        query = select(PatientTimeline).where(
+            PatientTimeline.clinic_id == clinic_id,
+            PatientTimeline.patient_id == patient_id,
+        )
+
+        if category:
+            query = query.where(PatientTimeline.event_category == category)
+
+        # Count
+        count_query = select(func.count()).select_from(query.subquery())
+        total = (await db.execute(count_query)).scalar() or 0
+
+        # Paginate (most recent first)
+        query = query.order_by(PatientTimeline.occurred_at.desc())
+        query = query.offset(offset).limit(page_size)
+        result = await db.execute(query)
+        entries = result.scalars().all()
+
+        return [TimelineEntry.model_validate(e) for e in entries], total
+
+    @staticmethod
+    async def add_entry(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+        event_type: str,
+        event_category: str,
+        source_table: str,
+        source_id: UUID,
+        title: str,
+        description: str | None = None,
+        event_data: dict | None = None,
+        occurred_at: datetime | None = None,
+        created_by: UUID | None = None,
+    ) -> PatientTimeline:
+        """Add a timeline entry."""
+        entry = PatientTimeline(
+            clinic_id=clinic_id,
+            patient_id=patient_id,
+            event_type=event_type,
+            event_category=event_category,
+            source_table=source_table,
+            source_id=source_id,
+            title=title,
+            description=description,
+            event_data=event_data,
+            occurred_at=occurred_at or datetime.utcnow(),
+            created_by=created_by,
+        )
+        db.add(entry)
+        await db.flush()
+        return entry

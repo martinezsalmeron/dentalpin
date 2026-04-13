@@ -183,6 +183,11 @@ def get_users_data() -> list[dict]:
 
 
 # Patient data by language (phone and email as dicts for lazy translation)
+# emergency_contact: {name, relationship, phone, email, is_legal_guardian}
+# medical_history: {allergies[], is_pregnant, pregnancy_week, is_lactating,
+#                   is_on_anticoagulants, anticoagulant_medication, inr_value,
+#                   adverse_reactions_to_anesthesia, anesthesia_reaction_details,
+#                   systemic_diseases[]}
 PATIENTS_I18N = [
     # Children/Teens
     {
@@ -200,6 +205,26 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 001", "en": "+1 (212) 555-0001"},
         "email": None,
         "date_of_birth": date(2016, 3, 15),
+        "emergency_contact": {
+            "es": {
+                "name": "Carlos Fernández",
+                "relationship": "Padre",
+                "phone": "+34 612 345 100",
+                "email": "carlos.fernandez@email.com",
+                "is_legal_guardian": True,
+            },
+            "en": {
+                "name": "John Miller",
+                "relationship": "Father",
+                "phone": "+1 (212) 555-0100",
+                "email": "john.miller@email.com",
+                "is_legal_guardian": True,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [],
+        },
     },
     {
         "id": PATIENT_IDS[1],
@@ -216,6 +241,26 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 002", "en": "+1 (212) 555-0002"},
         "email": {"es": "lucia.rodriguez@email.com", "en": "olivia.wilson@email.com"},
         "date_of_birth": date(2010, 7, 22),
+        "emergency_contact": {
+            "es": {
+                "name": "María Sánchez",
+                "relationship": "Madre",
+                "phone": "+34 612 345 101",
+                "email": "maria.sanchez@email.com",
+                "is_legal_guardian": True,
+            },
+            "en": {
+                "name": "Sarah Wilson",
+                "relationship": "Mother",
+                "phone": "+1 (212) 555-0101",
+                "email": "sarah.wilson@email.com",
+                "is_legal_guardian": True,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [],
+        },
     },
     # Young Adults
     {
@@ -225,6 +270,26 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 003", "en": "+1 (212) 555-0003"},
         "email": {"es": "miguel.gonzalez@email.com", "en": "james.anderson@email.com"},
         "date_of_birth": date(1998, 11, 8),
+        "emergency_contact": {
+            "es": {
+                "name": "Laura González",
+                "relationship": "Hermana",
+                "phone": "+34 612 345 102",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Laura Anderson",
+                "relationship": "Sister",
+                "phone": "+1 (212) 555-0102",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [],
+        },
     },
     {
         "id": PATIENT_IDS[3],
@@ -241,6 +306,37 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 004", "en": "+1 (212) 555-0004"},
         "email": {"es": "carmen.diaz@email.com", "en": "emma.taylor@email.com"},
         "date_of_birth": date(1995, 5, 30),
+        "emergency_contact": {
+            "es": {
+                "name": "Pedro Díaz",
+                "relationship": "Esposo",
+                "phone": "+34 612 345 103",
+                "email": "pedro.diaz@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Peter Taylor",
+                "relationship": "Husband",
+                "phone": "+1 (212) 555-0103",
+                "email": "peter.taylor@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [
+                {
+                    "name": {"es": "Látex", "en": "Latex"},
+                    "severity": "medium",
+                    "reaction": {"es": "Irritación cutánea", "en": "Skin irritation"},
+                },
+            ],
+            "adverse_reactions_to_anesthesia": True,
+            "anesthesia_reaction_details": {
+                "es": "Mareos y náuseas post-anestesia",
+                "en": "Dizziness and nausea post-anesthesia",
+            },
+            "systemic_diseases": [],
+        },
     },
     {
         "id": PATIENT_IDS[4],
@@ -249,6 +345,11 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 005", "en": "+1 (212) 555-0005"},
         "email": None,
         "date_of_birth": date(1992, 2, 14),
+        "emergency_contact": None,
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [],
+        },
     },
     # Adults
     {
@@ -266,6 +367,28 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 006", "en": "+1 (212) 555-0006"},
         "email": {"es": "elena.ruiz@email.com", "en": "sophia.martinez@email.com"},
         "date_of_birth": date(1985, 9, 3),
+        "emergency_contact": {
+            "es": {
+                "name": "Andrés Ruiz",
+                "relationship": "Esposo",
+                "phone": "+34 612 345 104",
+                "email": "andres.ruiz@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Andrew Martinez",
+                "relationship": "Husband",
+                "phone": "+1 (212) 555-0104",
+                "email": "andrew.martinez@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "is_pregnant": True,
+            "pregnancy_week": 32,
+            "systemic_diseases": [],
+        },
     },
     {
         "id": PATIENT_IDS[6],
@@ -282,6 +405,35 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 007", "en": "+1 (212) 555-0007"},
         "email": {"es": "javier.sanchez@email.com", "en": "daniel.garcia@email.com"},
         "date_of_birth": date(1980, 12, 25),
+        "emergency_contact": {
+            "es": {
+                "name": "Ana Muñoz",
+                "relationship": "Esposa",
+                "phone": "+34 612 345 105",
+                "email": "ana.munoz@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Anna Garcia",
+                "relationship": "Wife",
+                "phone": "+1 (212) 555-0105",
+                "email": "anna.garcia@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [
+                {
+                    "name": {"es": "Diabetes Mellitus Tipo 2", "en": "Type 2 Diabetes Mellitus"},
+                    "is_critical": True,
+                    "notes": {
+                        "es": "Controlada con metformina. HbA1c: 7.2%",
+                        "en": "Controlled with metformin. HbA1c: 7.2%",
+                    },
+                },
+            ],
+        },
     },
     {
         "id": PATIENT_IDS[7],
@@ -290,6 +442,27 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 008", "en": "+1 (212) 555-0008"},
         "email": None,
         "date_of_birth": date(1978, 6, 17),
+        "emergency_contact": {
+            "es": {
+                "name": "Roberto López",
+                "relationship": "Hermano",
+                "phone": "+34 612 345 106",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Robert Robinson",
+                "relationship": "Brother",
+                "phone": "+1 (212) 555-0106",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "is_lactating": True,
+            "systemic_diseases": [],
+        },
     },
     {
         "id": PATIENT_IDS[8],
@@ -306,6 +479,37 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 009", "en": "+1 (212) 555-0009"},
         "email": {"es": "francisco.garcia@email.com", "en": "alexander.clark@email.com"},
         "date_of_birth": date(1975, 4, 9),
+        "emergency_contact": {
+            "es": {
+                "name": "Marta Romero",
+                "relationship": "Esposa",
+                "phone": "+34 612 345 107",
+                "email": "marta.romero@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Martha Clark",
+                "relationship": "Wife",
+                "phone": "+1 (212) 555-0107",
+                "email": "martha.clark@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [
+                {
+                    "name": {"es": "Penicilina", "en": "Penicillin"},
+                    "severity": "critical",
+                    "reaction": {"es": "Anafilaxia", "en": "Anaphylaxis"},
+                },
+                {
+                    "name": {"es": "Amoxicilina", "en": "Amoxicillin"},
+                    "severity": "high",
+                    "reaction": {"es": "Urticaria severa", "en": "Severe urticaria"},
+                },
+            ],
+            "systemic_diseases": [],
+        },
     },
     {
         "id": PATIENT_IDS[9],
@@ -322,6 +526,35 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 010", "en": "+1 (212) 555-0010"},
         "email": {"es": "rosa.martinez@email.com", "en": "charlotte.lewis@email.com"},
         "date_of_birth": date(1970, 8, 21),
+        "emergency_contact": {
+            "es": {
+                "name": "Luis Jiménez",
+                "relationship": "Esposo",
+                "phone": "+34 612 345 108",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Louis Lewis",
+                "relationship": "Husband",
+                "phone": "+1 (212) 555-0108",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [
+                {
+                    "name": {"es": "Hipertensión Arterial", "en": "Arterial Hypertension"},
+                    "is_critical": True,
+                    "notes": {
+                        "es": "Tratamiento con enalapril 10mg/día. PA habitual: 130/85",
+                        "en": "Treatment with enalapril 10mg/day. Usual BP: 130/85",
+                    },
+                },
+            ],
+        },
     },
     # Older Adults
     {
@@ -339,6 +572,38 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 011", "en": "+1 (212) 555-0011"},
         "email": None,
         "date_of_birth": date(1960, 1, 5),
+        "emergency_contact": {
+            "es": {
+                "name": "Carmen Castro",
+                "relationship": "Hija",
+                "phone": "+34 612 345 109",
+                "email": "carmen.castro@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Carmen Walker",
+                "relationship": "Daughter",
+                "phone": "+1 (212) 555-0109",
+                "email": "carmen.walker@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [
+                {
+                    "name": {"es": "Yodo", "en": "Iodine"},
+                    "severity": "medium",
+                    "reaction": {"es": "Erupción cutánea", "en": "Skin rash"},
+                },
+            ],
+            "systemic_diseases": [
+                {
+                    "name": {"es": "Artrosis", "en": "Osteoarthritis"},
+                    "is_critical": False,
+                    "notes": {"es": "Afecta movilidad cervical", "en": "Affects cervical mobility"},
+                },
+            ],
+        },
     },
     {
         "id": PATIENT_IDS[11],
@@ -355,6 +620,35 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 012", "en": "+1 (212) 555-0012"},
         "email": None,
         "date_of_birth": date(1955, 10, 12),
+        "emergency_contact": {
+            "es": {
+                "name": "Fernando Vega",
+                "relationship": "Hijo",
+                "phone": "+34 612 345 110",
+                "email": "fernando.vega@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Fernando Hall",
+                "relationship": "Son",
+                "phone": "+1 (212) 555-0110",
+                "email": "fernando.hall@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [
+                {
+                    "name": {"es": "Osteoporosis", "en": "Osteoporosis"},
+                    "is_critical": False,
+                    "notes": {
+                        "es": "Tratamiento con bisfosfonatos. Precaución con extracciones.",
+                        "en": "Treatment with bisphosphonates. Caution with extractions.",
+                    },
+                },
+            ],
+        },
     },
     {
         "id": PATIENT_IDS[12],
@@ -371,6 +665,38 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 013", "en": "+1 (212) 555-0013"},
         "email": {"es": "joseluis.munoz@email.com", "en": "richard.allen@email.com"},
         "date_of_birth": date(1950, 3, 28),
+        "emergency_contact": {
+            "es": {
+                "name": "Pilar Blanco",
+                "relationship": "Esposa",
+                "phone": "+34 612 345 111",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Patricia Allen",
+                "relationship": "Wife",
+                "phone": "+1 (212) 555-0111",
+                "email": None,
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "is_on_anticoagulants": True,
+            "anticoagulant_medication": "Sintrom (Acenocumarol)",
+            "inr_value": 2.5,
+            "systemic_diseases": [
+                {
+                    "name": {"es": "Fibrilación Auricular", "en": "Atrial Fibrillation"},
+                    "is_critical": True,
+                    "notes": {
+                        "es": "Anticoagulado. Requiere control INR antes de procedimientos.",
+                        "en": "Anticoagulated. Requires INR control before procedures.",
+                    },
+                },
+            ],
+        },
     },
     {
         "id": PATIENT_IDS[13],
@@ -379,6 +705,26 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 014", "en": "+1 (212) 555-0014"},
         "email": None,
         "date_of_birth": date(1948, 7, 7),
+        "emergency_contact": {
+            "es": {
+                "name": "Jorge Vega",
+                "relationship": "Hijo",
+                "phone": "+34 612 345 112",
+                "email": "jorge.vega@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "George Young",
+                "relationship": "Son",
+                "phone": "+1 (212) 555-0112",
+                "email": "george.young@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [],
+            "systemic_diseases": [],
+        },
     },
     {
         "id": PATIENT_IDS[14],
@@ -395,8 +741,109 @@ PATIENTS_I18N = [
         "phone": {"es": "+34 612 345 015", "en": "+1 (212) 555-0015"},
         "email": None,
         "date_of_birth": date(1945, 11, 19),
+        "emergency_contact": {
+            "es": {
+                "name": "Teresa Delgado",
+                "relationship": "Hija",
+                "phone": "+34 612 345 113",
+                "email": "teresa.delgado@email.com",
+                "is_legal_guardian": False,
+            },
+            "en": {
+                "name": "Teresa King",
+                "relationship": "Daughter",
+                "phone": "+1 (212) 555-0113",
+                "email": "teresa.king@email.com",
+                "is_legal_guardian": False,
+            },
+        },
+        "medical_history": {
+            "allergies": [
+                {
+                    "name": {"es": "AINEs", "en": "NSAIDs"},
+                    "severity": "high",
+                    "reaction": {
+                        "es": "Problemas gástricos severos",
+                        "en": "Severe gastric problems",
+                    },
+                },
+            ],
+            "systemic_diseases": [
+                {
+                    "name": {"es": "Insuficiencia Renal Crónica", "en": "Chronic Kidney Disease"},
+                    "is_critical": True,
+                    "notes": {
+                        "es": "Estadio 3. Ajustar dosis de medicamentos.",
+                        "en": "Stage 3. Adjust medication doses.",
+                    },
+                },
+                {
+                    "name": {"es": "Diabetes Mellitus Tipo 2", "en": "Type 2 Diabetes Mellitus"},
+                    "is_critical": True,
+                    "notes": {"es": "Insulinodependiente", "en": "Insulin-dependent"},
+                },
+            ],
+        },
     },
 ]
+
+
+def _translate_medical_history(mh: dict | None) -> dict | None:
+    """Translate medical history fields that have language variants."""
+    if not mh:
+        return None
+
+    result = {}
+
+    # Copy simple fields
+    for key in [
+        "is_pregnant",
+        "pregnancy_week",
+        "is_lactating",
+        "is_on_anticoagulants",
+        "anticoagulant_medication",
+        "inr_value",
+        "adverse_reactions_to_anesthesia",
+    ]:
+        if key in mh:
+            result[key] = mh[key]
+
+    # Translate anesthesia_reaction_details
+    if "anesthesia_reaction_details" in mh:
+        details = mh["anesthesia_reaction_details"]
+        result["anesthesia_reaction_details"] = t(details) if isinstance(details, dict) else details
+
+    # Translate allergies
+    if "allergies" in mh:
+        result["allergies"] = []
+        for allergy in mh["allergies"]:
+            translated = {
+                "name": t(allergy["name"])
+                if isinstance(allergy["name"], dict)
+                else allergy["name"],
+                "severity": allergy["severity"],
+            }
+            if "reaction" in allergy:
+                reaction = allergy["reaction"]
+                translated["reaction"] = t(reaction) if isinstance(reaction, dict) else reaction
+            result["allergies"].append(translated)
+
+    # Translate systemic_diseases
+    if "systemic_diseases" in mh:
+        result["systemic_diseases"] = []
+        for disease in mh["systemic_diseases"]:
+            translated = {
+                "name": t(disease["name"])
+                if isinstance(disease["name"], dict)
+                else disease["name"],
+                "is_critical": disease.get("is_critical", False),
+            }
+            if "notes" in disease:
+                notes = disease["notes"]
+                translated["notes"] = t(notes) if isinstance(notes, dict) else notes
+            result["systemic_diseases"].append(translated)
+
+    return result
 
 
 def get_patients_data() -> list[dict]:
@@ -413,6 +860,14 @@ def get_patients_data() -> list[dict]:
         if isinstance(email, dict):
             email = t(email)
 
+        # Handle emergency_contact: dict with language keys or None
+        emergency_contact = p.get("emergency_contact")
+        if isinstance(emergency_contact, dict) and LANG in emergency_contact:
+            emergency_contact = emergency_contact[LANG]
+
+        # Handle medical_history: translate nested fields
+        medical_history = _translate_medical_history(p.get("medical_history"))
+
         patient = {
             "id": p["id"],
             "first_name": p[LANG]["first_name"],
@@ -421,6 +876,8 @@ def get_patients_data() -> list[dict]:
             "email": email,
             "date_of_birth": p["date_of_birth"],
             "notes": p[LANG]["notes"],
+            "emergency_contact": emergency_contact,
+            "medical_history": medical_history,
         }
         patients.append(patient)
     return patients
@@ -431,51 +888,61 @@ def get_patients_data() -> list[dict]:
 # =============================================================================
 
 # Treatment types with typical durations (in minutes)
+# catalog_codes: list of internal_code from treatment catalog to associate with appointment
 TREATMENT_TYPES_I18N = [
     {
         "names": {"es": "Revisión", "en": "Checkup"},
         "duration": 30,
         "color": "#3B82F6",
+        "catalog_codes": ["DX-VISIT"],
     },
     {
         "names": {"es": "Limpieza dental", "en": "Dental cleaning"},
         "duration": 45,
         "color": "#10B981",
+        "catalog_codes": ["PREV-LIMP"],
     },
     {
         "names": {"es": "Empaste", "en": "Filling"},
         "duration": 45,
         "color": "#F59E0B",
+        "catalog_codes": ["REST-COMP"],
     },
     {
         "names": {"es": "Extracción", "en": "Extraction"},
         "duration": 60,
         "color": "#EF4444",
+        "catalog_codes": ["CIR-EXT-S"],
     },
     {
         "names": {"es": "Endodoncia", "en": "Root canal"},
         "duration": 90,
         "color": "#8B5CF6",
+        "catalog_codes": ["ENDO-UNI"],
     },
     {
         "names": {"es": "Ortodoncia - Revisión", "en": "Orthodontics - Checkup"},
         "duration": 30,
         "color": "#EC4899",
+        "catalog_codes": ["DX-VISIT"],
     },
     {
         "names": {"es": "Blanqueamiento", "en": "Whitening"},
         "duration": 60,
         "color": "#06B6D4",
+        "catalog_codes": ["EST-BLANQ-C"],
     },
     {
         "names": {"es": "Implante - Consulta", "en": "Implant - Consultation"},
         "duration": 45,
         "color": "#84CC16",
+        "catalog_codes": ["DX-VISIT", "DX-RXPAN"],
     },
     {
         "names": {"es": "Urgencia", "en": "Emergency"},
         "duration": 30,
         "color": "#DC2626",
+        "catalog_codes": ["DX-VISIT"],
     },
 ]
 
@@ -483,7 +950,12 @@ TREATMENT_TYPES_I18N = [
 def get_treatment_types() -> list[dict]:
     """Get treatment types in current language."""
     return [
-        {"name": t(tt["names"]), "duration": tt["duration"], "color": tt["color"]}
+        {
+            "name": t(tt["names"]),
+            "duration": tt["duration"],
+            "color": tt["color"],
+            "catalog_codes": tt.get("catalog_codes", []),
+        }
         for tt in TREATMENT_TYPES_I18N
     ]
 
@@ -616,6 +1088,7 @@ def generate_appointments(reference_date: date | None = None) -> list[dict]:
                     "status": status,
                     "notes": None,
                     "color": treatment["color"],
+                    "catalog_codes": treatment.get("catalog_codes", []),
                 }
             )
             created += 1

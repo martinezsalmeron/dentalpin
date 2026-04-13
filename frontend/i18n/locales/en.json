@@ -39,10 +39,6 @@
     "email": "Email",
     "dateOfBirth": "Date of birth",
     "notes": "Notes",
-    "status": "Status",
-    "statusActive": "Active",
-    "statusInactive": "Inactive",
-    "statusArchived": "Archived",
     "created": "Patient created",
     "updated": "Patient updated",
     "archived": "Patient archived",
@@ -61,13 +57,130 @@
     "billingEmail": "Billing email",
     "billingAddress": "Billing address",
     "billingComplete": "Complete",
-    "billingIncomplete": "Incomplete"
+    "billingIncomplete": "Incomplete",
+    "demographics": "Demographics",
+    "nationalId": "ID document",
+    "nationalIdType": "Document type",
+    "passport": "Passport",
+    "profession": "Profession",
+    "workplace": "Workplace",
+    "years": "years",
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "gender": {
+      "label": "Gender",
+      "select": "Select gender",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "preferNotSay": "Prefer not to say"
+    },
+    "emergencyContact": {
+      "title": "Emergency contact",
+      "hasContact": "Has emergency contact",
+      "noContact": "No emergency contact registered",
+      "name": "Full name",
+      "namePlaceholder": "Contact name",
+      "relationship": "Relationship",
+      "relationshipPlaceholder": "Select relationship",
+      "phone": "Phone",
+      "phonePlaceholder": "Contact phone",
+      "email": "Email",
+      "emailPlaceholder": "Contact email",
+      "isLegalGuardian": "Is legal guardian",
+      "remove": "Remove contact",
+      "relationships": {
+        "spouse": "Spouse",
+        "parent": "Parent",
+        "child": "Child",
+        "sibling": "Sibling",
+        "friend": "Friend",
+        "other": "Other"
+      }
+    },
+    "medicalHistory": {
+      "title": "Medical history",
+      "save": "Save history",
+      "fetchError": "Error loading medical history",
+      "saveSuccess": "Medical history saved",
+      "saveError": "Error saving medical history",
+      "allergies": "Allergies",
+      "allergyName": "Allergy name",
+      "type": "Type",
+      "allergyTypes": {
+        "drug": "Drug",
+        "food": "Food",
+        "material": "Material",
+        "environmental": "Environmental"
+      },
+      "severity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "medications": "Medications",
+      "medicationName": "Medication name",
+      "dosage": "Dosage",
+      "frequency": "Frequency",
+      "systemicDiseases": "Systemic diseases",
+      "diseaseName": "Disease name",
+      "diseaseTypes": {
+        "cardiovascular": "Cardiovascular",
+        "respiratory": "Respiratory",
+        "endocrine": "Endocrine",
+        "neurological": "Neurological",
+        "autoimmune": "Autoimmune",
+        "other": "Other"
+      },
+      "critical": "Critical",
+      "controlled": "Controlled",
+      "notControlled": "Not controlled",
+      "specialConditions": "Special conditions",
+      "pregnant": "Pregnant",
+      "pregnancyWeek": "Pregnancy week",
+      "lactating": "Lactating",
+      "anticoagulants": "Anticoagulants",
+      "anticoagulantMedication": "Anticoagulant medication",
+      "inrValue": "INR value",
+      "anesthesiaReaction": "Anesthesia reaction",
+      "anesthesiaReactionDetails": "Reaction details",
+      "bruxism": "Bruxism",
+      "lifestyle": "Lifestyle",
+      "smoker": "Smoker",
+      "smokingFrequency": "Cigarettes/day",
+      "alcoholConsumption": "Alcohol consumption",
+      "alcohol": {
+        "none": "None",
+        "occasional": "Occasional",
+        "moderate": "Moderate",
+        "heavy": "Heavy"
+      },
+      "surgicalHistory": "Surgical history",
+      "procedure": "Procedure"
+    },
+    "timeline": {
+      "empty": "No activity recorded",
+      "endOfTimeline": "End of timeline",
+      "totalEntries": "{count} entry | {count} entries"
+    },
+    "alerts": {
+      "title": "{count} alert | {count} alerts",
+      "label": "Clinical alerts"
+    },
+    "editDemographics": "Edit demographics",
+    "editEmergencyContact": "Edit emergency contact",
+    "editBilling": "Edit billing information",
+    "editMedicalHistory": "Edit medical history"
   },
   "patientDetail": {
     "tabs": {
       "info": "Info",
       "odontogram": "Dental Chart",
       "history": "History",
+      "timeline": "Activity",
       "appointments": "Appointments",
       "budgets": "Budgets",
       "billing": "Billing"
@@ -416,6 +529,7 @@
   },
   "common": {
     "save": "Save",
+    "add": "Add",
     "cancel": "Cancel",
     "delete": "Delete",
     "comingSoon": "Coming soon",

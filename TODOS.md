@@ -69,8 +69,8 @@ Included by default. Functionality every clinic needs.
 | `clinical` | ⚠️ Partial | Patients, appointments (basic) |
 | `odontogram` | ✅ | Interactive FDI dental chart |
 | `catalog` | ✅ | Treatment catalog with VAT types |
-| `budgets` | 🔴 P0 | Budgets/quotes + PDF |
-| `billing` | 🔴 P0 | Invoicing |
+| `budgets` | ✅  P0 | Budgets/quotes + PDF |
+| `billing` | ✅  P0 | Invoicing |
 | `patient-record` | 🔴 P0 | Complete patient record (see detail below) |
 | `clinical-notes` | 🟠 P1 | Clinical evolution (SOAP) |
 | `imaging` | 🟠 P1 | Clinical images and X-rays |
@@ -79,54 +79,278 @@ Included by default. Functionality every clinic needs.
 
 ---
 
-#### Complete Patient Record (`patient-record`) 🔴 P0
+#### Complete Patient Record 🔴 P0
 
-The current patient record is basic. A professional patient record needs:
+The current patient record is basic. Implementation divided into 4 phases:
 
-**1. General Information**
-- [ ] Complete demographics
-- [ ] Emergency contact
-- [ ] Legal guardian (minors)
-- [ ] Patient photo
-- [ ] ID document scan
-- [ ] Profession and workplace
+---
 
-**2. Medical History / Anamnesis**
-- [ ] Allergies (medications, materials, latex)
-- [ ] Current medications
-- [ ] Systemic diseases (diabetes, hypertension, cardiac)
-- [ ] Surgical history
-- [ ] Pregnancy/lactation
-- [ ] Anticoagulants
-- [ ] Critical alerts (visible badges)
+##### Phase 1: Core Patient Data + Medical History + Alerts 🔴 P0
 
-**3. Clinical Image Gallery**
-- [ ] Intraoral photos (frontal, lateral, occlusal)
-- [ ] Extraoral photos (profile, smile)
-- [ ] Before/after by treatment
-- [ ] Organization by date and type
+**Scope:** Extend `clinical` module (not new module). Add JSONB fields to Patient model.
 
-**4. X-rays and Diagnostic Images**
-- [ ] Panoramic
-- [ ] Periapical
-- [ ] CBCT (with DICOM integration)
-- [ ] Temporal comparison
-- [ ] Image annotations
+**Architecture Decisions:**
+- UI: Sticky sidebar (photo, alerts, quick stats) + tabs layout
+- Medical history as JSONB for schema flexibility
+- Timeline as denormalized table populated via event handlers
+- Alerts computed from medical_history with `active_alerts` property
 
-**5. Patient Documents**
-- [ ] Signed consent forms
-- [ ] External reports
-- [ ] Referral letters
-- [ ] Insurance card
-- [ ] Imported history from other clinics
+**Backend Tasks:**
 
-**6. Unified Timeline**
-- [ ] All visits
-- [ ] Treatments performed
-- [ ] Budgets
-- [ ] Invoices
-- [ ] Odontogram changes
-- [ ] Communications sent
+| Task | Description |
+|------|-------------|
+| Extend Patient model | Add demographics: gender, national_id, profession, workplace, address (JSONB) |
+| Emergency contact | JSONB field: name, relationship, phone, email, is_legal_guardian |
+| Medical history JSONB | allergies[], medications[], systemic_diseases[], surgical_history[], special conditions |
+| active_alerts property | Computed from medical_history: allergies, anticoagulants, pregnancy |
+| PatientTimeline model | New table: event_type, event_category, source_table, source_id, title, occurred_at |
+| Timeline service | Write timeline entries from event handlers |
+| Event handlers | Subscribe to appointment.*, budget.*, invoice.*, odontogram.treatment.* events |
+| New endpoints | GET/PUT /patients/{id}/medical-history, GET /patients/{id}/alerts, GET /patients/{id}/timeline |
+| Permissions | clinical.patients.medical.read/write |
+| Migration | Add columns + create patient_timeline table |
+
+**Frontend Tasks:**
+
+| Task | Description |
+|------|-------------|
+| useMedicalHistory composable | fetchMedicalHistory, updateMedicalHistory, helpers |
+| usePatientAlerts composable | fetchAlerts, criticalAlerts computed |
+| usePatientTimeline composable | fetchTimeline, loadMore, category filter |
+| PatientQuickInfo component | Sticky sidebar: photo, alerts, age, stats |
+| PatientAlertsBanner component | Alert badges, expandable, icons |
+| MedicalHistoryForm component | Accordion: allergies, medications, diseases, surgical, conditions |
+| MedicalHistoryView component | Read-only display |
+| EmergencyContactForm component | Contact fields + legal guardian checkbox |
+| PatientTimeline component | Infinite scroll, category filters, entry cards |
+| Refactor patient detail page | Sidebar layout, accordion Info sections, Timeline tab |
+| Permissions config | Add medicalHistory.read/write |
+| i18n strings | Spanish translations for all new fields |
+
+**Data Model: Medical History JSONB**
+
+```
+{
+  "allergies": [
+    {name, type: medication|material|latex|anesthesia|other, severity: low|medium|high|critical, reaction, notes}
+  ],
+  "medications": [
+    {name, dosage, frequency, start_date, notes}
+  ],
+  "systemic_diseases": [
+    {name, type: diabetes|hypertension|cardiac|respiratory|renal|hepatic|neurological|autoimmune|other,
+     diagnosis_date, is_controlled, is_critical, medications[], notes}
+  ],
+  "surgical_history": [
+    {procedure, date, complications, notes}
+  ],
+  "is_pregnant": bool,
+  "pregnancy_week": int,
+  "is_lactating": bool,
+  "is_on_anticoagulants": bool,
+  "anticoagulant_medication": str,
+  "inr_value": float,
+  "last_inr_date": str,
+  "is_smoker": bool,
+  "smoking_frequency": str,
+  "alcohol_consumption": none|occasional|regular,
+  "bruxism": bool,
+  "adverse_reactions_to_anesthesia": bool,
+  "anesthesia_reaction_details": str,
+  "last_updated_at": datetime,
+  "last_updated_by": user_id
+}
+```
+
+**Alert Types:**
+
+| Alert | Trigger | Severity | Icon |
+|-------|---------|----------|------|
+| Allergy | allergies[].severity = high/critical | high/critical | alert-triangle |
+| Anticoagulant | is_on_anticoagulants = true | high | droplet |
+| Pregnancy/Lactation | is_pregnant OR is_lactating | medium | baby |
+| Critical disease | systemic_diseases[].is_critical = true | high | heart-pulse |
+
+**Critical Files:**
+
+| File | Changes |
+|------|---------|
+| `backend/app/modules/clinical/models.py` | Add Patient fields, active_alerts property |
+| `backend/app/modules/clinical/schemas.py` | MedicalHistory*, EmergencyContact*, PatientAlerts*, Timeline* schemas |
+| `backend/app/modules/clinical/router.py` | Medical-history and timeline endpoints |
+| `backend/app/modules/clinical/service.py` | Medical history and timeline service methods |
+| `backend/app/modules/clinical/__init__.py` | Event handlers for timeline population |
+| `backend/app/core/auth/permissions.py` | Add medical.read/write to roles |
+| `backend/app/core/events/types.py` | Add PATIENT_MEDICAL_UPDATED |
+| `frontend/app/pages/patients/[id].vue` | Sidebar + accordion layout refactor |
+| `frontend/app/config/permissions.ts` | Add medicalHistory permissions |
+| `frontend/app/types/index.ts` | MedicalHistory, TimelineEntry types |
+
+---
+
+##### Phase 2: Documents + File Storage 🔴 P0
+
+**Scope:** New `media` module with storage abstraction. Patient documents functionality.
+
+**Architecture Decisions:**
+- Separate `media` module (reusable for images, X-rays, attachments)
+- StorageBackend protocol: LocalStorage (MVP), S3Storage (future)
+- File metadata in DB, actual files in configured storage
+- Document types: consent, id_scan, insurance, report, referral, other
+
+**Backend Tasks:**
+
+| Task | Description |
+|------|-------------|
+| Create media module | BaseModule subclass with dependencies: ["clinical"] |
+| StorageBackend protocol | upload, download, delete, get_url methods |
+| LocalStorage implementation | Docker volume mount, path-based storage |
+| Document model | patient_id, document_type, filename, storage_path, mime_type, file_size, title, description, metadata (JSONB), uploaded_by |
+| Upload endpoint | POST /patients/{id}/documents with multipart form, validation (size, type) |
+| List/Get/Delete endpoints | Standard CRUD with permission checks |
+| Download endpoint | Streaming response with correct content-type |
+| Permissions | media.documents.read/write |
+| File validation | Max size (10MB default), allowed MIME types |
+
+**Frontend Tasks:**
+
+| Task | Description |
+|------|-------------|
+| useDocuments composable | fetchDocuments, uploadDocument, deleteDocument |
+| DocumentUpload component | Drag-drop zone, progress indicator, type selector |
+| DocumentGallery component | Grid/list view, type filter, sort by date |
+| DocumentCard component | Thumbnail (PDF icon or image preview), title, type badge, actions |
+| DocumentViewer component | PDF inline viewer, image lightbox |
+| Add Documents section to patient | Accordion in Info tab or separate Documents tab |
+
+**Document Types:**
+
+| Type | Description | Icon |
+|------|-------------|------|
+| consent | Signed consent forms | file-signature |
+| id_scan | DNI/NIE/Passport scan | id-card |
+| insurance | Insurance card | shield |
+| report | External medical reports | file-medical |
+| referral | Referral letters | mail |
+| other | Other documents | file |
+
+**Storage Configuration:**
+
+```python
+# backend/app/core/config.py
+STORAGE_BACKEND: str = "local"  # local | s3
+STORAGE_LOCAL_PATH: str = "/app/storage"
+STORAGE_MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+STORAGE_ALLOWED_TYPES: list = ["application/pdf", "image/jpeg", "image/png"]
+```
+
+---
+
+##### Phase 3: Clinical Images Gallery 🟠 P1
+
+**Scope:** Extend media module with clinical image organization and treatment linkage.
+
+**Architecture Decisions:**
+- ClinicalImage extends Document with category and treatment association
+- Thumbnail generation on upload (pillow/PIL)
+- Before/after pairing via paired_image_id
+- Categories organized by clinical use
+
+**Backend Tasks:**
+
+| Task | Description |
+|------|-------------|
+| ClinicalImage model | Extends Document: image_category, associated_treatment_id (FK ToothTreatment), is_before_image, paired_image_id, thumbnail_path |
+| Thumbnail service | Generate thumbnails on upload (300x300), store alongside original |
+| Category endpoints | GET /patients/{id}/clinical-images?category=intraoral_frontal |
+| Before/after pairing | Link images, create comparison metadata |
+| Treatment linkage | Associate images with specific tooth treatments |
+
+**Frontend Tasks:**
+
+| Task | Description |
+|------|-------------|
+| useClinicalImages composable | fetchImages, uploadImage, categorize, pair |
+| ImageGallery component | Masonry grid, category tabs, date grouping |
+| ImageViewer component | Lightbox with zoom, pan, navigation |
+| ImageCompare component | Side-by-side slider for before/after |
+| ImageUpload component | Category selector, treatment selector, before/after toggle |
+| Add Images tab to patient | New tab in patient detail |
+
+**Image Categories:**
+
+| Category | Code | Description |
+|----------|------|-------------|
+| Intraoral Frontal | intraoral_frontal | Front view of teeth closed |
+| Intraoral Left | intraoral_left | Left lateral view |
+| Intraoral Right | intraoral_right | Right lateral view |
+| Intraoral Occlusal Upper | intraoral_occlusal_upper | Mirror view upper arch |
+| Intraoral Occlusal Lower | intraoral_occlusal_lower | Mirror view lower arch |
+| Extraoral Frontal | extraoral_frontal | Face front view |
+| Extraoral Smile | extraoral_smile | Smile view |
+| Extraoral Profile Left | extraoral_profile_left | Left profile |
+| Extraoral Profile Right | extraoral_profile_right | Right profile |
+| Treatment Specific | treatment_specific | Associated with specific treatment |
+
+---
+
+##### Phase 4: X-rays and DICOM Foundation 🟡 P2
+
+**Scope:** X-ray image support with DICOM awareness (no full viewer in this phase).
+
+**Architecture Decisions:**
+- Xray model extends ClinicalImage with radiography-specific fields
+- DICOM metadata extraction (pydicom library)
+- Convert DICOM to web-viewable format (JPEG preview)
+- Store original DICOM for future viewer integration
+- Temporal comparison via date slider
+
+**Backend Tasks:**
+
+| Task | Description |
+|------|-------------|
+| Xray model | Extends ClinicalImage: xray_type, tooth_numbers[], acquisition_date, dicom_metadata (JSONB), is_dicom |
+| DICOM service | Extract metadata (study date, modality, patient info), convert to JPEG preview |
+| Temporal comparison endpoint | GET /patients/{id}/xrays/compare?tooth=11&dates=2024-01,2025-01 |
+| X-ray type classification | panoramic, periapical, bite_wing, cbct, cephalometric |
+
+**Frontend Tasks:**
+
+| Task | Description |
+|------|-------------|
+| useXrays composable | fetchXrays, uploadXray, compare |
+| XrayGallery component | Grid with type filter, tooth filter |
+| XrayViewer component | Zoom, contrast adjustment, measurement tools (basic) |
+| XrayCompare component | Temporal slider, side-by-side, overlay |
+| XrayUpload component | Type selector, tooth selector, date picker |
+| Add X-rays section to Images tab | Sub-tab or separate section |
+
+**X-ray Types:**
+
+| Type | Code | Description |
+|------|------|-------------|
+| Panoramic | panoramic | Full mouth panoramic |
+| Periapical | periapical | Single tooth detailed view |
+| Bite Wing | bite_wing | Interproximal view |
+| CBCT | cbct | 3D cone beam (metadata only, no 3D viewer) |
+| Cephalometric | cephalometric | Lateral skull view |
+
+**DICOM Metadata to Extract:**
+
+| Tag | Field | Use |
+|-----|-------|-----|
+| (0008,0020) | Study Date | acquisition_date |
+| (0008,0060) | Modality | xray_type hint |
+| (0010,0010) | Patient Name | validation |
+| (0018,0015) | Body Part | classification |
+| (0028,0010) | Rows | image dimensions |
+| (0028,0011) | Columns | image dimensions |
+
+**Future Integration Points (not in Phase 4):**
+- OHIF Viewer integration for CBCT
+- cornerstone.js for web DICOM viewing
+- AI-assisted pathology detection
+- Measurement and annotation persistence
 
 ---
 
@@ -150,33 +374,33 @@ The current patient record is basic. A professional patient record needs:
 
 ---
 
-#### Budgets (`budgets`) 🔴 P0
+#### Budgets (`budgets`) ✅ P0
 
 | Feature | Description |
 |---------|-------------|
-| Linked lines | Catalog + tooth/surface from odontogram |
-| Discounts | Per line and global |
-| Workflow | Draft → Presented → Accepted → In progress → Completed |
-| Partial acceptance | Patient accepts some lines |
-| Validity | Expiration period |
-| PDF | With clinic branding |
-| Digital signature | E-signature for acceptance |
-| Conversion | Budget → Appointments → Invoices |
+| Linked lines | ✅ Catalog + tooth/surface from odontogram |
+| Discounts |🔴 Per line and global |
+| Workflow | ✅ Draft → Presented → Accepted → In progress → Completed |
+| Partial acceptance | Patient accepts some lines | (Not for MVP, adds complexity)
+| Validity | ✅ Expiration period |
+| PDF | ✅ With clinic branding |
+| Digital signature | 🔴 E-signature for acceptance |
+| Conversion | 🔴 Budget → Appointments → Invoices |
 
 ---
 
-#### Billing (`billing`) 🔴 P0
+#### Billing (`billing`) ✅ P0
 
 | Feature | Description |
 |---------|-------------|
-| From budget | Auto-populate from accepted lines |
-| Manual | Direct creation |
-| Status | Draft → Issued → Paid → Partial → Cancelled/Credit note |
-| Multi-tax | VAT exempt (healthcare) vs taxable (cosmetic) |
-| Payments | Record payments (cash, card, transfer) |
-| Verifactu-ready | Fields prepared (hash, QR) |
-| PDF | With legal requirements |
-| Series | Configurable numbering |
+| From budget | ✅ Auto-populate from budget |
+| Manual | ✅ Direct creation |
+| Status | ✅ Draft → Issued → Paid → Partial → Cancelled/Credit note |
+| Multi-tax | ✅ VAT exempt (healthcare) vs taxable (cosmetic) |
+| Payments | ✅ Record payments (cash, card, transfer) |
+| Verifactu-ready | ✅ Fields prepared (hash, QR) |
+| PDF |✅ With legal requirements |
+| Series |🟠 Configurable numbering | (series need to be defined from the console. We need to do an UI to define series.)
 
 ---
 
@@ -317,8 +541,8 @@ DentalPin is designed so the **entire dental industry** can build modules.
 |--------|--------|------------------|
 | `patient-record` | 🔴 | Complete record: anamnesis, alerts, documents |
 | `catalog` | ✅ | Treatment catalog with VAT types, odontogram mapping |
-| `budgets` | 🔴 | Budgets with complete workflow + PDF |
-| `billing` | 🔴 | Basic invoicing + PDF |
+| `budgets` | ✅ | Budgets with complete workflow + PDF |
+| `billing` | ✅ | Basic invoicing + PDF |
 | `imaging-basic` | 🔴 | Basic clinical image gallery |
 | AI Infrastructure | 🔴 | ToolRegistry, ContextProvider |
 

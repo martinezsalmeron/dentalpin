@@ -30,6 +30,25 @@ class Patient(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="active")  # active, archived
 
+    # Extended demographics
+    gender: Mapped[str | None] = mapped_column(String(20))  # male, female, other, prefer_not_say
+    national_id: Mapped[str | None] = mapped_column(String(50))  # DNI/NIE/Passport
+    national_id_type: Mapped[str | None] = mapped_column(String(20))  # dni, nie, passport
+    profession: Mapped[str | None] = mapped_column(String(100))
+    workplace: Mapped[str | None] = mapped_column(String(200))
+    preferred_language: Mapped[str] = mapped_column(String(10), default="es")
+    address: Mapped[dict | None] = mapped_column(
+        JSONB
+    )  # street, city, postal_code, province, country
+    photo_url: Mapped[str | None] = mapped_column(String(500))
+
+    # Emergency contact (JSONB)
+    emergency_contact: Mapped[dict | None] = mapped_column(JSONB)
+    # {name, relationship, phone, email, is_legal_guardian}
+
+    # Medical history (JSONB)
+    medical_history: Mapped[dict | None] = mapped_column(JSONB, default=dict)
+
     # Billing data
     billing_name: Mapped[str | None] = mapped_column(String(200), default=None)
     billing_tax_id: Mapped[str | None] = mapped_column(String(50), default=None)
@@ -39,6 +58,7 @@ class Patient(Base, TimestampMixin):
     # Relationships
     clinic: Mapped["Clinic"] = relationship(back_populates="patients")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="patient")
+    timeline_entries: Mapped[list["PatientTimeline"]] = relationship(back_populates="patient")
 
     @property
     def full_name(self) -> str:
@@ -48,6 +68,85 @@ class Patient(Base, TimestampMixin):
     def has_complete_billing_info(self) -> bool:
         """Check if patient has minimum billing info for invoicing."""
         return bool(self.billing_name and self.billing_tax_id)
+
+    @property
+    def active_alerts(self) -> list[dict]:
+        """Compute active alerts from medical_history."""
+        alerts = []
+        mh = self.medical_history or {}
+
+        # Allergies (severity high or critical)
+        for allergy in mh.get("allergies", []):
+            if allergy.get("severity") in ("high", "critical"):
+                alerts.append(
+                    {
+                        "type": "allergy",
+                        "severity": allergy.get("severity", "high"),
+                        "title": f"Alergia: {allergy.get('name', 'Desconocida')}",
+                        "details": allergy.get("reaction"),
+                    }
+                )
+
+        # Pregnancy
+        if mh.get("is_pregnant"):
+            week = mh.get("pregnancy_week")
+            alerts.append(
+                {
+                    "type": "pregnancy",
+                    "severity": "high",
+                    "title": f"Embarazada{f' ({week} semanas)' if week else ''}",
+                    "details": None,
+                }
+            )
+
+        # Lactating
+        if mh.get("is_lactating"):
+            alerts.append(
+                {
+                    "type": "lactating",
+                    "severity": "medium",
+                    "title": "En período de lactancia",
+                    "details": None,
+                }
+            )
+
+        # Anticoagulants
+        if mh.get("is_on_anticoagulants"):
+            med = mh.get("anticoagulant_medication")
+            inr = mh.get("inr_value")
+            alerts.append(
+                {
+                    "type": "anticoagulant",
+                    "severity": "critical",
+                    "title": f"Anticoagulantes{f': {med}' if med else ''}",
+                    "details": f"INR: {inr}" if inr else None,
+                }
+            )
+
+        # Anesthesia adverse reactions
+        if mh.get("adverse_reactions_to_anesthesia"):
+            alerts.append(
+                {
+                    "type": "anesthesia_reaction",
+                    "severity": "critical",
+                    "title": "Reacción adversa a anestesia",
+                    "details": mh.get("anesthesia_reaction_details"),
+                }
+            )
+
+        # Critical systemic diseases
+        for disease in mh.get("systemic_diseases", []):
+            if disease.get("is_critical"):
+                alerts.append(
+                    {
+                        "type": "systemic_disease",
+                        "severity": "high",
+                        "title": disease.get("name", "Enfermedad sistémica"),
+                        "details": disease.get("notes"),
+                    }
+                )
+
+        return alerts
 
 
 class Appointment(Base, TimestampMixin):
@@ -112,3 +211,36 @@ class AppointmentTreatment(Base):
     # Relationships
     appointment: Mapped["Appointment"] = relationship(back_populates="treatments")
     catalog_item: Mapped["TreatmentCatalogItem"] = relationship()
+
+
+class PatientTimeline(Base):
+    """Denormalized timeline of patient events for efficient retrieval."""
+
+    __tablename__ = "patient_timeline"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
+    patient_id: Mapped[UUID] = mapped_column(ForeignKey("patients.id"), index=True)
+    event_type: Mapped[str] = mapped_column(
+        String(50)
+    )  # appointment.completed, budget.created, etc.
+    event_category: Mapped[str] = mapped_column(
+        String(30)
+    )  # visit, treatment, financial, communication, medical
+    source_table: Mapped[str] = mapped_column(String(50))
+    source_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    event_data: Mapped[dict | None] = mapped_column(JSONB)  # Additional structured data
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
+
+    # Relationships
+    clinic: Mapped["Clinic"] = relationship()
+    patient: Mapped["Patient"] = relationship(back_populates="timeline_entries")
+    created_by_user: Mapped["User | None"] = relationship()
+
+    __table_args__ = (
+        Index("idx_timeline_patient_date", "patient_id", "occurred_at"),
+        Index("idx_timeline_clinic_patient", "clinic_id", "patient_id"),
+    )

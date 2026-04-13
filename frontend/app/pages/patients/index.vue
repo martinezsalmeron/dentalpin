@@ -232,7 +232,7 @@ function getStatusColor(status: string): BadgeColor {
             variant="subtle"
             class="mr-4"
           >
-            {{ t(`patients.status${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}`) }}
+            {{ t(`patients.status.${patient.status}`) }}
           </UBadge>
           <UIcon
             name="i-lucide-chevron-right"

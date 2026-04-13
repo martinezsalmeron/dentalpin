@@ -37,7 +37,7 @@ from app.modules.billing.models import Invoice, InvoiceItem, InvoiceSeries, Paym
 from app.modules.budget.models import Budget, BudgetItem, BudgetSignature
 from app.modules.catalog.models import TreatmentCatalogItem
 from app.modules.catalog.seed import seed_catalog
-from app.modules.clinical.models import Appointment, Patient
+from app.modules.clinical.models import Appointment, AppointmentTreatment, Patient
 from app.modules.odontogram.models import ToothRecord, ToothTreatment
 from app.seeds.demo_data import (
     CLINIC_ID,
@@ -124,6 +124,8 @@ async def seed_patients(db: AsyncSession) -> list[Patient]:
             date_of_birth=patient_data["date_of_birth"],
             notes=patient_data["notes"],
             status="active",
+            emergency_contact=patient_data.get("emergency_contact"),
+            medical_history=patient_data.get("medical_history"),
         )
         db.add(patient)
         patients.append(patient)
@@ -133,8 +135,12 @@ async def seed_patients(db: AsyncSession) -> list[Patient]:
     return patients
 
 
-async def seed_appointments(db: AsyncSession) -> list[Appointment]:
-    """Create demo appointments."""
+async def seed_appointments(db: AsyncSession) -> tuple[list[Appointment], list[dict]]:
+    """Create demo appointments.
+
+    Returns:
+        Tuple of (appointments list, appointments_data for later treatment linking)
+    """
     appointments_data = generate_appointments()
     appointments = []
 
@@ -166,7 +172,45 @@ async def seed_appointments(db: AsyncSession) -> list[Appointment]:
     for status, count in sorted(status_counts.items()):
         print(f"    - {status}: {count}")
 
-    return appointments
+    return appointments, appointments_data
+
+
+async def seed_appointment_treatments(db: AsyncSession, appointments_data: list[dict]) -> int:
+    """Link appointments to catalog treatments via AppointmentTreatment.
+
+    Args:
+        db: Database session
+        appointments_data: List of appointment dicts with catalog_codes
+
+    Returns:
+        Number of AppointmentTreatment records created
+    """
+    # Get catalog items map
+    result = await db.execute(
+        select(TreatmentCatalogItem).where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
+    )
+    catalog_items = result.scalars().all()
+
+    # Build map of internal_code -> item id
+    code_to_id = {item.internal_code: item.id for item in catalog_items}
+
+    created_count = 0
+    for appt_data in appointments_data:
+        catalog_codes = appt_data.get("catalog_codes", [])
+        for order, code in enumerate(catalog_codes):
+            catalog_item_id = code_to_id.get(code)
+            if catalog_item_id:
+                apt_treatment = AppointmentTreatment(
+                    appointment_id=appt_data["id"],
+                    catalog_item_id=catalog_item_id,
+                    display_order=order,
+                )
+                db.add(apt_treatment)
+                created_count += 1
+
+    await db.flush()
+    print(f"  Linked {created_count} treatments to appointments")
+    return created_count
 
 
 async def seed_odontogram(db: AsyncSession) -> dict:
@@ -579,7 +623,7 @@ async def main(lang: str = "en"):
             await seed_patients(db)
 
             print("\n[4/8] Creating appointments...")
-            await seed_appointments(db)
+            _, appointments_data = await seed_appointments(db)
 
             print("\n[5/8] Creating odontogram data...")
             await seed_odontogram(db)
@@ -588,6 +632,10 @@ async def main(lang: str = "en"):
             catalog_result = await seed_catalog(db, CLINIC_ID, lang=lang)
             print(f"  Created {catalog_result['categories']} categories")
             print(f"  Created {catalog_result['items']} catalog items")
+
+            # Link appointments to catalog treatments (must be after catalog creation)
+            print("\n[6b/8] Linking appointments to catalog treatments...")
+            await seed_appointment_treatments(db, appointments_data)
 
             print("\n[7/8] Creating budgets...")
             await seed_budgets(db)

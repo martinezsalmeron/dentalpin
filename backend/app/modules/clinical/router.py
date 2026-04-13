@@ -21,11 +21,17 @@ from .schemas import (
     CabinetUpdate,
     ClinicResponse,
     ClinicUpdate,
+    MedicalHistoryResponse,
+    MedicalHistoryUpdate,
+    PatientAlertsResponse,
     PatientCreate,
+    PatientExtendedResponse,
+    PatientExtendedUpdate,
     PatientResponse,
     PatientUpdate,
+    TimelineResponse,
 )
-from .service import AppointmentService, PatientService
+from .service import AppointmentService, PatientService, TimelineService
 
 router = APIRouter()
 
@@ -131,6 +137,148 @@ async def delete_patient(
         )
 
     await PatientService.archive_patient(db, patient)
+
+
+# Patient extended info endpoint
+@router.get("/patients/{patient_id}/extended", response_model=ApiResponse[PatientExtendedResponse])
+async def get_patient_extended(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PatientExtendedResponse]:
+    """Get patient with extended info (demographics, emergency contact, alerts)."""
+    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+    return ApiResponse(data=PatientExtendedResponse.model_validate(patient))
+
+
+@router.put("/patients/{patient_id}/extended", response_model=ApiResponse[PatientExtendedResponse])
+async def update_patient_extended(
+    patient_id: UUID,
+    data: PatientExtendedUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PatientExtendedResponse]:
+    """Update patient with extended fields."""
+    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+
+    patient = await PatientService.update_patient(db, patient, data.model_dump(exclude_unset=True))
+    return ApiResponse(data=PatientExtendedResponse.model_validate(patient))
+
+
+# Medical history endpoints
+@router.get(
+    "/patients/{patient_id}/medical-history", response_model=ApiResponse[MedicalHistoryResponse]
+)
+async def get_medical_history(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.medical.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[MedicalHistoryResponse]:
+    """Get patient medical history."""
+    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+
+    medical_history = patient.medical_history or {}
+    return ApiResponse(data=MedicalHistoryResponse.model_validate(medical_history))
+
+
+@router.put(
+    "/patients/{patient_id}/medical-history", response_model=ApiResponse[MedicalHistoryResponse]
+)
+async def update_medical_history(
+    patient_id: UUID,
+    data: MedicalHistoryUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.medical.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[MedicalHistoryResponse]:
+    """Update patient medical history."""
+    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+
+    # Update with metadata
+    medical_data = data.model_dump()
+    medical_data["last_updated_at"] = datetime.utcnow().isoformat()
+    medical_data["last_updated_by"] = str(ctx.user_id)
+
+    patient = await PatientService.update_medical_history(db, patient, medical_data, ctx.user_id)
+    return ApiResponse(data=MedicalHistoryResponse.model_validate(patient.medical_history))
+
+
+# Patient alerts endpoint
+@router.get("/patients/{patient_id}/alerts", response_model=ApiResponse[PatientAlertsResponse])
+async def get_patient_alerts(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PatientAlertsResponse]:
+    """Get active alerts for a patient (computed from medical history)."""
+    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+
+    return ApiResponse(data=PatientAlertsResponse(alerts=patient.active_alerts))
+
+
+# Timeline endpoints
+@router.get("/patients/{patient_id}/timeline", response_model=ApiResponse[TimelineResponse])
+async def get_patient_timeline(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    category: str | None = Query(default=None, max_length=30),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> ApiResponse[TimelineResponse]:
+    """Get patient timeline with optional category filter."""
+    # Verify patient exists and belongs to clinic
+    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+
+    entries, total = await TimelineService.get_timeline(
+        db, ctx.clinic_id, patient_id, category, page, page_size
+    )
+
+    has_more = (page * page_size) < total
+    return ApiResponse(
+        data=TimelineResponse(
+            entries=entries,
+            total=total,
+            page=page,
+            page_size=page_size,
+            has_more=has_more,
+        )
+    )
 
 
 # Appointment endpoints

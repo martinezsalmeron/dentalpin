@@ -52,3 +52,11 @@
 #nprogress .peg {
   box-shadow: 0 0 10px #10b981, 0 0 5px #10b981 !important;
 }
+
+/* Ensure select/dropdown content appears above other elements */
+[data-reka-select-content],
+[data-radix-select-content],
+[data-reka-popper-content-wrapper],
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}

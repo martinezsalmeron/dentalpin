@@ -11,6 +11,10 @@ export const PERMISSIONS = {
     read: 'clinical.patients.read',
     write: 'clinical.patients.write'
   },
+  medicalHistory: {
+    read: 'clinical.patients.medical.read',
+    write: 'clinical.patients.medical.write'
+  },
   appointments: {
     read: 'clinical.appointments.read',
     write: 'clinical.appointments.write'

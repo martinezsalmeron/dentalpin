@@ -391,102 +391,110 @@ async function onHistoryExpanded(expanded: boolean) {
       v-if="loading || treatmentsLoading || timelineLoading"
       class="flex items-center justify-center py-16"
     >
-      <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-gray-400" />
+      <UIcon
+        name="i-lucide-loader-2"
+        class="w-8 h-8 animate-spin text-gray-400"
+      />
     </div>
 
     <!-- Chart -->
-    <div v-else class="flex flex-col gap-4">
-      <div
-        class="odontogram-grid bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
-        :class="{ 'cursor-crosshair': isClickToApplyMode }"
-      >
-        <!-- Upper arch -->
-        <div class="mb-6">
-          <div class="text-xs text-gray-500 text-center mb-2">
-            {{ t('odontogram.quadrants.upper') }}
+    <div
+      v-else
+      class="flex flex-col gap-4"
+    >
+      <div class="odontogram-wrapper">
+        <div
+          class="odontogram-grid bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+          :class="{ 'cursor-crosshair': isClickToApplyMode }"
+        >
+          <!-- Upper arch -->
+          <div class="mb-6">
+            <div class="text-xs text-gray-500 text-center mb-2">
+              {{ t('odontogram.quadrants.upper') }}
+            </div>
+            <div class="flex justify-center gap-1">
+              <ToothQuadrant
+                :teeth="teethLayout.upperRight"
+                :get-tooth-data="getToothData"
+                :get-treatments="getFilteredTreatments"
+                :readonly="isReadonly"
+                :selected-tooth="selectedTooth"
+                :show-lateral="showLateral"
+                :hovered-tooth="hoveredTooth"
+                :highlighted-teeth="highlightedTeeth"
+                :pending-treatment="pendingTreatment"
+                @surface-click="handleSurfaceClick"
+                @tooth-click="handleToothClick"
+                @tooth-context-menu="handleToothContextMenu"
+                @tooth-hover="hoveredTooth = $event"
+                @edit-treatment="handleEditTreatment"
+              />
+
+              <div class="w-px bg-gray-300 dark:bg-gray-600 mx-2" />
+
+              <ToothQuadrant
+                :teeth="teethLayout.upperLeft"
+                :get-tooth-data="getToothData"
+                :get-treatments="getFilteredTreatments"
+                :readonly="isReadonly"
+                :selected-tooth="selectedTooth"
+                :show-lateral="showLateral"
+                :hovered-tooth="hoveredTooth"
+                :highlighted-teeth="highlightedTeeth"
+                :pending-treatment="pendingTreatment"
+                @surface-click="handleSurfaceClick"
+                @tooth-click="handleToothClick"
+                @tooth-context-menu="handleToothContextMenu"
+                @tooth-hover="hoveredTooth = $event"
+                @edit-treatment="handleEditTreatment"
+              />
+            </div>
           </div>
-          <div class="flex justify-center gap-1">
-            <ToothQuadrant
-              :teeth="teethLayout.upperRight"
-              :get-tooth-data="getToothData"
-              :get-treatments="getFilteredTreatments"
-              :readonly="isReadonly"
-              :selected-tooth="selectedTooth"
-              :show-lateral="showLateral"
-              :hovered-tooth="hoveredTooth"
-              :highlighted-teeth="highlightedTeeth"
-              :pending-treatment="pendingTreatment"
-              @surface-click="handleSurfaceClick"
-              @tooth-click="handleToothClick"
-              @tooth-context-menu="handleToothContextMenu"
-              @tooth-hover="hoveredTooth = $event"
-              @edit-treatment="handleEditTreatment"
-            />
 
-            <div class="w-px bg-gray-300 dark:bg-gray-600 mx-2" />
+          <div class="h-px bg-gray-200 dark:bg-gray-700 my-4" />
 
-            <ToothQuadrant
-              :teeth="teethLayout.upperLeft"
-              :get-tooth-data="getToothData"
-              :get-treatments="getFilteredTreatments"
-              :readonly="isReadonly"
-              :selected-tooth="selectedTooth"
-              :show-lateral="showLateral"
-              :hovered-tooth="hoveredTooth"
-              :highlighted-teeth="highlightedTeeth"
-              :pending-treatment="pendingTreatment"
-              @surface-click="handleSurfaceClick"
-              @tooth-click="handleToothClick"
-              @tooth-context-menu="handleToothContextMenu"
-              @tooth-hover="hoveredTooth = $event"
-              @edit-treatment="handleEditTreatment"
-            />
-          </div>
-        </div>
+          <!-- Lower arch -->
+          <div>
+            <div class="flex justify-center gap-1">
+              <ToothQuadrant
+                :teeth="teethLayout.lowerRight"
+                :get-tooth-data="getToothData"
+                :get-treatments="getFilteredTreatments"
+                :readonly="isReadonly"
+                :selected-tooth="selectedTooth"
+                :show-lateral="showLateral"
+                :hovered-tooth="hoveredTooth"
+                :highlighted-teeth="highlightedTeeth"
+                :pending-treatment="pendingTreatment"
+                @surface-click="handleSurfaceClick"
+                @tooth-click="handleToothClick"
+                @tooth-context-menu="handleToothContextMenu"
+                @tooth-hover="hoveredTooth = $event"
+                @edit-treatment="handleEditTreatment"
+              />
 
-        <div class="h-px bg-gray-200 dark:bg-gray-700 my-4" />
+              <div class="w-px bg-gray-300 dark:bg-gray-600 mx-2" />
 
-        <!-- Lower arch -->
-        <div>
-          <div class="flex justify-center gap-1">
-            <ToothQuadrant
-              :teeth="teethLayout.lowerRight"
-              :get-tooth-data="getToothData"
-              :get-treatments="getFilteredTreatments"
-              :readonly="isReadonly"
-              :selected-tooth="selectedTooth"
-              :show-lateral="showLateral"
-              :hovered-tooth="hoveredTooth"
-              :highlighted-teeth="highlightedTeeth"
-              :pending-treatment="pendingTreatment"
-              @surface-click="handleSurfaceClick"
-              @tooth-click="handleToothClick"
-              @tooth-context-menu="handleToothContextMenu"
-              @tooth-hover="hoveredTooth = $event"
-              @edit-treatment="handleEditTreatment"
-            />
-
-            <div class="w-px bg-gray-300 dark:bg-gray-600 mx-2" />
-
-            <ToothQuadrant
-              :teeth="teethLayout.lowerLeft"
-              :get-tooth-data="getToothData"
-              :get-treatments="getFilteredTreatments"
-              :readonly="isReadonly"
-              :selected-tooth="selectedTooth"
-              :show-lateral="showLateral"
-              :hovered-tooth="hoveredTooth"
-              :highlighted-teeth="highlightedTeeth"
-              :pending-treatment="pendingTreatment"
-              @surface-click="handleSurfaceClick"
-              @tooth-click="handleToothClick"
-              @tooth-context-menu="handleToothContextMenu"
-              @tooth-hover="hoveredTooth = $event"
-              @edit-treatment="handleEditTreatment"
-            />
-          </div>
-          <div class="text-xs text-gray-500 text-center mt-2">
-            {{ t('odontogram.quadrants.lower') }}
+              <ToothQuadrant
+                :teeth="teethLayout.lowerLeft"
+                :get-tooth-data="getToothData"
+                :get-treatments="getFilteredTreatments"
+                :readonly="isReadonly"
+                :selected-tooth="selectedTooth"
+                :show-lateral="showLateral"
+                :hovered-tooth="hoveredTooth"
+                :highlighted-teeth="highlightedTeeth"
+                :pending-treatment="pendingTreatment"
+                @surface-click="handleSurfaceClick"
+                @tooth-click="handleToothClick"
+                @tooth-context-menu="handleToothContextMenu"
+                @tooth-hover="hoveredTooth = $event"
+                @edit-treatment="handleEditTreatment"
+              />
+            </div>
+            <div class="text-xs text-gray-500 text-center mt-2">
+              {{ t('odontogram.quadrants.lower') }}
+            </div>
           </div>
         </div>
       </div>
@@ -539,7 +547,43 @@ async function onHistoryExpanded(expanded: boolean) {
 </template>
 
 <style scoped>
+.odontogram-wrapper {
+  container-type: inline-size;
+  overflow: hidden;
+}
+
 .odontogram-grid {
-  overflow-x: auto;
+  zoom: 1;
+}
+
+/* Container queries - respond to actual container width, not viewport */
+@container (max-width: 1000px) {
+  .odontogram-grid {
+    zoom: 0.9;
+  }
+}
+
+@container (max-width: 900px) {
+  .odontogram-grid {
+    zoom: 0.8;
+  }
+}
+
+@container (max-width: 800px) {
+  .odontogram-grid {
+    zoom: 0.7;
+  }
+}
+
+@container (max-width: 700px) {
+  .odontogram-grid {
+    zoom: 0.6;
+  }
+}
+
+@container (max-width: 600px) {
+  .odontogram-grid {
+    zoom: 0.5;
+  }
 }
 </style>

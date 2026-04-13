@@ -39,10 +39,6 @@
     "email": "Email",
     "dateOfBirth": "Fecha de nacimiento",
     "notes": "Notas",
-    "status": "Estado",
-    "statusActive": "Activo",
-    "statusInactive": "Inactivo",
-    "statusArchived": "Archivado",
     "created": "Paciente creado",
     "updated": "Paciente actualizado",
     "archived": "Paciente archivado",
@@ -61,13 +57,130 @@
     "billingEmail": "Email de facturación",
     "billingAddress": "Dirección de facturación",
     "billingComplete": "Datos completos",
-    "billingIncomplete": "Faltan datos"
+    "billingIncomplete": "Faltan datos",
+    "demographics": "Datos demográficos",
+    "nationalId": "Documento de identidad",
+    "nationalIdType": "Tipo de documento",
+    "passport": "Pasaporte",
+    "profession": "Profesión",
+    "workplace": "Lugar de trabajo",
+    "years": "años",
+    "status": {
+      "active": "Activo",
+      "archived": "Archivado"
+    },
+    "gender": {
+      "label": "Género",
+      "select": "Seleccionar género",
+      "male": "Masculino",
+      "female": "Femenino",
+      "other": "Otro",
+      "preferNotSay": "Prefiero no decir"
+    },
+    "emergencyContact": {
+      "title": "Contacto de emergencia",
+      "hasContact": "Tiene contacto de emergencia",
+      "noContact": "No hay contacto de emergencia registrado",
+      "name": "Nombre completo",
+      "namePlaceholder": "Nombre del contacto",
+      "relationship": "Relación",
+      "relationshipPlaceholder": "Seleccionar relación",
+      "phone": "Teléfono",
+      "phonePlaceholder": "Teléfono del contacto",
+      "email": "Email",
+      "emailPlaceholder": "Email del contacto",
+      "isLegalGuardian": "Es tutor legal",
+      "remove": "Eliminar contacto",
+      "relationships": {
+        "spouse": "Cónyuge",
+        "parent": "Padre/Madre",
+        "child": "Hijo/a",
+        "sibling": "Hermano/a",
+        "friend": "Amigo/a",
+        "other": "Otro"
+      }
+    },
+    "medicalHistory": {
+      "title": "Historial médico",
+      "save": "Guardar historial",
+      "fetchError": "Error al cargar historial médico",
+      "saveSuccess": "Historial médico guardado",
+      "saveError": "Error al guardar historial médico",
+      "allergies": "Alergias",
+      "allergyName": "Nombre de la alergia",
+      "type": "Tipo",
+      "allergyTypes": {
+        "drug": "Medicamento",
+        "food": "Alimento",
+        "material": "Material",
+        "environmental": "Ambiental"
+      },
+      "severity": {
+        "low": "Baja",
+        "medium": "Media",
+        "high": "Alta",
+        "critical": "Crítica"
+      },
+      "medications": "Medicamentos",
+      "medicationName": "Nombre del medicamento",
+      "dosage": "Dosis",
+      "frequency": "Frecuencia",
+      "systemicDiseases": "Enfermedades sistémicas",
+      "diseaseName": "Nombre de la enfermedad",
+      "diseaseTypes": {
+        "cardiovascular": "Cardiovascular",
+        "respiratory": "Respiratoria",
+        "endocrine": "Endocrina",
+        "neurological": "Neurológica",
+        "autoimmune": "Autoinmune",
+        "other": "Otra"
+      },
+      "critical": "Crítica",
+      "controlled": "Controlada",
+      "notControlled": "No controlada",
+      "specialConditions": "Condiciones especiales",
+      "pregnant": "Embarazada",
+      "pregnancyWeek": "Semana de gestación",
+      "lactating": "Lactancia",
+      "anticoagulants": "Anticoagulantes",
+      "anticoagulantMedication": "Medicamento anticoagulante",
+      "inrValue": "Valor INR",
+      "anesthesiaReaction": "Reacción a anestesia",
+      "anesthesiaReactionDetails": "Detalles de la reacción",
+      "bruxism": "Bruxismo",
+      "lifestyle": "Estilo de vida",
+      "smoker": "Fumador",
+      "smokingFrequency": "Cigarrillos/día",
+      "alcoholConsumption": "Consumo de alcohol",
+      "alcohol": {
+        "none": "No consume",
+        "occasional": "Ocasional",
+        "moderate": "Moderado",
+        "heavy": "Frecuente"
+      },
+      "surgicalHistory": "Historial quirúrgico",
+      "procedure": "Procedimiento"
+    },
+    "timeline": {
+      "empty": "No hay actividad registrada",
+      "endOfTimeline": "Fin del historial",
+      "totalEntries": "{count} entrada | {count} entradas"
+    },
+    "alerts": {
+      "title": "{count} alerta | {count} alertas",
+      "label": "Alertas clínicas"
+    },
+    "editDemographics": "Editar datos demográficos",
+    "editEmergencyContact": "Editar contacto de emergencia",
+    "editBilling": "Editar datos de facturación",
+    "editMedicalHistory": "Editar historial médico"
   },
   "patientDetail": {
     "tabs": {
       "info": "Info",
       "odontogram": "Odontograma",
       "history": "Historial",
+      "timeline": "Actividad",
       "appointments": "Citas",
       "budgets": "Presupuestos",
       "billing": "Facturación"
@@ -409,6 +522,7 @@
   },
   "common": {
     "save": "Guardar",
+    "add": "Añadir",
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "comingSoon": "Próximamente",
