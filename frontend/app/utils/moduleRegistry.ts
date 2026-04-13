@@ -56,10 +56,10 @@ registerModule({
       permission: PERMISSIONS.billing.read
     },
     {
-      label: 'nav.billingReports',
+      label: 'nav.reports',
       icon: 'i-lucide-bar-chart-3',
-      to: '/invoices/reports',
-      permission: PERMISSIONS.billing.read
+      to: '/reports',
+      permission: PERMISSIONS.reports.billingRead
     }
   ]
 })

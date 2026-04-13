@@ -37,6 +37,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "billing.*",  # Full billing access
         "notifications.preferences.*",  # Can manage patient notification preferences
         "notifications.send",  # Can send manual notifications
+        "reports.billing.read",  # Can view billing reports
+        "reports.scheduling.read",  # Can view scheduling reports
     ],
     "hygienist": [
         "clinical.patients.read",
@@ -46,6 +48,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.read",  # Can view budgets
         "billing.read",  # Can view invoices
+        "reports.scheduling.read",  # Can view scheduling reports (own data)
     ],
     "assistant": [
         "clinical.patients.*",
@@ -58,6 +61,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "billing.write",  # Can create/edit invoices, record payments
         "notifications.preferences.*",  # Can manage patient notification preferences
         "notifications.send",  # Can send manual notifications
+        "reports.scheduling.read",  # Can view scheduling reports
     ],
     "receptionist": [
         "clinical.patients.*",
@@ -69,6 +73,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "billing.write",  # Can create/edit invoices, record payments
         "notifications.preferences.*",  # Can manage patient notification preferences
         "notifications.send",  # Can send manual notifications
+        "reports.billing.read",  # Can view basic billing reports
+        "reports.scheduling.read",  # Can view scheduling reports
         # No odontogram access for receptionists
     ],
 }

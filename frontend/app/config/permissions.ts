@@ -49,6 +49,11 @@ export const PERMISSIONS = {
     send: 'notifications.send',
     settingsRead: 'notifications.settings.read',
     settingsWrite: 'notifications.settings.write'
+  },
+  reports: {
+    billingRead: 'reports.billing.read',
+    budgetsRead: 'reports.budgets.read',
+    schedulingRead: 'reports.scheduling.read'
   }
 } as const
 
@@ -59,7 +64,11 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/settings/users': PERMISSIONS.users.write,
   '/settings/notifications': PERMISSIONS.notifications.settingsRead,
   '/budgets': PERMISSIONS.budget.read,
-  '/invoices': PERMISSIONS.billing.read
+  '/invoices': PERMISSIONS.billing.read,
+  '/reports': PERMISSIONS.reports.billingRead,
+  '/reports/billing': PERMISSIONS.reports.billingRead,
+  '/reports/budgets': PERMISSIONS.reports.budgetsRead,
+  '/reports/scheduling': PERMISSIONS.reports.schedulingRead
 }
 
 // Helper to get permission for a resource action

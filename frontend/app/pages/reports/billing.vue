@@ -11,15 +11,15 @@ import type {
 const { t, locale } = useI18n()
 const router = useRouter()
 const {
-  fetchSummary,
-  fetchOverdue,
+  fetchBillingSummary,
+  fetchOverdueInvoices,
   fetchByPaymentMethod,
-  fetchByProfessional,
+  fetchBillingByProfessional,
   fetchVatSummary,
-  fetchGaps,
+  fetchNumberingGaps,
   formatCurrency,
   getPaymentMethodLabel
-} = useInvoices()
+} = useReports()
 
 // State
 const isLoading = ref(false)
@@ -38,12 +38,12 @@ const dateTo = ref(today.toISOString().split('T')[0])
 
 // Quick date range options
 const dateRangeOptions = computed(() => [
-  { label: t('invoice.reports.thisMonth'), value: 'month' },
-  { label: t('invoice.reports.thisQuarter'), value: 'quarter' },
-  { label: t('invoice.reports.thisYear'), value: 'year' },
-  { label: t('invoice.reports.lastMonth'), value: 'last_month' },
-  { label: t('invoice.reports.lastQuarter'), value: 'last_quarter' },
-  { label: t('invoice.reports.lastYear'), value: 'last_year' }
+  { label: t('reports.billing.thisMonth'), value: 'month' },
+  { label: t('reports.billing.thisQuarter'), value: 'quarter' },
+  { label: t('reports.billing.thisYear'), value: 'year' },
+  { label: t('reports.billing.lastMonth'), value: 'last_month' },
+  { label: t('reports.billing.lastQuarter'), value: 'last_quarter' },
+  { label: t('reports.billing.lastYear'), value: 'last_year' }
 ])
 const selectedRange = ref('month')
 
@@ -104,12 +104,12 @@ async function loadReports() {
       vatData,
       gapsData
     ] = await Promise.all([
-      fetchSummary(dateFrom.value, dateTo.value),
-      fetchOverdue(),
+      fetchBillingSummary(dateFrom.value, dateTo.value),
+      fetchOverdueInvoices(),
       fetchByPaymentMethod(dateFrom.value, dateTo.value),
-      fetchByProfessional(dateFrom.value, dateTo.value),
+      fetchBillingByProfessional(dateFrom.value, dateTo.value),
       fetchVatSummary(dateFrom.value, dateTo.value),
-      fetchGaps()
+      fetchNumberingGaps()
     ])
 
     summary.value = summaryData
@@ -161,7 +161,7 @@ function goToInvoice(id: string) {
 }
 
 function goBack() {
-  router.push('/invoices')
+  router.push('/reports')
 }
 </script>
 
@@ -176,16 +176,21 @@ function goBack() {
           icon="i-lucide-arrow-left"
           @click="goBack"
         />
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {{ t('invoice.reports.title') }}
-        </h1>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+            {{ t('reports.billing.title') }}
+          </h1>
+          <p class="text-sm text-gray-500">
+            {{ t('reports.billing.description') }}
+          </p>
+        </div>
       </div>
     </div>
 
     <!-- Date Range Filters -->
     <UCard>
       <div class="flex flex-wrap items-end gap-4">
-        <UFormField :label="t('invoice.reports.period')">
+        <UFormField :label="t('reports.billing.period')">
           <USelectMenu
             v-model="selectedRange"
             :items="dateRangeOptions"
@@ -194,14 +199,14 @@ function goBack() {
           />
         </UFormField>
 
-        <UFormField :label="t('invoice.reports.from')">
+        <UFormField :label="t('reports.billing.from')">
           <UInput
             v-model="dateFrom"
             type="date"
           />
         </UFormField>
 
-        <UFormField :label="t('invoice.reports.to')">
+        <UFormField :label="t('reports.billing.to')">
           <UInput
             v-model="dateTo"
             type="date"
@@ -212,7 +217,7 @@ function goBack() {
           :loading="isLoading"
           @click="loadReports"
         >
-          {{ t('invoice.reports.refresh') }}
+          {{ t('reports.billing.refresh') }}
         </UButton>
       </div>
     </UCard>
@@ -237,13 +242,13 @@ function goBack() {
         <UCard>
           <div class="text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('invoice.reports.totalInvoiced') }}
+              {{ t('reports.billing.totalInvoiced') }}
             </p>
             <p class="text-2xl font-bold text-gray-900 dark:text-white">
               {{ formatCurrency(summary.total_invoiced) }}
             </p>
             <p class="text-sm text-gray-500">
-              {{ summary.invoice_count }} {{ t('invoice.reports.invoices') }}
+              {{ summary.invoice_count }} {{ t('reports.billing.invoices') }}
             </p>
           </div>
         </UCard>
@@ -251,13 +256,13 @@ function goBack() {
         <UCard>
           <div class="text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('invoice.reports.totalCollected') }}
+              {{ t('reports.billing.totalCollected') }}
             </p>
             <p class="text-2xl font-bold text-green-600">
               {{ formatCurrency(summary.total_paid) }}
             </p>
             <p class="text-sm text-gray-500">
-              {{ summary.paid_count }} {{ t('invoice.reports.paid') }}
+              {{ summary.paid_count }} {{ t('reports.billing.paid') }}
             </p>
           </div>
         </UCard>
@@ -265,7 +270,7 @@ function goBack() {
         <UCard>
           <div class="text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('invoice.reports.pending') }}
+              {{ t('reports.billing.pending') }}
             </p>
             <p class="text-2xl font-bold text-amber-600">
               {{ formatCurrency(summary.total_pending) }}
@@ -276,7 +281,7 @@ function goBack() {
         <UCard>
           <div class="text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('invoice.reports.overdue') }}
+              {{ t('reports.billing.overdue') }}
             </p>
             <p
               class="text-2xl font-bold"
@@ -285,7 +290,7 @@ function goBack() {
               {{ summary.overdue_count }}
             </p>
             <p class="text-sm text-gray-500">
-              {{ t('invoice.reports.invoices') }}
+              {{ t('reports.billing.invoices') }}
             </p>
           </div>
         </UCard>
@@ -296,7 +301,7 @@ function goBack() {
         v-if="numberingGaps.length > 0"
         color="warning"
         icon="i-lucide-alert-triangle"
-        :title="t('invoice.reports.gapsDetected')"
+        :title="t('reports.billing.gapsDetected')"
       >
         <template #description>
           <div class="space-y-1">
@@ -306,7 +311,7 @@ function goBack() {
               class="text-sm"
             >
               {{ gap.series_prefix }}-{{ gap.year }}:
-              {{ t('invoice.reports.missingNumbers') }}
+              {{ t('reports.billing.missingNumbers') }}
               <span class="font-mono">{{ gap.missing_numbers.join(', ') }}</span>
             </div>
           </div>
@@ -318,7 +323,7 @@ function goBack() {
         <UCard>
           <template #header>
             <h3 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('invoice.reports.byPaymentMethod') }}
+              {{ t('reports.billing.byPaymentMethod') }}
             </h3>
           </template>
 
@@ -345,7 +350,7 @@ function goBack() {
                   {{ formatCurrency(pm.total_amount) }}
                 </p>
                 <p class="text-xs text-gray-500">
-                  {{ pm.payment_count }} {{ t('invoice.reports.payments') }}
+                  {{ pm.payment_count }} {{ t('reports.billing.payments') }}
                 </p>
               </div>
             </div>
@@ -354,7 +359,7 @@ function goBack() {
             v-else
             class="text-gray-500 text-center py-4"
           >
-            {{ t('invoice.reports.noData') }}
+            {{ t('reports.billing.noData') }}
           </p>
         </UCard>
 
@@ -362,7 +367,7 @@ function goBack() {
         <UCard>
           <template #header>
             <h3 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('invoice.reports.vatSummary') }}
+              {{ t('reports.billing.vatSummary') }}
             </h3>
           </template>
 
@@ -374,13 +379,13 @@ function goBack() {
               <thead>
                 <tr>
                   <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    {{ t('invoice.reports.vatType') }}
+                    {{ t('reports.billing.vatType') }}
                   </th>
                   <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                    {{ t('invoice.reports.base') }}
+                    {{ t('reports.billing.base') }}
                   </th>
                   <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                    {{ t('invoice.reports.tax') }}
+                    {{ t('reports.billing.tax') }}
                   </th>
                   <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                     {{ t('invoice.total') }}
@@ -412,7 +417,7 @@ function goBack() {
             v-else
             class="text-gray-500 text-center py-4"
           >
-            {{ t('invoice.reports.noData') }}
+            {{ t('reports.billing.noData') }}
           </p>
         </UCard>
 
@@ -420,7 +425,7 @@ function goBack() {
         <UCard>
           <template #header>
             <h3 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('invoice.reports.byProfessional') }}
+              {{ t('reports.billing.byProfessional') }}
             </h3>
           </template>
 
@@ -447,7 +452,7 @@ function goBack() {
                   {{ formatCurrency(prof.total_invoiced) }}
                 </p>
                 <p class="text-xs text-gray-500">
-                  {{ prof.invoice_count }} {{ t('invoice.reports.invoices') }}
+                  {{ prof.invoice_count }} {{ t('reports.billing.invoices') }}
                 </p>
               </div>
             </div>
@@ -456,7 +461,7 @@ function goBack() {
             v-else
             class="text-gray-500 text-center py-4"
           >
-            {{ t('invoice.reports.noData') }}
+            {{ t('reports.billing.noData') }}
           </p>
         </UCard>
 
@@ -465,7 +470,7 @@ function goBack() {
           <template #header>
             <div class="flex items-center justify-between">
               <h3 class="font-semibold text-gray-900 dark:text-white">
-                {{ t('invoice.reports.overdueInvoices') }}
+                {{ t('reports.billing.overdueInvoices') }}
               </h3>
               <UBadge
                 v-if="overdueInvoices.length > 0"
@@ -500,7 +505,7 @@ function goBack() {
                     {{ formatCurrency(inv.balance_due) }}
                   </p>
                   <p class="text-xs text-red-500">
-                    {{ inv.days_overdue }} {{ t('invoice.reports.daysOverdue') }}
+                    {{ inv.days_overdue }} {{ t('reports.billing.daysOverdue') }}
                   </p>
                 </div>
               </div>
@@ -518,7 +523,7 @@ function goBack() {
               class="h-12 w-12 text-green-500 mx-auto mb-2"
             />
             <p class="text-gray-500">
-              {{ t('invoice.reports.noOverdue') }}
+              {{ t('reports.billing.noOverdue') }}
             </p>
           </div>
         </UCard>

@@ -17,7 +17,6 @@ from .models import PAYMENT_METHODS
 from .schemas import (
     BillingSettingsResponse,
     BillingSettingsUpdate,
-    BillingSummary,
     CreditNoteCreate,
     InvoiceCreate,
     InvoiceDetailResponse,
@@ -34,15 +33,10 @@ from .schemas import (
     InvoiceSeriesResponse,
     InvoiceSeriesUpdate,
     InvoiceUpdate,
-    NumberingGap,
-    OverdueInvoice,
     PatientBillingSummary,
     PaymentCreate,
-    PaymentMethodSummary,
     PaymentResponse,
     PaymentVoidRequest,
-    ProfessionalBillingSummary,
-    VatSummaryItem,
 )
 from .service import (
     InvoiceHistoryService,
@@ -956,119 +950,7 @@ async def get_patient_billing_summary(
 
     Returns aggregated metrics for budgets and invoices.
     """
-    from .service import BillingReportService
+    from app.modules.reports.services import BillingReportService
 
     summary = await BillingReportService.get_patient_summary(db, ctx.clinic_id, patient_id)
     return ApiResponse(data=PatientBillingSummary(**summary))
-
-
-# ============================================================================
-# Reports
-# ============================================================================
-
-
-@router.get("/reports/summary", response_model=ApiResponse[BillingSummary])
-async def get_billing_summary(
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("billing.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    date_from: date = Query(..., description="Start date for the report period"),
-    date_to: date = Query(..., description="End date for the report period"),
-) -> ApiResponse[BillingSummary]:
-    """Get billing summary for a period.
-
-    Returns total invoiced, total paid, total pending, counts, and VAT breakdown.
-    """
-    from .service import BillingReportService
-
-    data = await BillingReportService.get_summary(db, ctx.clinic_id, date_from, date_to)
-    return ApiResponse(data=BillingSummary(**data))
-
-
-@router.get("/reports/overdue", response_model=ApiResponse[list[OverdueInvoice]])
-async def get_overdue_invoices(
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("billing.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[list[OverdueInvoice]]:
-    """Get list of overdue invoices.
-
-    Returns invoices that are past due date and have outstanding balance.
-    """
-    from .service import BillingReportService
-
-    data = await BillingReportService.get_overdue_invoices(db, ctx.clinic_id)
-    return ApiResponse(data=[OverdueInvoice(**item) for item in data])
-
-
-@router.get("/reports/by-payment-method", response_model=ApiResponse[list[PaymentMethodSummary]])
-async def get_by_payment_method(
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("billing.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    date_from: date = Query(..., description="Start date for the report period"),
-    date_to: date = Query(..., description="End date for the report period"),
-) -> ApiResponse[list[PaymentMethodSummary]]:
-    """Get payment breakdown by method.
-
-    Returns total amounts and counts grouped by payment method.
-    """
-    from .service import BillingReportService
-
-    data = await BillingReportService.get_by_payment_method(db, ctx.clinic_id, date_from, date_to)
-    return ApiResponse(data=[PaymentMethodSummary(**item) for item in data])
-
-
-@router.get(
-    "/reports/by-professional", response_model=ApiResponse[list[ProfessionalBillingSummary]]
-)
-async def get_by_professional(
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("billing.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    date_from: date = Query(..., description="Start date for the report period"),
-    date_to: date = Query(..., description="End date for the report period"),
-) -> ApiResponse[list[ProfessionalBillingSummary]]:
-    """Get billing breakdown by professional (creator).
-
-    Returns total amounts and invoice counts per professional.
-    """
-    from .service import BillingReportService
-
-    data = await BillingReportService.get_by_professional(db, ctx.clinic_id, date_from, date_to)
-    return ApiResponse(data=[ProfessionalBillingSummary(**item) for item in data])
-
-
-@router.get("/reports/vat-summary", response_model=ApiResponse[list[VatSummaryItem]])
-async def get_vat_summary(
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("billing.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    date_from: date = Query(..., description="Start date for the report period"),
-    date_to: date = Query(..., description="End date for the report period"),
-) -> ApiResponse[list[VatSummaryItem]]:
-    """Get VAT summary for accounting.
-
-    Returns base amounts, tax amounts, and totals grouped by VAT rate.
-    """
-    from .service import BillingReportService
-
-    data = await BillingReportService.get_vat_summary(db, ctx.clinic_id, date_from, date_to)
-    return ApiResponse(data=[VatSummaryItem(**item) for item in data])
-
-
-@router.get("/reports/gaps", response_model=ApiResponse[list[NumberingGap]])
-async def get_numbering_gaps(
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("billing.admin"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[list[NumberingGap]]:
-    """Find gaps in invoice numbering.
-
-    Returns missing numbers by series and year.
-    Only accessible by billing admin.
-    """
-    from .service import BillingReportService
-
-    data = await BillingReportService.get_numbering_gaps(db, ctx.clinic_id)
-    return ApiResponse(data=[NumberingGap(**item) for item in data])

@@ -9,7 +9,7 @@
     "appointments": "Schedule",
     "budgets": "Quotes",
     "invoices": "Invoices",
-    "billingReports": "Reports",
+    "reports": "Reports",
     "settings": "Settings",
     "catalog": "Catalog"
   },
@@ -411,6 +411,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
+    "comingSoon": "Coming soon",
     "edit": "Edit",
     "change": "Change",
     "back": "Back",
@@ -450,7 +451,16 @@
     "role": "Role",
     "readOnly": "Read only",
     "createdBy": "Created by",
-    "date": "Date"
+    "date": "Date",
+    "days": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    }
   },
   "validation": {
     "required": "This field is required",
@@ -1129,5 +1139,108 @@
       "billingIncomplete": "The invoice cannot be issued because billing data is incomplete. Please fill in the patient's billing information to continue."
     },
     "newItemsPending": "New items pending save"
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Clinic analytics and statistics",
+    "viewReports": "View reports",
+    "noAccess": "You don't have access to any reports",
+    "billing": {
+      "title": "Billing",
+      "description": "Revenue, payments, VAT and overdue invoices",
+      "summary": "Summary",
+      "overdue": "Overdue",
+      "overdueInvoices": "Overdue invoices",
+      "byPaymentMethod": "By payment method",
+      "byProfessional": "By professional",
+      "vatSummary": "VAT summary",
+      "gaps": "Numbering gaps",
+      "period": "Period",
+      "from": "From",
+      "to": "To",
+      "refresh": "Refresh",
+      "totalInvoiced": "Total invoiced",
+      "totalCollected": "Total collected",
+      "pending": "Outstanding balance",
+      "invoices": "invoices",
+      "paid": "paid",
+      "payments": "payments",
+      "gapsDetected": "Gaps detected in numbering",
+      "missingNumbers": "Missing numbers:",
+      "noData": "No data for selected period",
+      "noOverdue": "No overdue invoices",
+      "daysOverdue": "days overdue",
+      "vatType": "VAT type",
+      "base": "Base",
+      "tax": "Tax",
+      "thisMonth": "This month",
+      "thisQuarter": "This quarter",
+      "thisYear": "This year",
+      "lastMonth": "Last month",
+      "lastQuarter": "Last quarter",
+      "lastYear": "Last year"
+    },
+    "budgets": {
+      "title": "Quotes",
+      "description": "Acceptance rates, professional analysis and treatments",
+      "comingSoonDescription": "Quote reports will be available soon. You'll be able to analyze acceptance rates, quotes by professional and most requested treatments.",
+      "features": {
+        "acceptanceRate": "Acceptance rate",
+        "acceptanceRateDesc": "Percentage of accepted vs rejected quotes",
+        "byProfessional": "By professional",
+        "byProfessionalDesc": "Quotes created by each professional",
+        "byTreatment": "By treatment",
+        "byTreatmentDesc": "Most quoted treatments",
+        "averageValue": "Average value",
+        "averageValueDesc": "Average quote amount"
+      },
+      "labels": {
+        "totalCreated": "Total created",
+        "accepted": "Accepted",
+        "rejected": "rejected",
+        "pending": "pending",
+        "completed": "Completed",
+        "acceptanceRate": "Acceptance rate",
+        "averageValue": "Average value",
+        "byStatus": "By status",
+        "topTreatments": "Most quoted treatments",
+        "treatment": "Treatment",
+        "occurrences": "Occurrences",
+        "quantity": "Quantity"
+      }
+    },
+    "scheduling": {
+      "title": "Schedule",
+      "description": "First visits, hours worked and occupancy",
+      "comingSoonDescription": "Schedule reports will be available soon. You'll be able to analyze first visits, hours by professional and cancellation rates.",
+      "features": {
+        "firstVisits": "First visits",
+        "firstVisitsDesc": "New patients per period",
+        "hoursWorked": "Hours worked",
+        "hoursWorkedDesc": "Time per professional",
+        "cancellations": "Cancellations",
+        "cancellationsDesc": "Cancellation and no-show rates",
+        "cabinetUtilization": "Cabinet occupancy",
+        "cabinetUtilizationDesc": "Usage of each cabinet"
+      },
+      "labels": {
+        "totalAppointments": "Total appointments",
+        "completionRate": "Completion rate",
+        "completed": "completed",
+        "cancellationRate": "Cancellation rate",
+        "cancelled": "cancelled",
+        "noShowRate": "No-show rate",
+        "noShows": "no-shows",
+        "newPatients": "new patients",
+        "firstVisitRate": "First visit rate",
+        "ofTotalAppointments": "of total appointments",
+        "appointmentsInPeriod": "Appointments in period",
+        "excludingCancelled": "excluding cancelled",
+        "appointments": "appointments",
+        "byDayOfWeek": "By day of week",
+        "statusBreakdown": "Status breakdown",
+        "pending": "pending"
+      }
+    }
   }
 }

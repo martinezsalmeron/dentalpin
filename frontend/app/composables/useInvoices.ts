@@ -2,7 +2,6 @@ import type {
   ApiResponse,
   BillingSettings,
   BillingSettingsUpdate,
-  BillingSummary,
   CreditNoteCreate,
   Invoice,
   InvoiceCreate,
@@ -20,16 +19,11 @@ import type {
   InvoiceSendRequest,
   InvoiceStatus,
   InvoiceUpdate,
-  NumberingGap,
-  OverdueInvoice,
   PaginatedResponse,
   PatientBillingSummary,
   Payment,
   PaymentCreate,
-  PaymentMethodSummary,
-  PaymentVoidRequest,
-  ProfessionalBillingSummary,
-  VatSummaryItem
+  PaymentVoidRequest
 } from '~/types'
 
 export interface InvoiceListParams {
@@ -471,86 +465,8 @@ export function useInvoices() {
   }
 
   // ============================================================================
-  // Reports
+  // Patient Summary (used by patient billing tab)
   // ============================================================================
-
-  async function fetchSummary(dateFrom: string, dateTo: string): Promise<BillingSummary | null> {
-    try {
-      const response = await api.get<ApiResponse<BillingSummary>>(
-        `/api/v1/billing/reports/summary?date_from=${dateFrom}&date_to=${dateTo}`
-      )
-      return response.data
-    } catch (e) {
-      console.error('Failed to fetch billing summary:', e)
-      return null
-    }
-  }
-
-  async function fetchOverdue(): Promise<OverdueInvoice[]> {
-    try {
-      const response = await api.get<ApiResponse<OverdueInvoice[]>>(
-        '/api/v1/billing/reports/overdue'
-      )
-      return response.data
-    } catch (e) {
-      console.error('Failed to fetch overdue invoices:', e)
-      return []
-    }
-  }
-
-  async function fetchByPaymentMethod(
-    dateFrom: string,
-    dateTo: string
-  ): Promise<PaymentMethodSummary[]> {
-    try {
-      const response = await api.get<ApiResponse<PaymentMethodSummary[]>>(
-        `/api/v1/billing/reports/by-payment-method?date_from=${dateFrom}&date_to=${dateTo}`
-      )
-      return response.data
-    } catch (e) {
-      console.error('Failed to fetch payments by method:', e)
-      return []
-    }
-  }
-
-  async function fetchByProfessional(
-    dateFrom: string,
-    dateTo: string
-  ): Promise<ProfessionalBillingSummary[]> {
-    try {
-      const response = await api.get<ApiResponse<ProfessionalBillingSummary[]>>(
-        `/api/v1/billing/reports/by-professional?date_from=${dateFrom}&date_to=${dateTo}`
-      )
-      return response.data
-    } catch (e) {
-      console.error('Failed to fetch billing by professional:', e)
-      return []
-    }
-  }
-
-  async function fetchVatSummary(dateFrom: string, dateTo: string): Promise<VatSummaryItem[]> {
-    try {
-      const response = await api.get<ApiResponse<VatSummaryItem[]>>(
-        `/api/v1/billing/reports/vat-summary?date_from=${dateFrom}&date_to=${dateTo}`
-      )
-      return response.data
-    } catch (e) {
-      console.error('Failed to fetch VAT summary:', e)
-      return []
-    }
-  }
-
-  async function fetchGaps(): Promise<NumberingGap[]> {
-    try {
-      const response = await api.get<ApiResponse<NumberingGap[]>>(
-        '/api/v1/billing/reports/gaps'
-      )
-      return response.data
-    } catch (e) {
-      console.error('Failed to fetch numbering gaps:', e)
-      return []
-    }
-  }
 
   async function fetchPatientSummary(patientId: string): Promise<PatientBillingSummary | null> {
     try {
@@ -706,13 +622,7 @@ export function useInvoices() {
     fetchSettings,
     updateSettings,
 
-    // Reports
-    fetchSummary,
-    fetchOverdue,
-    fetchByPaymentMethod,
-    fetchByProfessional,
-    fetchVatSummary,
-    fetchGaps,
+    // Patient Summary
     fetchPatientSummary,
 
     // PDF

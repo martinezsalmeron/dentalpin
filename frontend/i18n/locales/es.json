@@ -9,7 +9,7 @@
     "appointments": "Agenda",
     "budgets": "Presupuestos",
     "invoices": "Facturas",
-    "billingReports": "Informes",
+    "reports": "Informes",
     "settings": "Configuración",
     "catalog": "Catálogo"
   },
@@ -404,6 +404,7 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
+    "comingSoon": "Próximamente",
     "edit": "Editar",
     "change": "Cambiar",
     "back": "Volver",
@@ -443,7 +444,16 @@
     "role": "Rol",
     "readOnly": "Solo lectura",
     "createdBy": "Creado por",
-    "date": "Fecha"
+    "date": "Fecha",
+    "days": {
+      "sunday": "Domingo",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado"
+    }
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -1042,6 +1052,109 @@
       "lastMonth": "Mes anterior",
       "lastQuarter": "Trimestre anterior",
       "lastYear": "Año anterior"
+    }
+  },
+  "reports": {
+    "title": "Informes",
+    "subtitle": "Análisis y estadísticas de la clínica",
+    "viewReports": "Ver informes",
+    "noAccess": "No tienes acceso a ningún informe",
+    "billing": {
+      "title": "Facturación",
+      "description": "Ingresos, pagos, IVA y facturas vencidas",
+      "summary": "Resumen",
+      "overdue": "Facturas vencidas",
+      "overdueInvoices": "Facturas vencidas",
+      "byPaymentMethod": "Por método de pago",
+      "byProfessional": "Por profesional",
+      "vatSummary": "Desglose IVA",
+      "gaps": "Huecos en numeración",
+      "period": "Período",
+      "from": "Desde",
+      "to": "Hasta",
+      "refresh": "Actualizar",
+      "totalInvoiced": "Total facturado",
+      "totalCollected": "Total cobrado",
+      "pending": "Pendiente de cobro",
+      "invoices": "facturas",
+      "paid": "pagadas",
+      "payments": "pagos",
+      "gapsDetected": "Huecos detectados en numeración",
+      "missingNumbers": "Números faltantes:",
+      "noData": "Sin datos para el período seleccionado",
+      "noOverdue": "No hay facturas vencidas",
+      "daysOverdue": "días de retraso",
+      "vatType": "Tipo IVA",
+      "base": "Base",
+      "tax": "Cuota",
+      "thisMonth": "Este mes",
+      "thisQuarter": "Este trimestre",
+      "thisYear": "Este año",
+      "lastMonth": "Mes anterior",
+      "lastQuarter": "Trimestre anterior",
+      "lastYear": "Año anterior"
+    },
+    "budgets": {
+      "title": "Presupuestos",
+      "description": "Tasas de aceptación, análisis por profesional y tratamientos",
+      "comingSoonDescription": "Los informes de presupuestos estarán disponibles próximamente. Podrás analizar tasas de aceptación, presupuestos por profesional y tratamientos más solicitados.",
+      "features": {
+        "acceptanceRate": "Tasa de aceptación",
+        "acceptanceRateDesc": "Porcentaje de presupuestos aceptados vs rechazados",
+        "byProfessional": "Por profesional",
+        "byProfessionalDesc": "Presupuestos creados por cada profesional",
+        "byTreatment": "Por tratamiento",
+        "byTreatmentDesc": "Tratamientos más presupuestados",
+        "averageValue": "Valor medio",
+        "averageValueDesc": "Importe medio de presupuestos"
+      },
+      "labels": {
+        "totalCreated": "Total creados",
+        "accepted": "Aceptados",
+        "rejected": "rechazados",
+        "pending": "pendientes",
+        "completed": "Completados",
+        "acceptanceRate": "Tasa de aceptación",
+        "averageValue": "Valor medio",
+        "byStatus": "Por estado",
+        "topTreatments": "Tratamientos más presupuestados",
+        "treatment": "Tratamiento",
+        "occurrences": "Apariciones",
+        "quantity": "Cantidad"
+      }
+    },
+    "scheduling": {
+      "title": "Agenda",
+      "description": "Primeras visitas, horas trabajadas y ocupación",
+      "comingSoonDescription": "Los informes de agenda estarán disponibles próximamente. Podrás analizar primeras visitas, horas por profesional y tasas de cancelación.",
+      "features": {
+        "firstVisits": "Primeras visitas",
+        "firstVisitsDesc": "Nuevos pacientes por período",
+        "hoursWorked": "Horas trabajadas",
+        "hoursWorkedDesc": "Tiempo por profesional",
+        "cancellations": "Cancelaciones",
+        "cancellationsDesc": "Tasa de cancelación y no-shows",
+        "cabinetUtilization": "Ocupación de gabinetes",
+        "cabinetUtilizationDesc": "Uso de cada gabinete"
+      },
+      "labels": {
+        "totalAppointments": "Total citas",
+        "completionRate": "Tasa de completado",
+        "completed": "completadas",
+        "cancellationRate": "Tasa de cancelación",
+        "cancelled": "canceladas",
+        "noShowRate": "Tasa de no-shows",
+        "noShows": "no-shows",
+        "newPatients": "nuevos pacientes",
+        "firstVisitRate": "Tasa de primeras visitas",
+        "ofTotalAppointments": "del total de citas",
+        "appointmentsInPeriod": "Citas en período",
+        "excludingCancelled": "sin canceladas",
+        "appointments": "citas",
+        "byDayOfWeek": "Por día de la semana",
+        "statusBreakdown": "Desglose por estado",
+        "pending": "pendientes"
+      }
     }
   },
   "notifications": {
