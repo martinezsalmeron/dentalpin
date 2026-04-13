@@ -295,9 +295,7 @@ async def test_odontogram_at_date_invalid_date_format(
 
 
 @pytest.mark.asyncio
-async def test_timeline_unauthorized(
-    client: AsyncClient, timeline_setup: dict
-) -> None:
+async def test_timeline_unauthorized(client: AsyncClient, timeline_setup: dict) -> None:
     """Test timeline endpoint without authentication."""
     patient_id = timeline_setup["patient_id"]
 

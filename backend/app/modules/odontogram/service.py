@@ -3,7 +3,7 @@
 from datetime import UTC, date, datetime
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -418,10 +418,7 @@ class OdontogramService:
 
         # Sort by date and format
         sorted_dates = sorted(all_dates.items(), key=lambda x: x[0])
-        return [
-            {"date": d.isoformat(), "change_count": count}
-            for d, count in sorted_dates
-        ]
+        return [{"date": d.isoformat(), "change_count": count} for d, count in sorted_dates]
 
     @staticmethod
     async def get_odontogram_at_date(
@@ -514,27 +511,28 @@ class OdontogramService:
         # Format treatments for response
         formatted_treatments = []
         for t in treatments:
-            formatted_treatments.append({
-                "id": t.id,
-                "tooth_record_id": t.tooth_record_id,
-                "tooth_number": t.tooth_number,
-                "treatment_type": t.treatment_type,
-                "treatment_category": t.treatment_category,
-                "surfaces": t.surfaces,
-                "status": t.status,
-                "recorded_at": t.recorded_at,
-                "performed_at": t.performed_at,
-                "performed_by": t.performed_by,
-                "performed_by_name": (
-                    f"{t.performer.first_name} {t.performer.last_name}"
-                    if t.performer else None
-                ),
-                "budget_item_id": t.budget_item_id,
-                "source_module": t.source_module,
-                "notes": t.notes,
-                "created_at": t.created_at,
-                "updated_at": t.updated_at,
-            })
+            formatted_treatments.append(
+                {
+                    "id": t.id,
+                    "tooth_record_id": t.tooth_record_id,
+                    "tooth_number": t.tooth_number,
+                    "treatment_type": t.treatment_type,
+                    "treatment_category": t.treatment_category,
+                    "surfaces": t.surfaces,
+                    "status": t.status,
+                    "recorded_at": t.recorded_at,
+                    "performed_at": t.performed_at,
+                    "performed_by": t.performed_by,
+                    "performed_by_name": (
+                        f"{t.performer.first_name} {t.performer.last_name}" if t.performer else None
+                    ),
+                    "budget_item_id": t.budget_item_id,
+                    "source_module": t.source_module,
+                    "notes": t.notes,
+                    "created_at": t.created_at,
+                    "updated_at": t.updated_at,
+                }
+            )
 
         return {
             "teeth": reconstructed_teeth,

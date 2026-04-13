@@ -348,8 +348,12 @@ async def get_odontogram_at_date(
     return ApiResponse(
         data=HistoricalOdontogramResponse(
             patient_id=str(patient_id),
-            teeth=[HistoricalToothRecordResponse.model_validate(t) for t in historical_data["teeth"]],
-            treatments=[HistoricalTreatmentResponse.model_validate(t) for t in historical_data["treatments"]],
+            teeth=[
+                HistoricalToothRecordResponse.model_validate(t) for t in historical_data["teeth"]
+            ],
+            treatments=[
+                HistoricalTreatmentResponse.model_validate(t) for t in historical_data["treatments"]
+            ],
             condition_colors=CONDITION_COLORS,
             available_conditions=[c.value for c in ToothCondition],
             surfaces=SURFACES,
