@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'slot-click': [professionalId: string, time: string]
+  'slot-drag-create': [professionalId: string, startTime: string, endTime: string]
   'appointment-click': [appointment: Appointment]
   'date-change': [date: Date]
   'appointment-move': [appointmentId: string, newProfessionalId: string, newStartTime: string, newEndTime: string]
@@ -49,6 +50,15 @@ const dragState = ref<{
   currentProfessionalIndex: number
   currentTop: number
   currentHeight: number
+} | null>(null)
+
+// Create drag state (drag on empty slot to define duration)
+const createDragState = ref<{
+  professionalId: string
+  professionalIndex: number
+  startSlot: number
+  currentSlot: number
+  startY: number
 } | null>(null)
 
 const calendarRef = ref<HTMLElement | null>(null)
@@ -183,10 +193,22 @@ function getStatusIcon(status: Appointment['status']): string {
   }
 }
 
-// Handle slot click
-function handleSlotClick(professionalId: string, timeSlot: string) {
+// Handle drag-to-create on empty slot
+function startCreateDrag(professionalId: string, timeSlot: string, profIndex: number, event: MouseEvent) {
   if (dragState.value) return
-  emit('slot-click', professionalId, timeSlot)
+  event.preventDefault()
+
+  const startSlot = getSlotIndex(timeSlot)
+  createDragState.value = {
+    professionalId,
+    professionalIndex: profIndex,
+    startSlot,
+    currentSlot: startSlot,
+    startY: event.clientY
+  }
+
+  document.addEventListener('mousemove', handleDragMove)
+  document.addEventListener('mouseup', handleDragEnd)
 }
 
 // Handle appointment click
@@ -225,6 +247,17 @@ function startDrag(appointment: Appointment, event: MouseEvent, type: 'move' | '
 }
 
 function handleDragMove(event: MouseEvent) {
+  if (createDragState.value) {
+    const deltaY = event.clientY - createDragState.value.startY
+    const slotDelta = Math.floor(deltaY / SLOT_HEIGHT)
+    const maxSlot = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - 1
+    createDragState.value.currentSlot = Math.max(
+      createDragState.value.startSlot,
+      Math.min(maxSlot, createDragState.value.startSlot + slotDelta)
+    )
+    return
+  }
+
   if (!dragState.value) return
 
   const deltaY = event.clientY - dragState.value.startY
@@ -258,6 +291,18 @@ function handleDragMove(event: MouseEvent) {
 function handleDragEnd() {
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
+
+  if (createDragState.value) {
+    const { professionalId, startSlot, currentSlot } = createDragState.value
+    createDragState.value = null
+    const startTime = slotIndexToTime(startSlot)
+    if (currentSlot > startSlot) {
+      emit('slot-drag-create', professionalId, startTime, slotIndexToTime(currentSlot + 1))
+    } else {
+      emit('slot-click', professionalId, startTime)
+    }
+    return
+  }
 
   if (hasMoved.value) {
     wasDragging.value = true
@@ -546,11 +591,11 @@ const allAppointmentsWithProfIndex = computed(() => {
 
             <!-- Professional columns -->
             <div
-              v-for="prof in professionals"
+              v-for="(prof, profIdx) in professionals"
               :key="`${prof.id}-${slot}`"
-              class="h-6 border-r border-gray-100 dark:border-gray-800 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors relative"
+              class="h-6 border-r border-gray-100 dark:border-gray-800 last:border-r-0 cursor-cell hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative"
               :class="{ 'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0 }"
-              @click="handleSlotClick(prof.id, slot)"
+              @mousedown="startCreateDrag(prof.id, slot, profIdx, $event)"
             />
           </div>
 
@@ -569,6 +614,24 @@ const allAppointmentsWithProfIndex = computed(() => {
                 :key="`appointments-${prof.id}`"
                 class="relative border-r border-gray-100 dark:border-gray-800 last:border-r-0"
               >
+                <!-- Ghost block during drag-to-create -->
+                <div
+                  v-if="createDragState && createDragState.professionalIndex === profIndex"
+                  class="absolute left-1 right-1 rounded border-2 border-dashed border-primary-500 bg-primary-100/60 dark:bg-primary-900/30 pointer-events-none z-40 flex items-start p-1"
+                  :style="{
+                    top: `${createDragState.startSlot * SLOT_HEIGHT}px`,
+                    height: `${Math.max(1, createDragState.currentSlot - createDragState.startSlot + 1) * SLOT_HEIGHT}px`,
+                    minHeight: `${SLOT_HEIGHT}px`
+                  }"
+                >
+                  <span
+                    v-if="createDragState.currentSlot > createDragState.startSlot"
+                    class="text-xs text-primary-700 dark:text-primary-300 font-medium leading-none"
+                  >
+                    {{ slotIndexToTime(createDragState.startSlot) }} – {{ slotIndexToTime(createDragState.currentSlot + 1) }}
+                  </span>
+                </div>
+
                 <div
                   v-for="{ appointment } in allAppointmentsWithProfIndex.filter(a => a.profIndex === profIndex)"
                   :key="appointment.id"
