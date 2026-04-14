@@ -55,6 +55,11 @@ const calendarRef = ref<HTMLElement | null>(null)
 const wasDragging = ref(false)
 const hasMoved = ref(false)
 
+onUnmounted(() => {
+  document.removeEventListener('mousemove', handleDragMove)
+  document.removeEventListener('mouseup', handleDragEnd)
+})
+
 // Generate time slots
 const timeSlots = computed(() => {
   const slots: string[] = []
