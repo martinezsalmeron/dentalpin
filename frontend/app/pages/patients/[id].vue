@@ -126,6 +126,16 @@ const tabs = computed(() => {
     slot: 'appointments'
   })
 
+  // Add documents tab if user has permission
+  if (can(PERMISSIONS.documents.read)) {
+    baseTabs.push({
+      value: 'documents',
+      label: t('patientDetail.tabs.documents', 'Documents'),
+      icon: 'i-lucide-files',
+      slot: 'documents'
+    })
+  }
+
   return baseTabs
 })
 
@@ -753,6 +763,13 @@ const infoAccordionItems = computed(() => {
                     </UBadge>
                   </li>
                 </ul>
+              </UCard>
+            </template>
+
+            <!-- Documents tab content -->
+            <template #documents>
+              <UCard class="mt-4">
+                <DocumentGallery :patient-id="patientId" />
               </UCard>
             </template>
           </UTabs>

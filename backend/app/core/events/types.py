@@ -59,3 +59,8 @@ class EventType:
     ODONTOGRAM_TREATMENT_STATUS_CHANGED = "odontogram.treatment.status_changed"
     ODONTOGRAM_TREATMENT_PERFORMED = "odontogram.treatment.performed"
     ODONTOGRAM_TREATMENT_DELETED = "odontogram.treatment.deleted"
+
+    # Document events
+    DOCUMENT_UPLOADED = "document.uploaded"
+    DOCUMENT_DELETED = "document.deleted"
+    DOCUMENT_ARCHIVED = "document.archived"

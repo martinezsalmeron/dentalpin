@@ -183,7 +183,8 @@
       "timeline": "Activity",
       "appointments": "Appointments",
       "budgets": "Budgets",
-      "billing": "Billing"
+      "billing": "Billing",
+      "documents": "Documents"
     },
     "historyPlaceholder": "Clinical notes available in future version",
     "noAppointments": "This patient has no appointments",
@@ -1365,5 +1366,47 @@
         "pending": "pending"
       }
     }
+  },
+  "documents": {
+    "title": "Documents",
+    "add": "Add",
+    "edit": "Edit Document",
+    "upload": "Upload Document",
+    "uploading": "Uploading...",
+    "empty": "No documents yet",
+    "uploadFirst": "Upload first document",
+    "types": {
+      "consent": "Consent",
+      "id_scan": "ID Document",
+      "insurance": "Insurance",
+      "report": "Report",
+      "referral": "Referral",
+      "other": "Other"
+    },
+    "fields": {
+      "type": "Type",
+      "title": "Title",
+      "titlePlaceholder": "Document title",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional notes"
+    },
+    "dropzone": {
+      "hint": "Drag and drop a file here, or click to select"
+    },
+    "filter": {
+      "allTypes": "All types"
+    },
+    "deleteConfirm": {
+      "title": "Delete Document",
+      "message": "Are you sure you want to delete this document? This action cannot be undone."
+    },
+    "fetchError": "Error loading documents",
+    "uploadSuccess": "Document uploaded successfully",
+    "uploadError": "Error uploading document",
+    "downloadError": "Error downloading document",
+    "deleteSuccess": "Document deleted",
+    "deleteError": "Error deleting document",
+    "updateSuccess": "Document updated",
+    "updateError": "Error updating document"
   }
 }

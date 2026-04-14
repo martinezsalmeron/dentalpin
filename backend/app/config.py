@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     # Testing
     TESTING: bool = False
 
+    # Storage configuration
+    STORAGE_BACKEND: str = "local"
+    STORAGE_LOCAL_PATH: str = "/app/storage"
+    STORAGE_MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    STORAGE_ALLOWED_MIME_TYPES: str = "application/pdf,image/jpeg,image/png"
+
+    @property
+    def storage_allowed_mime_types_list(self) -> list[str]:
+        """Parse allowed MIME types as list."""
+        return [t.strip() for t in self.STORAGE_ALLOWED_MIME_TYPES.split(",")]
+
     # Email configuration
     EMAIL_ENABLED: bool = True
     EMAIL_PROVIDER: str = "console"  # console, smtp (sendgrid, mailgun in future)

@@ -71,7 +71,7 @@ Included by default. Functionality every clinic needs.
 | `catalog` | ✅ | Treatment catalog with VAT types |
 | `budgets` | ✅  P0 | Budgets/quotes + PDF |
 | `billing` | ✅  P0 | Invoicing |
-| `patient-record` | 🔴 P0 | Complete patient record (see detail below) |
+| `patient-record` | ⚠️ Partial | Phase 1 ✅, Phase 2 ⚠️ (documents), Phase 3-4 pending |
 | `clinical-notes` | 🟠 P1 | Clinical evolution (SOAP) |
 | `imaging` | 🟠 P1 | Clinical images and X-rays |
 | `booking` | 🟠 P1 | Online booking |
@@ -85,110 +85,19 @@ The current patient record is basic. Implementation divided into 4 phases:
 
 ---
 
-##### Phase 1: Core Patient Data + Medical History + Alerts 🔴 P0
+##### Phase 1: Core Patient Data + Medical History + Alerts ✅
 
-**Scope:** Extend `clinical` module (not new module). Add JSONB fields to Patient model.
-
-**Architecture Decisions:**
-- UI: Sticky sidebar (photo, alerts, quick stats) + tabs layout
-- Medical history as JSONB for schema flexibility
-- Timeline as denormalized table populated via event handlers
-- Alerts computed from medical_history with `active_alerts` property
-
-**Backend Tasks:**
-
-| Task | Description |
-|------|-------------|
-| Extend Patient model | Add demographics: gender, national_id, profession, workplace, address (JSONB) |
-| Emergency contact | JSONB field: name, relationship, phone, email, is_legal_guardian |
-| Medical history JSONB | allergies[], medications[], systemic_diseases[], surgical_history[], special conditions |
-| active_alerts property | Computed from medical_history: allergies, anticoagulants, pregnancy |
-| PatientTimeline model | New table: event_type, event_category, source_table, source_id, title, occurred_at |
-| Timeline service | Write timeline entries from event handlers |
-| Event handlers | Subscribe to appointment.*, budget.*, invoice.*, odontogram.treatment.* events |
-| New endpoints | GET/PUT /patients/{id}/medical-history, GET /patients/{id}/alerts, GET /patients/{id}/timeline |
-| Permissions | clinical.patients.medical.read/write |
-| Migration | Add columns + create patient_timeline table |
-
-**Frontend Tasks:**
-
-| Task | Description |
-|------|-------------|
-| useMedicalHistory composable | fetchMedicalHistory, updateMedicalHistory, helpers |
-| usePatientAlerts composable | fetchAlerts, criticalAlerts computed |
-| usePatientTimeline composable | fetchTimeline, loadMore, category filter |
-| PatientQuickInfo component | Sticky sidebar: photo, alerts, age, stats |
-| PatientAlertsBanner component | Alert badges, expandable, icons |
-| MedicalHistoryForm component | Accordion: allergies, medications, diseases, surgical, conditions |
-| MedicalHistoryView component | Read-only display |
-| EmergencyContactForm component | Contact fields + legal guardian checkbox |
-| PatientTimeline component | Infinite scroll, category filters, entry cards |
-| Refactor patient detail page | Sidebar layout, accordion Info sections, Timeline tab |
-| Permissions config | Add medicalHistory.read/write |
-| i18n strings | Spanish translations for all new fields |
-
-**Data Model: Medical History JSONB**
-
-```
-{
-  "allergies": [
-    {name, type: medication|material|latex|anesthesia|other, severity: low|medium|high|critical, reaction, notes}
-  ],
-  "medications": [
-    {name, dosage, frequency, start_date, notes}
-  ],
-  "systemic_diseases": [
-    {name, type: diabetes|hypertension|cardiac|respiratory|renal|hepatic|neurological|autoimmune|other,
-     diagnosis_date, is_controlled, is_critical, medications[], notes}
-  ],
-  "surgical_history": [
-    {procedure, date, complications, notes}
-  ],
-  "is_pregnant": bool,
-  "pregnancy_week": int,
-  "is_lactating": bool,
-  "is_on_anticoagulants": bool,
-  "anticoagulant_medication": str,
-  "inr_value": float,
-  "last_inr_date": str,
-  "is_smoker": bool,
-  "smoking_frequency": str,
-  "alcohol_consumption": none|occasional|regular,
-  "bruxism": bool,
-  "adverse_reactions_to_anesthesia": bool,
-  "anesthesia_reaction_details": str,
-  "last_updated_at": datetime,
-  "last_updated_by": user_id
-}
-```
-
-**Alert Types:**
-
-| Alert | Trigger | Severity | Icon |
-|-------|---------|----------|------|
-| Allergy | allergies[].severity = high/critical | high/critical | alert-triangle |
-| Anticoagulant | is_on_anticoagulants = true | high | droplet |
-| Pregnancy/Lactation | is_pregnant OR is_lactating | medium | baby |
-| Critical disease | systemic_diseases[].is_critical = true | high | heart-pulse |
-
-**Critical Files:**
-
-| File | Changes |
-|------|---------|
-| `backend/app/modules/clinical/models.py` | Add Patient fields, active_alerts property |
-| `backend/app/modules/clinical/schemas.py` | MedicalHistory*, EmergencyContact*, PatientAlerts*, Timeline* schemas |
-| `backend/app/modules/clinical/router.py` | Medical-history and timeline endpoints |
-| `backend/app/modules/clinical/service.py` | Medical history and timeline service methods |
-| `backend/app/modules/clinical/__init__.py` | Event handlers for timeline population |
-| `backend/app/core/auth/permissions.py` | Add medical.read/write to roles |
-| `backend/app/core/events/types.py` | Add PATIENT_MEDICAL_UPDATED |
-| `frontend/app/pages/patients/[id].vue` | Sidebar + accordion layout refactor |
-| `frontend/app/config/permissions.ts` | Add medicalHistory permissions |
-| `frontend/app/types/index.ts` | MedicalHistory, TimelineEntry types |
+Extended `clinical` module with:
+- Patient demographics (gender, national_id, profession, workplace, address)
+- Emergency contact with legal guardian support
+- Medical history JSONB (allergies, medications, systemic diseases, surgical history, special conditions)
+- Patient alerts computed from medical history
+- Patient timeline populated via event handlers
+- Sidebar + tabs UI layout with quick info and alerts banner
 
 ---
 
-##### Phase 2: Documents + File Storage 🔴 P0
+##### Phase 2: Documents + File Storage ⚠️ Partial
 
 **Scope:** New `media` module with storage abstraction. Patient documents functionality.
 
@@ -200,28 +109,30 @@ The current patient record is basic. Implementation divided into 4 phases:
 
 **Backend Tasks:**
 
-| Task | Description |
-|------|-------------|
-| Create media module | BaseModule subclass with dependencies: ["clinical"] |
-| StorageBackend protocol | upload, download, delete, get_url methods |
-| LocalStorage implementation | Docker volume mount, path-based storage |
-| Document model | patient_id, document_type, filename, storage_path, mime_type, file_size, title, description, metadata (JSONB), uploaded_by |
-| Upload endpoint | POST /patients/{id}/documents with multipart form, validation (size, type) |
-| List/Get/Delete endpoints | Standard CRUD with permission checks |
-| Download endpoint | Streaming response with correct content-type |
-| Permissions | media.documents.read/write |
-| File validation | Max size (10MB default), allowed MIME types |
+| Task | Status | Description |
+|------|--------|-------------|
+| Create media module | ✅ | BaseModule subclass with dependencies: ["clinical"] |
+| StorageBackend protocol | ✅ | upload, download, delete, get_url methods |
+| LocalStorage implementation | ✅ | Docker volume mount, path-based storage |
+| Document model | ✅ | patient_id, document_type, filename, storage_path, mime_type, file_size, title, description, metadata (JSONB), uploaded_by |
+| Upload endpoint | ✅ | POST /patients/{id}/documents with multipart form, validation (size, type) |
+| List/Get/Delete endpoints | ✅ | Standard CRUD with permission checks |
+| Download endpoint | ✅ | Streaming response with correct content-type |
+| Permissions | ✅ | media.documents.read/write |
+| File validation | ✅ | Max size (10MB default), allowed MIME types |
+| Alembic migration | ✅ | `o5p6q7r8s9t0_add_documents_table.py` |
 
 **Frontend Tasks:**
 
-| Task | Description |
-|------|-------------|
-| useDocuments composable | fetchDocuments, uploadDocument, deleteDocument |
-| DocumentUpload component | Drag-drop zone, progress indicator, type selector |
-| DocumentGallery component | Grid/list view, type filter, sort by date |
-| DocumentCard component | Thumbnail (PDF icon or image preview), title, type badge, actions |
-| DocumentViewer component | PDF inline viewer, image lightbox |
-| Add Documents section to patient | Accordion in Info tab or separate Documents tab |
+| Task | Status | Description |
+|------|--------|-------------|
+| useDocuments composable | ✅ | fetchDocuments, uploadDocument, downloadDocument, deleteDocument, updateDocument |
+| DocumentUpload component | ✅ | Drag-drop zone, progress indicator, type selector |
+| DocumentGallery component | ✅ | Grid view, type filter, pagination |
+| DocumentCard component | ✅ | PDF/image icon, title, type badge, download/edit/delete actions |
+| DocumentViewer component | 🔴 | PDF inline viewer, image lightbox (not implemented) |
+| Add Documents tab to patient | ✅ | Separate Documents tab in patient detail |
+| i18n translations | ✅ | Spanish and English complete |
 
 **Document Types:**
 
@@ -230,8 +141,8 @@ The current patient record is basic. Implementation divided into 4 phases:
 | consent | Signed consent forms | file-signature |
 | id_scan | DNI/NIE/Passport scan | id-card |
 | insurance | Insurance card | shield |
-| report | External medical reports | file-medical |
-| referral | Referral letters | mail |
+| report | External medical reports | file-text |
+| referral | Referral letters | file-output |
 | other | Other documents | file |
 
 **Storage Configuration:**
@@ -243,6 +154,15 @@ STORAGE_LOCAL_PATH: str = "/app/storage"
 STORAGE_MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
 STORAGE_ALLOWED_TYPES: list = ["application/pdf", "image/jpeg", "image/png"]
 ```
+
+**Files Created/Modified:**
+- `backend/app/modules/media/` — New module (models, router, schemas, service, storage)
+- `backend/alembic/versions/o5p6q7r8s9t0_add_documents_table.py` — Migration
+- `backend/tests/test_media.py` — Backend tests
+- `frontend/app/components/media/` — DocumentCard, DocumentGallery, DocumentUpload
+- `frontend/app/composables/useDocuments.ts` — Documents composable
+- `frontend/app/config/permissions.ts` — Added documents permissions
+- `frontend/i18n/locales/{en,es}.json` — Translations
 
 ---
 

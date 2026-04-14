@@ -21,8 +21,10 @@ RUN pip install --no-cache-dir .
 # Copy application code
 COPY . .
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Create non-root user and storage directory
+RUN useradd -m -u 1000 appuser \
+    && mkdir -p /app/storage \
+    && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port

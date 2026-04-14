@@ -38,6 +38,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.*",  # Full budget access
         "billing.*",  # Full billing access
+        "media.*",  # Full document access
         "notifications.preferences.*",  # Can manage patient notification preferences
         "notifications.send",  # Can send manual notifications
         "reports.billing.read",  # Can view billing reports
@@ -52,6 +53,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.read",  # Can view budgets
         "billing.read",  # Can view invoices
+        "media.documents.read",  # Can view documents
         "reports.scheduling.read",  # Can view scheduling reports (own data)
     ],
     "assistant": [
@@ -63,6 +65,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "budget.write",  # Can create/edit budgets
         "billing.read",  # Can view invoices
         "billing.write",  # Can create/edit invoices, record payments
+        "media.*",  # Full document access
         "notifications.preferences.*",  # Can manage patient notification preferences
         "notifications.send",  # Can send manual notifications
         "reports.scheduling.read",  # Can view scheduling reports
@@ -78,6 +81,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "budget.write",  # Can create/edit budgets
         "billing.read",  # Can view invoices
         "billing.write",  # Can create/edit invoices, record payments
+        "media.*",  # Full document access
         "notifications.preferences.*",  # Can manage patient notification preferences
         "notifications.send",  # Can send manual notifications
         "reports.billing.read",  # Can view basic billing reports

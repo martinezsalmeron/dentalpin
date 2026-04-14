@@ -22,6 +22,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-/app/storage}
     ports:
       - "8000:8000"
     depends_on:
@@ -29,6 +31,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - storage_data:/app/storage
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -52,3 +55,4 @@ services:
 
 volumes:
   pgdata:
+  storage_data:

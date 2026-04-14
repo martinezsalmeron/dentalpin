@@ -58,6 +58,10 @@ export const PERMISSIONS = {
     billingRead: 'reports.billing.read',
     budgetsRead: 'reports.budgets.read',
     schedulingRead: 'reports.scheduling.read'
+  },
+  documents: {
+    read: 'media.documents.read',
+    write: 'media.documents.write'
   }
 } as const
 

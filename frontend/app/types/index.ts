@@ -1598,3 +1598,43 @@ export interface TimelineResponse {
   page_size: number
   has_more: boolean
 }
+
+// ============================================================================
+// Document Types (Media Module)
+// ============================================================================
+
+export type DocumentType = 'consent' | 'id_scan' | 'insurance' | 'report' | 'referral' | 'other'
+
+export interface UploaderBrief {
+  id: string
+  first_name: string
+  last_name: string
+}
+
+export interface Document {
+  id: string
+  patient_id: string
+  document_type: DocumentType
+  title: string
+  description?: string
+  original_filename: string
+  mime_type: string
+  file_size: number
+  status: 'active' | 'archived'
+  uploaded_by: string
+  uploader?: UploaderBrief
+  created_at: string
+  updated_at: string
+}
+
+export interface DocumentCreate {
+  document_type: DocumentType
+  title: string
+  description?: string
+}
+
+export interface DocumentUpdate {
+  document_type?: DocumentType
+  title?: string
+  description?: string
+}

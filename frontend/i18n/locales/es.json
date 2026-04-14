@@ -211,7 +211,8 @@
       "timeline": "Actividad",
       "appointments": "Citas",
       "budgets": "Presupuestos",
-      "billing": "Facturación"
+      "billing": "Facturación",
+      "documents": "Documentos"
     },
     "historyPlaceholder": "Notas clínicas disponibles en futura versión",
     "noAppointments": "Este paciente no tiene citas",
@@ -1428,5 +1429,47 @@
     "created": "Serie creada correctamente",
     "saved": "Serie actualizada correctamente",
     "resetSuccess": "Contador reiniciado correctamente"
+  },
+  "documents": {
+    "title": "Documentos",
+    "add": "Añadir",
+    "edit": "Editar documento",
+    "upload": "Subir documento",
+    "uploading": "Subiendo...",
+    "empty": "No hay documentos",
+    "uploadFirst": "Subir primer documento",
+    "types": {
+      "consent": "Consentimiento",
+      "id_scan": "Documento de identidad",
+      "insurance": "Seguro",
+      "report": "Informe",
+      "referral": "Derivación",
+      "other": "Otro"
+    },
+    "fields": {
+      "type": "Tipo",
+      "title": "Título",
+      "titlePlaceholder": "Título del documento",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Notas opcionales"
+    },
+    "dropzone": {
+      "hint": "Arrastra un archivo aquí o haz clic para seleccionar"
+    },
+    "filter": {
+      "allTypes": "Todos los tipos"
+    },
+    "deleteConfirm": {
+      "title": "Eliminar documento",
+      "message": "¿Estás seguro de que deseas eliminar este documento? Esta acción no se puede deshacer."
+    },
+    "fetchError": "Error al cargar documentos",
+    "uploadSuccess": "Documento subido correctamente",
+    "uploadError": "Error al subir documento",
+    "downloadError": "Error al descargar documento",
+    "deleteSuccess": "Documento eliminado",
+    "deleteError": "Error al eliminar documento",
+    "updateSuccess": "Documento actualizado",
+    "updateError": "Error al actualizar documento"
   }
 }

@@ -48,6 +48,7 @@ class ClinicalModule(BaseModule):
             EventType.APPOINTMENT_COMPLETED: self._on_appointment_completed,
             EventType.APPOINTMENT_CANCELLED: self._on_appointment_cancelled,
             EventType.PATIENT_MEDICAL_UPDATED: self._on_medical_updated,
+            EventType.DOCUMENT_UPLOADED: self._on_document_uploaded,
         }
 
     async def _on_appointment_completed(self, db: AsyncSession, data: dict) -> None:
@@ -117,4 +118,23 @@ class ClinicalModule(BaseModule):
             title="Historia clínica actualizada",
             occurred_at=datetime.utcnow(),
             created_by=user_id,
+        )
+
+    async def _on_document_uploaded(self, db: AsyncSession, data: dict) -> None:
+        """Add timeline entry when document is uploaded."""
+        document_id = UUID(data["document_id"])
+        patient_id = UUID(data["patient_id"])
+        clinic_id = UUID(data["clinic_id"])
+
+        await TimelineService.add_entry(
+            db=db,
+            clinic_id=clinic_id,
+            patient_id=patient_id,
+            event_type=EventType.DOCUMENT_UPLOADED,
+            event_category="document",
+            source_table="documents",
+            source_id=document_id,
+            title=f"Documento: {data['title']}",
+            event_data={"document_type": data["document_type"]},
+            occurred_at=datetime.utcnow(),
         )
