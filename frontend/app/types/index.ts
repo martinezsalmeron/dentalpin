@@ -1074,10 +1074,15 @@ export interface InvoiceSeriesCreate {
 }
 
 export interface InvoiceSeriesUpdate {
+  prefix?: string
   description?: string
   reset_yearly?: boolean
   is_default?: boolean
   is_active?: boolean
+}
+
+export interface SeriesResetRequest {
+  new_number: number
 }
 
 // Invoice Item
@@ -1441,6 +1446,17 @@ export interface EmergencyContact {
   is_legal_guardian: boolean
 }
 
+// Legal Guardian (for minors)
+export interface LegalGuardian {
+  name: string
+  relationship: string // parent, grandparent, legal_tutor, other
+  dni?: string
+  phone: string
+  email?: string
+  address?: string
+  notes?: string
+}
+
 // Medical History Entry Types
 export interface AllergyEntry {
   name: string
@@ -1534,6 +1550,9 @@ export interface PatientExtended extends Patient {
   // Emergency contact
   emergency_contact?: EmergencyContact
 
+  // Legal guardian (for minors)
+  legal_guardian?: LegalGuardian
+
   // Computed alerts
   active_alerts: PatientAlert[]
 }
@@ -1551,6 +1570,9 @@ export interface PatientExtendedUpdate extends PatientUpdate {
 
   // Emergency contact
   emergency_contact?: EmergencyContact
+
+  // Legal guardian (for minors)
+  legal_guardian?: LegalGuardian
 }
 
 // Timeline Types

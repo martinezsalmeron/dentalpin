@@ -100,6 +100,33 @@
         "other": "Otro"
       }
     },
+    "legalGuardian": {
+      "title": "Tutor Legal",
+      "hasGuardian": "Tiene tutor legal registrado",
+      "noGuardian": "No hay tutor legal registrado",
+      "required": "Obligatorio para pacientes menores de edad",
+      "name": "Nombre completo",
+      "namePlaceholder": "Nombre del tutor",
+      "relationship": "Relación",
+      "relationshipPlaceholder": "Seleccionar relación",
+      "dni": "DNI/NIE",
+      "dniPlaceholder": "Documento de identidad",
+      "phone": "Teléfono",
+      "phonePlaceholder": "Teléfono del tutor",
+      "email": "Email",
+      "emailPlaceholder": "Email del tutor",
+      "address": "Dirección",
+      "addressPlaceholder": "Dirección del tutor",
+      "notes": "Notas",
+      "notesPlaceholder": "Observaciones adicionales...",
+      "remove": "Eliminar tutor",
+      "relationships": {
+        "parent": "Padre/Madre",
+        "grandparent": "Abuelo/a",
+        "legal_tutor": "Tutor legal designado",
+        "other": "Otro"
+      }
+    },
     "medicalHistory": {
       "title": "Historial médico",
       "save": "Guardar historial",
@@ -172,6 +199,7 @@
     },
     "editDemographics": "Editar datos demográficos",
     "editEmergencyContact": "Editar contacto de emergencia",
+    "editLegalGuardian": "Editar tutor legal",
     "editBilling": "Editar datos de facturación",
     "editMedicalHistory": "Editar historial médico"
   },
@@ -521,6 +549,7 @@
     "typeToSearch": "Escribe para buscar..."
   },
   "common": {
+    "default": "Predeterminado",
     "save": "Guardar",
     "add": "Añadir",
     "cancel": "Cancelar",
@@ -1367,5 +1396,37 @@
         "test_failed": "Error al probar conexión SMTP"
       }
     }
+  },
+  "invoiceSeries": {
+    "title": "Series de Facturación",
+    "description": "Configura los prefijos y numeración de facturas",
+    "regularInvoices": "Facturas",
+    "creditNotes": "Facturas Rectificativas",
+    "new": "Nueva serie",
+    "newTitle": "Nueva serie de {type}",
+    "editTitle": "Editar serie",
+    "prefix": "Prefijo",
+    "prefixHint": "Ej: FAC, RECT. Se añadirá el año automáticamente.",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Descripción opcional de la serie...",
+    "nextNumber": "Siguiente número",
+    "preview": "Vista previa",
+    "resetYearly": "Reinicio anual",
+    "resetYearlyLabel": "Reiniciar numeración cada año",
+    "setAsDefault": "Establecer como predeterminada",
+    "activeLabel": "Serie activa",
+    "showInactive": "Mostrar inactivas",
+    "noItems": "No hay series configuradas",
+    "resetCounter": "Reiniciar contador",
+    "currentNumber": "Número actual",
+    "seriesPrefix": "Prefijo de la serie",
+    "newNumber": "Nuevo número",
+    "newNumberHint": "El número debe ser mayor que el más alto existente en esta serie.",
+    "resetWarningTitle": "Atención",
+    "resetWarning": "Esta acción quedará registrada en el historial de auditoría y no se puede deshacer.",
+    "confirmReset": "Reiniciar contador",
+    "created": "Serie creada correctamente",
+    "saved": "Serie actualizada correctamente",
+    "resetSuccess": "Contador reiniciado correctamente"
   }
 }

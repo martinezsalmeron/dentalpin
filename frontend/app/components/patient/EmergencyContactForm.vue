@@ -28,9 +28,11 @@ const emptyContact: EmergencyContact = {
 // Local state
 const localContact = ref<EmergencyContact>({ ...emptyContact })
 const hasContact = ref(!!props.modelValue)
+const isUpdatingFromProps = ref(false)
 
 // Initialize from props
 watch(() => props.modelValue, (newVal) => {
+  isUpdatingFromProps.value = true
   if (newVal) {
     localContact.value = { ...newVal }
     hasContact.value = true
@@ -38,10 +40,14 @@ watch(() => props.modelValue, (newVal) => {
     localContact.value = { ...emptyContact }
     hasContact.value = false
   }
+  nextTick(() => {
+    isUpdatingFromProps.value = false
+  })
 }, { immediate: true })
 
-// Watch local changes and emit
+// Watch local changes and emit (skip if update came from props)
 watch([hasContact, localContact], () => {
+  if (isUpdatingFromProps.value) return
   if (hasContact.value && localContact.value.name && localContact.value.phone) {
     emit('update:modelValue', { ...localContact.value })
   } else if (!hasContact.value) {

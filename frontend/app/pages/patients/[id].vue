@@ -135,7 +135,7 @@ const canEditMedicalHistory = computed(() => can(PERMISSIONS.medicalHistory.writ
 const canEditPatient = computed(() => can(PERMISSIONS.patients.write))
 
 // Section edit modals state
-type SectionType = 'demographics' | 'emergency' | 'billing' | 'medical'
+type SectionType = 'demographics' | 'emergency' | 'guardian' | 'billing' | 'medical'
 const editModalOpen = ref(false)
 const editModalSection = ref<SectionType>('demographics')
 const isSubmitting = ref(false)
@@ -249,13 +249,32 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
   }).format(amount)
 }
 
+// Check if patient is a minor (under 18)
+const isMinor = computed(() => {
+  if (!patient.value?.date_of_birth) return false
+  const today = new Date()
+  const birth = new Date(patient.value.date_of_birth)
+  let years = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) years--
+  return years < 18
+})
+
 // Info tab accordion items - with edit buttons in headers
-const infoAccordionItems = computed(() => [
-  { label: t('patients.demographics'), icon: 'i-lucide-user', slot: 'demographics', defaultOpen: true },
-  { label: t('patients.emergencyContact.title'), icon: 'i-lucide-phone-call', slot: 'emergency' },
-  { label: t('patients.medicalHistory.title'), icon: 'i-lucide-heart-pulse', slot: 'medical' },
-  { label: t('patients.billingSection'), icon: 'i-lucide-receipt', slot: 'billing' }
-])
+const infoAccordionItems = computed(() => {
+  const items = [
+    { label: t('patients.demographics'), icon: 'i-lucide-user', slot: 'demographics', defaultOpen: true },
+    { label: t('patients.emergencyContact.title'), icon: 'i-lucide-phone-call', slot: 'emergency' }
+  ]
+  if (isMinor.value) {
+    items.push({ label: t('patients.legalGuardian.title'), icon: 'i-lucide-shield-check', slot: 'guardian', defaultOpen: false })
+  }
+  items.push(
+    { label: t('patients.medicalHistory.title'), icon: 'i-lucide-heart-pulse', slot: 'medical', defaultOpen: false },
+    { label: t('patients.billingSection'), icon: 'i-lucide-receipt', slot: 'billing', defaultOpen: false }
+  )
+  return items
+})
 </script>
 
 <template>
@@ -440,6 +459,28 @@ const infoAccordionItems = computed(() => [
                         </div>
                         <EmergencyContactForm
                           :model-value="patient.emergency_contact"
+                          readonly
+                        />
+                      </div>
+                    </template>
+
+                    <!-- Legal Guardian Section (minors only) -->
+                    <template #guardian>
+                      <div class="p-4">
+                        <div class="flex justify-end mb-3">
+                          <UButton
+                            v-if="canEditPatient"
+                            variant="soft"
+                            color="neutral"
+                            icon="i-lucide-pencil"
+                            size="xs"
+                            @click="openSectionModal('guardian')"
+                          >
+                            {{ t('common.edit') }}
+                          </UButton>
+                        </div>
+                        <LegalGuardianForm
+                          :model-value="patient.legal_guardian"
                           readonly
                         />
                       </div>

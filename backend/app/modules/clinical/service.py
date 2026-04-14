@@ -138,10 +138,14 @@ class PatientService:
         patient: Patient,
         data: dict,
     ) -> Patient:
-        """Update an existing patient."""
+        """Update an existing patient.
+
+        Note: data should come from model_dump(exclude_unset=True) so only
+        explicitly provided fields are present. This allows setting fields
+        to None (e.g., clearing emergency_contact).
+        """
         for key, value in data.items():
-            if value is not None:
-                setattr(patient, key, value)
+            setattr(patient, key, value)
 
         await db.flush()
 

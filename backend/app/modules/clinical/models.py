@@ -46,6 +46,10 @@ class Patient(Base, TimestampMixin):
     emergency_contact: Mapped[dict | None] = mapped_column(JSONB)
     # {name, relationship, phone, email, is_legal_guardian}
 
+    # Legal guardian for minors (JSONB)
+    legal_guardian: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # {name, relationship, dni, phone, email, address, notes}
+
     # Medical history (JSONB)
     medical_history: Mapped[dict | None] = mapped_column(JSONB, default=dict)
 

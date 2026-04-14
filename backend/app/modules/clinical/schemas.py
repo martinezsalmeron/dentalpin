@@ -304,6 +304,19 @@ class EmergencyContact(BaseModel):
     is_legal_guardian: bool = False
 
 
+# Legal guardian schema (for minors)
+class LegalGuardian(BaseModel):
+    """Schema for legal guardian of minor patients."""
+
+    name: str = Field(min_length=1, max_length=100)
+    relationship: str = Field(max_length=50)  # parent, grandparent, legal_tutor, other
+    dni: str | None = Field(default=None, max_length=20)
+    phone: str = Field(min_length=1, max_length=20)
+    email: EmailStr | None = None
+    address: str | None = Field(default=None, max_length=200)
+    notes: str | None = None
+
+
 # Medical history schemas
 class AllergyEntry(BaseModel):
     """Schema for allergy entry in medical history."""
@@ -432,6 +445,9 @@ class PatientExtendedResponse(PatientResponse):
     # Emergency contact
     emergency_contact: EmergencyContact | None = None
 
+    # Legal guardian (for minors)
+    legal_guardian: LegalGuardian | None = None
+
     # Computed alerts
     active_alerts: list[PatientAlert] = []
 
@@ -451,6 +467,9 @@ class PatientExtendedUpdate(PatientUpdate):
 
     # Emergency contact
     emergency_contact: EmergencyContact | None = None
+
+    # Legal guardian (for minors)
+    legal_guardian: LegalGuardian | None = None
 
 
 # Timeline schemas

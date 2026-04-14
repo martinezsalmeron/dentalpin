@@ -3,12 +3,13 @@ import type {
   PatientExtended,
   PatientExtendedUpdate,
   EmergencyContact,
+  LegalGuardian,
   MedicalHistory,
   PatientAddress,
   PatientBillingAddress
 } from '~/types'
 
-type SectionType = 'demographics' | 'emergency' | 'billing' | 'medical'
+type SectionType = 'demographics' | 'emergency' | 'guardian' | 'billing' | 'medical'
 
 interface Props {
   open: boolean
@@ -36,6 +37,7 @@ const isSubmitting = ref(false)
 const sectionTitles: Record<SectionType, string> = {
   demographics: 'patients.editDemographics',
   emergency: 'patients.editEmergencyContact',
+  guardian: 'patients.editLegalGuardian',
   billing: 'patients.editBilling',
   medical: 'patients.editMedicalHistory'
 }
@@ -67,6 +69,9 @@ const demographicsForm = reactive({
 
 // Form data for emergency contact
 const emergencyForm = ref<EmergencyContact | null>(null)
+
+// Form data for legal guardian
+const guardianForm = ref<LegalGuardian | null>(null)
 
 // Form data for billing
 const billingForm = reactive({
@@ -121,6 +126,8 @@ function initializeForm() {
     demographicsForm.address = props.patient.address || { street: '', city: '', postal_code: '', province: '', country: 'ES' }
   } else if (props.section === 'emergency') {
     emergencyForm.value = props.patient.emergency_contact ? { ...props.patient.emergency_contact } : null
+  } else if (props.section === 'guardian') {
+    guardianForm.value = props.patient.legal_guardian ? { ...props.patient.legal_guardian } : null
   } else if (props.section === 'billing') {
     billingForm.billing_name = props.patient.billing_name || ''
     billingForm.billing_tax_id = props.patient.billing_tax_id || ''
@@ -165,6 +172,10 @@ async function handleSave() {
       updateData = {
         emergency_contact: emergencyForm.value
       }
+    } else if (props.section === 'guardian') {
+      updateData = {
+        legal_guardian: guardianForm.value
+      }
     } else if (props.section === 'billing') {
       const billingAddress = billingForm.billing_address?.street ? billingForm.billing_address : null
       updateData = {
@@ -186,8 +197,10 @@ async function handleSave() {
       color: 'success'
     })
 
-    emit('save', props.section, updateData)
     closeModal()
+    // Emit after close to avoid reactive loop during refresh
+    await nextTick()
+    emit('save', props.section, updateData)
   } catch (error: unknown) {
     const fetchError = error as { statusCode?: number, data?: { message?: string } }
     toast.add({
@@ -313,6 +326,14 @@ const canSave = computed(() => {
           class="space-y-4"
         >
           <EmergencyContactForm v-model="emergencyForm" />
+        </div>
+
+        <!-- Legal Guardian Form -->
+        <div
+          v-else-if="section === 'guardian'"
+          class="space-y-4"
+        >
+          <LegalGuardianForm v-model="guardianForm" />
         </div>
 
         <!-- Billing Form -->
