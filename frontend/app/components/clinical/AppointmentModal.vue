@@ -6,6 +6,7 @@ const props = defineProps<{
   appointment?: Appointment | null
   initialDate?: Date
   initialTime?: string
+  initialEndTime?: string
   initialProfessionalId?: string
   existingAppointments?: Appointment[]
 }>()
@@ -287,7 +288,19 @@ watch(() => props.open, async (isOpen) => {
 
       // Reset other fields
       selectedPatient.value = null
-      formData.duration = clinic.slotDuration.value || 30
+      if (props.initialEndTime) {
+        const startParts = formData.startTime.split(':').map(Number)
+        const endParts = props.initialEndTime.split(':').map(Number)
+        const startMin = (startParts[0] ?? 9) * 60 + (startParts[1] ?? 0)
+        const endMin = (endParts[0] ?? 9) * 60 + (endParts[1] ?? 0)
+        const draggedMinutes = endMin - startMin
+        formData.duration = draggedMinutes > 0
+          ? validDurations.reduce((prev, curr) =>
+            Math.abs(curr - draggedMinutes) < Math.abs(prev - draggedMinutes) ? curr : prev)
+          : clinic.slotDuration.value || 30
+      } else {
+        formData.duration = clinic.slotDuration.value || 30
+      }
       formData.cabinet = clinic.cabinets.value[0]?.name || ''
       formData.notes = ''
       selectedTreatments.value = []

@@ -114,6 +114,7 @@ const isModalOpen = ref(false)
 const selectedAppointment = ref<Appointment | null>(null)
 const initialDate = ref<Date | undefined>()
 const initialTime = ref<string | undefined>()
+const initialEndTime = ref<string | undefined>()
 const initialProfessionalId = ref<string | undefined>()
 
 // Get Monday of the current week
@@ -152,6 +153,17 @@ function handleSlotClick(date: Date, time: string) {
   selectedAppointment.value = null
   initialDate.value = date
   initialTime.value = time
+  initialEndTime.value = undefined
+  initialProfessionalId.value = undefined
+  isModalOpen.value = true
+}
+
+// Handle drag-to-create from weekly view - open modal with end time pre-filled
+function handleSlotDragCreate(date: Date, startTime: string, endTime: string) {
+  selectedAppointment.value = null
+  initialDate.value = date
+  initialTime.value = startTime
+  initialEndTime.value = endTime
   initialProfessionalId.value = undefined
   isModalOpen.value = true
 }
@@ -161,6 +173,17 @@ function handleDailySlotClick(professionalId: string, time: string) {
   selectedAppointment.value = null
   initialDate.value = currentDate.value
   initialTime.value = time
+  initialEndTime.value = undefined
+  initialProfessionalId.value = professionalId
+  isModalOpen.value = true
+}
+
+// Handle drag-to-create from daily view - open modal with professional and end time pre-filled
+function handleDailySlotDragCreate(professionalId: string, startTime: string, endTime: string) {
+  selectedAppointment.value = null
+  initialDate.value = currentDate.value
+  initialTime.value = startTime
+  initialEndTime.value = endTime
   initialProfessionalId.value = professionalId
   isModalOpen.value = true
 }
@@ -338,6 +361,7 @@ function handleAppointmentClick(appointment: Appointment) {
   selectedAppointment.value = appointment
   initialDate.value = undefined
   initialTime.value = undefined
+  initialEndTime.value = undefined
   initialProfessionalId.value = undefined
   isModalOpen.value = true
 }
@@ -440,6 +464,7 @@ function openCreateModal() {
   selectedAppointment.value = null
   initialDate.value = viewMode.value === 'day' ? currentDate.value : new Date()
   initialTime.value = '09:00'
+  initialEndTime.value = undefined
   initialProfessionalId.value = undefined
   isModalOpen.value = true
 }
@@ -588,6 +613,7 @@ onMounted(async () => {
         :current-week-start="currentWeekStart"
         :is-loading="isLoading"
         @slot-click="handleSlotClick"
+        @slot-drag-create="handleSlotDragCreate"
         @appointment-click="handleAppointmentClick"
         @week-change="handleWeekChange"
         @appointment-move="handleAppointmentMove"
@@ -602,6 +628,7 @@ onMounted(async () => {
         :current-date="currentDate"
         :is-loading="isLoading"
         @slot-click="handleDailySlotClick"
+        @slot-drag-create="handleDailySlotDragCreate"
         @appointment-click="handleAppointmentClick"
         @date-change="handleDateChange"
         @appointment-move="handleDailyAppointmentMove"
@@ -615,6 +642,7 @@ onMounted(async () => {
       :appointment="selectedAppointment"
       :initial-date="initialDate"
       :initial-time="initialTime"
+      :initial-end-time="initialEndTime"
       :initial-professional-id="initialProfessionalId"
       :existing-appointments="appointments"
       @saved="handleSaved"
