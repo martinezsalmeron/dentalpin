@@ -14,6 +14,7 @@ from .models import (
     InvoiceHistory,
     InvoiceItem,
     InvoiceSeries,
+    InvoiceSeriesHistory,
     Payment,
 )
 
@@ -158,8 +159,17 @@ class InvoiceSeriesService:
         db: AsyncSession,
         series: InvoiceSeries,
         data: dict,
+        changed_by: UUID | None = None,
     ) -> InvoiceSeries:
         """Update an invoice series."""
+        previous_state = {
+            "prefix": series.prefix,
+            "description": series.description,
+            "reset_yearly": series.reset_yearly,
+            "is_default": series.is_default,
+            "is_active": series.is_active,
+        }
+
         # If setting as default, unset others
         if data.get("is_default") and not series.is_default:
             result = await db.execute(
@@ -173,6 +183,8 @@ class InvoiceSeriesService:
             for other_series in result.scalars().all():
                 other_series.is_default = False
 
+        if "prefix" in data and data["prefix"] is not None:
+            series.prefix = data["prefix"]
         if "description" in data:
             series.description = data["description"]
         if "reset_yearly" in data:
@@ -183,7 +195,119 @@ class InvoiceSeriesService:
             series.is_active = data["is_active"]
 
         await db.flush()
+
+        # Log change if changed_by provided
+        if changed_by:
+            new_state = {
+                "prefix": series.prefix,
+                "description": series.description,
+                "reset_yearly": series.reset_yearly,
+                "is_default": series.is_default,
+                "is_active": series.is_active,
+            }
+            await InvoiceSeriesHistoryService.add_entry(
+                db,
+                clinic_id=series.clinic_id,
+                series_id=series.id,
+                action="updated",
+                changed_by=changed_by,
+                previous_state=previous_state,
+                new_state=new_state,
+            )
+
         return series
+
+    @staticmethod
+    async def reset_series_counter(
+        db: AsyncSession,
+        series: InvoiceSeries,
+        new_number: int,
+        changed_by: UUID,
+    ) -> InvoiceSeries:
+        """Reset series counter to a new number.
+
+        Validates that new_number > max(sequential_number) for invoices in this series.
+        """
+        # Find max sequential_number for invoices in this series
+        max_result = await db.execute(
+            select(func.max(Invoice.sequential_number)).where(
+                Invoice.series_id == series.id,
+                Invoice.clinic_id == series.clinic_id,
+            )
+        )
+        max_sequential = max_result.scalar() or 0
+
+        if new_number <= max_sequential:
+            raise ValueError(
+                f"New number must be greater than {max_sequential} (highest existing invoice number)"
+            )
+
+        previous_number = series.current_number
+        series.current_number = new_number
+
+        await db.flush()
+
+        # Log the reset
+        await InvoiceSeriesHistoryService.add_entry(
+            db,
+            clinic_id=series.clinic_id,
+            series_id=series.id,
+            action="reset",
+            changed_by=changed_by,
+            previous_state={"current_number": previous_number},
+            new_state={"current_number": new_number},
+            notes=f"Counter reset from {previous_number} to {new_number}",
+        )
+
+        return series
+
+
+class InvoiceSeriesHistoryService:
+    """Service for invoice series audit log."""
+
+    @staticmethod
+    async def add_entry(
+        db: AsyncSession,
+        clinic_id: UUID,
+        series_id: UUID,
+        action: str,
+        changed_by: UUID,
+        previous_state: dict | None = None,
+        new_state: dict | None = None,
+        notes: str | None = None,
+    ) -> InvoiceSeriesHistory:
+        """Add a history entry for a series change."""
+        entry = InvoiceSeriesHistory(
+            clinic_id=clinic_id,
+            series_id=series_id,
+            action=action,
+            changed_by=changed_by,
+            changed_at=datetime.now(UTC),
+            previous_state=previous_state,
+            new_state=new_state,
+            notes=notes,
+        )
+        db.add(entry)
+        await db.flush()
+        return entry
+
+    @staticmethod
+    async def list_history(
+        db: AsyncSession,
+        clinic_id: UUID,
+        series_id: UUID,
+    ) -> list[InvoiceSeriesHistory]:
+        """List history entries for a series."""
+        result = await db.execute(
+            select(InvoiceSeriesHistory)
+            .where(
+                InvoiceSeriesHistory.clinic_id == clinic_id,
+                InvoiceSeriesHistory.series_id == series_id,
+            )
+            .options(joinedload(InvoiceSeriesHistory.user))
+            .order_by(desc(InvoiceSeriesHistory.changed_at))
+        )
+        return list(result.scalars().all())
 
 
 class InvoiceHistoryService:

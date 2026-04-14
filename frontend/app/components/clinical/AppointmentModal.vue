@@ -296,7 +296,7 @@ watch(() => props.open, async (isOpen) => {
         const draggedMinutes = endMin - startMin
         formData.duration = draggedMinutes > 0
           ? validDurations.reduce((prev, curr) =>
-            Math.abs(curr - draggedMinutes) < Math.abs(prev - draggedMinutes) ? curr : prev)
+              Math.abs(curr - draggedMinutes) < Math.abs(prev - draggedMinutes) ? curr : prev)
           : clinic.slotDuration.value || 30
       } else {
         formData.duration = clinic.slotDuration.value || 30

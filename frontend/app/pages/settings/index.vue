@@ -624,6 +624,31 @@ async function handleSaveClinicInfo() {
           </UButton>
         </NuxtLink>
       </UCard>
+
+      <!-- Invoice Series link (admin only) -->
+      <UCard v-if="isAdmin">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-lucide-hash"
+              class="w-5 h-5 text-primary-500"
+            />
+            <h2 class="font-semibold text-gray-900 dark:text-white">
+              {{ t('invoiceSeries.title') }}
+            </h2>
+          </div>
+        </template>
+
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          {{ t('invoiceSeries.description') }}
+        </p>
+
+        <NuxtLink to="/settings/invoice-series">
+          <UButton icon="i-lucide-arrow-right">
+            {{ t('invoiceSeries.title') }}
+          </UButton>
+        </NuxtLink>
+      </UCard>
     </div>
 
     <!-- User Management (Admin only) -->

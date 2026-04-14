@@ -23,7 +23,8 @@ import type {
   PatientBillingSummary,
   Payment,
   PaymentCreate,
-  PaymentVoidRequest
+  PaymentVoidRequest,
+  SeriesResetRequest
 } from '~/types'
 
 export interface InvoiceListParams {
@@ -103,6 +104,14 @@ export function useInvoices() {
   async function updateSeries(id: string, data: InvoiceSeriesUpdate): Promise<InvoiceSeries> {
     const response = await api.put<ApiResponse<InvoiceSeries>>(
       `/api/v1/billing/series/${id}`,
+      data as unknown as Record<string, unknown>
+    )
+    return response.data
+  }
+
+  async function resetSeriesCounter(id: string, data: SeriesResetRequest): Promise<InvoiceSeries> {
+    const response = await api.post<ApiResponse<InvoiceSeries>>(
+      `/api/v1/billing/series/${id}/reset`,
       data as unknown as Record<string, unknown>
     )
     return response.data
@@ -590,6 +599,7 @@ export function useInvoices() {
     fetchSeries,
     createSeries,
     updateSeries,
+    resetSeriesCounter,
 
     // CRUD
     fetchInvoices,

@@ -1888,32 +1888,15 @@ INVOICE_SCENARIOS = [
 ]
 
 
-def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
-    """Generate invoice seed data.
-
-    Args:
-        catalog_items_map: Dictionary mapping internal_code to catalog item data
-                          (must include id, default_price, vat_type_id, vat_rate)
+def generate_invoice_series_data() -> list[dict]:
+    """Generate invoice series seed data.
 
     Returns:
-        Dictionary with:
-        - series: List of InvoiceSeries data
-        - invoices: List of Invoice data
-        - items: List of InvoiceItem data
-        - payments: List of Payment data
+        List of InvoiceSeries data dictionaries.
     """
-    from decimal import Decimal
-
-    series = []
-    invoices = []
-    items = []
-    payments = []
-    patients_data = get_patients_data()
-
     current_year = date.today().year
 
-    # Create invoice series
-    series_data = [
+    series_definitions = [
         {
             "id": INVOICE_SERIES_IDS[0],
             "prefix": "FAC",
@@ -1932,7 +1915,8 @@ def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
         },
     ]
 
-    for s in series_data:
+    series = []
+    for s in series_definitions:
         series.append(
             {
                 "id": s["id"],
@@ -1947,6 +1931,35 @@ def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
                 "is_active": True,
             }
         )
+
+    return series
+
+
+def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
+    """Generate invoice seed data.
+
+    Args:
+        catalog_items_map: Dictionary mapping internal_code to catalog item data
+                          (must include id, default_price, vat_type_id, vat_rate)
+
+    Returns:
+        Dictionary with:
+        - series: List of InvoiceSeries data (for backwards compatibility)
+        - invoices: List of Invoice data
+        - items: List of InvoiceItem data
+        - payments: List of Payment data
+    """
+    from decimal import Decimal
+
+    invoices = []
+    items = []
+    payments = []
+    patients_data = get_patients_data()
+
+    current_year = date.today().year
+
+    # Series is now created separately via generate_invoice_series_data()
+    series = generate_invoice_series_data()
 
     invoice_idx = 0
     item_idx = 0

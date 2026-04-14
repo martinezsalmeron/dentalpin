@@ -349,3 +349,43 @@ class InvoiceHistory(Base):
         Index("idx_invoice_history_clinic", "clinic_id"),
         Index("idx_invoice_history_changed_at", "changed_at"),
     )
+
+
+class InvoiceSeriesHistory(Base):
+    """Audit log for invoice series changes.
+
+    Records all changes to series configuration for compliance tracking.
+    """
+
+    __tablename__ = "invoice_series_history"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
+    series_id: Mapped[UUID] = mapped_column(
+        ForeignKey("invoice_series.id", ondelete="CASCADE"), index=True
+    )
+
+    # Action performed
+    action: Mapped[str] = mapped_column(String(50))  # created, updated, reset
+
+    # Actor
+    changed_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    # State snapshots
+    previous_state: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    new_state: Mapped[dict | None] = mapped_column(JSONB, default=None)
+
+    # Additional context
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
+
+    # Relationships
+    clinic: Mapped["Clinic"] = relationship()
+    series: Mapped["InvoiceSeries"] = relationship()
+    user: Mapped["User"] = relationship()
+
+    __table_args__ = (
+        Index("idx_invoice_series_history_series", "series_id"),
+        Index("idx_invoice_series_history_clinic", "clinic_id"),
+        Index("idx_invoice_series_history_changed_at", "changed_at"),
+    )

@@ -37,6 +37,7 @@ from .schemas import (
     PaymentCreate,
     PaymentResponse,
     PaymentVoidRequest,
+    SeriesResetRequest,
 )
 from .service import (
     InvoiceHistoryService,
@@ -112,7 +113,45 @@ async def update_series(
 
     try:
         series = await InvoiceSeriesService.update_series(
-            db, series, data.model_dump(exclude_unset=True)
+            db, series, data.model_dump(exclude_unset=True), changed_by=ctx.user_id
+        )
+        await db.commit()
+        return ApiResponse(data=InvoiceSeriesResponse.model_validate(series))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/series/{series_id}/reset", response_model=ApiResponse[InvoiceSeriesResponse])
+async def reset_series_counter(
+    series_id: UUID,
+    data: SeriesResetRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("billing.admin"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[InvoiceSeriesResponse]:
+    """Reset series counter to a new number.
+
+    The new number must be greater than the highest sequential_number
+    of any invoice in this series to prevent duplicate invoice numbers.
+    """
+    from sqlalchemy import select
+
+    from .models import InvoiceSeries
+
+    result = await db.execute(
+        select(InvoiceSeries).where(
+            InvoiceSeries.id == series_id,
+            InvoiceSeries.clinic_id == ctx.clinic_id,
+        )
+    )
+    series = result.scalar_one_or_none()
+
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+
+    try:
+        series = await InvoiceSeriesService.reset_series_counter(
+            db, series, data.new_number, ctx.user_id
         )
         await db.commit()
         return ApiResponse(data=InvoiceSeriesResponse.model_validate(series))

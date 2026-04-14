@@ -120,10 +120,17 @@ class InvoiceSeriesCreate(BaseModel):
 class InvoiceSeriesUpdate(BaseModel):
     """Schema for updating an invoice series."""
 
+    prefix: str | None = Field(default=None, min_length=1, max_length=20)
     description: str | None = None
     reset_yearly: bool | None = None
     is_default: bool | None = None
     is_active: bool | None = None
+
+
+class SeriesResetRequest(BaseModel):
+    """Schema for resetting a series counter."""
+
+    new_number: int = Field(ge=1)
 
 
 class InvoiceSeriesResponse(BaseModel):

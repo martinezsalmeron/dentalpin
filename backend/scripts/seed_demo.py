@@ -414,6 +414,36 @@ async def seed_budgets(db: AsyncSession) -> dict:
     }
 
 
+async def seed_invoice_series(db: AsyncSession) -> int:
+    """Create demo invoice series.
+
+    Returns:
+        Number of series created.
+    """
+    from app.seeds.demo_data import generate_invoice_series_data
+
+    series_data = generate_invoice_series_data()
+
+    for series_dict in series_data:
+        series = InvoiceSeries(
+            id=series_dict["id"],
+            clinic_id=series_dict["clinic_id"],
+            prefix=series_dict["prefix"],
+            series_type=series_dict["series_type"],
+            description=series_dict["description"],
+            current_number=series_dict["current_number"],
+            reset_yearly=series_dict["reset_yearly"],
+            last_reset_year=series_dict["last_reset_year"],
+            is_default=series_dict["is_default"],
+            is_active=series_dict["is_active"],
+        )
+        db.add(series)
+
+    await db.flush()
+    print(f"  Created {len(series_data)} invoice series")
+    return len(series_data)
+
+
 async def seed_invoices(db: AsyncSession) -> dict:
     """Create demo invoices with items and payments.
 
@@ -436,26 +466,8 @@ async def seed_invoices(db: AsyncSession) -> dict:
             "vat_rate": item.vat_rate or 0.0,
         }
 
-    # Generate invoice data
+    # Generate invoice data (series already created)
     invoice_data = generate_invoices_data(catalog_items_map)
-
-    # Create invoice series
-    for series_dict in invoice_data["series"]:
-        series = InvoiceSeries(
-            id=series_dict["id"],
-            clinic_id=series_dict["clinic_id"],
-            prefix=series_dict["prefix"],
-            series_type=series_dict["series_type"],
-            description=series_dict["description"],
-            current_number=series_dict["current_number"],
-            reset_yearly=series_dict["reset_yearly"],
-            last_reset_year=series_dict["last_reset_year"],
-            is_default=series_dict["is_default"],
-            is_active=series_dict["is_active"],
-        )
-        db.add(series)
-
-    await db.flush()
 
     # Create invoices
     for invoice_dict in invoice_data["invoices"]:
@@ -551,7 +563,6 @@ async def seed_invoices(db: AsyncSession) -> dict:
         status = invoice["status"]
         status_counts[status] = status_counts.get(status, 0) + 1
 
-    print(f"  Created {len(invoice_data['series'])} invoice series")
     print(f"  Created {len(invoice_data['invoices'])} invoices:")
     for status, count in sorted(status_counts.items()):
         print(f"    - {status}: {count}")
@@ -559,7 +570,6 @@ async def seed_invoices(db: AsyncSession) -> dict:
     print(f"  Created {len(invoice_data['payments'])} payments")
 
     return {
-        "series": len(invoice_data["series"]),
         "invoices": len(invoice_data["invoices"]),
         "items": len(invoice_data["items"]),
         "payments": len(invoice_data["payments"]),
@@ -640,7 +650,10 @@ async def main(lang: str = "en"):
             print("\n[7/8] Creating budgets...")
             await seed_budgets(db)
 
-            print("\n[8/8] Creating invoices...")
+            print("\n[8/9] Creating invoice series...")
+            await seed_invoice_series(db)
+
+            print("\n[9/9] Creating invoices...")
             await seed_invoices(db)
 
             # Commit all changes
