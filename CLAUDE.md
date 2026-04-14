@@ -16,6 +16,8 @@ Comprehensive documentation for AI coding agents working on DentalPin.
 
 **License:** BSL 1.1 (commercial SaaS restricted, converts to Apache 2.0 after 4 years)
 
+**Architecture Diagrams:** See [docs/diagrams/](docs/diagrams/) for visual documentation.
+
 ---
 
 ## Quick Start

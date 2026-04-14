@@ -2,6 +2,8 @@
 
 This guide explains how to create new modules for DentalPin's plugin architecture.
 
+> **Visual guide:** See [Module Architecture Diagram](diagrams/module-architecture.md) for how the plugin system works.
+
 ## Overview
 
 Modules are self-contained features that provide:
