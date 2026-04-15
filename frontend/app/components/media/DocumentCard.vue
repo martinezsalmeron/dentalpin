@@ -9,6 +9,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
+  view: [document: Document]
   download: [document: Document]
   delete: [document: Document]
   edit: [document: Document]
@@ -16,9 +17,38 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const { can } = usePermissions()
-const { formatFileSize, getDocumentTypeLabel, getMimeTypeIcon } = useDocuments()
+const { formatFileSize, getDocumentTypeLabel, getMimeTypeIcon, getDocumentBlobUrl } = useDocuments()
 
 const canWrite = computed(() => can(PERMISSIONS.documents.write))
+
+// Thumbnail for images
+const isImage = computed(() => props.document.mime_type.startsWith('image/'))
+const thumbnailUrl = ref<string | null>(null)
+const thumbnailLoading = ref(false)
+
+async function loadThumbnail() {
+  if (!isImage.value || thumbnailUrl.value) return
+  thumbnailLoading.value = true
+  thumbnailUrl.value = await getDocumentBlobUrl(props.document.id)
+  thumbnailLoading.value = false
+}
+
+onMounted(() => {
+  if (isImage.value) {
+    loadThumbnail()
+  }
+})
+
+onUnmounted(() => {
+  if (thumbnailUrl.value) {
+    URL.revokeObjectURL(thumbnailUrl.value)
+  }
+})
+
+const canView = computed(() => {
+  const mime = props.document.mime_type
+  return mime === 'application/pdf' || mime.startsWith('image/')
+})
 
 const formattedDate = computed(() => {
   const date = new Date(props.document.created_at)
@@ -31,6 +61,10 @@ const uploaderName = computed(() => {
   }
   return ''
 })
+
+function handleView() {
+  emit('view', props.document)
+}
 
 function handleDownload() {
   emit('download', props.document)
@@ -48,9 +82,28 @@ function handleEdit() {
 <template>
   <UCard class="group">
     <div class="flex items-start gap-4">
-      <!-- Icon -->
+      <!-- Thumbnail / Icon -->
       <div class="flex-shrink-0">
-        <div class="w-12 h-12 rounded-lg bg-primary-100 dark:bg-primary-900/20 flex items-center justify-center">
+        <div
+          v-if="isImage && thumbnailUrl"
+          class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800"
+        >
+          <img
+            :src="thumbnailUrl"
+            :alt="document.title"
+            class="w-full h-full object-cover"
+          >
+        </div>
+        <div
+          v-else-if="isImage && thumbnailLoading"
+          class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+        >
+          <USkeleton class="w-full h-full" />
+        </div>
+        <div
+          v-else
+          class="w-12 h-12 rounded-lg bg-primary-100 dark:bg-primary-900/20 flex items-center justify-center"
+        >
           <UIcon
             :name="getMimeTypeIcon(document.mime_type)"
             class="w-6 h-6 text-primary-600 dark:text-primary-400"
@@ -79,6 +132,15 @@ function handleEdit() {
 
           <!-- Actions -->
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <UButton
+              v-if="canView"
+              icon="i-lucide-eye"
+              color="gray"
+              variant="ghost"
+              size="xs"
+              :title="t('common.view')"
+              @click="handleView"
+            />
             <UButton
               icon="i-lucide-download"
               color="gray"
