@@ -864,6 +864,7 @@
     "searchPlaceholder": "Buscar por número o paciente...",
     "budgetNumber": "Número",
     "version": "Versión",
+    "treatmentPlan": "Plan de tratamiento",
     "patient": "Paciente",
     "selectPatient": "Seleccionar paciente",
     "selectPatientHint": "Busca y selecciona el paciente para este presupuesto",

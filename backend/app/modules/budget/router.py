@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
@@ -29,6 +30,7 @@ from .schemas import (
     BudgetUpdate,
     BudgetVersionListResponse,
     BudgetVersionResponse,
+    TreatmentPlanBrief,
 )
 from .service import BudgetHistoryService, BudgetItemService, BudgetService
 from .workflow import BudgetWorkflowError, BudgetWorkflowService
@@ -89,7 +91,25 @@ async def get_budget(
     budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
-    return ApiResponse(data=BudgetDetailResponse.model_validate(budget))
+
+    # Query for treatment plan that references this budget (reverse lookup)
+    from app.modules.treatment_plan.models import TreatmentPlan
+
+    result = await db.execute(
+        select(TreatmentPlan).where(
+            TreatmentPlan.budget_id == budget_id,
+            TreatmentPlan.clinic_id == ctx.clinic_id,
+            TreatmentPlan.deleted_at.is_(None),
+        )
+    )
+    treatment_plan = result.scalar_one_or_none()
+
+    # Build response with treatment plan
+    response_data = BudgetDetailResponse.model_validate(budget)
+    if treatment_plan:
+        response_data.treatment_plan = TreatmentPlanBrief.model_validate(treatment_plan)
+
+    return ApiResponse(data=response_data)
 
 
 @router.post(

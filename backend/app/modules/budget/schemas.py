@@ -81,6 +81,18 @@ class VatTypeBrief(BaseModel):
         from_attributes = True
 
 
+class TreatmentPlanBrief(BaseModel):
+    """Brief treatment plan info for budget responses."""
+
+    id: UUID
+    plan_number: str
+    title: str | None
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
 # ============================================================================
 # Budget Item Schemas
 # ============================================================================
@@ -363,6 +375,7 @@ class BudgetDetailResponse(BudgetResponse):
 
     items: list[BudgetItemResponse] = []
     signatures: list[SignatureResponse] = []
+    treatment_plan: TreatmentPlanBrief | None = None
 
     class Config:
         from_attributes = True

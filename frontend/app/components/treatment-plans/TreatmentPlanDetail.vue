@@ -97,6 +97,17 @@ function getBudgetStatusColor(status: string): string {
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {{ plan.plan_number }} &middot; {{ d(new Date(plan.created_at), 'short') }}
           </p>
+          <NuxtLink
+            v-if="plan.patient"
+            :to="`/patients/${plan.patient_id}`"
+            class="inline-flex items-center gap-1.5 mt-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
+          >
+            <UIcon
+              name="i-lucide-user"
+              class="w-4 h-4"
+            />
+            {{ plan.patient.first_name }} {{ plan.patient.last_name }}
+          </NuxtLink>
         </div>
 
         <div class="flex gap-2">

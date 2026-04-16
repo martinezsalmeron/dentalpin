@@ -733,6 +733,18 @@ function getItemName(item: BudgetItem): string {
                   {{ formatDate(currentBudget.created_at) }}
                 </p>
               </div>
+              <div v-if="currentBudget.treatment_plan">
+                <span class="text-gray-500">{{ t('budget.treatmentPlan') }}</span>
+                <NuxtLink
+                  :to="`/treatment-plans/${currentBudget.treatment_plan.id}`"
+                  class="block font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
+                >
+                  {{ currentBudget.treatment_plan.plan_number }}
+                  <span v-if="currentBudget.treatment_plan.title" class="text-gray-500 font-normal">
+                    - {{ currentBudget.treatment_plan.title }}
+                  </span>
+                </NuxtLink>
+              </div>
             </div>
           </UCard>
         </div>

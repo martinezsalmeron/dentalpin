@@ -842,6 +842,7 @@
     "searchPlaceholder": "Search by number or patient...",
     "budgetNumber": "Number",
     "version": "Version",
+    "treatmentPlan": "Treatment plan",
     "patient": "Patient",
     "selectPatient": "Select patient",
     "selectPatientHint": "Search and select the patient for this quote",

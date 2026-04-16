@@ -816,6 +816,7 @@ export interface Budget {
 export interface BudgetDetail extends Budget {
   items: BudgetItem[]
   signatures: BudgetSignature[]
+  treatment_plan?: TreatmentPlanBrief
 }
 
 export interface BudgetListItem {
