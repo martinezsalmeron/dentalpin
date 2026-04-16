@@ -16,6 +16,7 @@ const props = defineProps<{
   professionals?: ProfessionalWithColor[]
   currentWeekStart: Date
   isLoading?: boolean
+  highlightedAppointmentId?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -25,7 +26,17 @@ const emit = defineEmits<{
   'week-change': [weekStart: Date]
   'appointment-move': [appointmentId: string, newDate: string, newStartTime: string, newEndTime: string]
   'appointment-resize': [appointmentId: string, newEndTime: string]
+  'highlight-cleared': []
 }>()
+
+// Clear highlight after animation completes
+watch(() => props.highlightedAppointmentId, (newId) => {
+  if (newId) {
+    setTimeout(() => {
+      emit('highlight-cleared')
+    }, 3000)
+  }
+}, { immediate: true })
 
 const { t, locale } = useI18n()
 
@@ -726,7 +737,8 @@ const allAppointmentsWithDayIndex = computed(() => {
                   class="absolute rounded overflow-hidden pointer-events-auto select-none shadow-sm"
                   :class="[
                     getStatusClass(appointment.status),
-                    dragState?.appointmentId === appointment.id ? 'cursor-grabbing ring-2 ring-primary-500' : 'cursor-grab hover:ring-2 hover:ring-primary-500'
+                    dragState?.appointmentId === appointment.id ? 'cursor-grabbing ring-2 ring-primary-500' : 'cursor-grab hover:ring-2 hover:ring-primary-500',
+                    highlightedAppointmentId === appointment.id ? 'ring-4 ring-warning-500 animate-pulse z-50' : ''
                   ]"
                   :style="{ ...getAppointmentStyle(appointment), ...getAppointmentColorStyle(appointment), ...getOverlapStyle(appointment) }"
                   @click="handleAppointmentClick(appointment, $event)"

@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import type { PatientExtended, PatientAlert } from '~/types'
+import type { PatientExtended, PatientAlert, TreatmentPlan, Appointment } from '~/types'
 
 interface Props {
   patient: PatientExtended
+  activePlan?: TreatmentPlan | null
+  nextAppointment?: Appointment | null
+  loadingPlan?: boolean
+  loadingAppointment?: boolean
 }
 
 const props = defineProps<Props>()
@@ -27,13 +31,6 @@ const initials = computed(() => {
   const first = props.patient.first_name?.[0] || ''
   const last = props.patient.last_name?.[0] || ''
   return (first + last).toUpperCase()
-})
-
-// Format phone for display
-const formattedPhone = computed(() => {
-  const phone = props.patient.phone
-  if (!phone) return null
-  return phone
 })
 
 // Status color
@@ -67,6 +64,9 @@ function getSeverityColor(severity: PatientAlert['severity']): string {
 const hasCriticalAlerts = computed(() =>
   props.patient.active_alerts?.some(a => a.severity === 'critical' || a.severity === 'high')
 )
+
+// Emergency contact collapse state
+const emergencyContactExpanded = ref(false)
 </script>
 
 <template>
@@ -158,6 +158,23 @@ const hasCriticalAlerts = computed(() =>
       </div>
     </div>
 
+    <!-- Context Widgets -->
+    <div class="space-y-3 mb-4">
+      <!-- Active Plan Widget -->
+      <ActivePlanWidget
+        :plan="activePlan"
+        :patient-id="patient.id"
+        :loading="loadingPlan"
+      />
+
+      <!-- Next Appointment Widget -->
+      <NextAppointmentWidget
+        :appointment="nextAppointment"
+        :patient-id="patient.id"
+        :loading="loadingAppointment"
+      />
+    </div>
+
     <!-- Quick Stats -->
     <div class="space-y-3 text-sm">
       <!-- Age -->
@@ -174,7 +191,7 @@ const hasCriticalAlerts = computed(() =>
 
       <!-- Phone -->
       <div
-        v-if="formattedPhone"
+        v-if="patient.phone"
         class="flex items-center gap-2"
       >
         <UIcon
@@ -185,7 +202,7 @@ const hasCriticalAlerts = computed(() =>
           :href="`tel:${patient.phone}`"
           class="text-primary-500 hover:underline"
         >
-          {{ formattedPhone }}
+          {{ patient.phone }}
         </a>
       </div>
 
@@ -218,35 +235,57 @@ const hasCriticalAlerts = computed(() =>
         <span>{{ patient.national_id_type?.toUpperCase() }}: {{ patient.national_id }}</span>
       </div>
 
-      <!-- Emergency Contact -->
+      <!-- Emergency Contact (Collapsible) -->
       <div
         v-if="patient.emergency_contact"
         class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
       >
-        <div class="flex items-center gap-2 mb-2 text-gray-500">
+        <button
+          type="button"
+          class="flex items-center justify-between w-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          @click="emergencyContactExpanded = !emergencyContactExpanded"
+        >
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-lucide-phone-call"
+              class="w-4 h-4"
+            />
+            <span class="font-medium text-sm">{{ t('patients.emergencyContact.title') }}</span>
+          </div>
           <UIcon
-            name="i-lucide-phone-call"
+            :name="emergencyContactExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
             class="w-4 h-4"
           />
-          <span class="font-medium">{{ t('patients.emergencyContact.title') }}</span>
-        </div>
-        <div class="pl-6 space-y-1">
-          <p class="font-medium">
-            {{ patient.emergency_contact.name }}
-          </p>
-          <p
-            v-if="patient.emergency_contact.relationship"
-            class="text-gray-500"
+        </button>
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 max-h-0"
+          enter-to-class="opacity-100 max-h-40"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100 max-h-40"
+          leave-to-class="opacity-0 max-h-0"
+        >
+          <div
+            v-show="emergencyContactExpanded"
+            class="pl-6 space-y-1 mt-2 overflow-hidden"
           >
-            {{ patient.emergency_contact.relationship }}
-          </p>
-          <a
-            :href="`tel:${patient.emergency_contact.phone}`"
-            class="text-primary-500 hover:underline"
-          >
-            {{ patient.emergency_contact.phone }}
-          </a>
-        </div>
+            <p class="font-medium">
+              {{ patient.emergency_contact.name }}
+            </p>
+            <p
+              v-if="patient.emergency_contact.relationship"
+              class="text-gray-500"
+            >
+              {{ patient.emergency_contact.relationship }}
+            </p>
+            <a
+              :href="`tel:${patient.emergency_contact.phone}`"
+              class="text-primary-500 hover:underline"
+            >
+              {{ patient.emergency_contact.phone }}
+            </a>
+          </div>
+        </Transition>
       </div>
     </div>
   </div>

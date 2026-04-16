@@ -103,22 +103,54 @@ class ProfessionalBrief(BaseModel):
 
 # Treatment brief for appointment responses
 class AppointmentTreatmentBrief(BaseModel):
-    """Brief treatment info for appointment responses."""
+    """Brief treatment info for appointment responses.
+
+    Includes data from the planned treatment item and its catalog item.
+    """
 
     id: UUID
-    catalog_item_id: UUID
+    planned_item_id: UUID
+    planned_item_status: str  # pending, completed, cancelled
+    catalog_item_id: UUID | None = None
     internal_code: str
     names: dict[str, str]
     default_price: float | None = None
     default_duration_minutes: int | None = None
+    # Dental context from planned item
+    tooth_number: int | None = None
+    surfaces: list[str] | None = None
+    is_global: bool = False
+    # Plan info
+    plan_id: UUID | None = None
+    plan_number: str | None = None
+    # Completion tracking
+    completed_in_appointment: bool = False
 
     @classmethod
     def from_appointment_treatment(cls, apt_treatment: "Any") -> "AppointmentTreatmentBrief":
-        """Create from AppointmentTreatment model with catalog_item loaded."""
+        """Create from AppointmentTreatment model with planned_item and catalog_item loaded."""
+        planned_item = apt_treatment.planned_item
         catalog_item = apt_treatment.catalog_item
+
+        # Get catalog info from planned_item's relationships if direct catalog_item not set
+        if not catalog_item and planned_item:
+            if planned_item.catalog_item:
+                catalog_item = planned_item.catalog_item
+            elif planned_item.tooth_treatment and planned_item.tooth_treatment.catalog_item:
+                catalog_item = planned_item.tooth_treatment.catalog_item
+
+        # Get tooth info from planned_item
+        tooth_number = None
+        surfaces = None
+        if planned_item and planned_item.tooth_treatment:
+            tooth_number = planned_item.tooth_treatment.tooth_number
+            surfaces = planned_item.tooth_treatment.surfaces
+
         return cls(
             id=apt_treatment.id,
-            catalog_item_id=apt_treatment.catalog_item_id,
+            planned_item_id=apt_treatment.planned_treatment_item_id,
+            planned_item_status=planned_item.status if planned_item else "pending",
+            catalog_item_id=catalog_item.id if catalog_item else None,
             internal_code=catalog_item.internal_code if catalog_item else "",
             names=catalog_item.names if catalog_item else {},
             default_price=float(catalog_item.default_price)
@@ -127,6 +159,14 @@ class AppointmentTreatmentBrief(BaseModel):
             default_duration_minutes=catalog_item.default_duration_minutes
             if catalog_item
             else None,
+            tooth_number=tooth_number,
+            surfaces=surfaces,
+            is_global=planned_item.is_global if planned_item else False,
+            plan_id=planned_item.treatment_plan_id if planned_item else None,
+            plan_number=planned_item.treatment_plan.plan_number
+            if planned_item and planned_item.treatment_plan
+            else None,
+            completed_in_appointment=apt_treatment.completed_in_appointment,
         )
 
 
@@ -140,7 +180,7 @@ class AppointmentCreate(BaseModel):
     start_time: datetime
     end_time: datetime
     treatment_type: str | None = Field(default=None, max_length=100)  # Legacy field
-    treatment_ids: list[UUID] | None = None  # New: list of catalog item IDs
+    planned_item_ids: list[UUID] | None = None  # List of PlannedTreatmentItem IDs
     notes: str | None = None
     color: str | None = Field(default=None, max_length=7)
 
@@ -154,7 +194,7 @@ class AppointmentUpdate(BaseModel):
     start_time: datetime | None = None
     end_time: datetime | None = None
     treatment_type: str | None = Field(default=None, max_length=100)  # Legacy field
-    treatment_ids: list[UUID] | None = None  # New: list of catalog item IDs
+    planned_item_ids: list[UUID] | None = None  # List of PlannedTreatmentItem IDs
     status: str | None = None
     notes: str | None = None
     color: str | None = Field(default=None, max_length=7)
@@ -187,29 +227,33 @@ class AppointmentResponse(BaseModel):
         # Handle ORM model
         if hasattr(data, "treatments"):
             treatments_raw = data.treatments
+            treatments_list = []
             if treatments_raw:
-                data_dict = {
-                    "id": data.id,
-                    "clinic_id": data.clinic_id,
-                    "patient_id": data.patient_id,
-                    "professional_id": data.professional_id,
-                    "cabinet": data.cabinet,
-                    "start_time": data.start_time,
-                    "end_time": data.end_time,
-                    "treatment_type": data.treatment_type,
-                    "status": data.status,
-                    "notes": data.notes,
-                    "color": data.color,
-                    "created_at": data.created_at,
-                    "updated_at": data.updated_at,
-                    "patient": data.patient,
-                    "professional": data.professional,
-                    "treatments": [
-                        AppointmentTreatmentBrief.from_appointment_treatment(t)
-                        for t in treatments_raw
-                    ],
-                }
-                return data_dict
+                for t in treatments_raw:
+                    # Only include treatments with valid planned_item
+                    if t.planned_treatment_item_id:
+                        treatments_list.append(
+                            AppointmentTreatmentBrief.from_appointment_treatment(t)
+                        )
+            data_dict = {
+                "id": data.id,
+                "clinic_id": data.clinic_id,
+                "patient_id": data.patient_id,
+                "professional_id": data.professional_id,
+                "cabinet": data.cabinet,
+                "start_time": data.start_time,
+                "end_time": data.end_time,
+                "treatment_type": data.treatment_type,
+                "status": data.status,
+                "notes": data.notes,
+                "color": data.color,
+                "created_at": data.created_at,
+                "updated_at": data.updated_at,
+                "patient": data.patient,
+                "professional": data.professional,
+                "treatments": treatments_list,
+            }
+            return data_dict
         return data
 
     class Config:

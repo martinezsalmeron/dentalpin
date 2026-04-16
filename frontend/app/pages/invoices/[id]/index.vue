@@ -28,6 +28,8 @@ const {
 } = useInvoices()
 
 const invoiceId = computed(() => route.params.id as string)
+const comesFromPatient = computed(() => route.query.from === 'patient' && route.query.patientId)
+const backLabel = computed(() => comesFromPatient.value ? t('actions.back') : t('invoice.title'))
 
 // Modal states
 const showPaymentModal = ref(false)
@@ -333,7 +335,11 @@ async function handleDownloadPDF() {
 }
 
 function goBack() {
-  router.push('/invoices')
+  if (comesFromPatient.value) {
+    router.push(`/patients/${route.query.patientId}`)
+  } else {
+    router.push('/invoices')
+  }
 }
 
 function goToEdit() {
@@ -377,7 +383,7 @@ function goToCreditNoteFor() {
         {{ t('invoice.notFound') }}
       </h3>
       <UButton @click="goBack">
-        {{ t('common.back') }}
+        {{ backLabel }}
       </UButton>
     </div>
 
@@ -391,7 +397,9 @@ function goToCreditNoteFor() {
             color="neutral"
             icon="i-lucide-arrow-left"
             @click="goBack"
-          />
+          >
+            {{ backLabel }}
+          </UButton>
           <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               {{ currentInvoice.invoice_number || t('invoice.draftNoNumber') }}

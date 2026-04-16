@@ -153,6 +153,34 @@ export function useDocuments() {
     }
   }
 
+  /**
+   * Get blob URL for viewing document inline.
+   * Caller is responsible for calling URL.revokeObjectURL() when done.
+   */
+  async function getDocumentBlobUrl(documentId: string): Promise<string | null> {
+    try {
+      const response = await $fetch<Blob>(
+        `/api/v1/media/documents/${documentId}/download`,
+        {
+          baseURL: apiBaseUrl.value,
+          headers: {
+            Authorization: `Bearer ${auth.accessToken.value}`
+          },
+          responseType: 'blob'
+        }
+      )
+      return URL.createObjectURL(response)
+    } catch (error) {
+      console.error('Error fetching document blob:', error)
+      toast.add({
+        title: t('common.error'),
+        description: t('documents.viewError', 'Error loading document'),
+        color: 'error'
+      })
+      return null
+    }
+  }
+
   async function deleteDocument(documentId: string): Promise<boolean> {
     try {
       await $fetch(
@@ -279,6 +307,7 @@ export function useDocuments() {
     fetchDocuments,
     uploadDocument,
     downloadDocument,
+    getDocumentBlobUrl,
     deleteDocument,
     updateDocument,
     getDocumentTypeLabel,

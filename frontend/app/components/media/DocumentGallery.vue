@@ -42,7 +42,9 @@ const typeFilterOptions = computed(() => [
 const showUploadModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteConfirm = ref(false)
+const showViewer = ref(false)
 const selectedDocument = ref<Document | null>(null)
+const viewerDocument = ref<Document | null>(null)
 
 // Edit form state
 const editTitle = ref('')
@@ -82,6 +84,11 @@ watch(() => props.patientId, () => {
 }, { immediate: true })
 
 // Handlers
+function handleView(doc: Document) {
+  viewerDocument.value = doc
+  showViewer.value = true
+}
+
 function handleDownload(doc: Document) {
   downloadDocument(doc.id, doc.original_filename)
 }
@@ -205,6 +212,7 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize))
         v-for="doc in documents"
         :key="doc.id"
         :document="doc"
+        @view="handleView"
         @download="handleDownload"
         @edit="handleEdit"
         @delete="handleDeleteRequest"
@@ -334,5 +342,11 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize))
         </UCard>
       </template>
     </UModal>
+
+    <!-- Document Viewer -->
+    <DocumentViewer
+      v-model:open="showViewer"
+      :document="viewerDocument"
+    />
   </div>
 </template>

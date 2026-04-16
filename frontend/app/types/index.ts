@@ -162,13 +162,25 @@ export interface PatientUpdate extends Partial<PatientCreate> {
   status?: 'active' | 'archived'
 }
 
-// Appointment treatment brief (from catalog)
+// Appointment treatment brief (from planned treatment item)
 export interface AppointmentTreatmentBrief {
   id: string
-  catalog_item_id: string
+  planned_item_id: string
+  planned_item_status: 'pending' | 'completed' | 'cancelled'
+  catalog_item_id?: string
   internal_code: string
   names: Record<string, string>
   default_price?: number
+  default_duration_minutes?: number
+  // Dental context
+  tooth_number?: number
+  surfaces?: string[]
+  is_global: boolean
+  // Plan info
+  plan_id?: string
+  plan_number?: string
+  // Completion tracking
+  completed_in_appointment: boolean
 }
 
 // Appointment types
@@ -198,7 +210,7 @@ export interface AppointmentCreate {
   start_time: string
   end_time: string
   treatment_type?: string // Legacy field
-  treatment_ids?: string[] // New: list of catalog item IDs
+  planned_item_ids?: string[] // List of PlannedTreatmentItem IDs
   notes?: string
   color?: string
 }
@@ -1637,4 +1649,154 @@ export interface DocumentUpdate {
   document_type?: DocumentType
   title?: string
   description?: string
+}
+
+// ============================================================================
+// Treatment Plan Types
+// ============================================================================
+
+export type TreatmentPlanStatus = 'draft' | 'active' | 'completed' | 'archived' | 'cancelled'
+
+export type PlannedItemStatus = 'pending' | 'completed' | 'cancelled'
+
+export type TreatmentMediaType = 'before' | 'after' | 'xray' | 'reference'
+
+// Brief types for nested responses
+export interface ToothTreatmentBrief {
+  id: string
+  tooth_number: number
+  treatment_type: string
+  status: TreatmentStatus
+  surfaces?: string[]
+}
+
+export interface TreatmentCatalogItemBrief {
+  id: string
+  internal_code: string
+  names: Record<string, string>
+  default_price?: number
+}
+
+// Treatment Media (before/after images)
+export interface TreatmentMedia {
+  id: string
+  document_id: string
+  media_type: TreatmentMediaType
+  display_order: number
+  notes?: string
+  created_at: string
+}
+
+export interface TreatmentMediaCreate {
+  document_id: string
+  media_type: TreatmentMediaType
+  display_order?: number
+  notes?: string
+}
+
+// Brief treatment plan info (for embedding in items)
+export interface TreatmentPlanBrief {
+  id: string
+  plan_number: string
+  title?: string
+  status: TreatmentPlanStatus
+}
+
+// Planned Treatment Item
+export interface PlannedTreatmentItem {
+  id: string
+  clinic_id: string
+  treatment_plan_id: string
+  tooth_treatment_id?: string
+  catalog_item_id?: string
+  is_global: boolean
+  sequence_order: number
+  status: PlannedItemStatus
+  completed_without_appointment: boolean
+  completed_at?: string
+  completed_by?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+  // Nested data
+  tooth_treatment?: ToothTreatmentBrief
+  catalog_item?: TreatmentCatalogItemBrief
+  media: TreatmentMedia[]
+  // Optional plan info (enriched client-side for appointment selector)
+  treatment_plan?: TreatmentPlanBrief
+}
+
+export interface PlannedTreatmentItemCreate {
+  tooth_treatment_id?: string
+  catalog_item_id?: string
+  is_global?: boolean
+  sequence_order?: number
+  notes?: string
+}
+
+export interface PlannedTreatmentItemUpdate {
+  sequence_order?: number
+  notes?: string
+}
+
+export interface CompleteItemRequest {
+  completed_without_appointment?: boolean
+  notes?: string
+}
+
+// Treatment Plan
+export interface TreatmentPlan {
+  id: string
+  clinic_id: string
+  patient_id: string
+  plan_number: string
+  title?: string
+  status: TreatmentPlanStatus
+  budget_id?: string
+  assigned_professional_id?: string
+  created_by: string
+  created_at: string
+  updated_at: string
+  item_count: number
+  completed_count: number
+  total: number
+  patient?: PatientBrief
+  budget?: BudgetBrief
+}
+
+export interface TreatmentPlanDetail extends TreatmentPlan {
+  diagnosis_notes?: string
+  internal_notes?: string
+  items: PlannedTreatmentItem[]
+  patient?: PatientBrief
+  budget?: BudgetBrief
+}
+
+export interface TreatmentPlanCreate {
+  patient_id: string
+  title?: string
+  assigned_professional_id?: string
+  diagnosis_notes?: string
+  internal_notes?: string
+}
+
+export interface TreatmentPlanUpdate {
+  title?: string
+  assigned_professional_id?: string
+  diagnosis_notes?: string
+  internal_notes?: string
+}
+
+export interface TreatmentPlanStatusUpdate {
+  status: TreatmentPlanStatus
+}
+
+// Budget integration
+export interface LinkBudgetRequest {
+  budget_id: string
+}
+
+export interface GenerateBudgetResponse {
+  budget_id: string
+  budget_number: string
 }

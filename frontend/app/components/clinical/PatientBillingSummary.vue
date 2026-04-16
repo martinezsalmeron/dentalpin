@@ -202,7 +202,7 @@ watch(() => props.patientId, loadData)
           </h3>
           <UButton
             v-if="can(PERMISSIONS.billing.write)"
-            :to="`/invoices/new?patient_id=${patientId}`"
+            :to="`/invoices/new?patient_id=${patientId}&from=patient`"
             icon="i-lucide-plus"
             size="sm"
           >
@@ -224,7 +224,7 @@ watch(() => props.patientId, loadData)
           </p>
           <UButton
             v-if="can(PERMISSIONS.billing.write)"
-            :to="`/invoices/new?patient_id=${patientId}`"
+            :to="`/invoices/new?patient_id=${patientId}&from=patient`"
             icon="i-lucide-plus"
             size="sm"
             variant="outline"
@@ -305,7 +305,7 @@ watch(() => props.patientId, loadData)
                   </td>
                   <td class="px-3 py-3 text-right">
                     <NuxtLink
-                      :to="`/invoices/${invoice.id}`"
+                      :to="`/invoices/${invoice.id}?from=patient&patientId=${patientId}`"
                       class="text-primary-600 dark:text-primary-400 hover:underline text-sm"
                       @click.stop
                     >

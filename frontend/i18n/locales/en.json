@@ -7,6 +7,7 @@
     "dashboard": "Home",
     "patients": "Patients",
     "appointments": "Schedule",
+    "treatmentPlans": "Treatment Plans",
     "budgets": "Quotes",
     "invoices": "Invoices",
     "reports": "Reports",
@@ -22,6 +23,14 @@
     "invalidCredentials": "Invalid credentials",
     "sessionExpired": "Your session has expired",
     "networkError": "Connection error"
+  },
+  "actions": {
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "delete": "Delete",
+    "close": "Close"
   },
   "patients": {
     "title": "Patients",
@@ -178,7 +187,9 @@
   "patientDetail": {
     "tabs": {
       "info": "Info",
+      "clinical": "Clinical",
       "odontogram": "Dental Chart",
+      "administration": "Administration",
       "history": "History",
       "timeline": "Activity",
       "appointments": "Appointments",
@@ -190,7 +201,15 @@
     "noAppointments": "This patient has no appointments",
     "scheduleAppointment": "Schedule appointment",
     "noBudgets": "This patient has no budgets",
-    "createBudget": "Create budget"
+    "createBudget": "Create budget",
+    "viewAllBudgets": "View all budgets",
+    "activePlan": "Active plan",
+    "noActivePlan": "No active plan",
+    "viewPlan": "View plan",
+    "createPlan": "Create plan",
+    "nextAppointment": "Next appointment",
+    "noUpcomingAppointments": "No upcoming appointments",
+    "reschedule": "Reschedule"
   },
   "patientBilling": {
     "totalBudgeted": "Total budgeted",
@@ -359,6 +378,9 @@
       "selectTreatment": "Select a treatment to apply",
       "clickTooth": "Click on the tooth to apply"
     },
+    "addToPlan": "Add to plan",
+    "noPlan": "No plan",
+    "createNewPlan": "Create new plan...",
     "toothNames": {
       "centralIncisor": "Central incisor",
       "lateralIncisor": "Lateral incisor",
@@ -401,6 +423,7 @@
     "create": "New appointment",
     "edit": "Edit appointment",
     "today": "Today",
+    "tomorrow": "Tomorrow",
     "week": "Week",
     "prevWeek": "Previous week",
     "nextWeek": "Next week",
@@ -447,7 +470,12 @@
     "resendConfirmation": "Resend confirmation",
     "sendReminderEmail": "Send reminder",
     "emailSent": "Email sent successfully",
-    "automatic": "automatic"
+    "automatic": "automatic",
+    "selectPatientFirst": "Select a patient to see pending treatments",
+    "noPendingTreatments": "No pending treatments",
+    "createPlanFirst": "Create a treatment plan for this patient",
+    "addTreatmentFromPlan": "Add treatment from plan",
+    "selectPendingTreatment": "Select pending treatment"
   },
   "dashboard": {
     "title": "Home",
@@ -545,6 +573,7 @@
     "yes": "Yes",
     "no": "No",
     "actions": "Actions",
+    "viewDetails": "View details",
     "previous": "Previous",
     "next": "Next",
     "undo": "Undo",
@@ -713,6 +742,91 @@
     "updateError": "Error updating VAT type",
     "deleteError": "Error deleting VAT type"
   },
+  "treatmentPlans": {
+    "title": "Treatment Plans",
+    "description": "Manage treatment plans for patients",
+    "new": "New plan",
+    "create": "Create treatment plan",
+    "edit": "Edit plan",
+    "view": "View plan",
+    "delete": "Delete plan",
+    "noItems": "This plan has no treatments",
+    "noPlans": "This patient has no treatment plans",
+    "noPlansHint": "Mark treatments on the dental chart and create a plan to organize them",
+    "createFirst": "Create first plan",
+    "empty": "No treatment plans registered",
+    "emptyAction": "Create first plan",
+    "searchPlaceholder": "Search by number, patient or title...",
+    "planNumber": "Number",
+    "patient": "Patient",
+    "untitled": "Untitled",
+    "itemCount": "{count} treatment | {count} treatments",
+    "treatments": "treatments",
+    "progress": "Progress",
+    "pendingTreatments": "Pending treatments",
+    "completedTreatments": "Completed treatments",
+    "linkedBudget": "Linked quote",
+    "unknownTreatment": "Unknown treatment",
+    "globalTreatment": "General treatment",
+    "activePlan": "Active plan",
+    "otherPlans": "Other plans",
+    "viewAllPlans": "View plan history",
+    "activate": "Activate",
+    "generateBudget": "Generate quote",
+    "scheduleAppointment": "Schedule appointment",
+    "status": {
+      "title": "Status",
+      "draft": "Draft",
+      "active": "Active",
+      "completed": "Completed",
+      "archived": "Archived",
+      "cancelled": "Cancelled"
+    },
+    "fields": {
+      "title": "Title",
+      "titlePlaceholder": "E.g.: Complete oral rehabilitation",
+      "assignedProfessional": "Assigned professional",
+      "selectProfessional": "Select professional",
+      "diagnosisNotes": "Diagnosis notes",
+      "diagnosisNotesPlaceholder": "Diagnosis and clinical observations...",
+      "internalNotes": "Internal notes",
+      "internalNotesPlaceholder": "Notes only visible to staff..."
+    },
+    "actions": {
+      "activate": "Activate plan",
+      "complete": "Mark completed",
+      "generateBudget": "Generate quote",
+      "linkBudget": "Link quote",
+      "syncBudget": "Sync quote"
+    },
+    "items": {
+      "title": "Treatments",
+      "add": "Add treatment",
+      "addSelected": "Add {count} treatment | Add {count} treatments",
+      "remove": "Remove treatment",
+      "empty": "No treatments in this plan"
+    },
+    "filters": {
+      "allStatuses": "All statuses"
+    },
+    "confirmations": {
+      "delete": "Delete this treatment plan?",
+      "completeItem": "Mark treatment as completed?",
+      "completeItemDescription": "This action cannot be undone."
+    },
+    "messages": {
+      "created": "Treatment plan created",
+      "updated": "Treatment plan updated",
+      "deleted": "Treatment plan deleted",
+      "itemsAdded": "Treatments added to plan"
+    },
+    "errors": {
+      "load": "Error loading treatment plans",
+      "create": "Error creating treatment plan",
+      "update": "Error updating treatment plan",
+      "delete": "Error deleting treatment plan"
+    }
+  },
   "budget": {
     "title": "Quotes",
     "description": "Manage treatment quotes for patients",
@@ -724,6 +838,7 @@
     "noItems": "No quotes",
     "empty": "No quotes registered",
     "emptyAction": "Create first quote",
+    "linkedToPlan": "Linked to plan",
     "searchPlaceholder": "Search by number or patient...",
     "budgetNumber": "Number",
     "version": "Version",

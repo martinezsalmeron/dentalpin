@@ -3,9 +3,16 @@ import type { Appointment } from '~/types'
 
 const { t } = useI18n()
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 const clinic = useClinic()
 const { appointments, isLoading, fetchAppointments, updateAppointment } = useAppointments()
 const { professionals, fetchProfessionals, getProfessionalColor } = useProfessionals()
+
+// Query params for pre-selecting patient from treatment plan flow
+const initialPatientId = ref<string | undefined>(
+  typeof route.query.patient_id === 'string' ? route.query.patient_id : undefined
+)
 
 // View mode state
 const viewMode = ref<'week' | 'day'>('week')
@@ -21,6 +28,25 @@ const selectedCabinets = ref<string[]>([])
 
 // Professional filter state
 const selectedProfessionals = ref<string[]>([])
+
+// Highlight state (from reschedule navigation)
+const highlightedAppointmentId = ref<string | null>(
+  typeof route.query.highlight === 'string' ? route.query.highlight : null
+)
+const highlightDate = typeof route.query.date === 'string' ? route.query.date : null
+
+// Navigate to correct week if highlight date provided
+if (highlightDate) {
+  const targetDate = new Date(highlightDate + 'T00:00:00')
+  currentWeekStart.value = getMonday(targetDate)
+  currentDate.value = targetDate
+}
+
+// Clear highlight after a delay (let user see it, then clear for future interactions)
+function clearHighlight() {
+  highlightedAppointmentId.value = null
+  router.replace({ query: { ...route.query, highlight: undefined, date: undefined } })
+}
 
 // Initialize selected cabinets when clinic loads
 watch(() => clinic.cabinets.value, (cabinets) => {
@@ -155,6 +181,7 @@ function handleSlotClick(date: Date, time: string) {
   initialTime.value = time
   initialEndTime.value = undefined
   initialProfessionalId.value = undefined
+  // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
 
@@ -165,6 +192,7 @@ function handleSlotDragCreate(date: Date, startTime: string, endTime: string) {
   initialTime.value = startTime
   initialEndTime.value = endTime
   initialProfessionalId.value = undefined
+  // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
 
@@ -175,6 +203,7 @@ function handleDailySlotClick(professionalId: string, time: string) {
   initialTime.value = time
   initialEndTime.value = undefined
   initialProfessionalId.value = professionalId
+  // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
 
@@ -185,6 +214,7 @@ function handleDailySlotDragCreate(professionalId: string, startTime: string, en
   initialTime.value = startTime
   initialEndTime.value = endTime
   initialProfessionalId.value = professionalId
+  // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
 
@@ -363,11 +393,17 @@ function handleAppointmentClick(appointment: Appointment) {
   initialTime.value = undefined
   initialEndTime.value = undefined
   initialProfessionalId.value = undefined
+  initialPatientId.value = undefined
   isModalOpen.value = true
 }
 
 // Handle modal save
 async function handleSaved() {
+  // Clear initial patient and URL params so it doesn't pre-select on next open
+  if (initialPatientId.value) {
+    initialPatientId.value = undefined
+    router.replace({ query: {} })
+  }
   if (viewMode.value === 'week') {
     await loadWeekAppointments()
   } else {
@@ -377,6 +413,11 @@ async function handleSaved() {
 
 // Handle appointment cancelled
 async function handleCancelled() {
+  // Clear initial patient and URL params
+  if (initialPatientId.value) {
+    initialPatientId.value = undefined
+    router.replace({ query: {} })
+  }
   if (viewMode.value === 'week') {
     await loadWeekAppointments()
   } else {
@@ -466,6 +507,7 @@ function openCreateModal() {
   initialTime.value = '09:00'
   initialEndTime.value = undefined
   initialProfessionalId.value = undefined
+  // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
 
@@ -612,12 +654,14 @@ onMounted(async () => {
         :professionals="professionalsWithColors"
         :current-week-start="currentWeekStart"
         :is-loading="isLoading"
+        :highlighted-appointment-id="highlightedAppointmentId"
         @slot-click="handleSlotClick"
         @slot-drag-create="handleSlotDragCreate"
         @appointment-click="handleAppointmentClick"
         @week-change="handleWeekChange"
         @appointment-move="handleAppointmentMove"
         @appointment-resize="handleAppointmentResize"
+        @highlight-cleared="clearHighlight"
       />
 
       <!-- Daily view -->
@@ -627,12 +671,14 @@ onMounted(async () => {
         :professionals="professionalsWithColors"
         :current-date="currentDate"
         :is-loading="isLoading"
+        :highlighted-appointment-id="highlightedAppointmentId"
         @slot-click="handleDailySlotClick"
         @slot-drag-create="handleDailySlotDragCreate"
         @appointment-click="handleAppointmentClick"
         @date-change="handleDateChange"
         @appointment-move="handleDailyAppointmentMove"
         @appointment-resize="handleDailyAppointmentResize"
+        @highlight-cleared="clearHighlight"
       />
     </div>
 
@@ -644,6 +690,7 @@ onMounted(async () => {
       :initial-time="initialTime"
       :initial-end-time="initialEndTime"
       :initial-professional-id="initialProfessionalId"
+      :initial-patient-id="initialPatientId"
       :existing-appointments="appointments"
       @saved="handleSaved"
       @cancelled="handleCancelled"

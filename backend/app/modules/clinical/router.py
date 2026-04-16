@@ -348,6 +348,11 @@ async def create_appointment(
         appointment = await AppointmentService.create_appointment(
             db, ctx.clinic_id, data.model_dump(exclude_unset=True)
         )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -411,6 +416,11 @@ async def update_appointment(
     try:
         appointment = await AppointmentService.update_appointment(
             db, appointment, data.model_dump(exclude_unset=True)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )
     except IntegrityError:
         raise HTTPException(

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PatientExtended, Appointment, BudgetListItem, PaginatedResponse, ApiResponse } from '~/types'
+import type { PatientExtended, Appointment, BudgetListItem, TreatmentPlan, PaginatedResponse, ApiResponse } from '~/types'
 import { PERMISSIONS } from '~/config/permissions'
 
 const { t } = useI18n()
@@ -54,6 +54,15 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
 
 const appointments = computed(() => appointmentsData.value?.data || [])
 
+// Next upcoming appointment (for sidebar widget)
+const nextAppointment = computed(() => {
+  const now = new Date()
+  const upcoming = appointments.value
+    .filter(apt => new Date(apt.start_time) > now && apt.status !== 'cancelled')
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+  return upcoming[0] || null
+})
+
 // Fetch patient budgets
 const { data: budgetsData, status: budgetsStatus } = await useAsyncData(
   `patient:${patientId}:budgets`,
@@ -68,57 +77,73 @@ const { data: budgetsData, status: budgetsStatus } = await useAsyncData(
   }
 )
 
+// Fetch patient treatment plans (for sidebar widget)
+const { data: plansData, status: plansStatus } = await useAsyncData(
+  `patient:${patientId}:plans`,
+  async () => {
+    if (!can(PERMISSIONS.treatmentPlans.read)) {
+      return { data: [], total: 0, page: 1, page_size: 20 }
+    }
+    try {
+      return await api.get<PaginatedResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans?patient_id=${patientId}`
+      )
+    } catch {
+      return { data: [], total: 0, page: 1, page_size: 20 }
+    }
+  }
+)
+
+// Active plan (for sidebar widget)
+const activePlan = computed(() => {
+  const plans = plansData.value?.data || []
+  return plans.find(p => p.status === 'active') || null
+})
+
 const budgets = computed(() => budgetsData.value?.data || [])
 
 // Medical history composable
 const { medicalHistory, isSaving: isSavingMedical, saveMedicalHistory } = useMedicalHistory(patientIdRef)
 
 // Tabs - computed to filter by permissions
-const activeTab = ref('info')
+// New structure: Clinical (Odontogram+Plans) | Administration (Budgets+Billing) | Appointments | Documents | Timeline | Info
+const activeTab = ref('clinical')
+
+// Sync tab from query param
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab && typeof tab === 'string') {
+      activeTab.value = tab
+    }
+  },
+  { immediate: true }
+)
 
 const tabs = computed(() => {
-  const baseTabs = [
-    { value: 'info', label: t('patientDetail.tabs.info'), icon: 'i-lucide-user', slot: 'info' }
-  ]
+  const baseTabs: Array<{ value: string, label: string, icon: string, slot: string }> = []
 
-  // Add odontogram tab if user has permission
-  if (can(PERMISSIONS.odontogram.read)) {
+  // Clinical tab (Odontogram + Treatment Plans) - replaces separate odontogram tab
+  if (can(PERMISSIONS.odontogram.read) || can(PERMISSIONS.treatmentPlans.read)) {
     baseTabs.push({
-      value: 'odontogram',
-      label: t('patientDetail.tabs.odontogram'),
-      icon: 'i-lucide-grid-3x3',
-      slot: 'odontogram'
+      value: 'clinical',
+      label: t('patientDetail.tabs.clinical'),
+      icon: 'i-lucide-stethoscope',
+      slot: 'clinical'
     })
   }
 
-  // Add timeline tab
-  baseTabs.push({
-    value: 'timeline',
-    label: t('patientDetail.tabs.timeline'),
-    icon: 'i-lucide-history',
-    slot: 'timeline'
-  })
-
-  // Add budgets tab if user has permission
-  if (can(PERMISSIONS.budget.read)) {
+  // Administration tab (Budgets + Billing) - merges budgets and billing
+  if (can(PERMISSIONS.budget.read) || can(PERMISSIONS.billing.read)) {
     baseTabs.push({
-      value: 'budgets',
-      label: t('patientDetail.tabs.budgets'),
-      icon: 'i-lucide-file-text',
-      slot: 'budgets'
+      value: 'administration',
+      label: t('patientDetail.tabs.administration'),
+      icon: 'i-lucide-briefcase',
+      slot: 'administration'
     })
   }
 
-  // Add billing tab if user has permission
-  if (can(PERMISSIONS.billing.read)) {
-    baseTabs.push({
-      value: 'billing',
-      label: t('patientDetail.tabs.billing'),
-      icon: 'i-lucide-receipt',
-      slot: 'billing'
-    })
-  }
-
+  // Appointments tab
   baseTabs.push({
     value: 'appointments',
     label: t('patientDetail.tabs.appointments'),
@@ -126,15 +151,31 @@ const tabs = computed(() => {
     slot: 'appointments'
   })
 
-  // Add documents tab if user has permission
+  // Documents tab
   if (can(PERMISSIONS.documents.read)) {
     baseTabs.push({
       value: 'documents',
-      label: t('patientDetail.tabs.documents', 'Documents'),
+      label: t('patientDetail.tabs.documents'),
       icon: 'i-lucide-files',
       slot: 'documents'
     })
   }
+
+  // Timeline tab
+  baseTabs.push({
+    value: 'timeline',
+    label: t('patientDetail.tabs.timeline'),
+    icon: 'i-lucide-history',
+    slot: 'timeline'
+  })
+
+  // Info tab (Demographics + Medical history)
+  baseTabs.push({
+    value: 'info',
+    label: t('patientDetail.tabs.info'),
+    icon: 'i-lucide-user',
+    slot: 'info'
+  })
 
   return baseTabs
 })
@@ -249,16 +290,6 @@ function getStatusColor(status: string): BadgeColor {
   }
 }
 
-// Format currency
-const { locale } = useI18n()
-
-function formatCurrency(amount: number, currency: string = 'EUR'): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency
-  }).format(amount)
-}
-
 // Check if patient is a minor (under 18)
 const isMinor = computed(() => {
   if (!patient.value?.date_of_birth) return false
@@ -351,7 +382,13 @@ const infoAccordionItems = computed(() => {
         <aside class="lg:w-72 lg:shrink-0">
           <div class="lg:sticky lg:top-4">
             <UCard>
-              <PatientQuickInfo :patient="patient" />
+              <PatientQuickInfo
+                :patient="patient"
+                :active-plan="activePlan"
+                :next-appointment="nextAppointment"
+                :loading-plan="plansStatus === 'pending'"
+                :loading-appointment="appointmentsStatus === 'pending'"
+              />
             </UCard>
           </div>
         </aside>
@@ -605,105 +642,31 @@ const infoAccordionItems = computed(() => {
               </div>
             </template>
 
-            <!-- Odontogram tab content -->
-            <template #odontogram>
-              <UCard class="mt-4">
-                <OdontogramChart
+            <!-- Clinical tab content (Odontogram + Treatment Plans) -->
+            <template #clinical>
+              <div class="mt-4">
+                <ClinicalTab
                   :patient-id="patientId"
                   :readonly="!canEditOdontogram"
                 />
-              </UCard>
+              </div>
+            </template>
+
+            <!-- Administration tab content (Budgets + Billing) -->
+            <template #administration>
+              <div class="mt-4">
+                <AdministrationTab
+                  :patient-id="patientId"
+                  :budgets="budgets"
+                  :budgets-loading="budgetsStatus === 'pending'"
+                />
+              </div>
             </template>
 
             <!-- Timeline tab content -->
             <template #timeline>
               <UCard class="mt-4">
                 <PatientTimeline :patient-id="patientId" />
-              </UCard>
-            </template>
-
-            <!-- Budgets tab content -->
-            <template #budgets>
-              <UCard class="mt-4">
-                <div
-                  v-if="budgetsStatus === 'pending'"
-                  class="space-y-3"
-                >
-                  <USkeleton
-                    v-for="i in 3"
-                    :key="i"
-                    class="h-12 w-full"
-                  />
-                </div>
-                <div
-                  v-else-if="budgets.length === 0"
-                  class="text-center py-12"
-                >
-                  <UIcon
-                    name="i-lucide-file-text"
-                    class="w-12 h-12 text-gray-400 mx-auto mb-4"
-                  />
-                  <p class="text-gray-500 dark:text-gray-400 mb-4">
-                    {{ t('patientDetail.noBudgets') }}
-                  </p>
-                  <UButton
-                    v-if="can(PERMISSIONS.budget.write)"
-                    :to="`/budgets/new?patient_id=${patientId}`"
-                    icon="i-lucide-plus"
-                  >
-                    {{ t('patientDetail.createBudget') }}
-                  </UButton>
-                </div>
-                <ul
-                  v-else
-                  class="divide-y divide-gray-200 dark:divide-gray-800"
-                >
-                  <li
-                    v-for="budget in budgets"
-                    :key="budget.id"
-                    class="py-4"
-                  >
-                    <NuxtLink
-                      :to="`/budgets/${budget.id}`"
-                      class="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 px-4 py-2 rounded-lg transition-colors"
-                    >
-                      <div>
-                        <div class="flex items-center gap-3">
-                          <span class="font-medium text-gray-900 dark:text-white">{{ budget.budget_number }}</span>
-                          <span class="text-sm text-gray-500">v{{ budget.version }}</span>
-                          <BudgetStatusBadge :status="budget.status" />
-                        </div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(budget.created_at) }}</p>
-                      </div>
-                      <div class="flex items-center gap-4">
-                        <span class="font-semibold text-gray-900 dark:text-white">{{ formatCurrency(budget.total, budget.currency) }}</span>
-                        <UIcon
-                          name="i-lucide-chevron-right"
-                          class="w-5 h-5 text-gray-400"
-                        />
-                      </div>
-                    </NuxtLink>
-                  </li>
-                </ul>
-                <div
-                  v-if="budgets.length > 0 && can(PERMISSIONS.budget.write)"
-                  class="pt-4 border-t border-gray-200 dark:border-gray-800 mt-4"
-                >
-                  <UButton
-                    :to="`/budgets/new?patient_id=${patientId}`"
-                    icon="i-lucide-plus"
-                    variant="outline"
-                  >
-                    {{ t('patientDetail.createBudget') }}
-                  </UButton>
-                </div>
-              </UCard>
-            </template>
-
-            <!-- Billing tab content -->
-            <template #billing>
-              <UCard class="mt-4">
-                <PatientBillingSummary :patient-id="patientId" />
               </UCard>
             </template>
 

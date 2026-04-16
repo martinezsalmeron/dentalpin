@@ -7,6 +7,7 @@
     "dashboard": "Inicio",
     "patients": "Pacientes",
     "appointments": "Agenda",
+    "treatmentPlans": "Planes de tratamiento",
     "budgets": "Presupuestos",
     "invoices": "Facturas",
     "reports": "Informes",
@@ -22,6 +23,14 @@
     "invalidCredentials": "Credenciales inválidas",
     "sessionExpired": "Tu sesión ha expirado",
     "networkError": "Error de conexión"
+  },
+  "actions": {
+    "edit": "Editar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "create": "Crear",
+    "delete": "Eliminar",
+    "close": "Cerrar"
   },
   "patients": {
     "title": "Pacientes",
@@ -206,7 +215,9 @@
   "patientDetail": {
     "tabs": {
       "info": "Info",
+      "clinical": "Clínico",
       "odontogram": "Odontograma",
+      "administration": "Administración",
       "history": "Historial",
       "timeline": "Actividad",
       "appointments": "Citas",
@@ -218,7 +229,15 @@
     "noAppointments": "Este paciente no tiene citas",
     "scheduleAppointment": "Agendar cita",
     "noBudgets": "Este paciente no tiene presupuestos",
-    "createBudget": "Crear presupuesto"
+    "createBudget": "Crear presupuesto",
+    "viewAllBudgets": "Ver todos los presupuestos",
+    "activePlan": "Plan activo",
+    "noActivePlan": "Sin plan activo",
+    "viewPlan": "Ver plan",
+    "createPlan": "Crear plan",
+    "nextAppointment": "Próxima cita",
+    "noUpcomingAppointments": "Sin citas programadas",
+    "reschedule": "Reagendar"
   },
   "patientBilling": {
     "totalBudgeted": "Total presupuestado",
@@ -380,6 +399,9 @@
       "selectTreatment": "Selecciona un tratamiento para aplicar",
       "clickTooth": "Haz clic en el diente para aplicar"
     },
+    "addToPlan": "Añadir a plan",
+    "noPlan": "Sin plan",
+    "createNewPlan": "Crear nuevo plan...",
     "toothNames": {
       "centralIncisor": "Incisivo central",
       "lateralIncisor": "Incisivo lateral",
@@ -422,6 +444,7 @@
     "create": "Nueva cita",
     "edit": "Editar cita",
     "today": "Hoy",
+    "tomorrow": "Mañana",
     "week": "Semana",
     "prevWeek": "Semana anterior",
     "nextWeek": "Semana siguiente",
@@ -468,7 +491,12 @@
     "resendConfirmation": "Reenviar confirmación",
     "sendReminderEmail": "Enviar recordatorio",
     "emailSent": "Email enviado correctamente",
-    "automatic": "automático"
+    "automatic": "automático",
+    "selectPatientFirst": "Selecciona un paciente para ver tratamientos pendientes",
+    "noPendingTreatments": "No hay tratamientos pendientes",
+    "createPlanFirst": "Crea un plan de tratamiento para este paciente",
+    "addTreatmentFromPlan": "Añadir tratamiento del plan",
+    "selectPendingTreatment": "Seleccionar tratamiento pendiente"
   },
   "dashboard": {
     "title": "Inicio",
@@ -567,6 +595,7 @@
     "yes": "Sí",
     "no": "No",
     "actions": "Acciones",
+    "viewDetails": "Ver detalle",
     "previous": "Anterior",
     "next": "Siguiente",
     "undo": "Deshacer",
@@ -735,6 +764,91 @@
     "updateError": "Error al actualizar tipo de IVA",
     "deleteError": "Error al eliminar tipo de IVA"
   },
+  "treatmentPlans": {
+    "title": "Planes de tratamiento",
+    "description": "Gestiona planes de tratamiento para pacientes",
+    "new": "Nuevo plan",
+    "create": "Crear plan de tratamiento",
+    "edit": "Editar plan",
+    "view": "Ver plan",
+    "delete": "Eliminar plan",
+    "noItems": "Este plan no tiene tratamientos",
+    "noPlans": "Este paciente no tiene planes de tratamiento",
+    "noPlansHint": "Marca tratamientos en el odontograma y crea un plan para organizarlos",
+    "createFirst": "Crear primer plan",
+    "empty": "No hay planes de tratamiento registrados",
+    "emptyAction": "Crear primer plan",
+    "searchPlaceholder": "Buscar por número, paciente o título...",
+    "planNumber": "Número",
+    "patient": "Paciente",
+    "untitled": "Sin título",
+    "itemCount": "{count} tratamiento | {count} tratamientos",
+    "treatments": "tratamientos",
+    "progress": "Progreso",
+    "pendingTreatments": "Tratamientos pendientes",
+    "completedTreatments": "Tratamientos completados",
+    "linkedBudget": "Presupuesto vinculado",
+    "unknownTreatment": "Tratamiento desconocido",
+    "globalTreatment": "Tratamiento general",
+    "activePlan": "Plan activo",
+    "otherPlans": "Otros planes",
+    "viewAllPlans": "Ver historial de planes",
+    "activate": "Activar",
+    "generateBudget": "Generar presupuesto",
+    "scheduleAppointment": "Programar cita",
+    "status": {
+      "title": "Estado",
+      "draft": "Borrador",
+      "active": "Activo",
+      "completed": "Completado",
+      "archived": "Archivado",
+      "cancelled": "Cancelado"
+    },
+    "fields": {
+      "title": "Título",
+      "titlePlaceholder": "Ej: Rehabilitación oral completa",
+      "assignedProfessional": "Profesional asignado",
+      "selectProfessional": "Seleccionar profesional",
+      "diagnosisNotes": "Notas de diagnóstico",
+      "diagnosisNotesPlaceholder": "Diagnóstico y observaciones clínicas...",
+      "internalNotes": "Notas internas",
+      "internalNotesPlaceholder": "Notas solo visibles para el personal..."
+    },
+    "actions": {
+      "activate": "Activar plan",
+      "complete": "Marcar completado",
+      "generateBudget": "Generar presupuesto",
+      "linkBudget": "Vincular presupuesto",
+      "syncBudget": "Sincronizar presupuesto"
+    },
+    "items": {
+      "title": "Tratamientos",
+      "add": "Añadir tratamiento",
+      "addSelected": "Añadir {count} tratamiento | Añadir {count} tratamientos",
+      "remove": "Eliminar tratamiento",
+      "empty": "No hay tratamientos en este plan"
+    },
+    "filters": {
+      "allStatuses": "Todos los estados"
+    },
+    "confirmations": {
+      "delete": "¿Eliminar este plan de tratamiento?",
+      "completeItem": "¿Marcar tratamiento como completado?",
+      "completeItemDescription": "Esta acción no se puede deshacer."
+    },
+    "messages": {
+      "created": "Plan de tratamiento creado",
+      "updated": "Plan de tratamiento actualizado",
+      "deleted": "Plan de tratamiento eliminado",
+      "itemsAdded": "Tratamientos añadidos al plan"
+    },
+    "errors": {
+      "load": "Error al cargar planes de tratamiento",
+      "create": "Error al crear plan de tratamiento",
+      "update": "Error al actualizar plan de tratamiento",
+      "delete": "Error al eliminar plan de tratamiento"
+    }
+  },
   "budget": {
     "title": "Presupuestos",
     "description": "Gestiona presupuestos de tratamientos para pacientes",
@@ -746,6 +860,7 @@
     "noItems": "No hay presupuestos",
     "empty": "No hay presupuestos registrados",
     "emptyAction": "Crear primer presupuesto",
+    "linkedToPlan": "Vinculado a plan",
     "searchPlaceholder": "Buscar por número o paciente...",
     "budgetNumber": "Número",
     "version": "Versión",

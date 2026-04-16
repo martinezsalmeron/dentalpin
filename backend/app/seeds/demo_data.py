@@ -2119,3 +2119,344 @@ def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
         "items": items,
         "payments": payments,
     }
+
+
+# =============================================================================
+# Treatment Plan Seed Data
+# =============================================================================
+
+# Fixed UUIDs for treatment plans (expanded for more coverage)
+TREATMENT_PLAN_IDS = [UUID(f"fe00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(20)]
+
+# Fixed UUIDs for planned treatment items (expanded for appointments)
+PLANNED_ITEM_IDS = [UUID(f"ff00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(200)]
+
+# Treatment plan scenarios
+# Links to existing budgets where applicable
+TREATMENT_PLAN_SCENARIOS = [
+    # Plan 0: Draft plan for patient 3 (Carmen/Emma) - links to budget 0
+    {
+        "patient_idx": 3,
+        "status": "draft",
+        "budget_idx": 0,  # Links to BUDGET_IDS[0]
+        "title": {"es": "Plan de tratamiento inicial", "en": "Initial treatment plan"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "DX-RXPAN", "is_global": True},
+            {"catalog_code": "REST-COMP", "tooth": 16, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "Paciente con sensibilidad dental. Requiere empastes en molares.",
+            "en": "Patient with dental sensitivity. Requires fillings on molars.",
+        },
+    },
+    # Plan 1: Active plan for patient 6 (Javier/Daniel - diabetic) - links to budget 2
+    {
+        "patient_idx": 6,
+        "status": "active",
+        "budget_idx": 2,  # Links to BUDGET_IDS[2] (accepted)
+        "title": {"es": "Coronas y endodoncia", "en": "Crowns and root canal"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+            {"catalog_code": "REST-CRO", "tooth": 36, "is_global": False},
+            {"catalog_code": "ENDO-MULTI", "tooth": 36, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "Paciente diabético. Control especial de cicatrización.",
+            "en": "Diabetic patient. Special healing monitoring.",
+        },
+    },
+    # Plan 2: Active plan for patient 8 (Francisco/Alexander - allergic) - links to budget 3
+    {
+        "patient_idx": 8,
+        "status": "active",
+        "budget_idx": 3,  # Links to BUDGET_IDS[3] (accepted)
+        "title": {"es": "Tratamiento periodontal", "en": "Periodontal treatment"},
+        "items": [
+            {"catalog_code": "PERIO-RAD", "is_global": True, "completed": True},
+            {"catalog_code": "REST-COMP", "tooth": 17, "is_global": False},
+            {"catalog_code": "REST-COMP", "tooth": 26, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "ALÉRGICO A PENICILINA. Usar alternativas.",
+            "en": "ALLERGIC TO PENICILLIN. Use alternatives.",
+        },
+    },
+    # Plan 3: Completed plan for patient 10 (Antonio/Robert) - links to budget 4
+    {
+        "patient_idx": 10,
+        "status": "completed",
+        "budget_idx": 4,  # Links to BUDGET_IDS[4] (completed)
+        "title": {"es": "Prótesis parcial", "en": "Partial denture"},
+        "items": [
+            {"catalog_code": "PROT-PARC", "is_global": True, "completed": True},
+            {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+        ],
+        "diagnosis_notes": {
+            "es": "Prótesis parcial superior entregada y ajustada.",
+            "en": "Upper partial denture delivered and adjusted.",
+        },
+    },
+    # Plan 4: Active plan for patient 9 (Rosa/Charlotte - hypertensive) - links to budget 6
+    {
+        "patient_idx": 9,
+        "status": "active",
+        "budget_idx": 6,  # Links to BUDGET_IDS[6] (accepted)
+        "title": {"es": "Rehabilitación oral", "en": "Oral rehabilitation"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+            {"catalog_code": "REST-CRO", "tooth": 46, "is_global": False, "completed": True},
+            {"catalog_code": "REST-CRO", "tooth": 36, "is_global": False},
+            {"catalog_code": "ENDO-MULTI", "tooth": 36, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "Hipertensa - verificar presión antes de procedimientos.",
+            "en": "Hypertensive - check blood pressure before procedures.",
+        },
+    },
+    # Plan 5: Draft plan for patient 2 (Miguel/James) - no budget linked
+    {
+        "patient_idx": 2,
+        "status": "draft",
+        "budget_idx": None,
+        "title": {"es": "Revisión y limpieza", "en": "Checkup and cleaning"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "PREV-LIMP", "is_global": True},
+        ],
+        "diagnosis_notes": {
+            "es": "Paciente joven, buen estado general.",
+            "en": "Young patient, good general condition.",
+        },
+    },
+    # Plan 6: Active plan for patient 0 (María/John)
+    {
+        "patient_idx": 0,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Plan preventivo", "en": "Preventive plan"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "PREV-LIMP", "is_global": True},
+            {"catalog_code": "DX-RXPAN", "is_global": True},
+            {"catalog_code": "REST-COMP", "tooth": 26, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "Control preventivo anual.",
+            "en": "Annual preventive checkup.",
+        },
+    },
+    # Plan 7: Active plan for patient 1 (Carlos/Sarah)
+    {
+        "patient_idx": 1,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Tratamiento conservador", "en": "Conservative treatment"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "REST-COMP", "tooth": 36, "is_global": False},
+            {"catalog_code": "REST-COMP", "tooth": 46, "is_global": False},
+            {"catalog_code": "ENDO-UNI", "tooth": 46, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "Caries en molares inferiores.",
+            "en": "Caries on lower molars.",
+        },
+    },
+    # Plan 8: Active plan for patient 4 (Ana/Michael)
+    {
+        "patient_idx": 4,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Plan estético", "en": "Aesthetic plan"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "EST-BLANQ-C", "is_global": True},
+            {"catalog_code": "PREV-LIMP", "is_global": True},
+        ],
+        "diagnosis_notes": {
+            "es": "Paciente interesada en blanqueamiento.",
+            "en": "Patient interested in whitening.",
+        },
+    },
+    # Plan 9: Active plan for patient 5 (Luis/Jennifer)
+    {
+        "patient_idx": 5,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Extracciones y prótesis", "en": "Extractions and prosthetics"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "CIR-EXT-S", "tooth": 48, "is_global": False},
+            {"catalog_code": "CIR-EXT-S", "tooth": 38, "is_global": False},
+            {"catalog_code": "DX-RXPAN", "is_global": True},
+        ],
+        "diagnosis_notes": {
+            "es": "Cordales impactados.",
+            "en": "Impacted wisdom teeth.",
+        },
+    },
+    # Plan 10: Active plan for patient 7 (Laura/Sophie)
+    {
+        "patient_idx": 7,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Revisión periódica", "en": "Periodic checkup"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "PREV-LIMP", "is_global": True},
+            {"catalog_code": "REST-COMP", "tooth": 17, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "Control semestral.",
+            "en": "Bi-annual checkup.",
+        },
+    },
+    # Plan 11: Active plan for patient 11 (Isabel/William)
+    {
+        "patient_idx": 11,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Tratamiento integral", "en": "Comprehensive treatment"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "ENDO-UNI", "tooth": 36, "is_global": False},
+            {"catalog_code": "REST-COMP", "tooth": 36, "is_global": False},
+            {"catalog_code": "PREV-LIMP", "is_global": True},
+        ],
+        "diagnosis_notes": {
+            "es": "Tratamiento de pulpitis.",
+            "en": "Pulpitis treatment.",
+        },
+    },
+    # Plan 12: Active plan for patient 12 (Pedro/Olivia)
+    {
+        "patient_idx": 12,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Urgencia dental", "en": "Dental emergency"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "CIR-EXT-S", "tooth": 46, "is_global": False},
+        ],
+        "diagnosis_notes": {
+            "es": "Extracción urgente por absceso.",
+            "en": "Urgent extraction due to abscess.",
+        },
+    },
+    # Plan 13: Active plan for patient 13 (Teresa/Liam)
+    {
+        "patient_idx": 13,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Implantes", "en": "Implants"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "DX-RXPAN", "is_global": True},
+            {"catalog_code": "PREV-LIMP", "is_global": True},
+        ],
+        "diagnosis_notes": {
+            "es": "Evaluación para implantes.",
+            "en": "Implant evaluation.",
+        },
+    },
+    # Plan 14: Active plan for patient 14 (Ramón/Ava)
+    {
+        "patient_idx": 14,
+        "status": "active",
+        "budget_idx": None,
+        "title": {"es": "Mantenimiento", "en": "Maintenance"},
+        "items": [
+            {"catalog_code": "DX-VISIT", "is_global": True},
+            {"catalog_code": "PREV-LIMP", "is_global": True},
+            {"catalog_code": "EST-BLANQ-C", "is_global": True},
+        ],
+        "diagnosis_notes": {
+            "es": "Control y mantenimiento.",
+            "en": "Control and maintenance.",
+        },
+    },
+]
+
+
+def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
+    """Generate treatment plan seed data.
+
+    Args:
+        catalog_items_map: Dictionary mapping internal_code to catalog item data
+                          (must include id, default_price)
+
+    Returns:
+        Dictionary with:
+        - plans: List of TreatmentPlan data
+        - items: List of PlannedTreatmentItem data
+    """
+    plans = []
+    items = []
+    patients_data = get_patients_data()
+
+    plan_idx = 0
+    item_idx = 0
+
+    for scenario_idx, scenario in enumerate(TREATMENT_PLAN_SCENARIOS):
+        patient = patients_data[scenario["patient_idx"]]
+        plan_id = TREATMENT_PLAN_IDS[plan_idx]
+        plan_idx += 1
+
+        # Calculate plan number
+        plan_number = f"PLAN-2024-{scenario_idx + 1:04d}"
+
+        # Get budget_id if linked
+        budget_id = None
+        if scenario.get("budget_idx") is not None:
+            budget_id = BUDGET_IDS[scenario["budget_idx"]]
+
+        plan = {
+            "id": plan_id,
+            "clinic_id": CLINIC_ID,
+            "patient_id": patient["id"],
+            "plan_number": plan_number,
+            "title": t(scenario["title"]) if scenario.get("title") else None,
+            "status": scenario["status"],
+            "budget_id": budget_id,
+            "assigned_professional_id": USER_DENTIST_ID,
+            "created_by": USER_DENTIST_ID,
+            "diagnosis_notes": t(scenario["diagnosis_notes"])
+            if scenario.get("diagnosis_notes")
+            else None,
+            "internal_notes": None,
+            "deleted_at": None,
+        }
+        plans.append(plan)
+
+        # Create planned items
+        for seq_order, item_data in enumerate(scenario.get("items", []), start=1):
+            catalog_item = catalog_items_map.get(item_data["catalog_code"])
+            if not catalog_item:
+                continue
+
+            item_id = PLANNED_ITEM_IDS[item_idx]
+            item_idx += 1
+
+            is_completed = item_data.get("completed", False)
+
+            planned_item = {
+                "id": item_id,
+                "clinic_id": CLINIC_ID,
+                "treatment_plan_id": plan_id,
+                "tooth_treatment_id": None,  # Not linking to existing ToothTreatment for now
+                "catalog_item_id": catalog_item["id"],
+                "is_global": item_data.get("is_global", False),
+                "sequence_order": seq_order,
+                "status": "completed" if is_completed else "pending",
+                "completed_without_appointment": is_completed,
+                "completed_at": datetime.now() - timedelta(days=10) if is_completed else None,
+                "completed_by": USER_DENTIST_ID if is_completed else None,
+                "notes": None,
+            }
+            items.append(planned_item)
+
+    return {
+        "plans": plans,
+        "items": items,
+    }

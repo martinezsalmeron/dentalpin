@@ -46,6 +46,8 @@ function goToCreateInvoice() {
 }
 
 const budgetId = computed(() => route.params.id as string)
+const comesFromPatient = computed(() => route.query.from === 'patient' && route.query.patientId)
+const backLabel = computed(() => comesFromPatient.value ? t('actions.back') : t('budget.title'))
 
 // Load budget
 async function loadBudget() {
@@ -355,8 +357,10 @@ function getItemName(item: BudgetItem): string {
             variant="ghost"
             color="neutral"
             icon="i-lucide-arrow-left"
-            @click="router.push('/budgets')"
-          />
+            @click="comesFromPatient ? router.push(`/patients/${route.query.patientId}`) : router.push('/budgets')"
+          >
+            {{ backLabel }}
+          </UButton>
           <div>
             <div class="flex items-center gap-3">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">

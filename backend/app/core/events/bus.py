@@ -1,5 +1,7 @@
 """Event bus for cross-module communication."""
 
+import asyncio
+import inspect
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -10,10 +12,10 @@ Handler = Callable[[dict[str, Any]], None]
 
 
 class EventBus:
-    """Simple synchronous event bus.
+    """Event bus with async handler support.
 
     Modules can subscribe to events and publish events.
-    For MVP, handlers run synchronously and errors are logged but don't propagate.
+    Supports both sync and async handlers. Errors are logged but don't propagate.
     """
 
     def __init__(self) -> None:
@@ -37,20 +39,40 @@ class EventBus:
     def publish(self, event_type: str, data: dict[str, Any]) -> None:
         """Publish an event to all subscribed handlers.
 
-        For MVP, this logs the event. Handlers are called synchronously
-        and errors are logged but don't propagate to the caller.
+        Supports both sync and async handlers. Async handlers are scheduled
+        as background tasks. Errors are logged but don't propagate.
         """
         logger.info(f"Event published: {event_type}", extra={"event_data": data})
 
         handlers = self._handlers.get(event_type, [])
         for handler in handlers:
             try:
-                handler(data)
+                result = handler(data)
+                # Handle async handlers
+                if inspect.iscoroutine(result):
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(self._run_async_handler(event_type, result))
+                    except RuntimeError:
+                        # No running loop, run synchronously
+                        asyncio.run(result)
             except Exception as e:
                 logger.error(
                     f"Error in event handler for {event_type}: {e}",
                     exc_info=True,
                 )
+
+    async def _run_async_handler(
+        self, event_type: str, coro: Any
+    ) -> None:
+        """Run an async handler and log errors."""
+        try:
+            await coro
+        except Exception as e:
+            logger.error(
+                f"Error in async event handler for {event_type}: {e}",
+                exc_info=True,
+            )
 
     def clear(self) -> None:
         """Remove all handlers. Useful for testing."""

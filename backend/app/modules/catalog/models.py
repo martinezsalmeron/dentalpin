@@ -164,6 +164,11 @@ class TreatmentCatalogItem(Base, TimestampMixin):
     is_diagnostic: Mapped[bool] = mapped_column(Boolean, default=False)
     requires_surfaces: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Billing configuration
+    billing_mode: Mapped[str] = mapped_column(
+        String(20), default="on_completion"
+    )  # on_completion, on_acceptance, manual
+
     # Material reference (placeholder for future inventory module)
     material_notes: Mapped[str | None] = mapped_column(Text)
 

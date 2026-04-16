@@ -1,0 +1,461 @@
+"""Treatment plan module API endpoints."""
+
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
+from app.core.schemas import ApiResponse, PaginatedApiResponse
+from app.database import get_db
+
+from .schemas import (
+    CompleteItemRequest,
+    GenerateBudgetResponse,
+    LinkBudgetRequest,
+    PlannedTreatmentItemCreate,
+    PlannedTreatmentItemResponse,
+    PlannedTreatmentItemUpdate,
+    TreatmentMediaCreate,
+    TreatmentMediaResponse,
+    TreatmentPlanCreate,
+    TreatmentPlanDetailResponse,
+    TreatmentPlanResponse,
+    TreatmentPlanStatusUpdate,
+    TreatmentPlanUpdate,
+)
+from .service import TreatmentPlanService
+
+router = APIRouter()
+
+
+# -----------------------------------------------------------------------------
+# Treatment Plans CRUD
+# -----------------------------------------------------------------------------
+
+
+@router.get("/treatment-plans", response_model=PaginatedApiResponse[TreatmentPlanResponse])
+async def list_treatment_plans(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    patient_id: UUID | None = None,
+    status: str | None = None,
+) -> PaginatedApiResponse[TreatmentPlanResponse]:
+    """List treatment plans with pagination and filters."""
+    plans, total = await TreatmentPlanService.list(
+        db, ctx.clinic_id, page, page_size, patient_id=patient_id, status=status
+    )
+    # Compute counts and totals from loaded items
+    for p in plans:
+        items = p.items or []
+        p.item_count = len(items)
+        p.completed_count = sum(1 for i in items if i.status == "completed")
+        p.total = sum(
+            (i.catalog_item.default_price or 0) if i.catalog_item else 0
+            for i in items
+        )
+    return PaginatedApiResponse(
+        data=[TreatmentPlanResponse.model_validate(p) for p in plans],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get(
+    "/treatment-plans/patient/{patient_id}",
+    response_model=PaginatedApiResponse[TreatmentPlanResponse],
+)
+async def list_patient_plans(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> PaginatedApiResponse[TreatmentPlanResponse]:
+    """List treatment plans for a specific patient."""
+    plans, total = await TreatmentPlanService.list(
+        db, ctx.clinic_id, page, page_size, patient_id=patient_id
+    )
+    # Compute counts and totals from loaded items
+    for p in plans:
+        items = p.items or []
+        p.item_count = len(items)
+        p.completed_count = sum(1 for i in items if i.status == "completed")
+        p.total = sum(
+            (i.catalog_item.default_price or 0) if i.catalog_item else 0
+            for i in items
+        )
+    return PaginatedApiResponse(
+        data=[TreatmentPlanResponse.model_validate(p) for p in plans],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get(
+    "/treatment-plans/{plan_id}",
+    response_model=ApiResponse[TreatmentPlanDetailResponse],
+)
+async def get_treatment_plan(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanDetailResponse]:
+    """Get a treatment plan with full details."""
+    plan = await TreatmentPlanService.get(db, ctx.clinic_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+    return ApiResponse(data=TreatmentPlanDetailResponse.model_validate(plan))
+
+
+@router.post(
+    "/treatment-plans",
+    response_model=ApiResponse[TreatmentPlanResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_treatment_plan(
+    data: TreatmentPlanCreate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Create a new treatment plan."""
+    try:
+        plan = await TreatmentPlanService.create(
+            db, ctx.clinic_id, ctx.user_id, data.model_dump()
+        )
+        return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put(
+    "/treatment-plans/{plan_id}",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def update_treatment_plan(
+    plan_id: UUID,
+    data: TreatmentPlanUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Update a treatment plan."""
+    plan = await TreatmentPlanService.update(
+        db, ctx.clinic_id, plan_id, data.model_dump(exclude_unset=True)
+    )
+    if not plan:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+
+
+@router.patch(
+    "/treatment-plans/{plan_id}/status",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def update_plan_status(
+    plan_id: UUID,
+    data: TreatmentPlanStatusUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Change treatment plan status."""
+    try:
+        plan = await TreatmentPlanService.update_status(
+            db, ctx.clinic_id, plan_id, data.status
+        )
+        if not plan:
+            raise HTTPException(status_code=404, detail="Treatment plan not found")
+        return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/treatment-plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_treatment_plan(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Soft delete (archive) a treatment plan."""
+    deleted = await TreatmentPlanService.delete(db, ctx.clinic_id, plan_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+
+
+# -----------------------------------------------------------------------------
+# Plan Items
+# -----------------------------------------------------------------------------
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/items",
+    response_model=ApiResponse[PlannedTreatmentItemResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_plan_item(
+    plan_id: UUID,
+    data: PlannedTreatmentItemCreate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PlannedTreatmentItemResponse]:
+    """Add a treatment item to the plan."""
+    try:
+        item = await TreatmentPlanService.add_item(
+            db, ctx.clinic_id, plan_id, data.model_dump()
+        )
+        return ApiResponse(data=PlannedTreatmentItemResponse.model_validate(item))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put(
+    "/treatment-plans/{plan_id}/items/{item_id}",
+    response_model=ApiResponse[PlannedTreatmentItemResponse],
+)
+async def update_plan_item(
+    plan_id: UUID,
+    item_id: UUID,
+    data: PlannedTreatmentItemUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PlannedTreatmentItemResponse]:
+    """Update a planned treatment item."""
+    item = await TreatmentPlanService.update_item(
+        db, ctx.clinic_id, plan_id, item_id, data.model_dump(exclude_unset=True)
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Treatment item not found")
+    return ApiResponse(data=PlannedTreatmentItemResponse.model_validate(item))
+
+
+@router.delete(
+    "/treatment-plans/{plan_id}/items/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_plan_item(
+    plan_id: UUID,
+    item_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Remove an item from the plan."""
+    removed = await TreatmentPlanService.remove_item(db, ctx.clinic_id, plan_id, item_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Treatment item not found")
+
+
+@router.patch(
+    "/treatment-plans/{plan_id}/items/{item_id}/complete",
+    response_model=ApiResponse[PlannedTreatmentItemResponse],
+)
+async def complete_plan_item(
+    plan_id: UUID,
+    item_id: UUID,
+    data: CompleteItemRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PlannedTreatmentItemResponse]:
+    """Mark a treatment item as completed."""
+    item = await TreatmentPlanService.complete_item(
+        db,
+        ctx.clinic_id,
+        plan_id,
+        item_id,
+        ctx.user_id,
+        data.completed_without_appointment,
+        data.notes,
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Treatment item not found")
+    return ApiResponse(data=PlannedTreatmentItemResponse.model_validate(item))
+
+
+# -----------------------------------------------------------------------------
+# Budget Integration
+# -----------------------------------------------------------------------------
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/link-budget",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def link_budget_to_plan(
+    plan_id: UUID,
+    data: LinkBudgetRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Link an existing budget to the treatment plan."""
+    try:
+        plan = await TreatmentPlanService.link_budget(
+            db, ctx.clinic_id, plan_id, data.budget_id
+        )
+        if not plan:
+            raise HTTPException(status_code=404, detail="Treatment plan not found")
+        return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/sync-budget",
+    response_model=ApiResponse[dict],
+)
+async def sync_plan_with_budget(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[dict]:
+    """Request synchronization of plan items with linked budget."""
+    success = await TreatmentPlanService.request_budget_sync(db, ctx.clinic_id, plan_id)
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot sync: plan not found or no budget linked",
+        )
+    return ApiResponse(data={"synced": True})
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/generate-budget",
+    response_model=ApiResponse[GenerateBudgetResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def generate_budget_from_plan(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[GenerateBudgetResponse]:
+    """Generate a new budget from the treatment plan items."""
+    from app.modules.budget.service import BudgetService
+
+    plan = await TreatmentPlanService.get(db, ctx.clinic_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+
+    # Check if existing linked budget is cancelled - if so, allow creating new one
+    if plan.budget_id:
+        from app.modules.budget.models import Budget
+
+        existing_budget = await db.get(Budget, plan.budget_id)
+        if existing_budget and existing_budget.status == "cancelled":
+            # Unlink cancelled budget to allow new one
+            plan.budget_id = None
+        else:
+            raise HTTPException(status_code=400, detail="Plan already has a budget linked")
+
+    if not plan.items:
+        raise HTTPException(status_code=400, detail="Plan has no items to create budget from")
+
+    # Collect catalog items from plan items
+    budget_items = []
+    for item in plan.items:
+        if item.catalog_item_id:
+            budget_items.append(
+                {
+                    "catalog_item_id": str(item.catalog_item_id),
+                    "quantity": 1,
+                    "tooth_number": item.tooth_treatment.tooth_number
+                    if item.tooth_treatment
+                    else None,
+                    "surfaces": item.tooth_treatment.surfaces
+                    if item.tooth_treatment
+                    else None,
+                    "tooth_treatment_id": str(item.tooth_treatment_id)
+                    if item.tooth_treatment_id
+                    else None,
+                }
+            )
+
+    if not budget_items:
+        raise HTTPException(
+            status_code=400,
+            detail="No catalog items found in plan to create budget",
+        )
+
+    # Create budget via budget service
+    from datetime import date
+
+    budget = await BudgetService.create_budget(
+        db,
+        ctx.clinic_id,
+        ctx.user_id,
+        {
+            "patient_id": plan.patient_id,
+            "valid_from": date.today(),
+            "items": budget_items,
+            "internal_notes": f"Generated from treatment plan {plan.plan_number}",
+        },
+    )
+
+    # Link budget to plan
+    plan.budget_id = budget.id
+
+    return ApiResponse(
+        data=GenerateBudgetResponse(
+            budget_id=budget.id,
+            budget_number=budget.budget_number,
+        )
+    )
+
+
+# -----------------------------------------------------------------------------
+# Media
+# -----------------------------------------------------------------------------
+
+
+@router.post(
+    "/treatment-plans/items/{item_id}/media",
+    response_model=ApiResponse[TreatmentMediaResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_media_to_item(
+    item_id: UUID,
+    data: TreatmentMediaCreate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentMediaResponse]:
+    """Add media to a treatment item."""
+    try:
+        media = await TreatmentPlanService.add_media(
+            db, ctx.clinic_id, item_id, data.model_dump()
+        )
+        return ApiResponse(data=TreatmentMediaResponse.model_validate(media))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete(
+    "/treatment-plans/items/{item_id}/media/{media_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_media_from_item(
+    item_id: UUID,
+    media_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Remove media from a treatment item."""
+    removed = await TreatmentPlanService.remove_media(db, ctx.clinic_id, item_id, media_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Media not found")

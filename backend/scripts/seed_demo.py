@@ -38,13 +38,16 @@ from app.modules.budget.models import Budget, BudgetItem, BudgetSignature
 from app.modules.catalog.models import TreatmentCatalogItem
 from app.modules.catalog.seed import seed_catalog
 from app.modules.clinical.models import Appointment, AppointmentTreatment, Patient
+from app.modules.media.models import Document  # noqa: F401 - needed for relationship resolution
 from app.modules.odontogram.models import ToothRecord, ToothTreatment
+from app.modules.treatment_plan.models import PlannedTreatmentItem, TreatmentPlan
 from app.seeds.demo_data import (
     CLINIC_ID,
     generate_appointments,
     generate_budgets_data,
     generate_invoices_data,
     generate_odontogram_data,
+    generate_treatment_plans_data,
     get_clinic_data,
     get_patients_data,
     get_users_data,
@@ -176,32 +179,75 @@ async def seed_appointments(db: AsyncSession) -> tuple[list[Appointment], list[d
 
 
 async def seed_appointment_treatments(db: AsyncSession, appointments_data: list[dict]) -> int:
-    """Link appointments to catalog treatments via AppointmentTreatment.
+    """Link appointments to planned treatment items via AppointmentTreatment.
+
+    For each appointment's catalog_codes, finds a matching PlannedTreatmentItem
+    from the same patient's treatment plans and links to it.
 
     Args:
         db: Database session
-        appointments_data: List of appointment dicts with catalog_codes
+        appointments_data: List of appointment dicts with catalog_codes and patient_id
 
     Returns:
         Number of AppointmentTreatment records created
     """
-    # Get catalog items map
+    # Get catalog items map (internal_code -> catalog_item_id)
     result = await db.execute(
         select(TreatmentCatalogItem).where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
     )
     catalog_items = result.scalars().all()
+    code_to_catalog_id = {item.internal_code: item.id for item in catalog_items}
 
-    # Build map of internal_code -> item id
-    code_to_id = {item.internal_code: item.id for item in catalog_items}
+    # Get all planned items with their catalog_item_id, grouped by patient
+    result = await db.execute(
+        select(PlannedTreatmentItem, TreatmentPlan.patient_id)
+        .join(TreatmentPlan, PlannedTreatmentItem.treatment_plan_id == TreatmentPlan.id)
+        .where(TreatmentPlan.clinic_id == CLINIC_ID)
+    )
+    planned_items_data = result.all()
+
+    # Build map: (patient_id, catalog_item_id) -> list of planned_item_ids
+    # Keep track of which planned items have been used to avoid duplicates
+    patient_catalog_to_planned: dict[tuple, list] = {}
+    for planned_item, patient_id in planned_items_data:
+        if planned_item.catalog_item_id:
+            key = (patient_id, planned_item.catalog_item_id)
+            if key not in patient_catalog_to_planned:
+                patient_catalog_to_planned[key] = []
+            patient_catalog_to_planned[key].append(planned_item)
+
+    # Track used planned items (to not reuse same item for multiple appointments)
+    used_planned_ids: set = set()
 
     created_count = 0
     for appt_data in appointments_data:
+        patient_id = appt_data.get("patient_id")
+        if not patient_id:
+            continue
+
         catalog_codes = appt_data.get("catalog_codes", [])
         for order, code in enumerate(catalog_codes):
-            catalog_item_id = code_to_id.get(code)
-            if catalog_item_id:
+            catalog_item_id = code_to_catalog_id.get(code)
+            if not catalog_item_id:
+                continue
+
+            # Find a planned item for this patient with this catalog_item
+            key = (patient_id, catalog_item_id)
+            planned_items = patient_catalog_to_planned.get(key, [])
+
+            # Find first unused planned item
+            planned_item = None
+            for pi in planned_items:
+                if pi.id not in used_planned_ids:
+                    planned_item = pi
+                    used_planned_ids.add(pi.id)
+                    break
+
+            if planned_item:
+                # Link to planned item
                 apt_treatment = AppointmentTreatment(
                     appointment_id=appt_data["id"],
+                    planned_treatment_item_id=planned_item.id,
                     catalog_item_id=catalog_item_id,
                     display_order=order,
                 )
@@ -209,7 +255,7 @@ async def seed_appointment_treatments(db: AsyncSession, appointments_data: list[
                 created_count += 1
 
     await db.flush()
-    print(f"  Linked {created_count} treatments to appointments")
+    print(f"  Linked {created_count} treatments to appointments via planned items")
     return created_count
 
 
@@ -411,6 +457,86 @@ async def seed_budgets(db: AsyncSession) -> dict:
         "budgets": len(budget_data["budgets"]),
         "items": len(budget_data["items"]),
         "signatures": len(budget_data["signatures"]),
+    }
+
+
+async def seed_treatment_plans(db: AsyncSession) -> dict:
+    """Create demo treatment plans with items.
+
+    Returns:
+        Dictionary with counts of created records.
+    """
+    # First, get catalog items to reference them
+    result = await db.execute(
+        select(TreatmentCatalogItem).where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
+    )
+    catalog_items = result.scalars().all()
+
+    # Build map of internal_code -> item data
+    catalog_items_map = {}
+    for item in catalog_items:
+        catalog_items_map[item.internal_code] = {
+            "id": item.id,
+            "default_price": item.default_price,
+        }
+
+    # Generate treatment plan data
+    plan_data = generate_treatment_plans_data(catalog_items_map)
+
+    # Create treatment plans
+    for plan_dict in plan_data["plans"]:
+        plan = TreatmentPlan(
+            id=plan_dict["id"],
+            clinic_id=plan_dict["clinic_id"],
+            patient_id=plan_dict["patient_id"],
+            plan_number=plan_dict["plan_number"],
+            title=plan_dict["title"],
+            status=plan_dict["status"],
+            budget_id=plan_dict["budget_id"],
+            assigned_professional_id=plan_dict["assigned_professional_id"],
+            created_by=plan_dict["created_by"],
+            diagnosis_notes=plan_dict["diagnosis_notes"],
+            internal_notes=plan_dict["internal_notes"],
+            deleted_at=plan_dict["deleted_at"],
+        )
+        db.add(plan)
+
+    await db.flush()
+
+    # Create planned items
+    for item_dict in plan_data["items"]:
+        item = PlannedTreatmentItem(
+            id=item_dict["id"],
+            clinic_id=item_dict["clinic_id"],
+            treatment_plan_id=item_dict["treatment_plan_id"],
+            tooth_treatment_id=item_dict["tooth_treatment_id"],
+            catalog_item_id=item_dict["catalog_item_id"],
+            is_global=item_dict["is_global"],
+            sequence_order=item_dict["sequence_order"],
+            status=item_dict["status"],
+            completed_without_appointment=item_dict["completed_without_appointment"],
+            completed_at=item_dict["completed_at"],
+            completed_by=item_dict["completed_by"],
+            notes=item_dict["notes"],
+        )
+        db.add(item)
+
+    await db.flush()
+
+    # Count by status
+    status_counts = {}
+    for plan in plan_data["plans"]:
+        status = plan["status"]
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    print(f"  Created {len(plan_data['plans'])} treatment plans:")
+    for status, count in sorted(status_counts.items()):
+        print(f"    - {status}: {count}")
+    print(f"  Created {len(plan_data['items'])} planned items")
+
+    return {
+        "plans": len(plan_data["plans"]),
+        "items": len(plan_data["items"]),
     }
 
 
@@ -623,37 +749,40 @@ async def main(lang: str = "en"):
 
         try:
             # Seed in order (respecting foreign keys)
-            print("[1/8] Creating clinic...")
+            print("[1/10] Creating clinic...")
             await seed_clinic(db)
 
-            print("\n[2/8] Creating users...")
+            print("\n[2/10] Creating users...")
             await seed_users(db, password_hash)
 
-            print("\n[3/8] Creating patients...")
+            print("\n[3/10] Creating patients...")
             await seed_patients(db)
 
-            print("\n[4/8] Creating appointments...")
+            print("\n[4/10] Creating appointments...")
             _, appointments_data = await seed_appointments(db)
 
-            print("\n[5/8] Creating odontogram data...")
+            print("\n[5/10] Creating odontogram data...")
             await seed_odontogram(db)
 
-            print("\n[6/8] Creating treatment catalog...")
+            print("\n[6/10] Creating treatment catalog...")
             catalog_result = await seed_catalog(db, CLINIC_ID, lang=lang)
             print(f"  Created {catalog_result['categories']} categories")
             print(f"  Created {catalog_result['items']} catalog items")
 
-            # Link appointments to catalog treatments (must be after catalog creation)
-            print("\n[6b/8] Linking appointments to catalog treatments...")
-            await seed_appointment_treatments(db, appointments_data)
-
-            print("\n[7/8] Creating budgets...")
+            print("\n[7/10] Creating budgets...")
             await seed_budgets(db)
 
-            print("\n[8/9] Creating invoice series...")
+            print("\n[8/10] Creating treatment plans...")
+            await seed_treatment_plans(db)
+
+            # Link appointments to planned treatment items (must be after treatment plans)
+            print("\n[8b/10] Linking appointments to planned treatment items...")
+            await seed_appointment_treatments(db, appointments_data)
+
+            print("\n[9/10] Creating invoice series...")
             await seed_invoice_series(db)
 
-            print("\n[9/9] Creating invoices...")
+            print("\n[10/10] Creating invoices...")
             await seed_invoices(db)
 
             # Commit all changes

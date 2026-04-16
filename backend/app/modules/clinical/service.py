@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.auth.models import ClinicMembership
 from app.core.events import EventType, event_bus
+from app.modules.treatment_plan.models import PlannedTreatmentItem
 
 from .models import Appointment, AppointmentTreatment, Patient, PatientTimeline
 from .schemas import TimelineEntry
@@ -222,8 +223,13 @@ class AppointmentService:
             .options(
                 selectinload(Appointment.patient),
                 selectinload(Appointment.professional),
-                selectinload(Appointment.treatments).selectinload(
-                    AppointmentTreatment.catalog_item
+                selectinload(Appointment.treatments).options(
+                    selectinload(AppointmentTreatment.planned_item).options(
+                        selectinload(PlannedTreatmentItem.catalog_item),
+                        selectinload(PlannedTreatmentItem.tooth_treatment),
+                        selectinload(PlannedTreatmentItem.treatment_plan),
+                    ),
+                    selectinload(AppointmentTreatment.catalog_item),
                 ),
             )
             .where(Appointment.clinic_id == clinic_id)
@@ -264,8 +270,13 @@ class AppointmentService:
             .options(
                 selectinload(Appointment.patient),
                 selectinload(Appointment.professional),
-                selectinload(Appointment.treatments).selectinload(
-                    AppointmentTreatment.catalog_item
+                selectinload(Appointment.treatments).options(
+                    selectinload(AppointmentTreatment.planned_item).options(
+                        selectinload(PlannedTreatmentItem.catalog_item),
+                        selectinload(PlannedTreatmentItem.tooth_treatment),
+                        selectinload(PlannedTreatmentItem.treatment_plan),
+                    ),
+                    selectinload(AppointmentTreatment.catalog_item),
                 ),
             )
             .where(
@@ -308,14 +319,77 @@ class AppointmentService:
         return result.scalar_one_or_none() is not None
 
     @staticmethod
+    async def validate_planned_items(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+        planned_item_ids: list[UUID],
+    ) -> None:
+        """Validate planned treatment items for appointment.
+
+        Checks:
+        - Each item exists and belongs to the clinic
+        - Each item belongs to the specified patient (via treatment plan)
+        - Each item has status "pending"
+        - Parent treatment plan is "active" or "draft"
+
+        Raises ValueError with details if validation fails.
+        """
+        if not planned_item_ids:
+            return
+
+        # Fetch all items with their treatment plans in one query
+        result = await db.execute(
+            select(PlannedTreatmentItem)
+            .options(selectinload(PlannedTreatmentItem.treatment_plan))
+            .where(PlannedTreatmentItem.id.in_(planned_item_ids))
+        )
+        items = {item.id: item for item in result.scalars().all()}
+
+        errors = []
+        for item_id in planned_item_ids:
+            item = items.get(item_id)
+
+            if not item:
+                errors.append(f"Treatment item {item_id} not found")
+                continue
+
+            if item.clinic_id != clinic_id:
+                errors.append(f"Treatment item {item_id} not found")
+                continue
+
+            plan = item.treatment_plan
+            if not plan or plan.patient_id != patient_id:
+                errors.append(f"Treatment item {item_id} does not belong to patient")
+                continue
+
+            if plan.status not in ("active", "draft"):
+                errors.append(
+                    f"Treatment item {item_id} belongs to {plan.status} plan"
+                )
+                continue
+
+            if item.status != "pending":
+                errors.append(f"Treatment item {item_id} is already {item.status}")
+
+        if errors:
+            raise ValueError("; ".join(errors))
+
+    @staticmethod
     async def create_appointment(
         db: AsyncSession,
         clinic_id: UUID,
         data: dict,
     ) -> Appointment:
         """Create an appointment. Raises IntegrityError on conflict."""
-        # Extract treatment_ids before creating appointment
-        treatment_ids = data.pop("treatment_ids", None)
+        # Extract planned_item_ids before creating appointment
+        planned_item_ids = data.pop("planned_item_ids", None)
+
+        # Validate planned items belong to patient and are in valid state
+        if planned_item_ids and data.get("patient_id"):
+            await AppointmentService.validate_planned_items(
+                db, clinic_id, data["patient_id"], planned_item_ids
+            )
 
         appointment = Appointment(clinic_id=clinic_id, **data)
         db.add(appointment)
@@ -326,11 +400,25 @@ class AppointmentService:
             await db.rollback()
             raise
 
-        # Add treatments if provided
-        if treatment_ids:
-            for order, catalog_item_id in enumerate(treatment_ids):
+        # Add treatments from planned items
+        if planned_item_ids:
+            for order, planned_item_id in enumerate(planned_item_ids):
+                # Fetch the planned item to get its catalog_item_id
+                planned_item = await db.get(PlannedTreatmentItem, planned_item_id)
+                catalog_item_id = None
+                if planned_item:
+                    # Get catalog_item_id from planned_item or its tooth_treatment
+                    if planned_item.catalog_item_id:
+                        catalog_item_id = planned_item.catalog_item_id
+                    elif planned_item.tooth_treatment_id:
+                        # Load tooth_treatment to get its catalog_item_id
+                        await db.refresh(planned_item, ["tooth_treatment"])
+                        if planned_item.tooth_treatment:
+                            catalog_item_id = planned_item.tooth_treatment.catalog_item_id
+
                 treatment = AppointmentTreatment(
                     appointment_id=appointment.id,
+                    planned_treatment_item_id=planned_item_id,
                     catalog_item_id=catalog_item_id,
                     display_order=order,
                 )
@@ -349,9 +437,13 @@ class AppointmentService:
 
         # Refresh to load relationships including treatments
         await db.refresh(appointment, ["patient", "professional", "treatments"])
-        # Also load catalog_item for each treatment
+        # Load nested relationships for each treatment
         for treatment in appointment.treatments:
-            await db.refresh(treatment, ["catalog_item"])
+            await db.refresh(treatment, ["planned_item", "catalog_item"])
+            if treatment.planned_item:
+                await db.refresh(
+                    treatment.planned_item, ["catalog_item", "tooth_treatment", "treatment_plan"]
+                )
 
         return appointment
 
@@ -364,8 +456,17 @@ class AppointmentService:
         """Update an appointment."""
         old_status = appointment.status
 
-        # Extract treatment_ids before updating other fields
-        treatment_ids = data.pop("treatment_ids", None)
+        # Extract planned_item_ids before updating other fields
+        planned_item_ids = data.pop("planned_item_ids", None)
+
+        # Validate planned items if provided
+        if planned_item_ids:
+            # Use patient_id from data if changing, otherwise from existing appointment
+            patient_id = data.get("patient_id") or appointment.patient_id
+            if patient_id:
+                await AppointmentService.validate_planned_items(
+                    db, appointment.clinic_id, patient_id, planned_item_ids
+                )
 
         for key, value in data.items():
             if value is not None:
@@ -378,26 +479,43 @@ class AppointmentService:
             raise
 
         # Update treatments if provided
-        if treatment_ids is not None:
+        if planned_item_ids is not None:
             # Remove existing treatments
             for existing in list(appointment.treatments):
                 await db.delete(existing)
             await db.flush()
 
-            # Add new treatments
-            for order, catalog_item_id in enumerate(treatment_ids):
+            # Add new treatments from planned items
+            for order, planned_item_id in enumerate(planned_item_ids):
+                # Fetch the planned item to get its catalog_item_id
+                planned_item = await db.get(PlannedTreatmentItem, planned_item_id)
+                catalog_item_id = None
+                if planned_item:
+                    if planned_item.catalog_item_id:
+                        catalog_item_id = planned_item.catalog_item_id
+                    elif planned_item.tooth_treatment_id:
+                        await db.refresh(planned_item, ["tooth_treatment"])
+                        if planned_item.tooth_treatment:
+                            catalog_item_id = planned_item.tooth_treatment.catalog_item_id
+
                 treatment = AppointmentTreatment(
                     appointment_id=appointment.id,
+                    planned_treatment_item_id=planned_item_id,
                     catalog_item_id=catalog_item_id,
                     display_order=order,
                 )
                 db.add(treatment)
             await db.flush()
 
-            # Refresh treatments
+            # Refresh treatments with nested relationships
             await db.refresh(appointment, ["treatments"])
             for treatment in appointment.treatments:
-                await db.refresh(treatment, ["catalog_item"])
+                await db.refresh(treatment, ["planned_item", "catalog_item"])
+                if treatment.planned_item:
+                    await db.refresh(
+                        treatment.planned_item,
+                        ["catalog_item", "tooth_treatment", "treatment_plan"],
+                    )
 
         # Publish appropriate event based on status change
         new_status = appointment.status

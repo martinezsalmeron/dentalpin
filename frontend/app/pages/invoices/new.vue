@@ -2,10 +2,15 @@
 import type { InvoiceItemCreate, Patient, VatType } from '~/types'
 
 const { t, locale } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const { createInvoice } = useInvoices()
 const api = useApi()
+
+// Track if coming from patient page
+const comesFromPatient = computed(() => route.query.from === 'patient' && route.query.patient_id)
+const backLabel = computed(() => comesFromPatient.value ? t('actions.back') : t('invoice.title'))
 
 // State
 const isLoading = ref(false)
@@ -168,7 +173,11 @@ async function handleSubmit() {
       color: 'success'
     })
 
-    router.push(`/invoices/${invoice.id}`)
+    // Preserve patient context
+    const queryParams = comesFromPatient.value
+      ? `?from=patient&patientId=${route.query.patient_id}`
+      : ''
+    router.push(`/invoices/${invoice.id}${queryParams}`)
   } catch {
     toast.add({
       title: t('common.error'),
@@ -181,7 +190,11 @@ async function handleSubmit() {
 }
 
 function goBack() {
-  router.push('/invoices')
+  if (comesFromPatient.value) {
+    router.push(`/patients/${route.query.patient_id}`)
+  } else {
+    router.push('/invoices')
+  }
 }
 </script>
 
@@ -194,7 +207,9 @@ function goBack() {
         color="neutral"
         icon="i-lucide-arrow-left"
         @click="goBack"
-      />
+      >
+        {{ backLabel }}
+      </UButton>
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
         {{ t('invoice.new') }}
       </h1>

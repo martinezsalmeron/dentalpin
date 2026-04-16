@@ -35,6 +35,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     "dentist": [
         "clinical.*",  # All clinical permissions
         "odontogram.*",  # Full odontogram access
+        "treatment_plan.*",  # Full treatment plan access
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.*",  # Full budget access
         "billing.*",  # Full billing access
@@ -50,6 +51,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "clinical.appointments.*",
         "odontogram.read",
         "odontogram.write",
+        "treatment_plan.plans.read",  # Can view treatment plans
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.read",  # Can view budgets
         "billing.read",  # Can view invoices
@@ -60,6 +62,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "clinical.patients.*",
         "clinical.appointments.*",
         "odontogram.read",  # Can view but not edit
+        "treatment_plan.plans.read",  # Can view treatment plans
+        "treatment_plan.plans.write",  # Can edit treatment plans
         "catalog.read",  # Can view catalog (prices, treatments)
         "budget.read",  # Can view budgets
         "budget.write",  # Can create/edit budgets

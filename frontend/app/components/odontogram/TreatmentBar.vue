@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TreatmentStatus, TreatmentType } from '~/types'
+import type { TreatmentStatus, TreatmentType, TreatmentPlan } from '~/types'
 import { TREATMENT_ICONS, isSurfaceTreatment } from './TreatmentIcons'
 import {
   TREATMENT_CATEGORIES,
@@ -10,13 +10,18 @@ import {
 const props = defineProps<{
   selectedTreatment?: TreatmentType | null
   selectedStatus: TreatmentStatus
+  selectedPlanId?: string | null
+  patientId?: string
+  treatmentPlans?: TreatmentPlan[]
   disabled?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:selectedTreatment': [treatment: TreatmentType | null]
   'update:selectedStatus': [status: TreatmentStatus]
+  'update:selectedPlanId': [planId: string | null]
   'treatmentSelect': [treatment: TreatmentType]
+  'createPlan': []
   'cancel': []
 }>()
 
@@ -134,6 +139,49 @@ function getCategoryLabel(categoryKey: string): string {
   }
   return label
 }
+
+// Plan selector - only visible when status is "planned" and category is not diagnostic
+const showPlanSelector = computed(() => {
+  // Show plan selector when status is "planned"
+  return props.selectedStatus === 'planned'
+})
+
+// Plan options for dropdown
+const planOptions = computed(() => {
+  const options: Array<{ value: string | null, label: string, icon?: string, isActive?: boolean }> = [
+    { value: null, label: t('odontogram.noPlan'), icon: 'i-lucide-minus' }
+  ]
+
+  if (props.treatmentPlans) {
+    for (const plan of props.treatmentPlans) {
+      options.push({
+        value: plan.id,
+        label: plan.title || plan.plan_number,
+        icon: plan.status === 'active' ? 'i-lucide-star' : 'i-lucide-file-text',
+        isActive: plan.status === 'active'
+      })
+    }
+  }
+
+  return options
+})
+
+// Selected plan label
+const selectedPlanLabel = computed(() => {
+  if (!props.selectedPlanId) {
+    return t('odontogram.noPlan')
+  }
+  const plan = props.treatmentPlans?.find(p => p.id === props.selectedPlanId)
+  return plan?.title || plan?.plan_number || t('odontogram.noPlan')
+})
+
+function selectPlan(planId: string | null) {
+  emit('update:selectedPlanId', planId)
+}
+
+function handleCreatePlan() {
+  emit('createPlan')
+}
 </script>
 
 <template>
@@ -160,6 +208,75 @@ function getCategoryLabel(categoryKey: string): string {
           <span class="status-label">{{ t(option.labelKey) }}</span>
         </button>
       </div>
+
+      <!-- Plan Selector (only when status is "planned") -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div
+          v-if="showPlanSelector"
+          class="plan-selector"
+        >
+          <span class="plan-selector-label">{{ t('odontogram.addToPlan') }}:</span>
+          <UDropdownMenu>
+            <UButton
+              variant="soft"
+              color="neutral"
+              size="sm"
+              class="plan-dropdown-trigger"
+              trailing-icon="i-lucide-chevron-down"
+            >
+              <UIcon
+                v-if="selectedPlanId"
+                name="i-lucide-file-text"
+                class="w-3.5 h-3.5"
+              />
+              <span class="truncate max-w-[120px]">{{ selectedPlanLabel }}</span>
+            </UButton>
+            <template #content>
+              <UDropdownMenuGroup>
+                <UDropdownMenuItem
+                  v-for="option in planOptions"
+                  :key="option.value ?? 'no-plan'"
+                  @click="selectPlan(option.value)"
+                >
+                  <template #leading>
+                    <UIcon
+                      v-if="option.icon"
+                      :name="option.icon"
+                      class="w-4 h-4"
+                      :class="option.isActive ? 'text-amber-500' : 'text-gray-400'"
+                    />
+                  </template>
+                  <span :class="option.isActive ? 'font-medium' : ''">{{ option.label }}</span>
+                  <template #trailing>
+                    <UIcon
+                      v-if="selectedPlanId === option.value"
+                      name="i-lucide-check"
+                      class="w-4 h-4 text-primary-500"
+                    />
+                  </template>
+                </UDropdownMenuItem>
+              </UDropdownMenuGroup>
+              <UDropdownMenuSeparator />
+              <UDropdownMenuItem @click="handleCreatePlan">
+                <template #leading>
+                  <UIcon
+                    name="i-lucide-plus"
+                    class="w-4 h-4 text-primary-500"
+                  />
+                </template>
+                <span class="text-primary-500">{{ t('odontogram.createNewPlan') }}</span>
+              </UDropdownMenuItem>
+            </template>
+          </UDropdownMenu>
+        </div>
+      </Transition>
 
       <!-- Divider -->
       <div class="divider" />
@@ -323,10 +440,6 @@ function getCategoryLabel(categoryKey: string): string {
   color: #DC2626;
 }
 
-.status-btn.selected.status-green {
-  color: #16A34A;
-}
-
 .status-btn.selected.status-gray {
   color: #52525B;
 }
@@ -346,6 +459,37 @@ function getCategoryLabel(categoryKey: string): string {
   .status-label {
     display: inline;
   }
+}
+
+/* Plan Selector */
+.plan-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+}
+
+:root.dark .plan-selector {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.plan-selector-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #92400E;
+  white-space: nowrap;
+}
+
+:root.dark .plan-selector-label {
+  color: #FCD34D;
+}
+
+.plan-dropdown-trigger {
+  min-width: 0;
 }
 
 /* Divider */

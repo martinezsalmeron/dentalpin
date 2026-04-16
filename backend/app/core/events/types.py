@@ -64,3 +64,11 @@ class EventType:
     DOCUMENT_UPLOADED = "document.uploaded"
     DOCUMENT_DELETED = "document.deleted"
     DOCUMENT_ARCHIVED = "document.archived"
+
+    # Treatment plan events
+    TREATMENT_PLAN_CREATED = "treatment_plan.created"
+    TREATMENT_PLAN_STATUS_CHANGED = "treatment_plan.status_changed"
+    TREATMENT_PLAN_TREATMENT_ADDED = "treatment_plan.treatment_added"
+    TREATMENT_PLAN_TREATMENT_REMOVED = "treatment_plan.treatment_removed"
+    TREATMENT_PLAN_TREATMENT_COMPLETED = "treatment_plan.treatment_completed"
+    TREATMENT_PLAN_BUDGET_SYNC_REQUESTED = "treatment_plan.budget_sync_requested"

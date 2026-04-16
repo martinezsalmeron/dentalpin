@@ -236,11 +236,11 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+    class="w-full p-2 bg-gray-50 dark:bg-gray-800 rounded-lg"
     :class="{ 'opacity-50 pointer-events-none': disabled }"
   >
     <!-- Header -->
-    <div class="flex items-center justify-between h-8">
+    <div class="flex items-center justify-between h-6">
       <span class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
         <UIcon
           name="i-lucide-history"
@@ -266,7 +266,7 @@ onUnmounted(() => {
     <!-- Slider track (fixed height) -->
     <div
       ref="sliderRef"
-      class="relative h-16 mt-4 cursor-pointer select-none rounded focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+      class="relative h-10 mt-2 cursor-pointer select-none rounded focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
       tabindex="0"
       role="slider"
       :aria-valuenow="currentIndex ?? dates.length"

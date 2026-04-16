@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Appointment, AppointmentCreate, Patient, TreatmentCatalogItem } from '~/types'
+import type { Appointment, AppointmentCreate, Patient, PlannedTreatmentItem } from '~/types'
 
 const props = defineProps<{
   open: boolean
@@ -8,6 +8,7 @@ const props = defineProps<{
   initialTime?: string
   initialEndTime?: string
   initialProfessionalId?: string
+  initialPatientId?: string
   existingAppointments?: Appointment[]
 }>()
 
@@ -21,6 +22,7 @@ const { t } = useI18n()
 const toast = useToast()
 const auth = useAuth()
 const clinic = useClinic()
+const api = useApi()
 const { createAppointment, updateAppointment, cancelAppointment } = useAppointments()
 const { professionals, fetchProfessionals, getProfessionalColor } = useProfessionals()
 const { fetchSettings, getAutoSendStatus } = useNotificationSettings()
@@ -39,7 +41,7 @@ const isSubmitting = ref(false)
 const selectedPatient = ref<Patient | null>(null)
 const selectedProfessionalId = ref<string>('')
 const sendConfirmationEmail = ref(true)
-const selectedTreatments = ref<TreatmentCatalogItem[]>([])
+const selectedTreatments = ref<PlannedTreatmentItem[]>([])
 const formData = reactive({
   date: '',
   startTime: '09:00',
@@ -64,7 +66,11 @@ const isEditMode = computed(() => !!props.appointment)
 
 // Auto-update duration based on selected treatments
 watch(selectedTreatments, (treatments) => {
-  const totalMinutes = treatments.reduce((acc, t) => acc + (t.default_duration_minutes || 0), 0)
+  const totalMinutes = treatments.reduce((acc, t) => {
+    // Get duration from catalog_item if available
+    const duration = t.catalog_item?.default_price ? 30 : 0 // Default 30 min
+    return acc + duration
+  }, 0)
   if (totalMinutes > 0) {
     formData.duration = validDurations.reduce((prev, curr) =>
       Math.abs(curr - totalMinutes) < Math.abs(prev - totalMinutes) ? curr : prev
@@ -228,24 +234,41 @@ watch(() => props.open, async (isOpen) => {
       formData.cabinet = apt.cabinet
       formData.notes = apt.notes || ''
 
-      // Load treatments from appointment
+      // Load treatments from appointment (mapped to PlannedTreatmentItem format)
       if (apt.treatments && apt.treatments.length > 0) {
         selectedTreatments.value = apt.treatments.map(t => ({
-          id: t.catalog_item_id,
+          id: t.planned_item_id,
           clinic_id: apt.clinic_id,
-          category_id: '',
-          internal_code: t.internal_code,
-          names: t.names,
-          default_price: t.default_price,
-          currency: 'EUR',
-          requires_appointment: true,
-          treatment_scope: 'whole_tooth' as const,
-          is_diagnostic: false,
-          requires_surfaces: false,
-          is_active: true,
-          is_system: false,
+          treatment_plan_id: t.plan_id || '',
+          tooth_treatment_id: undefined,
+          catalog_item_id: t.catalog_item_id,
+          is_global: t.is_global,
+          sequence_order: 0,
+          status: t.planned_item_status,
+          completed_without_appointment: false,
+          completed_at: undefined,
+          completed_by: undefined,
+          notes: undefined,
           created_at: '',
-          updated_at: ''
+          updated_at: '',
+          tooth_treatment: t.tooth_number
+            ? {
+                id: '',
+                tooth_number: t.tooth_number,
+                treatment_type: '',
+                status: 'planned',
+                surfaces: t.surfaces
+              }
+            : undefined,
+          catalog_item: t.catalog_item_id
+            ? {
+                id: t.catalog_item_id,
+                internal_code: t.internal_code,
+                names: t.names,
+                default_price: t.default_price
+              }
+            : undefined,
+          media: []
         }))
       } else {
         selectedTreatments.value = []
@@ -286,8 +309,17 @@ watch(() => props.open, async (isOpen) => {
         }
       }
 
-      // Reset other fields
-      selectedPatient.value = null
+      // Pre-select patient if initialPatientId provided
+      if (props.initialPatientId) {
+        try {
+          const response = await api.get<{ data: Patient }>(`/api/v1/clinical/patients/${props.initialPatientId}`)
+          selectedPatient.value = response.data
+        } catch {
+          selectedPatient.value = null
+        }
+      } else {
+        selectedPatient.value = null
+      }
       if (props.initialEndTime) {
         const startParts = formData.startTime.split(':').map(Number)
         const endParts = props.initialEndTime.split(':').map(Number)
@@ -355,7 +387,7 @@ async function handleSave() {
       cabinet: formData.cabinet,
       start_time: startTime,
       end_time: calculateEndTime(),
-      treatment_ids: selectedTreatments.value.length > 0
+      planned_item_ids: selectedTreatments.value.length > 0
         ? selectedTreatments.value.map(t => t.id)
         : undefined,
       notes: formData.notes || undefined
@@ -474,9 +506,12 @@ function closeModal() {
               />
             </UFormField>
 
-            <!-- Treatments from catalog -->
+            <!-- Treatments from treatment plan -->
             <UFormField :label="t('appointments.treatments')">
-              <TreatmentMultiSelector v-model="selectedTreatments" />
+              <PlannedTreatmentSelector
+                v-model="selectedTreatments"
+                :patient-id="selectedPatient?.id"
+              />
             </UFormField>
 
             <!-- Date and Time -->

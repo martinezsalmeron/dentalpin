@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import type { Patient, BudgetCreate } from '~/types'
 
+const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const toast = useToast()
 const { can } = usePermissions()
 const { createBudget } = useBudgets()
+
+// Track if coming from patient page
+const comesFromPatient = computed(() => route.query.from === 'patient' && route.query.patient_id)
+const backLabel = computed(() => comesFromPatient.value ? t('actions.back') : t('budget.title'))
+
+function goBack() {
+  if (comesFromPatient.value) {
+    router.push(`/patients/${route.query.patient_id}`)
+  } else {
+    router.push('/budgets')
+  }
+}
 
 // Check permission
 if (!can('budget.write')) {
@@ -48,8 +61,11 @@ async function handleCreate() {
       color: 'success'
     })
 
-    // Navigate to the new budget to add items
-    router.push(`/budgets/${budget.id}`)
+    // Navigate to the new budget to add items (preserve patient context)
+    const queryParams = comesFromPatient.value
+      ? `?from=patient&patientId=${route.query.patient_id}`
+      : ''
+    router.push(`/budgets/${budget.id}${queryParams}`)
   } catch {
     toast.add({
       title: t('common.error'),
@@ -70,8 +86,10 @@ async function handleCreate() {
         variant="ghost"
         color="neutral"
         icon="i-lucide-arrow-left"
-        @click="router.push('/budgets')"
-      />
+        @click="goBack"
+      >
+        {{ backLabel }}
+      </UButton>
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
         {{ t('budget.new') }}
       </h1>
@@ -141,7 +159,7 @@ async function handleCreate() {
           <UButton
             variant="outline"
             color="neutral"
-            @click="router.push('/budgets')"
+            @click="goBack"
           >
             {{ t('common.cancel') }}
           </UButton>

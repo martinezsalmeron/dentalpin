@@ -198,6 +198,6 @@ onMounted(() => {
 
 <style scoped>
 .patient-timeline {
-  @apply w-full;
+  width: 100%;
 }
 </style>

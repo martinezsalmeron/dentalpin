@@ -8,7 +8,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 
-const isExpanded = ref(true)
+const isExpanded = ref(false)
 
 // Sort treatments by date (most recent first) and group by tooth
 const sortedTreatments = computed(() => {

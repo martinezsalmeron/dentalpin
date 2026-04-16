@@ -62,6 +62,10 @@ export const PERMISSIONS = {
   documents: {
     read: 'media.documents.read',
     write: 'media.documents.write'
+  },
+  treatmentPlans: {
+    read: 'treatment_plan.plans.read',
+    write: 'treatment_plan.plans.write'
   }
 } as const
 
@@ -71,6 +75,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/appointments': PERMISSIONS.appointments.read,
   '/settings/users': PERMISSIONS.users.write,
   '/settings/notifications': PERMISSIONS.notifications.settingsRead,
+  '/treatment-plans': PERMISSIONS.treatmentPlans.read,
   '/budgets': PERMISSIONS.budget.read,
   '/invoices': PERMISSIONS.billing.read,
   '/reports': PERMISSIONS.reports.billingRead,

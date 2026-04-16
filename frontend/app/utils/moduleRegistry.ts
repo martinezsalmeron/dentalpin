@@ -44,6 +44,12 @@ registerModule({
       permission: PERMISSIONS.appointments.read
     },
     {
+      label: 'nav.treatmentPlans',
+      icon: 'i-lucide-clipboard-list',
+      to: '/treatment-plans',
+      permission: PERMISSIONS.treatmentPlans.read
+    },
+    {
       label: 'nav.budgets',
       icon: 'i-lucide-file-text',
       to: '/budgets',

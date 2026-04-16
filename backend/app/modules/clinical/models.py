@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +13,7 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.catalog.models import TreatmentCatalogItem
+    from app.modules.treatment_plan.models import PlannedTreatmentItem
 
 
 class Patient(Base, TimestampMixin):
@@ -198,7 +199,11 @@ class Appointment(Base, TimestampMixin):
 
 
 class AppointmentTreatment(Base):
-    """Junction table for appointment-treatment relationship."""
+    """Junction table linking appointments to planned treatment items.
+
+    Primary link is to PlannedTreatmentItem. The catalog_item_id is derived
+    from the planned item for convenience/denormalization.
+    """
 
     __tablename__ = "appointment_treatments"
 
@@ -206,15 +211,28 @@ class AppointmentTreatment(Base):
     appointment_id: Mapped[UUID] = mapped_column(
         ForeignKey("appointments.id", ondelete="CASCADE"), index=True
     )
-    catalog_item_id: Mapped[UUID] = mapped_column(
-        ForeignKey("treatment_catalog_items.id", ondelete="CASCADE")
+
+    # Primary link: to treatment plan item
+    planned_treatment_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("planned_treatment_items.id"), index=True
     )
+
+    # Denormalized catalog_item_id for query convenience (nullable for migration)
+    catalog_item_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("treatment_catalog_items.id", ondelete="SET NULL"), nullable=True
+    )
+
     display_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # Completion tracking
+    completed_in_appointment: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
+
     # Relationships
     appointment: Mapped["Appointment"] = relationship(back_populates="treatments")
-    catalog_item: Mapped["TreatmentCatalogItem"] = relationship()
+    planned_item: Mapped["PlannedTreatmentItem"] = relationship()
+    catalog_item: Mapped["TreatmentCatalogItem | None"] = relationship()
 
 
 class PatientTimeline(Base):

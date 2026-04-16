@@ -30,7 +30,16 @@ from app.modules.catalog.models import (  # noqa: F401
 )
 from app.modules.clinical.models import Appointment, Patient  # noqa: F401
 from app.modules.media.models import Document  # noqa: F401
-from app.modules.odontogram.models import OdontogramHistory, ToothRecord  # noqa: F401
+from app.modules.odontogram.models import (  # noqa: F401
+    OdontogramHistory,
+    ToothRecord,
+    ToothTreatment,
+)
+from app.modules.treatment_plan.models import (  # noqa: F401
+    PlannedTreatmentItem,
+    TreatmentMedia,
+    TreatmentPlan,
+)
 
 # Load modules manually for tests (normally done in lifespan)
 load_modules(app)
