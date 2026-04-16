@@ -301,6 +301,18 @@ const isMinor = computed(() => {
   return years < 18
 })
 
+// Hide sidebar when viewing plan detail (gives more space)
+const hideSidebar = ref(false)
+
+function handlePlanViewChange(view: 'list' | 'detail') {
+  hideSidebar.value = view === 'detail'
+}
+
+// Reset sidebar visibility when changing tabs
+watch(activeTab, () => {
+  hideSidebar.value = false
+})
+
 // Info tab accordion items - with edit buttons in headers
 const infoAccordionItems = computed(() => {
   const items = [
@@ -378,8 +390,11 @@ const infoAccordionItems = computed(() => {
 
       <!-- Main layout: Sidebar + Content -->
       <div class="flex flex-col lg:flex-row gap-6">
-        <!-- Sticky Sidebar -->
-        <aside class="lg:w-72 lg:shrink-0">
+        <!-- Sticky Sidebar (hidden when viewing plan detail) -->
+        <aside
+          v-if="!hideSidebar"
+          class="lg:w-72 lg:shrink-0"
+        >
           <div class="lg:sticky lg:top-4">
             <UCard>
               <PatientQuickInfo
@@ -648,6 +663,7 @@ const infoAccordionItems = computed(() => {
                 <ClinicalTab
                   :patient-id="patientId"
                   :readonly="!canEditOdontogram"
+                  @plan-view-change="handlePlanViewChange"
                 />
               </div>
             </template>

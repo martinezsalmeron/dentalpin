@@ -430,6 +430,17 @@ export function isUpperTooth(toothNumber: number): boolean {
 
 export type TreatmentClinicalCategory = 'diagnostico' | 'restauradora' | 'cirugia' | 'endodoncia' | 'ortodoncia'
 
+/**
+ * Categories that are diagnostic (existing conditions only, not treatments).
+ * Used by TreatmentBar to filter categories based on mode.
+ */
+export const DIAGNOSTIC_CATEGORIES: TreatmentClinicalCategory[] = ['diagnostico']
+
+/**
+ * Categories that are therapeutic (actual treatments that can be planned).
+ */
+export const THERAPEUTIC_CATEGORIES: TreatmentClinicalCategory[] = ['restauradora', 'cirugia', 'endodoncia', 'ortodoncia']
+
 export const TREATMENT_CATEGORIES: Array<{
   key: TreatmentClinicalCategory
   labelKey: string

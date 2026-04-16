@@ -401,6 +401,7 @@
       "clickToEdit": "Click to edit"
     },
     "planning": "Planning",
+    "diagnosisMode": "Diagnosis",
     "treatmentList": {
       "title": "Treatment List",
       "noTreatments": "No treatments recorded"
@@ -417,6 +418,53 @@
       "returnToNow": "Return to current state",
       "noHistory": "No prior history"
     }
+  },
+  "clinical": {
+    "modes": {
+      "history": "History",
+      "diagnosis": "Diagnosis",
+      "plans": "Plans"
+    },
+    "history": {
+      "stateAt": "State at",
+      "changesOnDate": "Changes on this date",
+      "noChanges": "No changes recorded"
+    },
+    "diagnosis": {
+      "registeredConditions": "Registered conditions",
+      "registerConditions": "Register conditions",
+      "noConditions": "No conditions registered",
+      "startDiagnosis": "Select a tooth and add existing conditions",
+      "generalConditions": "General conditions",
+      "readyToCreatePlan": "Diagnosis complete?",
+      "createPlan": "Create Treatment Plan",
+      "continuePlan": "Continue Plan \"{name}\"",
+      "selectPlan": "Select plan",
+      "continue": "Continue"
+    },
+    "plans": {
+      "title": "Treatment Plans",
+      "create": "New Plan",
+      "backToList": "Back to plans",
+      "treatments": "Plan Treatments",
+      "addTreatment": "Add Treatment",
+      "total": "Total",
+      "activate": "Activate Plan",
+      "generateBudget": "Generate Budget",
+      "empty": "No treatment plans",
+      "emptyDescription": "Create a plan to organize the patient's treatments",
+      "createFirst": "Create first plan",
+      "active": "Active Plans",
+      "drafts": "Drafts",
+      "completed": "Completed",
+      "noItems": "No treatments in the plan",
+      "markComplete": "Mark as completed",
+      "removeItem": "Remove from plan",
+      "unknownTreatment": "Treatment",
+      "odontogram": "Odontogram",
+      "pending": "pending"
+    },
+    "tooth": "Tooth"
   },
   "appointments": {
     "title": "Schedule",
@@ -568,6 +616,7 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
+    "completed": "Completed",
     "retry": "Retry",
     "confirm": "Confirm",
     "yes": "Yes",
@@ -760,6 +809,7 @@
     "planNumber": "Number",
     "patient": "Patient",
     "untitled": "Untitled",
+    "untitledPlan": "Untitled plan",
     "itemCount": "{count} treatment | {count} treatments",
     "treatments": "treatments",
     "progress": "Progress",
@@ -820,6 +870,7 @@
       "deleted": "Treatment plan deleted",
       "itemsAdded": "Treatments added to plan"
     },
+    "itemCompleted": "Treatment completed",
     "errors": {
       "load": "Error loading treatment plans",
       "create": "Error creating treatment plan",

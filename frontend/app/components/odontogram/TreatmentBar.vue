@@ -3,18 +3,27 @@ import type { TreatmentStatus, TreatmentType, TreatmentPlan } from '~/types'
 import { TREATMENT_ICONS, isSurfaceTreatment } from './TreatmentIcons'
 import {
   TREATMENT_CATEGORIES,
+  DIAGNOSTIC_CATEGORIES,
+  THERAPEUTIC_CATEGORIES,
   getAllowedStatusesForTreatment,
-  getTreatmentColor
+  getTreatmentColor,
+  type TreatmentClinicalCategory
 } from '~/config/odontogramConstants'
 
-const props = defineProps<{
+export type TreatmentBarMode = 'diagnosis' | 'planning' | 'full'
+
+const props = withDefaults(defineProps<{
   selectedTreatment?: TreatmentType | null
   selectedStatus: TreatmentStatus
   selectedPlanId?: string | null
   patientId?: string
   treatmentPlans?: TreatmentPlan[]
   disabled?: boolean
-}>()
+  /** Mode determines which categories are shown and UI behavior */
+  mode?: TreatmentBarMode
+}>(), {
+  mode: 'full'
+})
 
 const emit = defineEmits<{
   'update:selectedTreatment': [treatment: TreatmentType | null]
@@ -37,8 +46,38 @@ onMounted(async () => {
   }
 })
 
-// Active category tab - default to diagnostic treatments
-const activeCategory = ref('diagnostico')
+// Categories from catalog (with fallback to constants), filtered by mode
+// NOTE: Must be defined before activeCategory watch that references it
+const categories = computed(() => {
+  // Always include all constant categories as base, then merge with catalog
+  const constantCategories = TREATMENT_CATEGORIES.map(c => c.key)
+  const catalogCategories = treatmentCatalog.clinicalCategories.value
+
+  // Merge: use constant categories as base, ensuring all are present
+  // Catalog may add extra categories but we always have the standard ones
+  const allCategories = [...new Set([...constantCategories, ...catalogCategories])]
+
+  // Diagnosis mode: show ALL categories (dentist needs to record existing treatments too)
+  // Planning mode: show only therapeutic categories (no diagnostic conditions)
+  if (props.mode === 'planning') {
+    return allCategories.filter(cat =>
+      THERAPEUTIC_CATEGORIES.includes(cat as TreatmentClinicalCategory)
+    )
+  }
+
+  // 'full' and 'diagnosis' modes show all categories
+  return allCategories
+})
+
+// Active category tab - default based on mode
+const activeCategory = ref(props.mode === 'planning' ? 'restauradora' : 'diagnostico')
+
+// Update active category when mode changes or if current category is not in filtered list
+watch(() => props.mode, () => {
+  if (!categories.value.includes(activeCategory.value)) {
+    activeCategory.value = categories.value[0] || 'diagnostico'
+  }
+}, { immediate: true })
 
 // All status options
 const allStatusOptions: Array<{ value: TreatmentStatus, labelKey: string, color: string }> = [
@@ -65,14 +104,16 @@ const statusOptions = computed(() => {
   return allStatusOptions.filter(opt => allowedStatuses.includes(opt.value))
 })
 
-// Categories from catalog (with fallback to constants)
-const categories = computed(() => {
-  const catalogCategories = treatmentCatalog.clinicalCategories.value
-  if (catalogCategories.length > 0) {
-    return catalogCategories
-  }
-  return TREATMENT_CATEGORIES.map(c => c.key)
-})
+// Show status toggle only when not in diagnosis mode
+const showStatusToggle = computed(() => props.mode !== 'diagnosis')
+
+// Show diagnosis mode indicator
+const isDiagnosisMode = computed(() => props.mode === 'diagnosis')
+
+// Effective status - forced to 'existing' in diagnosis mode
+const effectiveStatus = computed(() =>
+  props.mode === 'diagnosis' ? 'existing' : props.selectedStatus
+)
 
 // Current category treatments - uses catalog if available, fallback to constants
 const currentTreatments = computed(() => {
@@ -140,10 +181,12 @@ function getCategoryLabel(categoryKey: string): string {
   return label
 }
 
-// Plan selector - only visible when status is "planned" and category is not diagnostic
+// Plan selector - only visible when status is "planned" and not in diagnosis mode
 const showPlanSelector = computed(() => {
+  // Never show in diagnosis mode
+  if (props.mode === 'diagnosis') return false
   // Show plan selector when status is "planned"
-  return props.selectedStatus === 'planned'
+  return effectiveStatus.value === 'planned'
 })
 
 // Plan options for dropdown
@@ -191,15 +234,30 @@ function handleCreatePlan() {
   >
     <!-- Top row: Status + Categories + Instructions -->
     <div class="top-row">
-      <!-- Status Toggle -->
-      <div class="status-toggle">
+      <!-- Diagnosis Mode Indicator -->
+      <div
+        v-if="isDiagnosisMode"
+        class="diagnosis-mode-indicator"
+      >
+        <UIcon
+          name="i-lucide-stethoscope"
+          class="w-4 h-4"
+        />
+        <span class="diagnosis-label">{{ t('odontogram.diagnosisMode') }}</span>
+      </div>
+
+      <!-- Status Toggle (hidden in diagnosis mode) -->
+      <div
+        v-else-if="showStatusToggle"
+        class="status-toggle"
+      >
         <button
           v-for="option in statusOptions"
           :key="option.value"
           type="button"
           class="status-btn"
           :class="{
-            selected: selectedStatus === option.value,
+            selected: effectiveStatus === option.value,
             [`status-${option.color}`]: true
           }"
           @click="selectStatus(option.value)"
@@ -391,6 +449,29 @@ function handleCreatePlan() {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* Diagnosis Mode Indicator */
+.diagnosis-mode-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #DBEAFE;
+  border: 1px solid #93C5FD;
+  border-radius: 8px;
+  color: #1D4ED8;
+}
+
+:root.dark .diagnosis-mode-indicator {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60A5FA;
+}
+
+.diagnosis-label {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* Status Toggle */

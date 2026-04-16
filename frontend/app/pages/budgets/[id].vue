@@ -740,7 +740,10 @@ function getItemName(item: BudgetItem): string {
                   class="block font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
                 >
                   {{ currentBudget.treatment_plan.plan_number }}
-                  <span v-if="currentBudget.treatment_plan.title" class="text-gray-500 font-normal">
+                  <span
+                    v-if="currentBudget.treatment_plan.title"
+                    class="text-gray-500 font-normal"
+                  >
                     - {{ currentBudget.treatment_plan.title }}
                   </span>
                 </NuxtLink>

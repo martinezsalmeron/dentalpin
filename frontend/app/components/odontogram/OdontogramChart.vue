@@ -13,19 +13,26 @@ import type { OdontogramHistoryEntry, Surface, Treatment, TreatmentStatus, Treat
 import { PERMANENT_TEETH, DECIDUOUS_TEETH, TREATMENT_SHORTCUTS } from '~/constants/odontogram'
 import { isSurfaceTreatment } from './TreatmentIcons'
 
-export type OdontogramMode = 'full' | 'view-only' | 'planning'
+export type OdontogramMode = 'full' | 'view-only' | 'diagnosis' | 'planning'
 
 const props = withDefaults(defineProps<{
   patientId: string
   mode?: OdontogramMode
   statusFilter?: TreatmentStatus[]
+  /** Teeth to highlight (for hover linking from parent) */
+  highlightedTeethProp?: number[]
+  /** Plan ID for filtering treatments in planning mode */
+  planId?: string
 }>(), {
-  mode: 'full'
+  mode: 'full',
+  highlightedTeethProp: () => []
 })
 
 const emit = defineEmits<{
   treatmentAdd: [treatment: Treatment]
   treatmentPerform: [treatmentId: string]
+  /** Emitted when user hovers over a tooth (for hover linking) */
+  toothHover: [toothNumber: number | null]
 }>()
 
 const { t } = useI18n()
@@ -66,7 +73,13 @@ const dentitionMode = ref<'permanent' | 'deciduous'>('permanent')
 const selectedTooth = ref<number | null>(null)
 const showSurfaceSelector = ref(false)
 const hoveredTooth = ref<number | null>(null)
-const highlightedTeeth = ref<number[]>([])
+const internalHighlightedTeeth = ref<number[]>([])
+
+// Merge internal highlighted teeth with prop (for hover linking)
+const highlightedTeeth = computed(() => [
+  ...internalHighlightedTeeth.value,
+  ...props.highlightedTeethProp
+])
 
 // Click-to-apply mode
 const selectedTreatmentType = ref<TreatmentType | null>(null)
@@ -92,6 +105,14 @@ const showLateral = true
 
 const isReadonly = computed(() => props.mode === 'view-only' || isViewingHistory.value)
 const isPlanningMode = computed(() => props.mode === 'planning')
+const isDiagnosisMode = computed(() => props.mode === 'diagnosis')
+
+// Map OdontogramChart mode to TreatmentBar mode
+const treatmentBarMode = computed(() => {
+  if (props.mode === 'diagnosis') return 'diagnosis'
+  if (props.mode === 'planning') return 'planning'
+  return 'full'
+})
 const isClickToApplyMode = computed(() => selectedTreatmentType.value !== null)
 
 const teethLayout = computed(() =>
@@ -132,6 +153,11 @@ watch(() => props.patientId, async (newId) => {
       fetchTimeline(newId)
     ])
   }
+})
+
+// Emit tooth hover for parent hover linking
+watch(hoveredTooth, (toothNumber) => {
+  emit('toothHover', toothNumber)
 })
 
 // ============================================================================
@@ -226,9 +252,17 @@ function handleToothContextMenu(toothNumber: number, event: MouseEvent) {
 async function applyTreatment(toothNumber: number, surfaces?: Surface[]) {
   if (!selectedTreatmentType.value) return
 
+  // Determine status based on mode
+  let status: TreatmentStatus = selectedTreatmentStatus.value
+  if (isDiagnosisMode.value) {
+    status = 'existing' // Diagnosis mode always records existing conditions
+  } else if (isPlanningMode.value) {
+    status = 'planned'
+  }
+
   const data: { treatment_type: TreatmentType, status: TreatmentStatus, surfaces?: Surface[] } = {
     treatment_type: selectedTreatmentType.value,
-    status: isPlanningMode.value ? 'planned' : selectedTreatmentStatus.value
+    status
   }
 
   if (surfaces?.length) data.surfaces = surfaces
@@ -499,11 +533,12 @@ async function onHistoryExpanded(expanded: boolean) {
         </div>
       </div>
 
-      <!-- Treatment Bar -->
+      <!-- Treatment Bar (hidden in planning mode - parent provides its own) -->
       <TreatmentBar
-        v-if="!isReadonly"
+        v-if="!isReadonly && !isPlanningMode"
         v-model:selected-treatment="selectedTreatmentType"
         :selected-status="selectedTreatmentStatus"
+        :mode="treatmentBarMode"
         :disabled="isReadonly"
         @update:selected-status="selectedTreatmentStatus = $event"
         @treatment-select="selectedTreatmentType = $event"
@@ -513,11 +548,15 @@ async function onHistoryExpanded(expanded: boolean) {
       <!-- Legend -->
       <OdontogramLegend />
 
-      <!-- Treatment List -->
-      <TreatmentListSection :treatments="treatments" />
+      <!-- Treatment List (hidden in diagnosis/planning modes - parent has its own) -->
+      <TreatmentListSection
+        v-if="!isDiagnosisMode && !isPlanningMode"
+        :treatments="treatments"
+      />
 
-      <!-- History -->
+      <!-- History (hidden in diagnosis/planning modes) -->
       <ChangeHistorySection
+        v-if="!isDiagnosisMode && !isPlanningMode"
         :history="historyData"
         :treatments="treatments"
         :loading="historyLoading"

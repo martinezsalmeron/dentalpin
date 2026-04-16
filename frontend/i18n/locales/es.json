@@ -422,6 +422,7 @@
       "clickToEdit": "Clic para editar"
     },
     "planning": "Planificando",
+    "diagnosisMode": "Diagnóstico",
     "treatmentList": {
       "title": "Listado de Tratamientos",
       "noTreatments": "No hay tratamientos registrados"
@@ -438,6 +439,53 @@
       "returnToNow": "Volver al estado actual",
       "noHistory": "Sin historial previo"
     }
+  },
+  "clinical": {
+    "modes": {
+      "history": "Histórico",
+      "diagnosis": "Diagnóstico",
+      "plans": "Planes"
+    },
+    "history": {
+      "stateAt": "Estado a fecha",
+      "changesOnDate": "Cambios en esta fecha",
+      "noChanges": "Sin cambios registrados"
+    },
+    "diagnosis": {
+      "registeredConditions": "Condiciones registradas",
+      "registerConditions": "Registrar condiciones",
+      "noConditions": "Sin condiciones registradas",
+      "startDiagnosis": "Selecciona un diente y añade condiciones existentes",
+      "generalConditions": "Condiciones generales",
+      "readyToCreatePlan": "¿Diagnóstico completo?",
+      "createPlan": "Crear Plan de Tratamiento",
+      "continuePlan": "Continuar Plan \"{name}\"",
+      "selectPlan": "Seleccionar plan",
+      "continue": "Continuar"
+    },
+    "plans": {
+      "title": "Planes de Tratamiento",
+      "create": "Nuevo Plan",
+      "backToList": "Volver a planes",
+      "treatments": "Tratamientos del Plan",
+      "addTreatment": "Añadir Tratamiento",
+      "total": "Total",
+      "activate": "Activar Plan",
+      "generateBudget": "Generar Presupuesto",
+      "empty": "Sin planes de tratamiento",
+      "emptyDescription": "Crea un plan para organizar los tratamientos del paciente",
+      "createFirst": "Crear primer plan",
+      "active": "Planes Activos",
+      "drafts": "Borradores",
+      "completed": "Completados",
+      "noItems": "Sin tratamientos en el plan",
+      "markComplete": "Marcar como completado",
+      "removeItem": "Eliminar del plan",
+      "unknownTreatment": "Tratamiento",
+      "odontogram": "Odontograma",
+      "pending": "pendientes"
+    },
+    "tooth": "Diente"
   },
   "appointments": {
     "title": "Agenda",
@@ -590,6 +638,7 @@
     "loading": "Cargando...",
     "error": "Error",
     "success": "Éxito",
+    "completed": "Completado",
     "retry": "Reintentar",
     "confirm": "Confirmar",
     "yes": "Sí",
@@ -782,6 +831,7 @@
     "planNumber": "Número",
     "patient": "Paciente",
     "untitled": "Sin título",
+    "untitledPlan": "Plan sin título",
     "itemCount": "{count} tratamiento | {count} tratamientos",
     "treatments": "tratamientos",
     "progress": "Progreso",
@@ -842,6 +892,7 @@
       "deleted": "Plan de tratamiento eliminado",
       "itemsAdded": "Tratamientos añadidos al plan"
     },
+    "itemCompleted": "Tratamiento completado",
     "errors": {
       "load": "Error al cargar planes de tratamiento",
       "create": "Error al crear plan de tratamiento",

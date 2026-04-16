@@ -10,6 +10,8 @@ import {
   TREATMENT_CATEGORIES,
   TREATMENT_COLORS,
   VISUALIZATION_RULES,
+  DIAGNOSTIC_CATEGORIES,
+  THERAPEUTIC_CATEGORIES,
   isSurfaceTreatment,
   normalizeTreatmentType,
   type TreatmentClinicalCategory
@@ -110,10 +112,58 @@ export function useTreatmentCatalog() {
   })
 
   /**
+   * Diagnostic categories only (for diagnosis mode in TreatmentBar).
+   * These are categories for recording existing conditions.
+   */
+  const diagnosticCategories = computed(() => {
+    return clinicalCategories.value.filter(cat =>
+      DIAGNOSTIC_CATEGORIES.includes(cat as TreatmentClinicalCategory)
+    )
+  })
+
+  /**
+   * Therapeutic categories only (for planning mode in TreatmentBar).
+   * These are categories for treatments that can be planned.
+   */
+  const therapeuticCategories = computed(() => {
+    return clinicalCategories.value.filter(cat =>
+      THERAPEUTIC_CATEGORIES.includes(cat as TreatmentClinicalCategory)
+    )
+  })
+
+  /**
    * Get treatments for a specific category.
+   * Falls back to constants if category not in catalog.
    */
   function getTreatmentsForCategory(categoryKey: string): OdontogramTreatment[] {
-    return treatmentsByCategory.value[categoryKey] || []
+    const catalogTreatments = treatmentsByCategory.value[categoryKey]
+    if (catalogTreatments && catalogTreatments.length > 0) {
+      return catalogTreatments
+    }
+
+    // Fallback to constants for this specific category
+    const constantCategory = TREATMENT_CATEGORIES.find(c => c.key === categoryKey)
+    if (constantCategory) {
+      return constantCategory.treatments.map(treatmentType => ({
+        id: treatmentType,
+        internal_code: treatmentType.toUpperCase(),
+        names: { es: treatmentType, en: treatmentType },
+        default_price: undefined,
+        treatment_scope: isSurfaceTreatment(treatmentType) ? 'surface' : 'whole_tooth',
+        requires_surfaces: isSurfaceTreatment(treatmentType),
+        is_diagnostic: categoryKey === 'diagnostico',
+        odontogram_treatment_type: treatmentType,
+        visualization_rules: getVisualizationRulesForType(treatmentType),
+        visualization_config: {
+          color: TREATMENT_COLORS[treatmentType] || { light: '#6B7280', dark: '#9CA3AF' }
+        },
+        clinical_category: categoryKey,
+        category_key: categoryKey,
+        category_names: { es: constantCategory.labelKey, en: constantCategory.labelKey }
+      }))
+    }
+
+    return []
   }
 
   /**
@@ -249,6 +299,8 @@ export function useTreatmentCatalog() {
     useCatalog,
     treatmentsByCategory,
     clinicalCategories,
+    diagnosticCategories,
+    therapeuticCategories,
 
     // Treatment getters
     getTreatmentsForCategory,
