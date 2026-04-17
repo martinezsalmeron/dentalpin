@@ -14,6 +14,7 @@ import type {
   ToothRecordWithTreatments,
   Treatment,
   TreatmentCreate,
+  TreatmentGroupCreate,
   TreatmentStatus,
   TreatmentUpdate
 } from '~/types'
@@ -214,6 +215,103 @@ export function useTreatments() {
     }
   }
 
+  // ============================================================================
+  // Multi-tooth treatment groups
+  // ============================================================================
+
+  /** Create an atomic multi-tooth treatment group (bridge, splint, etc). */
+  async function createTreatmentGroup(
+    patientId: string,
+    payload: TreatmentGroupCreate
+  ): Promise<Treatment[] | null> {
+    try {
+      const response = await api.post<ApiResponse<Treatment[]>>(
+        `/api/v1/odontogram/patients/${patientId}/treatment-groups`,
+        payload as unknown as Record<string, unknown>
+      )
+
+      treatments.value.push(...response.data)
+
+      toast.add({
+        title: t('odontogram.treatments.treatmentAdded'),
+        color: 'success'
+      })
+
+      return response.data
+    } catch (err) {
+      toast.add({
+        title: t('common.error'),
+        description: t('odontogram.messages.error'),
+        color: 'error'
+      })
+      console.error('Error creating treatment group:', err)
+      return null
+    }
+  }
+
+  /** Mark every member of a group as performed. */
+  async function performTreatmentGroup(
+    groupId: string,
+    notes?: string
+  ): Promise<Treatment[] | null> {
+    try {
+      const response = await api.patch<ApiResponse<Treatment[]>>(
+        `/api/v1/odontogram/treatment-groups/${groupId}/perform`,
+        (notes ? { notes } : {}) as Record<string, unknown>
+      )
+      for (const updated of response.data) {
+        updateLocalTreatment(updated)
+      }
+      toast.add({
+        title: t('odontogram.treatments.treatmentPerformed'),
+        color: 'success'
+      })
+      return response.data
+    } catch (err) {
+      toast.add({
+        title: t('common.error'),
+        description: t('odontogram.messages.error'),
+        color: 'error'
+      })
+      console.error('Error performing treatment group:', err)
+      return null
+    }
+  }
+
+  /** Soft-delete every member of a group atomically. */
+  async function deleteTreatmentGroup(groupId: string): Promise<boolean> {
+    try {
+      await api.del(`/api/v1/odontogram/treatment-groups/${groupId}`)
+      treatments.value = treatments.value.filter(t => t.treatment_group_id !== groupId)
+      toast.add({
+        title: t('odontogram.treatments.treatmentDeleted'),
+        color: 'success'
+      })
+      return true
+    } catch (err) {
+      toast.add({
+        title: t('common.error'),
+        description: t('odontogram.messages.error'),
+        color: 'error'
+      })
+      console.error('Error deleting treatment group:', err)
+      return false
+    }
+  }
+
+  /** Return every treatment sharing the given group id. */
+  function getGroupMembers(groupId: string): Treatment[] {
+    return treatments.value.filter(t => t.treatment_group_id === groupId)
+  }
+
+  /** Return the group id a tooth participates in, if any. */
+  function getGroupIdForTooth(toothNumber: number): string | null {
+    const member = treatments.value.find(
+      t => t.tooth_number === toothNumber && t.treatment_group_id
+    )
+    return member?.treatment_group_id ?? null
+  }
+
   /** Reset local state */
   function reset(): void {
     treatments.value = []
@@ -231,6 +329,8 @@ export function useTreatments() {
     // Helpers
     getToothTreatments,
     getTreatmentsByStatus,
+    getGroupMembers,
+    getGroupIdForTooth,
 
     // API
     fetchTreatments,
@@ -239,6 +339,9 @@ export function useTreatments() {
     deleteTreatment,
     performTreatment,
     fetchToothWithTreatments,
+    createTreatmentGroup,
+    performTreatmentGroup,
+    deleteTreatmentGroup,
     reset
   }
 }

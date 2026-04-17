@@ -64,13 +64,6 @@ async function openPlanDetail(planId: string) {
   }
 }
 
-function backToList() {
-  view.value = 'list'
-  selectedPlan.value = null
-  // Refresh list after changes
-  fetchPatientPlans(props.patientId)
-}
-
 async function handleActivatePlan(plan: TreatmentPlan) {
   const updated = await updatePlanStatus(plan.id, { status: 'active' })
   if (updated) {
@@ -86,6 +79,19 @@ async function handleGenerateBudget(plan: TreatmentPlan) {
     // Navigate to budget
     router.push(`/budgets/${result.budget_id}`)
   }
+}
+
+async function handleDetailGenerateBudget() {
+  if (!selectedPlan.value) return
+  const result = await generateBudget(selectedPlan.value.id)
+  if (result) {
+    emit('budget-generated', selectedPlan.value.id)
+    router.push(`/budgets/${result.budget_id}`)
+  }
+}
+
+function handleSchedule(plan: TreatmentPlan) {
+  router.push(`/appointments?patient_id=${plan.patient_id}`)
 }
 
 function handlePlanCreated(plan: TreatmentPlan) {
@@ -137,6 +143,7 @@ watch(() => props.initialPlanId, (newId) => {
       @create-plan="showCreateModal = true"
       @activate-plan="handleActivatePlan"
       @generate-budget="handleGenerateBudget"
+      @schedule="handleSchedule"
     />
 
     <!-- Detail View -->
@@ -145,10 +152,10 @@ watch(() => props.initialPlanId, (newId) => {
       :plan="selectedPlan"
       :patient-id="patientId"
       :readonly="readonly"
-      @back="backToList"
       @updated="handlePlanUpdated"
       @activate="fetchPatientPlans(patientId)"
-      @generate-budget="fetchPatientPlans(patientId)"
+      @generate-budget="handleDetailGenerateBudget"
+      @schedule="router.push(`/appointments?patient_id=${patientId}`)"
     />
 
     <!-- Create Plan Modal -->

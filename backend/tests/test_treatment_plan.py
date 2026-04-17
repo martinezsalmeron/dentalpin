@@ -511,3 +511,122 @@ async def test_list_patient_plans(
     data = response.json()
     assert len(data["data"]) >= 2
     assert all(p["patient_id"] == patient_id for p in data["data"])
+
+
+# ============================================================================
+# Auto-Completion Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_plan_auto_completes_when_all_items_completed(
+    client: AsyncClient, auth_headers: dict, treatment_plan_setup: dict
+):
+    """Test that an active plan auto-completes when all items are marked completed."""
+    # Create plan with two items
+    create_response = await client.post(
+        "/api/v1/treatment_plan/treatment-plans",
+        json={
+            "patient_id": treatment_plan_setup["patient_id"],
+        },
+        headers=auth_headers,
+    )
+    plan_id = create_response.json()["data"]["id"]
+
+    # Add first item
+    item1_response = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items",
+        json={
+            "catalog_item_id": treatment_plan_setup["catalog_item_id"],
+            "is_global": True,
+        },
+        headers=auth_headers,
+    )
+    item1_id = item1_response.json()["data"]["id"]
+
+    # Add second item
+    item2_response = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items",
+        json={
+            "catalog_item_id": treatment_plan_setup["catalog_item_id"],
+            "is_global": True,
+        },
+        headers=auth_headers,
+    )
+    item2_id = item2_response.json()["data"]["id"]
+
+    # Activate the plan
+    await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
+        json={"status": "active"},
+        headers=auth_headers,
+    )
+
+    # Complete first item - plan should stay active
+    await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/{item1_id}/complete",
+        json={},
+        headers=auth_headers,
+    )
+
+    # Verify plan still active
+    plan_response = await client.get(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    assert plan_response.json()["data"]["status"] == "active"
+
+    # Complete second item - plan should auto-complete
+    await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/{item2_id}/complete",
+        json={},
+        headers=auth_headers,
+    )
+
+    # Verify plan is now completed
+    plan_response = await client.get(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    assert plan_response.json()["data"]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_plan_does_not_auto_complete_if_not_active(
+    client: AsyncClient, auth_headers: dict, treatment_plan_setup: dict
+):
+    """Test that a draft plan does not auto-complete when items are completed."""
+    # Create plan with one item (stays in draft)
+    create_response = await client.post(
+        "/api/v1/treatment_plan/treatment-plans",
+        json={
+            "patient_id": treatment_plan_setup["patient_id"],
+        },
+        headers=auth_headers,
+    )
+    plan_id = create_response.json()["data"]["id"]
+
+    # Add item
+    item_response = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items",
+        json={
+            "catalog_item_id": treatment_plan_setup["catalog_item_id"],
+            "is_global": True,
+        },
+        headers=auth_headers,
+    )
+    item_id = item_response.json()["data"]["id"]
+
+    # Complete item while plan is still in draft
+    await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/{item_id}/complete",
+        json={},
+        headers=auth_headers,
+    )
+
+    # Verify plan stays in draft (not auto-completed)
+    plan_response = await client.get(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    assert plan_response.json()["data"]["status"] == "draft"

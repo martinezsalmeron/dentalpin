@@ -351,7 +351,8 @@
         "attachment": "Attachment",
         "retainer": "Retainer",
         "rotate": "Rotated",
-        "displace": "Displaced"
+        "displace": "Displaced",
+        "splint": "Splint"
       },
       "treatmentAdded": "Treatment added",
       "treatmentPerformed": "Treatment marked as performed",
@@ -417,13 +418,43 @@
       "viewingHistory": "You are viewing the historical state of the dental chart",
       "returnToNow": "Return to current state",
       "noHistory": "No prior history"
+    },
+    "multiTooth": {
+      "bridge": {
+        "label": "Fixed bridge"
+      },
+      "splint": {
+        "label": "Splint"
+      },
+      "veneers": {
+        "label": "Multiple veneers"
+      },
+      "crowns": {
+        "label": "Multiple crowns"
+      },
+      "pillar": "pillar",
+      "pontic": "pontic",
+      "confirmHint": "You are about to create a treatment group with {n} teeth.",
+      "willBePlanned": "The group will be marked as planned.",
+      "willBeExisting": "The group will be recorded as existing.",
+      "hints": {
+        "range": "Click the first tooth, then the last tooth",
+        "free": "Click to add or remove teeth"
+      },
+      "errors": {
+        "tooFew": "At least {n} teeth required",
+        "tooMany": "Maximum {n} teeth allowed",
+        "sameArchRequired": "Teeth must be in the same dental arch"
+      },
+      "sectionLabel": "Multi-tooth treatments"
     }
   },
   "clinical": {
     "modes": {
       "history": "History",
       "diagnosis": "Diagnosis",
-      "plans": "Plans"
+      "plans": "Treatment plans",
+      "appointments": "Appointments"
     },
     "history": {
       "stateAt": "State at",
@@ -611,7 +642,7 @@
     "delete": "Delete",
     "comingSoon": "Coming soon",
     "edit": "Edit",
-    "change": "Change",
+    "change": "change | changes",
     "back": "Back",
     "loading": "Loading...",
     "error": "Error",
@@ -661,8 +692,7 @@
       "friday": "Friday",
       "saturday": "Saturday"
     },
-    "now": "Now",
-    "change": "change | changes"
+    "now": "Now"
   },
   "validation": {
     "required": "This field is required",
@@ -842,6 +872,13 @@
       "internalNotes": "Internal notes",
       "internalNotesPlaceholder": "Notes only visible to staff..."
     },
+    "modal": {
+      "subtitle": "Organize patient treatments",
+      "titleHint": "Optional - helps identify the plan",
+      "additionalNotes": "Additional notes",
+      "quickTip": "After creating the plan you can add treatments from the odontogram or catalog.",
+      "createButton": "Create plan"
+    },
     "actions": {
       "activate": "Activate plan",
       "complete": "Mark completed",
@@ -871,6 +908,7 @@
       "itemsAdded": "Treatments added to plan"
     },
     "itemCompleted": "Treatment completed",
+    "budgetGenerated": "Budget generated",
     "errors": {
       "load": "Error loading treatment plans",
       "create": "Error creating treatment plan",

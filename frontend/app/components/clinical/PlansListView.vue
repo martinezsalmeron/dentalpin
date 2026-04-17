@@ -19,6 +19,7 @@ const emit = defineEmits<{
   'create-plan': []
   'activate-plan': [plan: TreatmentPlan]
   'generate-budget': [plan: TreatmentPlan]
+  'schedule': [plan: TreatmentPlan]
 }>()
 
 const { t } = useI18n()
@@ -117,6 +118,7 @@ const hasPlans = computed(() => props.plans.length > 0)
             @view="emit('view-plan', plan.id)"
             @activate="emit('activate-plan', plan)"
             @generate-budget="emit('generate-budget', plan)"
+            @schedule="emit('schedule', plan)"
           />
         </div>
       </div>
@@ -140,6 +142,7 @@ const hasPlans = computed(() => props.plans.length > 0)
             :plan="plan"
             @view="emit('view-plan', plan.id)"
             @activate="emit('activate-plan', plan)"
+            @schedule="emit('schedule', plan)"
           />
         </div>
       </div>
@@ -160,6 +163,8 @@ const hasPlans = computed(() => props.plans.length > 0)
               :key="plan.id"
               :plan="plan"
               @view="emit('view-plan', plan.id)"
+              @generate-budget="emit('generate-budget', plan)"
+              @schedule="emit('schedule', plan)"
             />
           </div>
         </template>

@@ -432,7 +432,45 @@ class TreatmentPlanService:
             },
         )
 
+        # Auto-complete plan if all items are now completed
+        await TreatmentPlanService._check_and_complete_plan(db, clinic_id, plan_id)
+
         return item
+
+    @staticmethod
+    async def _check_and_complete_plan(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+    ) -> None:
+        """Check if all items completed and auto-complete the plan if so."""
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan or plan.status != "active":
+            return
+
+        # Check if any non-completed items remain
+        has_pending = any(item.status != "completed" for item in plan.items)
+        if has_pending:
+            return
+
+        # All items completed - auto-complete the plan
+        old_status = plan.status
+        plan.status = "completed"
+
+        event_bus.publish(
+            "treatment_plan.status_changed",
+            {
+                "plan_id": str(plan.id),
+                "old_status": old_status,
+                "new_status": "completed",
+                "clinic_id": str(clinic_id),
+            },
+        )
+
+        logger.info(
+            "Auto-completed treatment plan %s (all items completed)",
+            plan.id,
+        )
 
     # -------------------------------------------------------------------------
     # Budget Integration

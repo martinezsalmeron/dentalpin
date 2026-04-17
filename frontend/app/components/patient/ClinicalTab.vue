@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /**
- * ClinicalTab - Main clinical tab with three modes
+ * ClinicalTab - Main clinical tab with four modes
  *
  * Modes (chronological order):
  * - history: View past odontogram states (read-only)
  * - diagnosis: Record current conditions
  * - plans: Create and manage treatment plans
+ * - appointments: View and manage patient appointments
  */
 
 import type { ClinicalMode } from '../clinical/ClinicalModeToggle.vue'
@@ -21,7 +22,6 @@ const emit = defineEmits<{
   'plan-view-change': [view: 'list' | 'detail']
 }>()
 
-const { t } = useI18n()
 const { can } = usePermissions()
 const router = useRouter()
 const route = useRoute()
@@ -58,7 +58,7 @@ watch(currentMode, (mode) => {
 // Initialize from URL on mount
 onMounted(() => {
   const queryMode = route.query.clinicalMode as ClinicalMode
-  if (queryMode && ['history', 'diagnosis', 'plans'].includes(queryMode)) {
+  if (queryMode && ['history', 'diagnosis', 'plans', 'appointments'].includes(queryMode)) {
     currentMode.value = queryMode
   }
 
@@ -132,13 +132,18 @@ watch(currentMode, (newMode) => {
     />
 
     <PlansMode
-      v-else
+      v-else-if="currentMode === 'plans'"
       :patient-id="patientId"
       :initial-plan-id="targetPlanId"
       :readonly="readonly"
       @plan-activated="handlePlanActivated"
       @budget-generated="handleBudgetGenerated"
       @view-change="emit('plan-view-change', $event)"
+    />
+
+    <AppointmentsMode
+      v-else-if="currentMode === 'appointments'"
+      :patient-id="patientId"
     />
 
     <!-- Create Plan Modal (shared across modes) -->

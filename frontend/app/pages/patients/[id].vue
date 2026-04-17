@@ -143,24 +143,6 @@ const tabs = computed(() => {
     })
   }
 
-  // Appointments tab
-  baseTabs.push({
-    value: 'appointments',
-    label: t('patientDetail.tabs.appointments'),
-    icon: 'i-lucide-calendar',
-    slot: 'appointments'
-  })
-
-  // Documents tab
-  if (can(PERMISSIONS.documents.read)) {
-    baseTabs.push({
-      value: 'documents',
-      label: t('patientDetail.tabs.documents'),
-      icon: 'i-lucide-files',
-      slot: 'documents'
-    })
-  }
-
   // Timeline tab
   baseTabs.push({
     value: 'timeline',
@@ -256,38 +238,6 @@ function formatDate(dateStr: string): string {
     month: '2-digit',
     year: 'numeric'
   })
-}
-
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-// Status badge color
-type BadgeColor = 'success' | 'warning' | 'neutral' | 'error' | 'info' | 'primary' | 'secondary'
-
-function getStatusColor(status: string): BadgeColor {
-  switch (status) {
-    case 'scheduled':
-      return 'info'
-    case 'confirmed':
-      return 'success'
-    case 'in_progress':
-      return 'warning'
-    case 'completed':
-      return 'neutral'
-    case 'cancelled':
-      return 'error'
-    case 'no_show':
-      return 'error'
-    default:
-      return 'neutral'
-  }
 }
 
 // Check if patient is a minor (under 18)
@@ -683,72 +633,6 @@ const infoAccordionItems = computed(() => {
             <template #timeline>
               <UCard class="mt-4">
                 <PatientTimeline :patient-id="patientId" />
-              </UCard>
-            </template>
-
-            <!-- Appointments tab content -->
-            <template #appointments>
-              <UCard class="mt-4">
-                <div
-                  v-if="appointmentsStatus === 'pending'"
-                  class="space-y-3"
-                >
-                  <USkeleton
-                    v-for="i in 3"
-                    :key="i"
-                    class="h-12 w-full"
-                  />
-                </div>
-                <div
-                  v-else-if="appointments.length === 0"
-                  class="text-center py-12"
-                >
-                  <UIcon
-                    name="i-lucide-calendar"
-                    class="w-12 h-12 text-gray-400 mx-auto mb-4"
-                  />
-                  <p class="text-gray-500 dark:text-gray-400 mb-4">
-                    {{ t('patientDetail.noAppointments') }}
-                  </p>
-                  <UButton
-                    to="/appointments"
-                    icon="i-lucide-plus"
-                  >
-                    {{ t('patientDetail.scheduleAppointment') }}
-                  </UButton>
-                </div>
-                <ul
-                  v-else
-                  class="divide-y divide-gray-200 dark:divide-gray-800"
-                >
-                  <li
-                    v-for="appointment in appointments"
-                    :key="appointment.id"
-                    class="py-4 flex items-center justify-between"
-                  >
-                    <div>
-                      <p class="font-medium text-gray-900 dark:text-white">
-                        {{ formatDateTime(appointment.start_time) }}
-                      </p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ appointment.treatment_type || '-' }}
-                      </p>
-                    </div>
-                    <UBadge
-                      :color="getStatusColor(appointment.status)"
-                      variant="subtle"
-                    >
-                      {{ t(`appointments.${appointment.status}`) }}
-                    </UBadge>
-                  </li>
-                </ul>
-              </UCard>
-            </template>
-
-            <!-- Documents tab content -->
-            <template #documents>
-              <UCard class="mt-4">
-                <DocumentGallery :patient-id="patientId" />
               </UCard>
             </template>
           </UTabs>

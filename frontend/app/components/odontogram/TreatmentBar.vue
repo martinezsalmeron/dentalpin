@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { TreatmentStatus, TreatmentType, TreatmentPlan } from '~/types'
+import type { TreatmentStatus, TreatmentPlan } from '~/types'
 import { TREATMENT_ICONS, isSurfaceTreatment } from './TreatmentIcons'
 import {
+  MULTI_TOOTH_TREATMENTS,
   TREATMENT_CATEGORIES,
-  DIAGNOSTIC_CATEGORIES,
   THERAPEUTIC_CATEGORIES,
   getAllowedStatusesForTreatment,
+  getMultiToothConfig,
   getTreatmentColor,
   type TreatmentClinicalCategory
 } from '~/config/odontogramConstants'
@@ -13,7 +14,8 @@ import {
 export type TreatmentBarMode = 'diagnosis' | 'planning' | 'full'
 
 const props = withDefaults(defineProps<{
-  selectedTreatment?: TreatmentType | null
+  /** Accepts both persisted TreatmentType values and UI-only multi-tooth keys (bridge, multiple_veneers...). */
+  selectedTreatment?: string | null
   selectedStatus: TreatmentStatus
   selectedPlanId?: string | null
   patientId?: string
@@ -26,10 +28,10 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  'update:selectedTreatment': [treatment: TreatmentType | null]
+  'update:selectedTreatment': [treatment: string | null]
   'update:selectedStatus': [status: TreatmentStatus]
   'update:selectedPlanId': [planId: string | null]
-  'treatmentSelect': [treatment: TreatmentType]
+  'treatmentSelect': [treatment: string]
   'createPlan': []
   'cancel': []
 }>()
@@ -139,9 +141,29 @@ function selectTreatment(treatment: string) {
     emit('update:selectedStatus', allowedStatuses[0])
   }
 
-  emit('update:selectedTreatment', treatment as TreatmentType)
-  emit('treatmentSelect', treatment as TreatmentType)
+  emit('update:selectedTreatment', treatment)
+  emit('treatmentSelect', treatment)
 }
+
+// Multi-tooth button list with icons + i18n labels.
+const MULTI_TOOTH_ICONS: Record<string, string> = {
+  bridge: 'i-lucide-link',
+  splint: 'i-lucide-align-horizontal-distribute-center',
+  multiple_veneers: 'i-lucide-layers',
+  multiple_crowns: 'i-lucide-crown'
+}
+
+const multiToothButtons = computed(() =>
+  Object.values(MULTI_TOOTH_TREATMENTS).map(cfg => ({
+    key: cfg.key,
+    label: t(cfg.labelKey),
+    icon: MULTI_TOOTH_ICONS[cfg.key] ?? 'i-lucide-link'
+  }))
+)
+
+// Show multi-tooth section only outside diagnosis-only mode (diagnosis can still register
+// existing multi-tooth work like a pre-existing bridge).
+const showMultiToothSection = computed(() => !props.disabled)
 
 function selectStatus(status: TreatmentStatus) {
   emit('update:selectedStatus', status)
@@ -159,6 +181,11 @@ function isSelected(item: string): boolean {
 
 // Check if any treatment is selected
 const hasActiveMode = computed(() => props.selectedTreatment !== null)
+
+// Multi-tooth config for the current selection, if any
+const activeMultiToothConfig = computed(() =>
+  props.selectedTreatment ? getMultiToothConfig(props.selectedTreatment) : null
+)
 
 // Get treatment label - tries catalog first, then i18n fallback
 function getTreatmentLabel(treatment: string): string {
@@ -373,8 +400,22 @@ function handleCreatePlan() {
       </div>
 
       <!-- Instructions -->
-      <div class="instructions">
-        <template v-if="hasActiveMode">
+      <div
+        class="instructions"
+        :class="{ 'multi-tooth-hint': activeMultiToothConfig }"
+      >
+        <template v-if="activeMultiToothConfig">
+          <UIcon
+            name="i-lucide-link"
+            class="w-4 h-4"
+          />
+          <span>
+            {{ activeMultiToothConfig.selectionMode === 'range'
+              ? t('odontogram.multiTooth.hints.range')
+              : t('odontogram.multiTooth.hints.free') }}
+          </span>
+        </template>
+        <template v-else-if="hasActiveMode">
           <UIcon
             name="i-lucide-mouse-pointer-click"
             class="w-4 h-4"
@@ -418,6 +459,39 @@ function handleCreatePlan() {
         </div>
         <span class="treatment-label">{{ getTreatmentLabel(treatment) }}</span>
       </button>
+    </div>
+
+    <!-- Multi-tooth treatments (bridges, splints, multiple veneers/crowns) -->
+    <div
+      v-if="showMultiToothSection"
+      class="multi-tooth-grid"
+    >
+      <div class="multi-tooth-divider">
+        <UIcon
+          name="i-lucide-link"
+          class="w-3.5 h-3.5"
+        />
+        <span>{{ t('odontogram.multiTooth.sectionLabel') }}</span>
+      </div>
+      <div class="multi-tooth-buttons">
+        <button
+          v-for="btn in multiToothButtons"
+          :key="btn.key"
+          type="button"
+          class="treatment-btn multi-tooth-btn"
+          :class="{ selected: isSelected(btn.key) }"
+          :title="btn.label"
+          @click="selectTreatment(btn.key)"
+        >
+          <div class="treatment-icon">
+            <UIcon
+              :name="btn.icon"
+              class="w-6 h-6"
+            />
+          </div>
+          <span class="treatment-label">{{ btn.label }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -643,6 +717,17 @@ function handleCreatePlan() {
   color: #A1A1AA;
 }
 
+.instructions.multi-tooth-hint {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-weight: 500;
+}
+
+:root.dark .instructions.multi-tooth-hint {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+}
+
 /* Treatment Grid - Second row */
 .treatment-grid {
   display: flex;
@@ -721,6 +806,44 @@ function handleCreatePlan() {
 
 :root.dark .treatment-label {
   color: #A1A1AA;
+}
+
+/* Multi-tooth section */
+.multi-tooth-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed #D4D4D8;
+}
+
+:root.dark .multi-tooth-grid {
+  border-top-color: #52525B;
+}
+
+.multi-tooth-divider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #71717A;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.multi-tooth-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.multi-tooth-btn .treatment-icon {
+  color: #3B82F6;
+}
+
+.multi-tooth-btn.selected .treatment-icon {
+  color: #1D4ED8;
 }
 
 /* Responsive */

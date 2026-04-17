@@ -1,7 +1,8 @@
 """Business logic service for odontogram module."""
 
 from datetime import UTC, date, datetime
-from uuid import UUID
+from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,24 @@ from app.core.events.types import EventType
 
 from .constants import ToothCondition, TreatmentStatus, get_tooth_type, get_treatment_category
 from .models import OdontogramHistory, ToothRecord, ToothTreatment
+
+if TYPE_CHECKING:
+    from .schemas import TreatmentResponse
+
+
+def build_treatment_response(treatment: "ToothTreatment") -> "TreatmentResponse":
+    """Build a TreatmentResponse from an ORM treatment, populating performed_by_name.
+
+    Requires `treatment.performer` to be eager-loaded (or `performed_by` to be None).
+    """
+    from .schemas import TreatmentResponse
+
+    response = TreatmentResponse.model_validate(treatment)
+    if treatment.performed_by is not None and treatment.performer is not None:
+        response.performed_by_name = (
+            f"{treatment.performer.first_name} {treatment.performer.last_name}"
+        )
+    return response
 
 
 class OdontogramEventType:
@@ -69,6 +88,22 @@ class OdontogramService:
             )
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_or_create_tooth_record(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+        tooth_number: int,
+        user_id: UUID,
+    ) -> ToothRecord:
+        """Return existing tooth record or create a blank one."""
+        existing = await OdontogramService.get_tooth_record(db, clinic_id, patient_id, tooth_number)
+        if existing:
+            return existing
+        return await OdontogramService.create_or_update_tooth(
+            db, clinic_id, patient_id, tooth_number, user_id
+        )
 
     @staticmethod
     async def create_or_update_tooth(
@@ -560,14 +595,9 @@ class TreatmentService:
         """Create a new treatment for a tooth."""
         now = datetime.now(UTC)
 
-        # Get or create tooth record
-        tooth_record = await OdontogramService.get_tooth_record(
-            db, clinic_id, patient_id, tooth_number
+        tooth_record = await OdontogramService.get_or_create_tooth_record(
+            db, clinic_id, patient_id, tooth_number, user_id
         )
-        if not tooth_record:
-            tooth_record = await OdontogramService.create_or_update_tooth(
-                db, clinic_id, patient_id, tooth_number, user_id
-            )
 
         # Determine treatment category
         treatment_category = get_treatment_category(treatment_type).value
@@ -591,7 +621,6 @@ class TreatmentService:
         )
         db.add(treatment)
         await db.flush()
-        await db.refresh(treatment)
 
         # Publish event
         event_bus.publish(
@@ -610,7 +639,10 @@ class TreatmentService:
             },
         )
 
-        return treatment
+        # Reload with performer eager-loaded for consistent response construction
+        reloaded = await TreatmentService.get_treatment(db, clinic_id, treatment.id)
+        assert reloaded is not None
+        return reloaded
 
     @staticmethod
     async def get_treatment(
@@ -647,6 +679,7 @@ class TreatmentService:
         status: str | None = None,
         treatment_type: str | None = None,
         tooth_number: int | None = None,
+        treatment_group_id: UUID | None = None,
         page: int = 1,
         page_size: int = 50,
         include_deleted: bool = False,
@@ -673,6 +706,8 @@ class TreatmentService:
             conditions.append(ToothTreatment.treatment_type == treatment_type)
         if tooth_number:
             conditions.append(ToothTreatment.tooth_number == tooth_number)
+        if treatment_group_id:
+            conditions.append(ToothTreatment.treatment_group_id == treatment_group_id)
 
         # Count query
         count_result = await db.execute(select(func.count(ToothTreatment.id)).where(*conditions))
@@ -826,3 +861,199 @@ class TreatmentService:
         )
 
         return treatment
+
+    # ========================================================================
+    # Multi-tooth treatment groups
+    # ========================================================================
+
+    @staticmethod
+    async def create_group(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+        user_id: UUID,
+        mode: str,
+        tooth_numbers: list[int],
+        treatment_type: str | None = None,
+        surfaces: list[str] | None = None,
+        status: str = TreatmentStatus.PLANNED.value,
+        notes: str | None = None,
+        catalog_item_id: UUID | None = None,
+        budget_item_id: UUID | None = None,
+    ) -> list[ToothTreatment]:
+        """Create an atomic multi-tooth treatment group.
+
+        - mode="bridge": first and last tooth in the sorted list get "bridge_abutment";
+          the teeth in between get "pontic". treatment_type param is ignored.
+        - mode="uniform": every tooth receives the provided treatment_type.
+        """
+        now = datetime.now(UTC)
+        group_id = uuid4()
+        teeth_sorted = sorted(tooth_numbers)
+
+        if mode == "bridge":
+            first, last = teeth_sorted[0], teeth_sorted[-1]
+
+            def resolve_type(tooth: int) -> str:
+                return "bridge_abutment" if tooth in (first, last) else "pontic"
+        elif mode == "uniform":
+            if not treatment_type:
+                raise ValueError("treatment_type required in uniform mode")
+            tt = treatment_type
+
+            def resolve_type(_tooth: int) -> str:
+                return tt
+        else:
+            raise ValueError(f"Unsupported group mode: {mode}")
+
+        created: list[ToothTreatment] = []
+        created_ids: list[UUID] = []
+        is_existing = status == TreatmentStatus.EXISTING.value
+
+        for tooth_number in teeth_sorted:
+            tooth_record = await OdontogramService.get_or_create_tooth_record(
+                db, clinic_id, patient_id, tooth_number, user_id
+            )
+            ttype = resolve_type(tooth_number)
+            category = get_treatment_category(ttype).value
+
+            treatment = ToothTreatment(
+                clinic_id=clinic_id,
+                patient_id=patient_id,
+                tooth_record_id=tooth_record.id,
+                tooth_number=tooth_number,
+                treatment_type=ttype,
+                treatment_category=category,
+                surfaces=surfaces if category == "surface" else None,
+                status=status,
+                recorded_at=now,
+                performed_at=now if is_existing else None,
+                performed_by=user_id if is_existing else None,
+                catalog_item_id=catalog_item_id,
+                budget_item_id=budget_item_id,
+                source_module="odontogram",
+                notes=notes,
+                treatment_group_id=group_id,
+            )
+            db.add(treatment)
+            created.append(treatment)
+
+        await db.flush()
+        created_ids = [t.id for t in created]
+
+        # Emit one event per member (treatment_plan listener expects per-treatment events).
+        for t in created:
+            event_bus.publish(
+                EventType.ODONTOGRAM_TREATMENT_ADDED,
+                {
+                    "clinic_id": str(clinic_id),
+                    "patient_id": str(patient_id),
+                    "treatment_id": str(t.id),
+                    "tooth_number": t.tooth_number,
+                    "treatment_type": t.treatment_type,
+                    "status": t.status,
+                    "budget_item_id": str(budget_item_id) if budget_item_id else None,
+                    "source_module": "odontogram",
+                    "created_by": str(user_id),
+                    "created_at": now.isoformat(),
+                },
+            )
+
+        # Reload with performer eager-loaded so callers can build responses.
+        result = await db.execute(
+            select(ToothTreatment)
+            .options(selectinload(ToothTreatment.performer))
+            .where(ToothTreatment.id.in_(created_ids))
+            .order_by(ToothTreatment.tooth_number)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_group_members(
+        db: AsyncSession,
+        clinic_id: UUID,
+        group_id: UUID,
+    ) -> list[ToothTreatment]:
+        """Return active (non-deleted) members of a treatment group."""
+        result = await db.execute(
+            select(ToothTreatment)
+            .options(selectinload(ToothTreatment.performer))
+            .where(
+                ToothTreatment.clinic_id == clinic_id,
+                ToothTreatment.treatment_group_id == group_id,
+                ToothTreatment.deleted_at.is_(None),
+            )
+            .order_by(ToothTreatment.tooth_number)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def perform_group(
+        db: AsyncSession,
+        clinic_id: UUID,
+        group_id: UUID,
+        user_id: UUID,
+        notes: str | None = None,
+    ) -> list[ToothTreatment]:
+        """Mark every member of a group as performed atomically."""
+        members = await TreatmentService.get_group_members(db, clinic_id, group_id)
+        if not members:
+            return []
+
+        now = datetime.now(UTC)
+        for t in members:
+            previous_status = t.status
+            t.status = TreatmentStatus.EXISTING.value
+            t.performed_at = now
+            t.performed_by = user_id
+            if notes:
+                t.notes = f"{t.notes or ''}\n[Realizado]: {notes}".strip()
+
+            event_bus.publish(
+                EventType.ODONTOGRAM_TREATMENT_PERFORMED,
+                {
+                    "clinic_id": str(clinic_id),
+                    "patient_id": str(t.patient_id),
+                    "treatment_id": str(t.id),
+                    "tooth_number": t.tooth_number,
+                    "treatment_type": t.treatment_type,
+                    "budget_item_id": str(t.budget_item_id) if t.budget_item_id else None,
+                    "performed_by": str(user_id),
+                    "performed_at": now.isoformat(),
+                    "previous_status": previous_status,
+                },
+            )
+
+        await db.flush()
+        return members
+
+    @staticmethod
+    async def delete_group(
+        db: AsyncSession,
+        clinic_id: UUID,
+        group_id: UUID,
+        user_id: UUID,
+    ) -> int:
+        """Soft-delete every member of a group atomically. Returns deleted count."""
+        members = await TreatmentService.get_group_members(db, clinic_id, group_id)
+        if not members:
+            return 0
+
+        now = datetime.now(UTC)
+        for t in members:
+            t.deleted_at = now
+            event_bus.publish(
+                EventType.ODONTOGRAM_TREATMENT_DELETED,
+                {
+                    "clinic_id": str(clinic_id),
+                    "patient_id": str(t.patient_id),
+                    "treatment_id": str(t.id),
+                    "tooth_number": t.tooth_number,
+                    "treatment_type": t.treatment_type,
+                    "budget_item_id": str(t.budget_item_id) if t.budget_item_id else None,
+                    "deleted_by": str(user_id),
+                },
+            )
+
+        await db.flush()
+        return len(members)

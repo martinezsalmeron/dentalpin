@@ -372,7 +372,8 @@
         "root_canal": "Endodoncia",
         "bridge_pontic": "Póntico",
         "rotate": "Rotado",
-        "displace": "Desplazado"
+        "displace": "Desplazado",
+        "splint": "Férula"
       },
       "treatmentAdded": "Tratamiento añadido",
       "treatmentPerformed": "Tratamiento marcado como realizado",
@@ -438,13 +439,43 @@
       "viewingHistory": "Estás viendo el estado histórico del odontograma",
       "returnToNow": "Volver al estado actual",
       "noHistory": "Sin historial previo"
+    },
+    "multiTooth": {
+      "bridge": {
+        "label": "Puente fijo"
+      },
+      "splint": {
+        "label": "Férula"
+      },
+      "veneers": {
+        "label": "Carillas múltiples"
+      },
+      "crowns": {
+        "label": "Coronas múltiples"
+      },
+      "pillar": "pilar",
+      "pontic": "póntico",
+      "confirmHint": "Vas a crear un grupo de tratamiento con {n} dientes.",
+      "willBePlanned": "El grupo se marcará como planificado.",
+      "willBeExisting": "El grupo se registrará como existente.",
+      "hints": {
+        "range": "Clic en el diente inicial, luego en el diente final",
+        "free": "Clic para añadir o quitar dientes"
+      },
+      "errors": {
+        "tooFew": "Se requieren mínimo {n} dientes",
+        "tooMany": "Máximo {n} dientes",
+        "sameArchRequired": "Los dientes deben estar en la misma arcada"
+      },
+      "sectionLabel": "Tratamientos multi-diente"
     }
   },
   "clinical": {
     "modes": {
       "history": "Histórico",
       "diagnosis": "Diagnóstico",
-      "plans": "Planes"
+      "plans": "Planes de tratamiento",
+      "appointments": "Citas"
     },
     "history": {
       "stateAt": "Estado a fecha",
@@ -633,7 +664,7 @@
     "delete": "Eliminar",
     "comingSoon": "Próximamente",
     "edit": "Editar",
-    "change": "Cambiar",
+    "change": "cambio | cambios",
     "back": "Volver",
     "loading": "Cargando...",
     "error": "Error",
@@ -683,8 +714,7 @@
       "friday": "Viernes",
       "saturday": "Sábado"
     },
-    "now": "Ahora",
-    "change": "cambio | cambios"
+    "now": "Ahora"
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -864,6 +894,13 @@
       "internalNotes": "Notas internas",
       "internalNotesPlaceholder": "Notas solo visibles para el personal..."
     },
+    "modal": {
+      "subtitle": "Organiza los tratamientos del paciente",
+      "titleHint": "Opcional - ayuda a identificar el plan",
+      "additionalNotes": "Notas adicionales",
+      "quickTip": "Después de crear el plan podrás añadir tratamientos desde el odontograma o el catálogo.",
+      "createButton": "Crear plan"
+    },
     "actions": {
       "activate": "Activar plan",
       "complete": "Marcar completado",
@@ -893,6 +930,7 @@
       "itemsAdded": "Tratamientos añadidos al plan"
     },
     "itemCompleted": "Tratamiento completado",
+    "budgetGenerated": "Presupuesto generado",
     "errors": {
       "load": "Error al cargar planes de tratamiento",
       "create": "Error al crear plan de tratamiento",

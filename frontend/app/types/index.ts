@@ -396,6 +396,8 @@ export type TreatmentType
     | 'band'
     | 'attachment'
     | 'retainer'
+    // Multi-tooth (uniform group)
+    | 'splint'
     // Legacy types (for backwards compatibility)
     | 'filling'
     | 'root_canal'
@@ -416,6 +418,7 @@ export interface Treatment {
   budget_item_id?: string
   source_module: string
   notes?: string
+  treatment_group_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -433,6 +436,33 @@ export interface TreatmentUpdate {
   status?: TreatmentStatus
   surfaces?: Surface[]
   notes?: string
+}
+
+// Multi-tooth treatment group (bridge, splint, multiple veneers/crowns)
+export type TreatmentGroupMode = 'bridge' | 'uniform'
+
+export interface TreatmentGroupCreate {
+  mode: TreatmentGroupMode
+  tooth_numbers: number[]
+  /** Required in uniform mode, forbidden in bridge mode (backend assigns roles). */
+  treatment_type?: TreatmentType
+  surfaces?: Surface[]
+  status?: TreatmentStatus
+  notes?: string
+  catalog_item_id?: string
+  budget_item_id?: string
+}
+
+export interface MultiToothTreatmentConfig {
+  /** Config key (e.g. 'bridge', 'splint'). For uniform mode, this is also the treatment_type to use. */
+  key: string
+  labelKey: string
+  mode: TreatmentGroupMode
+  /** range = click start + end; free = toggle each tooth. */
+  selectionMode: 'range' | 'free'
+  minTeeth: number
+  maxTeeth: number
+  requiresSameArch: boolean
 }
 
 export interface ToothRecordWithTreatments extends ToothRecord {

@@ -29,12 +29,12 @@ const emit = defineEmits<{
   'highlight-cleared': []
 }>()
 
-// Clear highlight after animation completes
+// Clear highlight after animation completes (5 seconds)
 watch(() => props.highlightedAppointmentId, (newId) => {
   if (newId) {
     setTimeout(() => {
       emit('highlight-cleared')
-    }, 3000)
+    }, 5000)
   }
 }, { immediate: true })
 

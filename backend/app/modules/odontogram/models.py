@@ -102,6 +102,12 @@ class ToothTreatment(Base, TimestampMixin):
     # Soft delete support
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
+    # Multi-tooth grouping: shared UUID tag among treatments that form a single
+    # clinical unit (bridge, splint, multiple veneers). Opaque bucket id, no FK.
+    treatment_group_id: Mapped[UUID | None] = mapped_column(
+        UUID(as_uuid=True), index=True, default=None
+    )
+
     # Relationships
     clinic: Mapped["Clinic"] = relationship()
     patient: Mapped["Patient"] = relationship()

@@ -15,19 +15,17 @@ const props = withDefaults(defineProps<{
   plan: TreatmentPlanDetail
   patientId: string
   readonly?: boolean
-  /** Standalone mode: show patient link, different back behavior */
+  /** Standalone mode: show patient link */
   standalone?: boolean
-  /** Custom back button label */
-  backLabel?: string
 }>(), {
   standalone: false
 })
 
 const emit = defineEmits<{
-  'back': []
   'updated': []
   'activate': []
   'generate-budget': []
+  'schedule': []
 }>()
 
 const { t } = useI18n()
@@ -36,7 +34,6 @@ const {
   completeItem,
   removeItem,
   updatePlanStatus,
-  generateBudget,
   loading
 } = useTreatmentPlans()
 
@@ -71,6 +68,13 @@ const pendingCount = computed(() =>
   props.plan.items.filter(i => i.status === 'pending').length
 )
 
+// Can create budget: active or completed plan, without active budget
+const canGenerateBudget = computed(() => {
+  const validStatus = ['active', 'completed'].includes(props.plan.status)
+  const noActiveBudget = !props.plan.budget_id || props.plan.budget?.status === 'cancelled'
+  return validStatus && noActiveBudget
+})
+
 // ============================================================================
 // Actions
 // ============================================================================
@@ -91,51 +95,39 @@ async function handleActivate() {
   emit('activate')
 }
 
-async function handleGenerateBudget() {
-  await generateBudget(props.plan.id)
-  emit('updated')
+function handleGenerateBudget() {
   emit('generate-budget')
 }
 </script>
 
 <template>
   <div class="space-y-4">
-    <!-- Header with navigation and actions -->
+    <!-- Header with actions -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <UButton
-          variant="ghost"
-          icon="i-lucide-arrow-left"
-          size="sm"
-          @click="emit('back')"
-        >
-          {{ backLabel || t('clinical.plans.backToList') }}
-        </UButton>
-        <div>
-          <h2 class="text-lg font-semibold">
-            {{ plan.title || plan.plan_number }}
-          </h2>
-          <div class="flex items-center gap-2 mt-0.5">
-            <UBadge
-              :color="plan.status === 'active' ? 'success' : plan.status === 'draft' ? 'warning' : 'neutral'"
-              size="xs"
-              variant="subtle"
-            >
-              {{ t(`treatmentPlans.status.${plan.status}`) }}
-            </UBadge>
-            <!-- Patient link in standalone mode -->
-            <NuxtLink
-              v-if="standalone && plan.patient"
-              :to="`/patients/${patientId}`"
-              class="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:underline"
-            >
-              <UIcon
-                name="i-lucide-user"
-                class="w-3.5 h-3.5"
-              />
-              {{ plan.patient.first_name }} {{ plan.patient.last_name }}
-            </NuxtLink>
-          </div>
+      <div>
+        <h2 class="text-lg font-semibold">
+          {{ plan.title || plan.plan_number }}
+        </h2>
+        <div class="flex items-center gap-2 mt-0.5">
+          <UBadge
+            :color="plan.status === 'active' ? 'success' : plan.status === 'draft' ? 'warning' : 'neutral'"
+            size="xs"
+            variant="subtle"
+          >
+            {{ t(`treatmentPlans.status.${plan.status}`) }}
+          </UBadge>
+          <!-- Patient link in standalone mode -->
+          <NuxtLink
+            v-if="standalone && plan.patient"
+            :to="`/patients/${patientId}`"
+            class="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+          >
+            <UIcon
+              name="i-lucide-user"
+              class="w-3.5 h-3.5"
+            />
+            {{ plan.patient.first_name }} {{ plan.patient.last_name }}
+          </NuxtLink>
         </div>
       </div>
 
@@ -153,7 +145,7 @@ async function handleGenerateBudget() {
           {{ t('clinical.plans.activate') }}
         </UButton>
         <UButton
-          v-if="plan.status === 'active' && !plan.budget_id"
+          v-if="canGenerateBudget"
           variant="soft"
           size="sm"
           icon="i-lucide-file-plus"
@@ -162,13 +154,22 @@ async function handleGenerateBudget() {
         >
           {{ t('clinical.plans.generateBudget') }}
         </UButton>
+        <UButton
+          v-if="plan.status === 'active'"
+          variant="soft"
+          size="sm"
+          icon="i-lucide-calendar-plus"
+          @click="emit('schedule')"
+        >
+          {{ t('treatmentPlans.scheduleAppointment') }}
+        </UButton>
       </div>
     </div>
 
     <!-- Two-column layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- Left column: Odontogram -->
-      <UCard>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <!-- Left column: Odontogram (wider) -->
+      <UCard class="lg:col-span-3">
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon
@@ -188,8 +189,8 @@ async function handleGenerateBudget() {
         />
       </UCard>
 
-      <!-- Right column: Treatment list -->
-      <UCard>
+      <!-- Right column: Treatment list (narrower) -->
+      <UCard class="lg:col-span-2">
         <template #header>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">

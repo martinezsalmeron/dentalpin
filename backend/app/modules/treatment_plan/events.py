@@ -71,6 +71,13 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
                             },
                         )
 
+                        # Check if plan should auto-complete
+                        from .service import TreatmentPlanService
+
+                        await TreatmentPlanService._check_and_complete_plan(
+                            db, UUID(clinic_id), item.treatment_plan_id
+                        )
+
             await db.commit()
             logger.info(
                 f"Processed appointment completion for {len(completed_treatments)} treatments"
@@ -165,6 +172,13 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                         "clinic_id": clinic_id,
                         "triggered_by": "odontogram_performed",
                     },
+                )
+
+                # Check if plan should auto-complete
+                from .service import TreatmentPlanService
+
+                await TreatmentPlanService._check_and_complete_plan(
+                    db, UUID(clinic_id), item.treatment_plan_id
                 )
 
                 await db.commit()

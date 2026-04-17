@@ -145,7 +145,7 @@ function formatCurrency(amount: number, currency = 'EUR') {
       </UButton>
 
       <UButton
-        v-if="plan.status === 'active' && (!plan.budget_id || plan.budget?.status === 'cancelled') && totalCount > 0"
+        v-if="['active', 'completed'].includes(plan.status) && (!plan.budget_id || plan.budget?.status === 'cancelled') && totalCount > 0"
         size="xs"
         variant="soft"
         color="neutral"

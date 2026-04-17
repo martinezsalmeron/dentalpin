@@ -5,6 +5,8 @@
  * All odontogram components should import from here instead of defining locally.
  */
 
+import type { MultiToothTreatmentConfig } from '~/types'
+
 // ============================================================================
 // Visualization Rules
 // ============================================================================
@@ -56,7 +58,8 @@ export const VISUALIZATION_RULES: Record<VisualizationRule, string[]> = {
     'tube',
     'band',
     'attachment',
-    'retainer'
+    'retainer',
+    'splint'
   ],
   // Rule 4: Pattern fill (cenital view)
   pattern_fill: [
@@ -477,7 +480,8 @@ export const TREATMENT_CATEGORIES: Array<{
       'overlay',
       'crown',
       'pontic',
-      'bridge_abutment'
+      'bridge_abutment',
+      'splint'
     ]
   },
   {
@@ -603,4 +607,95 @@ export function getAllowedStatusesForTreatment(treatmentType: string): Treatment
     return CATEGORY_STATUS_RESTRICTIONS[categoryKey]
   }
   return ['existing', 'planned']
+}
+
+// ============================================================================
+// Multi-tooth Treatment Groups (bridges, splints, multiple veneers/crowns)
+// ============================================================================
+
+/**
+ * Registry of treatments that require selecting more than one tooth at a time.
+ * Each entry drives the selection UX (range vs free) and the backend payload.
+ */
+export const MULTI_TOOTH_TREATMENTS: Record<string, MultiToothTreatmentConfig> = {
+  bridge: {
+    key: 'bridge',
+    labelKey: 'odontogram.multiTooth.bridge.label',
+    mode: 'bridge',
+    selectionMode: 'range',
+    minTeeth: 3,
+    maxTeeth: 14,
+    requiresSameArch: true
+  },
+  splint: {
+    key: 'splint',
+    labelKey: 'odontogram.multiTooth.splint.label',
+    mode: 'uniform',
+    selectionMode: 'free',
+    minTeeth: 2,
+    maxTeeth: 14,
+    requiresSameArch: true
+  },
+  multiple_veneers: {
+    key: 'veneer',
+    labelKey: 'odontogram.multiTooth.veneers.label',
+    mode: 'uniform',
+    selectionMode: 'free',
+    minTeeth: 2,
+    maxTeeth: 10,
+    requiresSameArch: false
+  },
+  multiple_crowns: {
+    key: 'crown',
+    labelKey: 'odontogram.multiTooth.crowns.label',
+    mode: 'uniform',
+    selectionMode: 'free',
+    minTeeth: 2,
+    maxTeeth: 28,
+    requiresSameArch: false
+  }
+}
+
+export function getMultiToothConfig(key: string): MultiToothTreatmentConfig | null {
+  return MULTI_TOOTH_TREATMENTS[key] ?? null
+}
+
+export function isMultiToothTreatment(key: string): boolean {
+  return key in MULTI_TOOTH_TREATMENTS
+}
+
+/**
+ * Ordered FDI tooth sequences per arch, left-to-right across the midline.
+ * Used to compute contiguous ranges for bridge selection and arch membership.
+ */
+export const UPPER_ARCH_ORDER: number[] = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
+export const LOWER_ARCH_ORDER: number[] = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38]
+
+export function getArchOrder(toothNumber: number): number[] | null {
+  if (UPPER_ARCH_ORDER.includes(toothNumber)) return UPPER_ARCH_ORDER
+  if (LOWER_ARCH_ORDER.includes(toothNumber)) return LOWER_ARCH_ORDER
+  return null
+}
+
+/**
+ * Return contiguous teeth between `start` and `end` (inclusive) along the same arch.
+ * Order is irrelevant: calculateToothRange(16, 14) === calculateToothRange(14, 16).
+ * Throws 'same_arch_required' if the two teeth are not in the same permanent arch.
+ */
+export function calculateToothRange(start: number, end: number): number[] {
+  const arch = getArchOrder(start)
+  if (!arch || !arch.includes(end)) {
+    throw new Error('same_arch_required')
+  }
+  const i = arch.indexOf(start)
+  const j = arch.indexOf(end)
+  const [a, b] = i <= j ? [i, j] : [j, i]
+  return arch.slice(a, b + 1)
+}
+
+export function isSameArch(teeth: number[]): boolean {
+  if (teeth.length <= 1) return true
+  const first = getArchOrder(teeth[0]!)
+  if (!first) return false
+  return teeth.every(t => getArchOrder(t) === first)
 }

@@ -9,8 +9,9 @@
  * - Treatment management (add, edit, delete, perform)
  */
 
-import type { OdontogramHistoryEntry, Surface, Treatment, TreatmentStatus, TreatmentType } from '~/types'
+import type { OdontogramHistoryEntry, Surface, Treatment, TreatmentGroupCreate, TreatmentStatus, TreatmentType } from '~/types'
 import { PERMANENT_TEETH, DECIDUOUS_TEETH, TREATMENT_SHORTCUTS } from '~/constants/odontogram'
+import { calculateToothRange, getMultiToothConfig, isSameArch } from '~/config/odontogramConstants'
 import { isSurfaceTreatment } from './TreatmentIcons'
 
 export type OdontogramMode = 'full' | 'view-only' | 'diagnosis' | 'planning'
@@ -55,6 +56,8 @@ const {
   deleteTreatment,
   updateTreatment,
   getToothTreatments,
+  createTreatmentGroup,
+  deleteTreatmentGroup,
   timelineDates,
   viewingDate,
   timelineLoading,
@@ -75,18 +78,24 @@ const showSurfaceSelector = ref(false)
 const hoveredTooth = ref<number | null>(null)
 const internalHighlightedTeeth = ref<number[]>([])
 
-// Merge internal highlighted teeth with prop (for hover linking)
+// Merge internal highlighted teeth with prop (for hover linking).
+// Multi-tooth selection has its own dedicated style via `multi-selected-teeth`.
 const highlightedTeeth = computed(() => [
   ...internalHighlightedTeeth.value,
   ...props.highlightedTeethProp
 ])
 
-// Click-to-apply mode
-const selectedTreatmentType = ref<TreatmentType | null>(null)
+// Click-to-apply mode. Accepts both persisted TreatmentType values and UI-only
+// multi-tooth keys (e.g. 'bridge', 'multiple_veneers').
+const selectedTreatmentType = ref<string | null>(null)
 const selectedTreatmentStatus = ref<TreatmentStatus>('existing')
 
+// Multi-tooth selection (bridges, splints, multiple veneers/crowns)
+const multiToothSelection = ref<{ teeth: number[], anchor: number | null }>({ teeth: [], anchor: null })
+const showMultiToothConfirm = ref(false)
+
 // Undo stack
-const undoStack = ref<Array<{ treatmentId: string, tooth: number, type: string }>>([])
+const undoStack = ref<Array<{ treatmentId?: string, groupId?: string, tooth?: number, type: string }>>([])
 
 // History section
 const historyData = ref<OdontogramHistoryEntry[]>([])
@@ -115,14 +124,23 @@ const treatmentBarMode = computed(() => {
 })
 const isClickToApplyMode = computed(() => selectedTreatmentType.value !== null)
 
+const multiToothConfig = computed(() => {
+  if (!selectedTreatmentType.value) return null
+  return getMultiToothConfig(selectedTreatmentType.value as string)
+})
+
+const isMultiToothMode = computed(() => multiToothConfig.value !== null)
+
 const teethLayout = computed(() =>
   dentitionMode.value === 'permanent' ? PERMANENT_TEETH : DECIDUOUS_TEETH
 )
 
 const pendingTreatment = computed(() => {
   if (!selectedTreatmentType.value) return null
+  // Multi-tooth keys (bridge, multiple_veneers...) are UI-only. Skip the single-tooth preview.
+  if (isMultiToothMode.value) return null
   return {
-    type: selectedTreatmentType.value,
+    type: selectedTreatmentType.value as TreatmentType,
     status: selectedTreatmentStatus.value
   }
 })
@@ -184,6 +202,19 @@ function getFilteredTreatments(toothNumber: number): Treatment[] {
   return toothTreatments.filter(t => props.statusFilter?.includes(t.status))
 }
 
+/** Return the first group id any active treatment on the given tooth participates in. */
+function getToothGroupId(toothNumber: number): string | null {
+  const list = getFilteredTreatments(toothNumber)
+  return list.find(t => t.treatment_group_id)?.treatment_group_id ?? null
+}
+
+/** Return the status of the group the tooth participates in (for connector styling). */
+function getToothGroupStatus(toothNumber: number): 'existing' | 'planned' | null {
+  const list = getFilteredTreatments(toothNumber)
+  const withGroup = list.find(t => t.treatment_group_id)
+  return (withGroup?.status as 'existing' | 'planned' | undefined) ?? null
+}
+
 // ============================================================================
 // Keyboard Shortcuts
 // ============================================================================
@@ -192,7 +223,20 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
   if (e.key === 'Escape') {
+    if (isMultiToothMode.value && multiToothSelection.value.teeth.length > 0) {
+      resetMultiToothSelection()
+      return
+    }
     cancelClickToApplyMode()
+    return
+  }
+
+  if (e.key === 'Enter' && isMultiToothMode.value) {
+    if (showMultiToothConfirm.value) {
+      confirmMultiToothSelection()
+    } else {
+      requestMultiToothConfirm()
+    }
     return
   }
 
@@ -225,6 +269,12 @@ function handleKeydown(e: KeyboardEvent) {
 function handleSurfaceClick(toothNumber: number, surface: Surface) {
   if (isReadonly.value || !isClickToApplyMode.value) return
 
+  // In multi-tooth mode, surface clicks collapse to tooth-level selection.
+  if (isMultiToothMode.value) {
+    handleMultiToothClick(toothNumber)
+    return
+  }
+
   if (isSurfaceTreatment(selectedTreatmentType.value!)) {
     applyTreatment(toothNumber, [surface])
   } else {
@@ -235,12 +285,140 @@ function handleSurfaceClick(toothNumber: number, surface: Surface) {
 function handleToothClick(toothNumber: number) {
   if (isReadonly.value || !isClickToApplyMode.value) return
 
+  if (isMultiToothMode.value) {
+    handleMultiToothClick(toothNumber)
+    return
+  }
+
   if (isSurfaceTreatment(selectedTreatmentType.value!)) {
     selectedTooth.value = toothNumber
     showSurfaceSelector.value = true
   } else {
     applyTreatment(toothNumber)
   }
+}
+
+// ============================================================================
+// Multi-tooth Selection
+// ============================================================================
+
+function handleMultiToothClick(toothNumber: number) {
+  const cfg = multiToothConfig.value
+  if (!cfg) return
+
+  if (cfg.selectionMode === 'range') {
+    if (multiToothSelection.value.anchor === null) {
+      multiToothSelection.value = { teeth: [toothNumber], anchor: toothNumber }
+      return
+    }
+
+    try {
+      const range = calculateToothRange(multiToothSelection.value.anchor, toothNumber)
+      if (range.length < cfg.minTeeth) {
+        toast.add({
+          title: t('odontogram.multiTooth.errors.tooFew', { n: cfg.minTeeth }),
+          color: 'warning'
+        })
+        return
+      }
+      if (range.length > cfg.maxTeeth) {
+        toast.add({
+          title: t('odontogram.multiTooth.errors.tooMany', { n: cfg.maxTeeth }),
+          color: 'warning'
+        })
+        return
+      }
+      multiToothSelection.value.teeth = range
+      showMultiToothConfirm.value = true
+    } catch {
+      toast.add({
+        title: t('odontogram.multiTooth.errors.sameArchRequired'),
+        color: 'warning'
+      })
+    }
+    return
+  }
+
+  // free selection mode
+  const existing = multiToothSelection.value.teeth
+  const idx = existing.indexOf(toothNumber)
+  if (idx === -1) {
+    const candidate = [...existing, toothNumber]
+    if (cfg.requiresSameArch && !isSameArch(candidate)) {
+      toast.add({
+        title: t('odontogram.multiTooth.errors.sameArchRequired'),
+        color: 'warning'
+      })
+      return
+    }
+    if (candidate.length > cfg.maxTeeth) {
+      toast.add({
+        title: t('odontogram.multiTooth.errors.tooMany', { n: cfg.maxTeeth }),
+        color: 'warning'
+      })
+      return
+    }
+    multiToothSelection.value = { ...multiToothSelection.value, teeth: candidate }
+  } else {
+    multiToothSelection.value = {
+      ...multiToothSelection.value,
+      teeth: existing.filter(t => t !== toothNumber)
+    }
+  }
+}
+
+function canConfirmFreeSelection(): boolean {
+  const cfg = multiToothConfig.value
+  if (!cfg || cfg.selectionMode !== 'free') return false
+  return multiToothSelection.value.teeth.length >= cfg.minTeeth
+}
+
+function requestMultiToothConfirm() {
+  if (canConfirmFreeSelection()) {
+    showMultiToothConfirm.value = true
+  }
+}
+
+async function confirmMultiToothSelection() {
+  const cfg = multiToothConfig.value
+  if (!cfg) return
+  const sortedTeeth = [...multiToothSelection.value.teeth].sort((a, b) => a - b)
+
+  // Determine status based on mode
+  let status: TreatmentStatus = selectedTreatmentStatus.value
+  if (isDiagnosisMode.value) status = 'existing'
+  else if (isPlanningMode.value) status = 'planned'
+
+  const payload: TreatmentGroupCreate = {
+    mode: cfg.mode,
+    tooth_numbers: sortedTeeth,
+    status
+  }
+  if (cfg.mode === 'uniform') {
+    payload.treatment_type = cfg.key as TreatmentType
+  }
+
+  const created = await createTreatmentGroup(props.patientId, payload)
+  if (!created || created.length === 0) {
+    showMultiToothConfirm.value = false
+    return
+  }
+
+  const groupId = created[0]?.treatment_group_id
+  if (groupId) {
+    undoStack.value.push({ groupId, type: cfg.key })
+  }
+
+  resetMultiToothSelection()
+  for (const treatment of created) {
+    emit('treatmentAdd', treatment)
+  }
+  selectedTreatmentType.value = null
+}
+
+function resetMultiToothSelection() {
+  multiToothSelection.value = { teeth: [], anchor: null }
+  showMultiToothConfirm.value = false
 }
 
 function handleToothContextMenu(toothNumber: number, event: MouseEvent) {
@@ -261,7 +439,7 @@ async function applyTreatment(toothNumber: number, surfaces?: Surface[]) {
   }
 
   const data: { treatment_type: TreatmentType, status: TreatmentStatus, surfaces?: Surface[] } = {
-    treatment_type: selectedTreatmentType.value,
+    treatment_type: selectedTreatmentType.value as TreatmentType,
     status
   }
 
@@ -297,15 +475,19 @@ function handleSurfaceConfirm(surfaces: Surface[]) {
 
 async function handleUndo() {
   const lastAction = undoStack.value.pop()
-  if (lastAction) {
+  if (!lastAction) return
+  if (lastAction.groupId) {
+    await deleteTreatmentGroup(lastAction.groupId)
+  } else if (lastAction.treatmentId) {
     await deleteTreatment(lastAction.treatmentId)
-    toast.add({ title: t('common.undone'), color: 'neutral' })
   }
+  toast.add({ title: t('common.undone'), color: 'neutral' })
 }
 
 function cancelClickToApplyMode() {
   selectedTreatmentType.value = null
   hoveredTooth.value = null
+  resetMultiToothSelection()
 }
 
 // ============================================================================
@@ -383,7 +565,9 @@ async function onHistoryExpanded(expanded: boolean) {
         />
         <UBadge
           v-if="isClickToApplyMode"
-          :label="t(`odontogram.treatments.types.${selectedTreatmentType}`)"
+          :label="multiToothConfig
+            ? t(multiToothConfig.labelKey)
+            : t(`odontogram.treatments.types.${selectedTreatmentType}`)"
           color="primary"
           variant="solid"
         />
@@ -457,6 +641,9 @@ async function onHistoryExpanded(expanded: boolean) {
                 :hovered-tooth="hoveredTooth"
                 :highlighted-teeth="highlightedTeeth"
                 :pending-treatment="pendingTreatment"
+                :get-group-id="getToothGroupId"
+                :get-group-status="getToothGroupStatus"
+                :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
                 @tooth-context-menu="handleToothContextMenu"
@@ -476,6 +663,9 @@ async function onHistoryExpanded(expanded: boolean) {
                 :hovered-tooth="hoveredTooth"
                 :highlighted-teeth="highlightedTeeth"
                 :pending-treatment="pendingTreatment"
+                :get-group-id="getToothGroupId"
+                :get-group-status="getToothGroupStatus"
+                :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
                 @tooth-context-menu="handleToothContextMenu"
@@ -500,6 +690,9 @@ async function onHistoryExpanded(expanded: boolean) {
                 :hovered-tooth="hoveredTooth"
                 :highlighted-teeth="highlightedTeeth"
                 :pending-treatment="pendingTreatment"
+                :get-group-id="getToothGroupId"
+                :get-group-status="getToothGroupStatus"
+                :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
                 @tooth-context-menu="handleToothContextMenu"
@@ -519,6 +712,9 @@ async function onHistoryExpanded(expanded: boolean) {
                 :hovered-tooth="hoveredTooth"
                 :highlighted-teeth="highlightedTeeth"
                 :pending-treatment="pendingTreatment"
+                :get-group-id="getToothGroupId"
+                :get-group-status="getToothGroupStatus"
+                :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
                 @tooth-context-menu="handleToothContextMenu"
@@ -568,7 +764,7 @@ async function onHistoryExpanded(expanded: boolean) {
     <SurfaceSelectorPopup
       v-model:open="showSurfaceSelector"
       :tooth-number="selectedTooth || 0"
-      :treatment-type="selectedTreatmentType || 'filling'"
+      :treatment-type="(selectedTreatmentType as TreatmentType) || 'filling'"
       :status="selectedTreatmentStatus"
       @confirm="handleSurfaceConfirm"
       @cancel="selectedTooth = null"
@@ -582,6 +778,52 @@ async function onHistoryExpanded(expanded: boolean) {
       @delete="handleTreatmentDelete"
       @perform="handleTreatmentPerform"
     />
+
+    <!-- Multi-tooth confirmation popup -->
+    <MultiToothConfirmPopup
+      v-if="multiToothConfig"
+      v-model:open="showMultiToothConfirm"
+      :config="multiToothConfig"
+      :teeth="multiToothSelection.teeth"
+      :status="isDiagnosisMode ? 'existing' : isPlanningMode ? 'planned' : selectedTreatmentStatus"
+      @confirm="confirmMultiToothSelection"
+      @cancel="resetMultiToothSelection"
+    />
+
+    <!-- Free-mode selection summary bar (prompts user to confirm) -->
+    <div
+      v-if="multiToothConfig && multiToothConfig.selectionMode === 'free' && multiToothSelection.teeth.length > 0 && !showMultiToothConfirm"
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg px-4 py-2"
+    >
+      <UIcon
+        name="i-lucide-link"
+        class="w-4 h-4 text-primary"
+      />
+      <span class="text-sm font-medium">
+        {{ t(multiToothConfig.labelKey) }}
+      </span>
+      <UBadge
+        color="primary"
+        variant="subtle"
+      >
+        {{ multiToothSelection.teeth.length }}
+      </UBadge>
+      <UButton
+        size="xs"
+        variant="ghost"
+        @click="resetMultiToothSelection"
+      >
+        {{ t('common.cancel') }}
+      </UButton>
+      <UButton
+        size="xs"
+        color="primary"
+        :disabled="!canConfirmFreeSelection()"
+        @click="requestMultiToothConfirm"
+      >
+        {{ t('common.confirm') }}
+      </UButton>
+    </div>
   </div>
 </template>
 

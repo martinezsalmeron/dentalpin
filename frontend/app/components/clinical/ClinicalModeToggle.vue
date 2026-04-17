@@ -2,13 +2,14 @@
 /**
  * ClinicalModeToggle - Toggle between clinical tab modes
  *
- * Three modes ordered chronologically:
+ * Four modes ordered chronologically:
  * - history: View past odontogram states (read-only)
  * - diagnosis: Record current conditions
  * - plans: Create and manage treatment plans
+ * - appointments: View and manage patient appointments
  */
 
-export type ClinicalMode = 'history' | 'diagnosis' | 'plans'
+export type ClinicalMode = 'history' | 'diagnosis' | 'plans' | 'appointments'
 
 defineProps<{
   modelValue: ClinicalMode
@@ -23,7 +24,8 @@ const { t } = useI18n()
 const modes: Array<{ value: ClinicalMode, labelKey: string, icon: string }> = [
   { value: 'history', labelKey: 'clinical.modes.history', icon: 'i-lucide-history' },
   { value: 'diagnosis', labelKey: 'clinical.modes.diagnosis', icon: 'i-lucide-stethoscope' },
-  { value: 'plans', labelKey: 'clinical.modes.plans', icon: 'i-lucide-clipboard-list' }
+  { value: 'plans', labelKey: 'clinical.modes.plans', icon: 'i-lucide-clipboard-list' },
+  { value: 'appointments', labelKey: 'clinical.modes.appointments', icon: 'i-lucide-calendar' }
 ]
 
 function selectMode(mode: ClinicalMode) {

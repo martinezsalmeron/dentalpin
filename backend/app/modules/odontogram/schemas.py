@@ -1,9 +1,10 @@
 """Pydantic schemas for odontogram module."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .constants import (
     CONDITION_COLORS,
@@ -182,6 +183,7 @@ class HistoricalTreatmentResponse(BaseModel):
     budget_item_id: UUID | None
     source_module: str
     notes: str | None
+    treatment_group_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -339,6 +341,7 @@ class TreatmentResponse(BaseModel):
     budget_item_id: UUID | None
     source_module: str
     notes: str | None
+    treatment_group_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -347,6 +350,74 @@ class ToothRecordWithTreatmentsResponse(ToothRecordResponse):
     """Tooth record response including treatments."""
 
     treatments: list[TreatmentResponse] = Field(default_factory=list)
+
+
+class TreatmentGroupCreate(BaseModel):
+    """Create an atomic multi-tooth treatment group (bridge, splint, etc.)."""
+
+    mode: Literal["bridge", "uniform"] = Field(
+        ...,
+        description=(
+            "bridge: auto-assigns bridge_abutment to first+last tooth and pontic to the middle "
+            "ones. uniform: all teeth get the same treatment_type."
+        ),
+    )
+    tooth_numbers: list[int] = Field(..., description="Teeth that form the group (FDI notation)")
+    treatment_type: str | None = Field(
+        default=None,
+        description="Treatment type (required in uniform mode, forbidden in bridge mode)",
+    )
+    surfaces: list[str] | None = Field(
+        default=None, description="Affected surfaces when treatment_type is a surface treatment"
+    )
+    status: Literal["existing", "planned"] = "planned"
+    notes: str | None = None
+    catalog_item_id: UUID | None = None
+    budget_item_id: UUID | None = None
+
+    @field_validator("tooth_numbers")
+    @classmethod
+    def validate_tooth_numbers(cls, v: list[int]) -> list[int]:
+        for n in v:
+            if not is_valid_tooth_number(n):
+                raise ValueError(f"Invalid tooth number: {n}")
+        if len(v) != len(set(v)):
+            raise ValueError("Duplicate tooth numbers not allowed")
+        return v
+
+    @field_validator("surfaces")
+    @classmethod
+    def validate_surfaces(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        for s in v:
+            if s not in SURFACES:
+                raise ValueError(f"Invalid surface: {s}. Must be one of {SURFACES}")
+        return v
+
+    @model_validator(mode="after")
+    def validate_mode(self) -> "TreatmentGroupCreate":
+        if self.mode == "bridge":
+            if len(self.tooth_numbers) < 3:
+                raise ValueError("Bridge requires at least 3 teeth")
+            if self.treatment_type is not None:
+                raise ValueError(
+                    "treatment_type must not be set in bridge mode (roles are auto-assigned)"
+                )
+        else:  # uniform
+            if len(self.tooth_numbers) < 2:
+                raise ValueError("Uniform group requires at least 2 teeth")
+            if not self.treatment_type:
+                raise ValueError("treatment_type is required in uniform mode")
+            if not is_valid_treatment_type(self.treatment_type):
+                raise ValueError(f"Invalid treatment type: {self.treatment_type}")
+        return self
+
+
+class TreatmentGroupPerform(BaseModel):
+    """Mark all members of a treatment group as performed."""
+
+    notes: str | None = None
 
 
 class TreatmentListFilter(BaseModel):

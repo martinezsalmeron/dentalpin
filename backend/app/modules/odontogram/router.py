@@ -26,11 +26,13 @@ from .schemas import (
     ToothRecordUpdate,
     ToothRecordWithTreatmentsResponse,
     TreatmentCreate,
+    TreatmentGroupCreate,
+    TreatmentGroupPerform,
     TreatmentPerform,
     TreatmentResponse,
     TreatmentUpdate,
 )
-from .service import OdontogramService, TreatmentService
+from .service import OdontogramService, TreatmentService, build_treatment_response
 
 router = APIRouter()
 
@@ -405,13 +407,7 @@ async def create_treatment(
         source_module=data.source_module,
     )
 
-    response = TreatmentResponse.model_validate(treatment)
-    if treatment.performer:
-        response.performed_by_name = (
-            f"{treatment.performer.first_name} {treatment.performer.last_name}"
-        )
-
-    return ApiResponse(data=response)
+    return ApiResponse(data=build_treatment_response(treatment))
 
 
 @router.get(
@@ -426,6 +422,7 @@ async def list_patient_treatments(
     status_filter: str | None = Query(default=None, alias="status"),
     treatment_type: str | None = Query(default=None),
     tooth_number: int | None = Query(default=None),
+    treatment_group_id: UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
 ) -> PaginatedApiResponse[TreatmentResponse]:
@@ -439,16 +436,12 @@ async def list_patient_treatments(
         status=status_filter,
         treatment_type=treatment_type,
         tooth_number=tooth_number,
+        treatment_group_id=treatment_group_id,
         page=page,
         page_size=page_size,
     )
 
-    response_items = []
-    for t in treatments:
-        item = TreatmentResponse.model_validate(t)
-        if t.performer:
-            item.performed_by_name = f"{t.performer.first_name} {t.performer.last_name}"
-        response_items.append(item)
+    response_items = [build_treatment_response(t) for t in treatments]
 
     return PaginatedApiResponse(
         data=response_items,
@@ -477,13 +470,7 @@ async def get_treatment(
             detail="Treatment not found",
         )
 
-    response = TreatmentResponse.model_validate(treatment)
-    if treatment.performer:
-        response.performed_by_name = (
-            f"{treatment.performer.first_name} {treatment.performer.last_name}"
-        )
-
-    return ApiResponse(data=response)
+    return ApiResponse(data=build_treatment_response(treatment))
 
 
 @router.put(
@@ -514,13 +501,7 @@ async def update_treatment(
             detail="Treatment not found",
         )
 
-    response = TreatmentResponse.model_validate(treatment)
-    if treatment.performer:
-        response.performed_by_name = (
-            f"{treatment.performer.first_name} {treatment.performer.last_name}"
-        )
-
-    return ApiResponse(data=response)
+    return ApiResponse(data=build_treatment_response(treatment))
 
 
 @router.delete(
@@ -579,13 +560,7 @@ async def perform_treatment(
             detail="Treatment not found",
         )
 
-    response = TreatmentResponse.model_validate(treatment)
-    if treatment.performer:
-        response.performed_by_name = (
-            f"{treatment.performer.first_name} {treatment.performer.last_name}"
-        )
-
-    return ApiResponse(data=response)
+    return ApiResponse(data=build_treatment_response(treatment))
 
 
 @router.get(
@@ -620,11 +595,95 @@ async def get_tooth_with_treatments(
 
     # Build response with treatments
     tooth_response = ToothRecordWithTreatmentsResponse.model_validate(tooth)
-    tooth_response.treatments = []
-    for t in tooth.treatments:
-        treatment_item = TreatmentResponse.model_validate(t)
-        if t.performer:
-            treatment_item.performed_by_name = f"{t.performer.first_name} {t.performer.last_name}"
-        tooth_response.treatments.append(treatment_item)
+    tooth_response.treatments = [build_treatment_response(t) for t in tooth.treatments]
 
     return ApiResponse(data=tooth_response)
+
+
+# ============================================================================
+# Treatment Group Endpoints (multi-tooth atomic units: bridges, splints, etc.)
+# ============================================================================
+
+
+@router.post(
+    "/patients/{patient_id}/treatment-groups",
+    response_model=ApiResponse[list[TreatmentResponse]],
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_treatment_group(
+    patient_id: UUID,
+    data: TreatmentGroupCreate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("odontogram.treatments.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[TreatmentResponse]]:
+    """Create an atomic multi-tooth treatment group (bridge, splint, multiple veneers)."""
+    await validate_patient_access(db, ctx.clinic_id, patient_id)
+
+    treatments = await TreatmentService.create_group(
+        db=db,
+        clinic_id=ctx.clinic_id,
+        patient_id=patient_id,
+        user_id=ctx.user_id,
+        mode=data.mode,
+        tooth_numbers=data.tooth_numbers,
+        treatment_type=data.treatment_type,
+        surfaces=data.surfaces,
+        status=data.status,
+        notes=data.notes,
+        catalog_item_id=data.catalog_item_id,
+        budget_item_id=data.budget_item_id,
+    )
+
+    return ApiResponse(data=[build_treatment_response(t) for t in treatments])
+
+
+@router.patch(
+    "/treatment-groups/{group_id}/perform",
+    response_model=ApiResponse[list[TreatmentResponse]],
+)
+async def perform_treatment_group(
+    group_id: UUID,
+    data: TreatmentGroupPerform,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("odontogram.treatments.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[TreatmentResponse]]:
+    """Mark every member of a treatment group as performed (status=existing)."""
+    treatments = await TreatmentService.perform_group(
+        db=db,
+        clinic_id=ctx.clinic_id,
+        group_id=group_id,
+        user_id=ctx.user_id,
+        notes=data.notes,
+    )
+    if not treatments:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Treatment group not found",
+        )
+    return ApiResponse(data=[build_treatment_response(t) for t in treatments])
+
+
+@router.delete(
+    "/treatment-groups/{group_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_treatment_group(
+    group_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("odontogram.treatments.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Soft-delete every member of a treatment group atomically."""
+    deleted = await TreatmentService.delete_group(
+        db=db,
+        clinic_id=ctx.clinic_id,
+        group_id=group_id,
+        user_id=ctx.user_id,
+    )
+    if deleted == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Treatment group not found",
+        )

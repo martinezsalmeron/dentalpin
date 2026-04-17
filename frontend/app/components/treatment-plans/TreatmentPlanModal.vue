@@ -13,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const auth = useAuth()
 const { createPlan, updatePlan, loading } = useTreatmentPlans()
 const { professionals, fetchProfessionals } = useProfessionals()
 
@@ -31,6 +32,9 @@ const form = ref<TreatmentPlanCreate | TreatmentPlanUpdate>({
   internal_notes: ''
 })
 
+// Show/hide notes section
+const showNotes = ref(false)
+
 // Reset form when modal opens
 watch(
   () => props.modelValue,
@@ -46,14 +50,21 @@ watch(
           diagnosis_notes: planDetail.diagnosis_notes || '',
           internal_notes: planDetail.internal_notes || ''
         }
+        // Show notes section if there are existing notes
+        showNotes.value = !!(planDetail.diagnosis_notes || planDetail.internal_notes)
       } else {
+        // Auto-select current user if they're a professional
+        const currentUserId = auth.user.value?.id
+        const isCurrentUserProfessional = professionals.value.some(p => p.id === currentUserId)
+
         form.value = {
           patient_id: props.patientId,
           title: '',
-          assigned_professional_id: undefined,
+          assigned_professional_id: isCurrentUserProfessional ? currentUserId : undefined,
           diagnosis_notes: '',
           internal_notes: ''
         }
+        showNotes.value = false
       }
     }
   }
@@ -80,72 +91,164 @@ async function handleSubmit() {
     isOpen.value = false
   }
 }
+
+function closeModal() {
+  isOpen.value = false
+}
 </script>
 
 <template>
-  <UModal v-model:open="isOpen">
-    <template #header>
-      <h3 class="text-lg font-semibold">
-        {{ isEditing ? t('treatmentPlans.edit') : t('treatmentPlans.create') }}
-      </h3>
-    </template>
+  <UModal
+    v-model:open="isOpen"
+    :ui="{ width: 'sm:max-w-lg' }"
+  >
+    <template #content>
+      <UCard>
+        <!-- Header -->
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/30">
+                <UIcon
+                  name="i-lucide-clipboard-list"
+                  class="h-5 w-5 text-primary-600 dark:text-primary-400"
+                />
+              </div>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ isEditing ? t('treatmentPlans.edit') : t('treatmentPlans.create') }}
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  {{ t('treatmentPlans.modal.subtitle') }}
+                </p>
+              </div>
+            </div>
+            <UButton
+              variant="ghost"
+              color="neutral"
+              icon="i-lucide-x"
+              size="sm"
+              @click="closeModal"
+            />
+          </div>
+        </template>
 
-    <template #body>
-      <form
-        class="space-y-4"
-        @submit.prevent="handleSubmit"
-      >
-        <UFormField :label="t('treatmentPlans.fields.title')">
-          <UInput
-            v-model="form.title"
-            :placeholder="t('treatmentPlans.fields.titlePlaceholder')"
-          />
-        </UFormField>
+        <!-- Body -->
+        <div class="space-y-5">
+          <form
+            class="space-y-5"
+            @submit.prevent="handleSubmit"
+          >
+            <!-- Main info section -->
+            <div class="space-y-4">
+              <!-- Title -->
+              <UFormField :label="t('treatmentPlans.fields.title')">
+                <UInput
+                  v-model="form.title"
+                  :placeholder="t('treatmentPlans.fields.titlePlaceholder')"
+                  size="lg"
+                  autofocus
+                />
+              </UFormField>
 
-        <UFormField :label="t('treatmentPlans.fields.assignedProfessional')">
-          <USelect
-            v-model="form.assigned_professional_id"
-            :items="professionalOptions"
-            :placeholder="t('treatmentPlans.fields.selectProfessional')"
-            value-key="value"
-          />
-        </UFormField>
+              <!-- Professional -->
+              <UFormField :label="t('treatmentPlans.fields.assignedProfessional')">
+                <USelect
+                  v-model="form.assigned_professional_id"
+                  :items="professionalOptions"
+                  :placeholder="t('treatmentPlans.fields.selectProfessional')"
+                  value-key="value"
+                  size="lg"
+                />
+              </UFormField>
+            </div>
 
-        <UFormField :label="t('treatmentPlans.fields.diagnosisNotes')">
-          <UTextarea
-            v-model="form.diagnosis_notes"
-            :rows="3"
-            :placeholder="t('treatmentPlans.fields.diagnosisNotesPlaceholder')"
-          />
-        </UFormField>
+            <!-- Notes section (collapsible) -->
+            <div class="border-t border-gray-200 pt-4 dark:border-gray-700">
+              <button
+                type="button"
+                class="flex w-full items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                @click="showNotes = !showNotes"
+              >
+                <span class="flex items-center gap-2">
+                  <UIcon
+                    name="i-lucide-file-text"
+                    class="h-4 w-4"
+                  />
+                  {{ t('treatmentPlans.modal.additionalNotes') }}
+                </span>
+                <UIcon
+                  :name="showNotes ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                  class="h-4 w-4"
+                />
+              </button>
 
-        <UFormField :label="t('treatmentPlans.fields.internalNotes')">
-          <UTextarea
-            v-model="form.internal_notes"
-            :rows="3"
-            :placeholder="t('treatmentPlans.fields.internalNotesPlaceholder')"
-          />
-        </UFormField>
-      </form>
-    </template>
+              <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0 -translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 -translate-y-2"
+              >
+                <div
+                  v-show="showNotes"
+                  class="mt-4 space-y-4"
+                >
+                  <UFormField :label="t('treatmentPlans.fields.diagnosisNotes')">
+                    <UTextarea
+                      v-model="form.diagnosis_notes"
+                      :rows="2"
+                      :placeholder="t('treatmentPlans.fields.diagnosisNotesPlaceholder')"
+                    />
+                  </UFormField>
 
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          color="gray"
-          variant="ghost"
-          @click="isOpen = false"
-        >
-          {{ t('actions.cancel') }}
-        </UButton>
-        <UButton
-          color="primary"
-          :loading="loading"
-          @click="handleSubmit"
-        >
-          {{ isEditing ? t('actions.save') : t('actions.create') }}
-        </UButton>
-      </div>
+                  <UFormField :label="t('treatmentPlans.fields.internalNotes')">
+                    <UTextarea
+                      v-model="form.internal_notes"
+                      :rows="2"
+                      :placeholder="t('treatmentPlans.fields.internalNotesPlaceholder')"
+                    />
+                  </UFormField>
+                </div>
+              </Transition>
+            </div>
+          </form>
+
+          <!-- Quick info -->
+          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+            <div class="flex gap-2">
+              <UIcon
+                name="i-lucide-lightbulb"
+                class="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400"
+              />
+              <p class="text-sm text-blue-700 dark:text-blue-300">
+                {{ t('treatmentPlans.modal.quickTip') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <template #footer>
+          <div class="flex justify-end gap-3">
+            <UButton
+              variant="outline"
+              color="neutral"
+              @click="closeModal"
+            >
+              {{ t('actions.cancel') }}
+            </UButton>
+            <UButton
+              :loading="loading"
+              icon="i-lucide-plus"
+              @click="handleSubmit"
+            >
+              {{ isEditing ? t('actions.save') : t('treatmentPlans.modal.createButton') }}
+            </UButton>
+          </div>
+        </template>
+      </UCard>
     </template>
   </UModal>
 </template>

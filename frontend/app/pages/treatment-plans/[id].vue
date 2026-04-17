@@ -28,11 +28,6 @@ watch(planId, async (newId) => {
 // Computed
 const patientId = computed(() => currentPlan.value?.patient_id || '')
 
-// Back navigation
-function handleBack() {
-  router.push('/treatment-plans')
-}
-
 // Refresh plan after changes
 async function handleUpdated() {
   await fetchPlan(planId.value)
@@ -48,6 +43,13 @@ async function handleGenerateBudget() {
       color: 'success'
     })
     router.push(`/budgets/${result.budget_id}`)
+  }
+}
+
+// Handle schedule appointment
+function handleSchedule() {
+  if (patientId.value) {
+    router.push(`/appointments?patient_id=${patientId.value}`)
   }
 }
 </script>
@@ -80,7 +82,7 @@ async function handleGenerateBudget() {
       </p>
       <UButton
         class="mt-4"
-        @click="handleBack"
+        to="/treatment-plans"
       >
         {{ t('treatmentPlans.title') }}
       </UButton>
@@ -91,11 +93,10 @@ async function handleGenerateBudget() {
       v-else
       :plan="currentPlan"
       :patient-id="patientId"
-      :back-label="t('treatmentPlans.title')"
       standalone
-      @back="handleBack"
       @updated="handleUpdated"
       @generate-budget="handleGenerateBudget"
+      @schedule="handleSchedule"
     />
   </div>
 </template>

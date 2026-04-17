@@ -81,9 +81,7 @@ class OdontogramModule(BaseModule):
                         treatment.performed_by = UUID(completed_by)
 
                     await db.commit()
-                    logger.info(
-                        f"Updated ToothTreatment {tooth_treatment_id} status to existing"
-                    )
+                    logger.info(f"Updated ToothTreatment {tooth_treatment_id} status to existing")
 
             except Exception as e:
                 logger.error(f"Error updating tooth treatment status: {e}", exc_info=True)

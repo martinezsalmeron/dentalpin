@@ -161,6 +161,7 @@ class TreatmentType(StrEnum):
     CROWN = "crown"
     PONTIC = "pontic"
     BRIDGE_ABUTMENT = "bridge_abutment"
+    SPLINT = "splint"
 
     # Cirugía (Surgery)
     EXTRACTION = "extraction"
@@ -233,6 +234,7 @@ TREATMENTS_BY_CATEGORY: Final[dict[str, list[str]]] = {
         TreatmentType.CROWN.value,
         TreatmentType.PONTIC.value,
         TreatmentType.BRIDGE_ABUTMENT.value,
+        TreatmentType.SPLINT.value,
     ],
     TreatmentClinicalCategory.CIRUGIA.value: [
         TreatmentType.EXTRACTION.value,
@@ -296,6 +298,7 @@ TREATMENT_VISUALIZATION_RULES: Final[dict[str, list[str]]] = {
         TreatmentType.BAND.value,
         TreatmentType.ATTACHMENT.value,
         TreatmentType.RETAINER.value,
+        TreatmentType.SPLINT.value,
     ],
     # Rule 4: Pattern fill (cenital view)
     VisualizationRule.PATTERN_FILL.value: [
@@ -351,6 +354,7 @@ WHOLE_TOOTH_TREATMENTS: Final[set[str]] = {
     TreatmentType.BAND.value,
     TreatmentType.ATTACHMENT.value,
     TreatmentType.RETAINER.value,
+    TreatmentType.SPLINT.value,
     # Legacy
     TreatmentType.ROOT_CANAL.value,
     TreatmentType.BRIDGE_PONTIC.value,
