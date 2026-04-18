@@ -265,7 +265,7 @@ export interface UserWithRole extends User {
   role?: UserRole
 }
 
-// Odontogram types
+// Odontogram types (matches backend ToothCondition enum).
 export type ToothCondition
   = | 'healthy'
     | 'caries'
@@ -274,8 +274,6 @@ export type ToothCondition
     | 'missing'
     | 'root_canal'
     | 'implant'
-    | 'bridge_pontic'
-    | 'bridge_abutment'
     | 'extraction_indicated'
     | 'sealant'
     | 'fracture'
@@ -349,13 +347,17 @@ export interface OdontogramHistoryEntry {
   changed_at: string
 }
 
-// Treatment types with new clinical categories and visualization rules
+// Treatment taxonomy (header + children model, aligned with backend).
+// Backend stores 'planned' | 'performed'; the frontend preserves the clinical
+// vocabulary 'existing' | 'planned'. useTreatments maps between the two at the
+// API boundary.
 export type TreatmentStatus = 'existing' | 'planned'
 export type TreatmentCategory = 'surface' | 'whole_tooth'
 export type TreatmentClinicalCategory = 'diagnostico' | 'restauradora' | 'cirugia' | 'endodoncia' | 'ortodoncia'
-export type VisualizationRule = 'pulp_fill' | 'occlusal_surface' | 'lateral_icon' | 'pattern_fill'
+export type VisualizationLayer = 'pulp_fill' | 'occlusal_surface' | 'lateral_icon' | 'cenital_pattern'
 
-export type TreatmentType
+/** Clinical type (visualization key). Not a billable concept — pricing is in the catalog. */
+export type ClinicalType
   // Diagnóstico
   = | 'pulpitis'
     | 'caries'
@@ -378,8 +380,8 @@ export type TreatmentType
     | 'inlay'
     | 'overlay'
     | 'crown'
-    | 'pontic'
-    | 'bridge_abutment'
+    | 'bridge'
+    | 'splint'
     // Cirugía
     | 'extraction'
     | 'implant'
@@ -396,73 +398,121 @@ export type TreatmentType
     | 'band'
     | 'attachment'
     | 'retainer'
-    // Multi-tooth (uniform group)
-    | 'splint'
-    // Legacy types (for backwards compatibility)
-    | 'filling'
-    | 'root_canal'
-    | 'bridge_pontic'
 
-export interface Treatment {
+/** @deprecated — kept for gradual migration; prefer ClinicalType. */
+export type TreatmentType = ClinicalType
+
+/** Nested per-tooth member of a Treatment. */
+export interface TreatmentTooth {
   id: string
   tooth_record_id: string
   tooth_number: number
-  treatment_type: TreatmentType
-  treatment_category: TreatmentCategory
-  surfaces?: Surface[]
+  role: 'pillar' | 'pontic' | null
+  surfaces: Surface[] | null
+}
+
+/** Catalog item embedded in Treatment responses. */
+export interface TreatmentCatalogItemBrief {
+  id: string
+  internal_code: string
+  names: Record<string, string>
+  default_price?: string | null
+  currency: string
+}
+
+/** Treatment = one clinical act. Bridges, splints and multiple-veneers/crowns are
+ *  a single Treatment with several TreatmentTooth entries. */
+export interface Treatment {
+  id: string
+  clinical_type: ClinicalType
   status: TreatmentStatus
+  catalog_item_id?: string | null
+  catalog_item?: TreatmentCatalogItemBrief | null
+  teeth: TreatmentTooth[]
   recorded_at: string
-  performed_at?: string
-  performed_by?: string
-  performed_by_name?: string
-  budget_item_id?: string
+  performed_at?: string | null
+  performed_by?: string | null
+  performed_by_name?: string | null
+  price_snapshot?: string | null
+  currency_snapshot?: string | null
+  duration_snapshot?: number | null
+  vat_rate_snapshot?: string | null
+  budget_item_id?: string | null
+  notes?: string | null
   source_module: string
-  notes?: string
-  treatment_group_id?: string | null
   created_at: string
   updated_at: string
 }
 
-export interface TreatmentCreate {
-  treatment_type: TreatmentType
-  status?: TreatmentStatus
+/** Mode for POST /treatments. Single: one tooth (default). Bridge: backend assigns
+ *  pillar/pontic roles. Uniform: same clinical_type for all teeth. */
+export type TreatmentMode = 'single' | 'bridge' | 'uniform'
+
+export interface TreatmentToothInput {
+  tooth_number: number
+  role?: 'pillar' | 'pontic' | null
   surfaces?: Surface[]
+}
+
+/** Payload for POST /patients/{id}/treatments. */
+export interface TreatmentCreate {
+  catalog_item_id?: string
+  clinical_type?: ClinicalType
+  tooth_numbers?: number[]
+  teeth?: TreatmentToothInput[]
+  surfaces?: Surface[]
+  status?: TreatmentStatus
   notes?: string
   budget_item_id?: string
   source_module?: string
+  mode?: TreatmentMode
 }
 
+/** PUT /treatments/{id} — header-level edits only. */
 export interface TreatmentUpdate {
   status?: TreatmentStatus
-  surfaces?: Surface[]
   notes?: string
 }
 
-// Multi-tooth treatment group (bridge, splint, multiple veneers/crowns)
+/** UI config for the multi-tooth picker (bridges, splints, multiple veneers/crowns). */
 export type TreatmentGroupMode = 'bridge' | 'uniform'
 
-export interface TreatmentGroupCreate {
-  mode: TreatmentGroupMode
-  tooth_numbers: number[]
-  /** Required in uniform mode, forbidden in bridge mode (backend assigns roles). */
-  treatment_type?: TreatmentType
-  surfaces?: Surface[]
-  status?: TreatmentStatus
-  notes?: string
-  catalog_item_id?: string
-  budget_item_id?: string
-}
-
 export interface MultiToothTreatmentConfig {
-  /** Config key (e.g. 'bridge', 'splint'). For uniform mode, this is also the treatment_type to use. */
   key: string
   labelKey: string
   mode: TreatmentGroupMode
-  /** range = click start + end; free = toggle each tooth. */
   selectionMode: 'range' | 'free'
   minTeeth: number
   maxTeeth: number
   requiresSameArch: boolean
+  /** Clinical category this multi-tooth treatment belongs to in the TreatmentBar. */
+  category: 'restauradora' | 'cirugia' | 'endodoncia' | 'ortodoncia'
+}
+
+/** Per-tooth flattened view over a Treatment. Backwards-compatible with the old
+ *  ToothTreatment-oriented components (treatment_type + surfaces at top level). */
+export interface ToothTreatmentView {
+  id: string
+  treatment_id: string
+  tooth_number: number
+  treatment_type: ClinicalType
+  clinical_type: ClinicalType
+  surfaces: Surface[] | null
+  role: 'pillar' | 'pontic' | null
+  status: TreatmentStatus
+  recorded_at: string
+  performed_at?: string | null
+  performed_by?: string | null
+  performed_by_name?: string | null
+  notes?: string | null
+  price_snapshot?: string | null
+  currency_snapshot?: string | null
+  catalog_item_id?: string | null
+  source_module: string
+  created_at: string
+  updated_at: string
+  is_multi: boolean
+  teeth_count: number
 }
 
 export interface ToothRecordWithTreatments extends ToothRecord {
@@ -563,6 +613,9 @@ export interface OdontogramMappingCreate {
   clinical_category: string
 }
 
+/** Strategy used by the backend to compute Treatment.price_snapshot from a catalog item. */
+export type PricingStrategy = 'flat' | 'per_tooth' | 'per_surface' | 'per_role'
+
 export interface TreatmentCatalogItem {
   id: string
   clinic_id: string
@@ -574,6 +627,9 @@ export interface TreatmentCatalogItem {
   default_price?: number
   cost_price?: number
   currency: string
+  pricing_strategy?: PricingStrategy
+  pricing_config?: Record<string, number> | null
+  surface_prices?: Record<string, number> | null
   // Scheduling
   default_duration_minutes?: number
   requires_appointment: boolean
@@ -607,6 +663,9 @@ export interface TreatmentCatalogItemCreate {
   default_price?: number
   cost_price?: number
   currency?: string
+  pricing_strategy?: PricingStrategy
+  pricing_config?: Record<string, number> | null
+  surface_prices?: Record<string, number> | null
   // Scheduling
   default_duration_minutes?: number
   requires_appointment?: boolean
@@ -630,6 +689,9 @@ export interface TreatmentCatalogItemUpdate {
   default_price?: number
   cost_price?: number
   currency?: string
+  pricing_strategy?: PricingStrategy
+  pricing_config?: Record<string, number> | null
+  surface_prices?: Record<string, number> | null
   default_duration_minutes?: number
   requires_appointment?: boolean
   vat_type_id?: string
@@ -641,17 +703,32 @@ export interface TreatmentCatalogItemUpdate {
   odontogram_mapping?: OdontogramMappingCreate
 }
 
+/** Layered visualization rule. Each layer renders on top of the previous. */
+export interface VisualizationRuleLayer {
+  layer: VisualizationLayer
+  icon?: string
+  pattern?: string
+  color?: string
+  kind?: string
+  extent?: string
+}
+
 export interface OdontogramTreatment {
   id: string
   internal_code: string
   names: Record<string, string>
-  default_price?: number
+  default_price?: string | null
+  currency?: string
   treatment_scope: 'surface' | 'whole_tooth'
   requires_surfaces: boolean
   is_diagnostic: boolean
+  // Pricing
+  pricing_strategy: PricingStrategy
+  pricing_config?: Record<string, number> | null
+  surface_prices?: Record<string, number> | null
   // Odontogram specific
-  odontogram_treatment_type: string
-  visualization_rules: string[]
+  odontogram_treatment_type: ClinicalType
+  visualization_rules: VisualizationRuleLayer[]
   visualization_config: Record<string, unknown>
   clinical_category: string
   // Category info
@@ -725,7 +802,7 @@ export interface BudgetItem {
   tooth_number?: number
   surfaces?: string[]
   // Odontogram integration
-  tooth_treatment_id?: string
+  treatment_id?: string
   // Invoice tracking
   invoiced_quantity: number
   // Display
@@ -747,7 +824,7 @@ export interface BudgetItemCreate {
   discount_value?: number
   tooth_number?: number
   surfaces?: string[]
-  tooth_treatment_id?: string
+  treatment_id?: string
   display_order?: number
   notes?: string
 }
@@ -1692,20 +1769,19 @@ export type PlannedItemStatus = 'pending' | 'completed' | 'cancelled'
 
 export type TreatmentMediaType = 'before' | 'after' | 'xray' | 'reference'
 
-// Brief types for nested responses
-export interface ToothTreatmentBrief {
+/** Nested Treatment brief embedded in plan items (subset of Treatment). */
+export interface TreatmentBrief {
   id: string
-  tooth_number: number
-  treatment_type: string
+  clinical_type: ClinicalType
   status: TreatmentStatus
-  surfaces?: string[]
-}
-
-export interface TreatmentCatalogItemBrief {
-  id: string
-  internal_code: string
-  names: Record<string, string>
-  default_price?: number
+  catalog_item_id?: string | null
+  price_snapshot?: string | null
+  currency_snapshot?: string | null
+  teeth: Array<{
+    tooth_number: number
+    role?: 'pillar' | 'pontic' | null
+    surfaces?: Surface[] | null
+  }>
 }
 
 // Treatment Media (before/after images)
@@ -1733,14 +1809,12 @@ export interface TreatmentPlanBrief {
   status: TreatmentPlanStatus
 }
 
-// Planned Treatment Item
+// Planned Treatment Item (references a single Treatment via treatment_id).
 export interface PlannedTreatmentItem {
   id: string
   clinic_id: string
   treatment_plan_id: string
-  tooth_treatment_id?: string
-  catalog_item_id?: string
-  is_global: boolean
+  treatment_id: string
   sequence_order: number
   status: PlannedItemStatus
   completed_without_appointment: boolean
@@ -1750,7 +1824,7 @@ export interface PlannedTreatmentItem {
   created_at: string
   updated_at: string
   // Nested data
-  tooth_treatment?: ToothTreatmentBrief
+  treatment?: TreatmentBrief
   catalog_item?: TreatmentCatalogItemBrief
   media: TreatmentMedia[]
   // Optional plan info (enriched client-side for appointment selector)
@@ -1758,9 +1832,7 @@ export interface PlannedTreatmentItem {
 }
 
 export interface PlannedTreatmentItemCreate {
-  tooth_treatment_id?: string
-  catalog_item_id?: string
-  is_global?: boolean
+  treatment_id: string
   sequence_order?: number
   notes?: string
 }

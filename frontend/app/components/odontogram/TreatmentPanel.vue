@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { Treatment, TreatmentStatus } from '~/types'
+import type { ToothTreatmentView, Treatment, TreatmentStatus } from '~/types'
 import { TREATMENT_COLORS } from './ToothSVGPaths'
+import { viewForTooth } from '~/utils/treatmentView'
 
 const props = defineProps<{
   treatments: Treatment[]
@@ -11,21 +12,22 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   addTreatment: []
-  performTreatment: [treatment: Treatment]
-  deleteTreatment: [treatment: Treatment]
-  selectTreatment: [treatment: Treatment]
+  performTreatment: [treatment: ToothTreatmentView]
+  deleteTreatment: [treatment: ToothTreatmentView]
+  selectTreatment: [treatment: ToothTreatmentView]
 }>()
 
 const { t } = useI18n()
 
-// Group treatments by status
+// Flatten Treatment[] into per-tooth rows, then group by status.
 const groupedTreatments = computed(() => {
-  const groups: Record<TreatmentStatus, Treatment[]> = {
+  const groups: Record<TreatmentStatus, ToothTreatmentView[]> = {
     planned: [],
     existing: []
   }
   for (const treatment of props.treatments) {
-    groups[treatment.status]?.push(treatment)
+    const v = viewForTooth(treatment, props.toothNumber)
+    if (v) groups[v.status]?.push(v)
   }
   return groups
 })

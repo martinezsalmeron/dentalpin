@@ -67,24 +67,23 @@ class BudgetModule(BaseModule):
     async def _on_treatment_added_to_plan(self, data: dict[str, Any]) -> None:
         """Create BudgetItem when a treatment is added to a plan.
 
-        Only creates item if the budget is in draft status.
+        Only creates item if the budget is in draft status. Reads the Treatment
+        to resolve catalog_item_id and primary tooth (when a single-tooth treatment).
         """
         from .service import BudgetItemService
 
         plan_id = data.get("plan_id")
-        catalog_item_id = data.get("catalog_item_id")
+        treatment_id = data.get("treatment_id")
         clinic_id = data.get("clinic_id")
-        tooth_treatment_id = data.get("tooth_treatment_id")
 
-        if not plan_id or not clinic_id:
+        if not plan_id or not clinic_id or not treatment_id:
             return
 
         async with async_session_maker() as db:
             try:
-                # Import here to avoid circular imports
+                from app.modules.odontogram.models import Treatment
                 from app.modules.treatment_plan.models import TreatmentPlan
 
-                # Find budget linked to plan
                 result = await db.execute(
                     select(TreatmentPlan.budget_id).where(
                         TreatmentPlan.id == UUID(plan_id),
@@ -92,42 +91,53 @@ class BudgetModule(BaseModule):
                     )
                 )
                 budget_id = result.scalar_one_or_none()
-
                 if not budget_id:
-                    return  # No budget linked
+                    return
 
-                # Check budget status
                 budget = await db.get(Budget, budget_id)
                 if not budget or budget.status != "draft":
-                    return  # Only modify draft budgets
+                    return
 
-                if not catalog_item_id:
-                    return  # Need catalog item to create budget item
+                from sqlalchemy.orm import selectinload
 
-                # Create budget item
+                t_result = await db.execute(
+                    select(Treatment)
+                    .options(selectinload(Treatment.teeth))
+                    .where(
+                        Treatment.id == UUID(treatment_id),
+                        Treatment.clinic_id == UUID(clinic_id),
+                    )
+                )
+                treatment = t_result.scalar_one_or_none()
+                if not treatment or treatment.catalog_item_id is None:
+                    return
+
+                primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
+                primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
+
                 await BudgetItemService.create_item(
                     db,
                     UUID(clinic_id),
                     budget_id,
                     {
-                        "catalog_item_id": UUID(catalog_item_id),
+                        "catalog_item_id": treatment.catalog_item_id,
                         "quantity": 1,
-                        "tooth_treatment_id": UUID(tooth_treatment_id)
-                        if tooth_treatment_id
-                        else None,
+                        "treatment_id": treatment.id,
+                        "tooth_number": primary_tooth,
+                        "surfaces": primary_surfaces,
+                        "unit_price": treatment.price_snapshot,
                     },
                 )
 
-                # Recalculate budget totals
                 from .service import BudgetService
 
                 await BudgetService._recalculate_totals(db, budget)
                 await db.commit()
 
-                logger.info(f"Added budget item for plan {plan_id}")
+                logger.info("Added budget item for plan %s", plan_id)
 
             except Exception as e:
-                logger.error(f"Error adding budget item from plan: {e}", exc_info=True)
+                logger.error("Error adding budget item from plan: %s", e, exc_info=True)
                 await db.rollback()
 
     async def _on_treatment_removed_from_plan(self, data: dict[str, Any]) -> None:
@@ -138,17 +148,16 @@ class BudgetModule(BaseModule):
         from .service import BudgetService
 
         plan_id = data.get("plan_id")
-        tooth_treatment_id = data.get("tooth_treatment_id")
+        treatment_id = data.get("treatment_id")
         clinic_id = data.get("clinic_id")
 
-        if not plan_id or not clinic_id:
+        if not plan_id or not clinic_id or not treatment_id:
             return
 
         async with async_session_maker() as db:
             try:
                 from app.modules.treatment_plan.models import TreatmentPlan
 
-                # Find budget linked to plan
                 result = await db.execute(
                     select(TreatmentPlan.budget_id).where(
                         TreatmentPlan.id == UUID(plan_id),
@@ -156,35 +165,28 @@ class BudgetModule(BaseModule):
                     )
                 )
                 budget_id = result.scalar_one_or_none()
-
                 if not budget_id:
                     return
 
-                # Check budget status
                 budget = await db.get(Budget, budget_id)
                 if not budget or budget.status != "draft":
                     return
 
-                if not tooth_treatment_id:
-                    return
-
-                # Find and remove budget item
                 item_result = await db.execute(
                     select(BudgetItem).where(
                         BudgetItem.budget_id == budget_id,
-                        BudgetItem.tooth_treatment_id == UUID(tooth_treatment_id),
+                        BudgetItem.treatment_id == UUID(treatment_id),
                     )
                 )
                 item = item_result.scalar_one_or_none()
-
                 if item:
                     await db.delete(item)
                     await BudgetService._recalculate_totals(db, budget)
                     await db.commit()
-                    logger.info(f"Removed budget item for plan {plan_id}")
+                    logger.info("Removed budget item for plan %s", plan_id)
 
             except Exception as e:
-                logger.error(f"Error removing budget item from plan: {e}", exc_info=True)
+                logger.error("Error removing budget item from plan: %s", e, exc_info=True)
                 await db.rollback()
 
     async def _on_sync_requested(self, data: dict[str, Any]) -> None:
@@ -209,51 +211,60 @@ class BudgetModule(BaseModule):
                     logger.warning(f"Cannot sync non-draft budget {budget_id}")
                     return
 
-                # Get plan items
+                from sqlalchemy.orm import selectinload
+
+                from app.modules.odontogram.models import Treatment
                 from app.modules.treatment_plan.models import PlannedTreatmentItem
 
                 plan_items_result = await db.execute(
-                    select(PlannedTreatmentItem).where(
+                    select(PlannedTreatmentItem)
+                    .options(
+                        selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
+                    )
+                    .where(
                         PlannedTreatmentItem.treatment_plan_id == UUID(plan_id),
                         PlannedTreatmentItem.clinic_id == UUID(clinic_id),
                     )
                 )
                 plan_items = list(plan_items_result.scalars().all())
 
-                # Get existing budget items with tooth_treatment_id
                 existing_result = await db.execute(
                     select(BudgetItem).where(
                         BudgetItem.budget_id == UUID(budget_id),
-                        BudgetItem.tooth_treatment_id.isnot(None),
+                        BudgetItem.treatment_id.isnot(None),
                     )
                 )
                 existing_items = {
-                    item.tooth_treatment_id: item
-                    for item in existing_result.scalars().all()
+                    item.treatment_id: item for item in existing_result.scalars().all()
                 }
 
-                # Sync items
                 for plan_item in plan_items:
-                    if plan_item.tooth_treatment_id and plan_item.catalog_item_id:
-                        if plan_item.tooth_treatment_id not in existing_items:
-                            # Add missing item
-                            await BudgetItemService.create_item(
-                                db,
-                                UUID(clinic_id),
-                                UUID(budget_id),
-                                {
-                                    "catalog_item_id": plan_item.catalog_item_id,
-                                    "quantity": 1,
-                                    "tooth_treatment_id": plan_item.tooth_treatment_id,
-                                },
-                            )
+                    treatment = plan_item.treatment
+                    if not treatment or not treatment.catalog_item_id:
+                        continue
+                    if treatment.id in existing_items:
+                        continue
+                    primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
+                    primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
+                    await BudgetItemService.create_item(
+                        db,
+                        UUID(clinic_id),
+                        UUID(budget_id),
+                        {
+                            "catalog_item_id": treatment.catalog_item_id,
+                            "quantity": 1,
+                            "treatment_id": treatment.id,
+                            "tooth_number": primary_tooth,
+                            "surfaces": primary_surfaces,
+                            "unit_price": treatment.price_snapshot,
+                        },
+                    )
 
-                # Recalculate totals
                 await BudgetService._recalculate_totals(db, budget)
                 await db.commit()
 
-                logger.info(f"Synced plan {plan_id} with budget {budget_id}")
+                logger.info("Synced plan %s with budget %s", plan_id, budget_id)
 
             except Exception as e:
-                logger.error(f"Error syncing plan with budget: {e}", exc_info=True)
+                logger.error("Error syncing plan with budget: %s", e, exc_info=True)
                 await db.rollback()

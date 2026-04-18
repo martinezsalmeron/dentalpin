@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { OdontogramHistoryEntry, Treatment } from '~/types'
+import type { OdontogramHistoryEntry, ToothTreatmentView, Treatment } from '~/types'
+import { viewForTooth } from '~/utils/treatmentView'
 import { getToothNameKey, getToothPositionKeys, TREATMENT_COLORS } from '~/config/odontogramConstants'
 
 const props = defineProps<{
@@ -24,8 +25,8 @@ interface TimelineEntry {
   date: Date
   // For history entries
   historyEntry?: OdontogramHistoryEntry
-  // For treatment entries
-  treatment?: Treatment
+  // For treatment entries (per-tooth flattened view).
+  treatment?: ToothTreatmentView
 }
 
 // Filter out "created" history entries that just show initial "healthy" state
@@ -56,15 +57,19 @@ const unifiedTimeline = computed<TimelineEntry[]>(() => {
     })
   }
 
-  // Add treatment entries
+  // Add treatment entries — one per Treatment × tooth member.
   for (const treatment of props.treatments) {
-    entries.push({
-      id: `treatment-${treatment.id}`,
-      type: 'treatment',
-      toothNumber: treatment.tooth_number,
-      date: new Date(treatment.performed_at || treatment.recorded_at),
-      treatment: treatment
-    })
+    for (const tooth of treatment.teeth) {
+      const v = viewForTooth(treatment, tooth.tooth_number)
+      if (!v) continue
+      entries.push({
+        id: `treatment-${v.id}`,
+        type: 'treatment',
+        toothNumber: v.tooth_number,
+        date: new Date(v.performed_at || v.recorded_at),
+        treatment: v
+      })
+    }
   }
 
   // Sort by date (most recent first)

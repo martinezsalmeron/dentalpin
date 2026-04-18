@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { Treatment, TreatmentStatus } from '~/types'
+import type { ToothTreatmentView, TreatmentStatus } from '~/types'
 import { TREATMENT_COLORS } from '~/config/odontogramConstants'
 
 const props = defineProps<{
   toothNumber: number
-  treatments: Treatment[]
+  treatments: ToothTreatmentView[]
 }>()
 
 const emit = defineEmits<{
-  editTreatment: [treatment: Treatment]
-  performTreatment: [treatment: Treatment]
-  deleteTreatment: [treatment: Treatment]
+  editTreatment: [treatment: ToothTreatmentView]
+  performTreatment: [treatment: ToothTreatmentView]
+  deleteTreatment: [treatment: ToothTreatmentView]
 }>()
 
 const { t } = useI18n()

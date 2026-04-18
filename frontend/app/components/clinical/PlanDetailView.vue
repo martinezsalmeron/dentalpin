@@ -44,19 +44,23 @@ const {
 const hoveredToothNumber = ref<number | null>(null)
 const hoveredItemId = ref<string | null>(null)
 
-// Items of the hovered tooth
+function itemTeeth(item: { treatment?: { teeth?: Array<{ tooth_number: number }> } }): number[] {
+  return (item.treatment?.teeth ?? []).map(t => t.tooth_number)
+}
+
+// Items of the hovered tooth (any of whose members touches that tooth).
 const highlightedItems = computed(() => {
   if (!hoveredToothNumber.value) return []
   return props.plan.items
-    .filter(item => item.tooth_number === hoveredToothNumber.value)
+    .filter(item => itemTeeth(item).includes(hoveredToothNumber.value!))
     .map(item => item.id)
 })
 
-// Teeth of the hovered item
+// Teeth of the hovered item (from Treatment.teeth[]).
 const highlightedTeeth = computed(() => {
   if (!hoveredItemId.value) return []
   const item = props.plan.items.find(i => i.id === hoveredItemId.value)
-  return item?.tooth_number ? [item.tooth_number] : []
+  return item ? itemTeeth(item) : []
 })
 
 // ============================================================================

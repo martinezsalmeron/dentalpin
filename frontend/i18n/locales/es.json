@@ -403,6 +403,10 @@
     "addToPlan": "Añadir a plan",
     "noPlan": "Sin plan",
     "createNewPlan": "Crear nuevo plan...",
+    "applyTo": "Aplicar a",
+    "oneTooth": "1 diente",
+    "multipleTeeth": "Múltiples dientes",
+    "surfacePricingHint": "Precio por superficies: {range}",
     "toothNames": {
       "centralIncisor": "Incisivo central",
       "lateralIncisor": "Incisivo lateral",
@@ -483,7 +487,7 @@
       "noChanges": "Sin cambios registrados"
     },
     "diagnosis": {
-      "registeredConditions": "Condiciones registradas",
+      "registeredConditions": "Condiciones diagnosticadas",
       "registerConditions": "Registrar condiciones",
       "noConditions": "Sin condiciones registradas",
       "startDiagnosis": "Selecciona un diente y añade condiciones existentes",
@@ -780,6 +784,19 @@
     "scopeTypes": {
       "surface": "Por superficie",
       "whole_tooth": "Diente completo"
+    },
+    "pricingStrategy": {
+      "label": "Estrategia de precio",
+      "help": "Cómo se calcula el precio del tratamiento al aplicarlo",
+      "flat": "Plano (precio único)",
+      "per_tooth": "Por diente (× nº dientes)",
+      "per_surface": "Por superficies (tramos)",
+      "per_role": "Por rol (puente: pilar/póntico)"
+    },
+    "surfacePrices": {
+      "title": "Precios por nº de superficies",
+      "help": "Define el precio para 1–5 superficies. Al seleccionar superficies en el diente, se usa el tramo correspondiente. Tramos vacíos caen al mayor tramo menor o igual.",
+      "tier": "{n} sup."
     },
     "categoryCreated": "Categoría creada",
     "categoryUpdated": "Categoría actualizada",

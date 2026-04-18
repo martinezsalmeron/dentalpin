@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Surface, Treatment, TreatmentStatus } from '~/types'
+import type { Surface, ToothTreatmentView, TreatmentStatus } from '~/types'
 import {
   getOcclusalPath,
   getLateralPath,
@@ -31,7 +31,7 @@ import ImplantSVG from './ImplantSVG.vue'
 const props = defineProps<{
   toothNumber: number
   generalCondition: string
-  treatments?: Treatment[]
+  treatments?: ToothTreatmentView[]
   readonly?: boolean
   selected?: boolean
   showLateral?: boolean
@@ -45,7 +45,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   surfaceClick: [surface: Surface]
   toothClick: []
-  treatmentClick: [treatment: Treatment]
+  treatmentClick: [treatment: ToothTreatmentView]
 }>()
 
 const { t } = useI18n()

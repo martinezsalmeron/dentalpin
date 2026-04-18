@@ -382,6 +382,10 @@
     "addToPlan": "Add to plan",
     "noPlan": "No plan",
     "createNewPlan": "Create new plan...",
+    "applyTo": "Apply to",
+    "oneTooth": "1 tooth",
+    "multipleTeeth": "Multiple teeth",
+    "surfacePricingHint": "Price by surface: {range}",
     "toothNames": {
       "centralIncisor": "Central incisor",
       "lateralIncisor": "Lateral incisor",
@@ -462,7 +466,7 @@
       "noChanges": "No changes recorded"
     },
     "diagnosis": {
-      "registeredConditions": "Registered conditions",
+      "registeredConditions": "Diagnosed conditions",
       "registerConditions": "Register conditions",
       "noConditions": "No conditions registered",
       "startDiagnosis": "Select a tooth and add existing conditions",
@@ -758,6 +762,19 @@
     "scopeTypes": {
       "surface": "Per surface",
       "whole_tooth": "Whole tooth"
+    },
+    "pricingStrategy": {
+      "label": "Pricing strategy",
+      "help": "How the treatment price is computed when applied",
+      "flat": "Flat (single price)",
+      "per_tooth": "Per tooth (× tooth count)",
+      "per_surface": "Per surface (tiered)",
+      "per_role": "Per role (bridge: pillar/pontic)"
+    },
+    "surfacePrices": {
+      "title": "Prices by surface count",
+      "help": "Define the price for 1–5 surfaces. When surfaces are picked on a tooth, the matching tier is used. Missing tiers fall back to the nearest lower populated tier.",
+      "tier": "{n} surf."
     },
     "categoryCreated": "Category created",
     "categoryUpdated": "Category updated",

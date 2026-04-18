@@ -22,10 +22,9 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.budget.models import Budget
-    from app.modules.catalog.models import TreatmentCatalogItem
     from app.modules.clinical.models import Patient
     from app.modules.media.models import Document
-    from app.modules.odontogram.models import ToothTreatment
+    from app.modules.odontogram.models import Treatment
 
 
 class TreatmentPlan(Base, TimestampMixin):
@@ -89,8 +88,8 @@ class TreatmentPlan(Base, TimestampMixin):
 class PlannedTreatmentItem(Base, TimestampMixin):
     """Individual treatment within a plan.
 
-    Can reference a ToothTreatment (for tooth-specific treatments) or
-    be a global treatment (without a specific tooth).
+    Always references a single Treatment (from the odontogram module). Globalness,
+    per-tooth / multi-tooth, pricing and catalog link all live on the Treatment.
     """
 
     __tablename__ = "planned_treatment_items"
@@ -101,20 +100,16 @@ class PlannedTreatmentItem(Base, TimestampMixin):
         ForeignKey("treatment_plans.id", ondelete="CASCADE"), index=True
     )
 
-    # Reference to ToothTreatment (if tooth-specific)
-    tooth_treatment_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("tooth_treatments.id"), index=True
+    # Single link to Treatment. Unique: no two items may reference the same Treatment.
+    treatment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("treatments.id", ondelete="CASCADE"), index=True
     )
-
-    # For global treatments (without a specific tooth)
-    catalog_item_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("treatment_catalog_items.id"), index=True
-    )
-    is_global: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Ordering and status
     sequence_order: Mapped[int] = mapped_column(Integer, default=0)
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|completed|cancelled
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending|completed|cancelled
 
     # Completion tracking
     completed_without_appointment: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -126,16 +121,16 @@ class PlannedTreatmentItem(Base, TimestampMixin):
     # Relationships
     clinic: Mapped["Clinic"] = relationship()
     treatment_plan: Mapped["TreatmentPlan"] = relationship(back_populates="items")
-    tooth_treatment: Mapped["ToothTreatment | None"] = relationship()
-    catalog_item: Mapped["TreatmentCatalogItem | None"] = relationship()
+    treatment: Mapped["Treatment"] = relationship()
     completer: Mapped["User | None"] = relationship(foreign_keys=[completed_by])
     media: Mapped[list["TreatmentMedia"]] = relationship(
         back_populates="planned_item", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
+        UniqueConstraint("treatment_id", name="uq_planned_item_treatment"),
         Index("idx_planned_items_plan", "treatment_plan_id"),
-        Index("idx_planned_items_tooth", "tooth_treatment_id"),
+        Index("idx_planned_items_treatment", "treatment_id"),
         Index("idx_planned_items_status", "treatment_plan_id", "status"),
     )
 

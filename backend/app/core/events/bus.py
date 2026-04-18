@@ -62,9 +62,7 @@ class EventBus:
                     exc_info=True,
                 )
 
-    async def _run_async_handler(
-        self, event_type: str, coro: Any
-    ) -> None:
+    async def _run_async_handler(self, event_type: str, coro: Any) -> None:
         """Run an async handler and log errors."""
         try:
             await coro

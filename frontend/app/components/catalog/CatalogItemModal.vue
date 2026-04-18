@@ -73,6 +73,9 @@ watch(
         default_price: newItem.default_price,
         cost_price: newItem.cost_price,
         currency: newItem.currency,
+        pricing_strategy: newItem.pricing_strategy || 'flat',
+        pricing_config: newItem.pricing_config ?? null,
+        surface_prices: newItem.surface_prices ? { ...newItem.surface_prices } : null,
         default_duration_minutes: newItem.default_duration_minutes,
         requires_appointment: newItem.requires_appointment,
         vat_type_id: newItem.vat_type_id,
@@ -99,6 +102,9 @@ watch(
         default_price: 0,
         cost_price: 0,
         currency: 'EUR',
+        pricing_strategy: 'flat',
+        pricing_config: null,
+        surface_prices: null,
         default_duration_minutes: 30,
         requires_appointment: true,
         vat_type_id: defaultVatType.value?.id,
@@ -119,6 +125,54 @@ const scopeOptions = [
   { value: 'surface', label: t('catalog.scopeTypes.surface') },
   { value: 'whole_tooth', label: t('catalog.scopeTypes.whole_tooth') }
 ]
+
+// Pricing strategy options
+const strategyOptions = computed(() => [
+  { value: 'flat', label: t('catalog.pricingStrategy.flat') },
+  { value: 'per_tooth', label: t('catalog.pricingStrategy.per_tooth') },
+  { value: 'per_surface', label: t('catalog.pricingStrategy.per_surface') },
+  { value: 'per_role', label: t('catalog.pricingStrategy.per_role') }
+])
+
+const SURFACE_TIERS = ['1', '2', '3', '4', '5'] as const
+
+// True when the tier-pricing editor should render.
+const showSurfacePrices = computed(() => formData.value.pricing_strategy === 'per_surface')
+
+// When strategy switches to per_surface, seed all tiers with default_price so the
+// user sees a starting matrix they can tweak. Switching away clears the map.
+watch(
+  () => formData.value.pricing_strategy,
+  (strategy) => {
+    if (strategy === 'per_surface') {
+      if (!formData.value.surface_prices) {
+        const base = Number(formData.value.default_price) || 0
+        formData.value.surface_prices = {
+          1: base,
+          2: base,
+          3: base,
+          4: base,
+          5: base
+        } as unknown as Record<string, number>
+      }
+    } else {
+      formData.value.surface_prices = null
+    }
+  }
+)
+
+function getTierPrice(tier: string): number | undefined {
+  const v = formData.value.surface_prices?.[tier]
+  return typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : undefined
+}
+
+function setTierPrice(tier: string, value: number | string | undefined) {
+  if (!formData.value.surface_prices) {
+    formData.value.surface_prices = {}
+  }
+  const n = value === undefined || value === '' ? 0 : Number(value)
+  formData.value.surface_prices[tier] = Number.isFinite(n) ? n : 0
+}
 
 // Category options for select
 const categoryOptions = computed(() =>
@@ -295,6 +349,58 @@ function handleClose() {
                     placeholder="EUR"
                   />
                 </UFormField>
+              </div>
+
+              <!-- Pricing strategy -->
+              <div class="mt-4">
+                <UFormField
+                  :label="t('catalog.pricingStrategy.label')"
+                  :help="t('catalog.pricingStrategy.help')"
+                >
+                  <USelect
+                    v-model="formData.pricing_strategy"
+                    :items="strategyOptions"
+                    value-key="value"
+                    label-key="label"
+                    :disabled="!isCreateMode && item?.is_system"
+                  />
+                </UFormField>
+              </div>
+
+              <!-- Surface price tiers (per_surface strategy) -->
+              <div
+                v-if="showSurfacePrices"
+                class="mt-4 rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 p-4"
+              >
+                <div class="flex items-center gap-2 mb-3">
+                  <UIcon
+                    name="i-lucide-layers"
+                    class="w-4 h-4 text-blue-600 dark:text-blue-400"
+                  />
+                  <h5 class="font-medium text-sm text-gray-900 dark:text-white">
+                    {{ t('catalog.surfacePrices.title') }}
+                  </h5>
+                </div>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  {{ t('catalog.surfacePrices.help') }}
+                </p>
+                <div class="grid grid-cols-5 gap-2">
+                  <UFormField
+                    v-for="tier in SURFACE_TIERS"
+                    :key="tier"
+                    :label="t('catalog.surfacePrices.tier', { n: tier })"
+                    class="text-xs"
+                  >
+                    <UInput
+                      :model-value="getTierPrice(tier)"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      size="sm"
+                      @update:model-value="setTierPrice(tier, $event)"
+                    />
+                  </UFormField>
+                </div>
               </div>
             </div>
 

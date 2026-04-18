@@ -90,12 +90,6 @@ export function useOdontogram() {
     fetchToothWithTreatments: treatmentsApi.fetchToothWithTreatments,
     getToothTreatments: treatmentsApi.getToothTreatments,
     getTreatmentsByStatus: treatmentsApi.getTreatmentsByStatus,
-    // Multi-tooth groups
-    createTreatmentGroup: treatmentsApi.createTreatmentGroup,
-    performTreatmentGroup: treatmentsApi.performTreatmentGroup,
-    deleteTreatmentGroup: treatmentsApi.deleteTreatmentGroup,
-    getGroupMembers: treatmentsApi.getGroupMembers,
-    getGroupIdForTooth: treatmentsApi.getGroupIdForTooth,
 
     // === Timeline ===
     timelineDates: timeline.timelineDates,

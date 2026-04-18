@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ============================================================================
 # VAT Type Schemas
@@ -126,7 +126,7 @@ class OdontogramMappingCreate(BaseModel):
     """Schema for creating odontogram mapping (usually part of item creation)."""
 
     odontogram_treatment_type: str = Field(max_length=30)
-    visualization_rules: list[str] = Field(default_factory=list)
+    visualization_rules: list[dict] = Field(default_factory=list)
     visualization_config: dict = Field(default_factory=dict)
     clinical_category: str = Field(max_length=20)
 
@@ -134,14 +134,13 @@ class OdontogramMappingCreate(BaseModel):
 class OdontogramMappingResponse(BaseModel):
     """Schema for odontogram mapping response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     odontogram_treatment_type: str
-    visualization_rules: list[str]
+    visualization_rules: list[dict]
     visualization_config: dict
     clinical_category: str
-
-    class Config:
-        from_attributes = True
 
 
 # ============================================================================
@@ -168,6 +167,13 @@ class CatalogItemCreate(BaseModel):
 
     # Tax - references VatType by ID (optional, uses clinic default if not provided)
     vat_type_id: UUID | None = None
+
+    # Pricing strategy (how to compute Treatment.price_snapshot).
+    pricing_strategy: Literal["flat", "per_tooth", "per_surface", "per_role"] = "flat"
+    pricing_config: dict | None = None
+    # Tiered prices by surface count. Keys "1".."5" map to prices. Used when
+    # pricing_strategy == "per_surface". See pricing.py for tier resolution.
+    surface_prices: dict[str, Decimal] | None = None
 
     # Treatment characteristics
     treatment_scope: Literal["surface", "whole_tooth"] = "whole_tooth"
@@ -200,6 +206,11 @@ class CatalogItemUpdate(BaseModel):
 
     # Tax - references VatType by ID
     vat_type_id: UUID | None = None
+
+    # Pricing strategy
+    pricing_strategy: Literal["flat", "per_tooth", "per_surface", "per_role"] | None = None
+    pricing_config: dict | None = None
+    surface_prices: dict[str, Decimal] | None = None
 
     # Treatment characteristics
     treatment_scope: Literal["surface", "whole_tooth"] | None = None
@@ -240,6 +251,11 @@ class CatalogItemResponse(BaseModel):
     vat_type: VatTypeBrief | None = Field(
         default=None, validation_alias="vat_type_rel"
     )  # Eager loaded
+
+    # Pricing strategy
+    pricing_strategy: str
+    pricing_config: dict | None
+    surface_prices: dict[str, Decimal] | None = None
 
     # Treatment characteristics
     treatment_scope: str
@@ -288,29 +304,35 @@ class CatalogItemBrief(BaseModel):
 class OdontogramTreatmentResponse(BaseModel):
     """Schema for treatments with odontogram integration.
 
-    Used by the odontogram component to display treatments with proper visualization.
+    Used by the odontogram component to display treatments with proper visualization
+    plus pricing hints so the frontend can preview costs before confirming.
     """
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     internal_code: str
     names: dict[str, str]
     default_price: Decimal | None
+    currency: str = "EUR"
     treatment_scope: str
     requires_surfaces: bool
     is_diagnostic: bool
 
+    # Pricing strategy (for multi-tooth price preview).
+    pricing_strategy: str
+    pricing_config: dict | None = None
+    surface_prices: dict[str, Decimal] | None = None
+
     # Odontogram specific
     odontogram_treatment_type: str
-    visualization_rules: list[str]
+    visualization_rules: list[dict]
     visualization_config: dict
     clinical_category: str
 
     # Category info
     category_key: str
     category_names: dict[str, str]
-
-    class Config:
-        from_attributes = True
 
 
 class OdontogramTreatmentsByCategory(BaseModel):

@@ -103,7 +103,12 @@ SURFACES: Final[list[str]] = [s.value for s in Surface]
 
 
 class ToothCondition(StrEnum):
-    """Possible conditions for a tooth or surface."""
+    """Possible conditions stored on ToothRecord.surfaces / general_condition.
+
+    These describe the observed state of a tooth/surface — independent of the
+    Treatment log. Whole-tooth states like `crown` or `missing` are acceptable as
+    general_condition even though they usually imply an underlying Treatment.
+    """
 
     HEALTHY = "healthy"
     CARIES = "caries"
@@ -112,18 +117,21 @@ class ToothCondition(StrEnum):
     MISSING = "missing"
     ROOT_CANAL = "root_canal"
     IMPLANT = "implant"
-    BRIDGE_PONTIC = "bridge_pontic"
-    BRIDGE_ABUTMENT = "bridge_abutment"
     EXTRACTION_INDICATED = "extraction_indicated"
     SEALANT = "sealant"
     FRACTURE = "fracture"
 
 
 class TreatmentStatus(StrEnum):
-    """Status of a tooth treatment."""
+    """Status of a Treatment.
 
-    EXISTING = "existing"  # Existing treatment (current state)
-    PLANNED = "planned"  # Planned (in budget, to be performed)
+    planned: decided but not yet done.
+    performed: executed (applies to treatments done in this clinic or pre-existing
+    findings discovered during diagnosis).
+    """
+
+    PLANNED = "planned"
+    PERFORMED = "performed"
 
 
 class TreatmentCategory(StrEnum):
@@ -134,9 +142,15 @@ class TreatmentCategory(StrEnum):
 
 
 class TreatmentType(StrEnum):
-    """Types of dental treatments organized by clinical category."""
+    """Clinical types of dental treatments.
 
-    # Diagnóstico (Diagnostic)
+    These drive visualization rules on the odontogram. Pricing, duration, human labels
+    and variants live in the catalog module. A `bridge` is a single clinical type
+    regardless of how many teeth it covers; pillar/pontic distinction is a per-tooth
+    role on TreatmentTooth, not a type.
+    """
+
+    # Diagnóstico (Diagnostic) — pre-existing findings, usually not billable.
     PULPITIS = "pulpitis"
     CARIES = "caries"
     INCIPIENT_CARIES = "incipient_caries"
@@ -159,9 +173,8 @@ class TreatmentType(StrEnum):
     INLAY = "inlay"
     OVERLAY = "overlay"
     CROWN = "crown"
-    PONTIC = "pontic"
-    BRIDGE_ABUTMENT = "bridge_abutment"
-    SPLINT = "splint"
+    BRIDGE = "bridge"  # Atomic multi-tooth. Roles (pillar/pontic) live on TreatmentTooth.
+    SPLINT = "splint"  # Atomic multi-tooth.
 
     # Cirugía (Surgery)
     EXTRACTION = "extraction"
@@ -181,11 +194,6 @@ class TreatmentType(StrEnum):
     BAND = "band"
     ATTACHMENT = "attachment"
     RETAINER = "retainer"
-
-    # Legacy aliases (for backwards compatibility during migration)
-    FILLING = "filling"  # Maps to filling_composite
-    ROOT_CANAL = "root_canal"  # Maps to root_canal_full
-    BRIDGE_PONTIC = "bridge_pontic"  # Maps to pontic
 
 
 class VisualizationRule(StrEnum):
@@ -232,9 +240,8 @@ TREATMENTS_BY_CATEGORY: Final[dict[str, list[str]]] = {
         TreatmentType.INLAY.value,
         TreatmentType.OVERLAY.value,
         TreatmentType.CROWN.value,
-        TreatmentType.PONTIC.value,
-        TreatmentType.BRIDGE_ABUTMENT.value,
-        TreatmentType.SPLINT.value,
+        TreatmentType.BRIDGE.value,  # atomic multi-tooth
+        TreatmentType.SPLINT.value,  # atomic multi-tooth
     ],
     TreatmentClinicalCategory.CIRUGIA.value: [
         TreatmentType.EXTRACTION.value,
@@ -304,10 +311,9 @@ TREATMENT_VISUALIZATION_RULES: Final[dict[str, list[str]]] = {
     VisualizationRule.PATTERN_FILL.value: [
         TreatmentType.UNERUPTED.value,
         TreatmentType.INLAY.value,
-        TreatmentType.PONTIC.value,
-        TreatmentType.BRIDGE_ABUTMENT.value,
         TreatmentType.OVERLAY.value,
         TreatmentType.CROWN.value,
+        TreatmentType.BRIDGE.value,
     ],
 }
 
@@ -323,8 +329,6 @@ SURFACE_TREATMENTS: Final[set[str]] = {
     TreatmentType.SEALANT.value,
     TreatmentType.VENEER.value,
     TreatmentType.INLAY.value,
-    # Legacy
-    TreatmentType.FILLING.value,
 }
 
 WHOLE_TOOTH_TREATMENTS: Final[set[str]] = {
@@ -339,8 +343,8 @@ WHOLE_TOOTH_TREATMENTS: Final[set[str]] = {
     TreatmentType.UNERUPTED.value,
     TreatmentType.OVERLAY.value,
     TreatmentType.CROWN.value,
-    TreatmentType.PONTIC.value,
-    TreatmentType.BRIDGE_ABUTMENT.value,
+    TreatmentType.BRIDGE.value,
+    TreatmentType.SPLINT.value,
     TreatmentType.EXTRACTION.value,
     TreatmentType.IMPLANT.value,
     TreatmentType.APICOECTOMY.value,
@@ -354,37 +358,28 @@ WHOLE_TOOTH_TREATMENTS: Final[set[str]] = {
     TreatmentType.BAND.value,
     TreatmentType.ATTACHMENT.value,
     TreatmentType.RETAINER.value,
+}
+
+
+# Treatments that are clinically atomic multi-tooth units. A Treatment with any of
+# these clinical types must have more than one TreatmentTooth and may carry per-tooth
+# roles (pillar/pontic on bridges).
+ATOMIC_MULTI_TOOTH_TYPES: Final[set[str]] = {
+    TreatmentType.BRIDGE.value,
     TreatmentType.SPLINT.value,
-    # Legacy
-    TreatmentType.ROOT_CANAL.value,
-    TreatmentType.BRIDGE_PONTIC.value,
 }
-
-
-# Legacy treatment type mapping (old -> new)
-LEGACY_TREATMENT_MAPPING: Final[dict[str, str]] = {
-    "filling": TreatmentType.FILLING_COMPOSITE.value,
-    "root_canal": TreatmentType.ROOT_CANAL_FULL.value,
-    "bridge_pontic": TreatmentType.PONTIC.value,
-}
-
-
-def normalize_treatment_type(treatment_type: str) -> str:
-    """Normalize legacy treatment type to new naming.
-
-    Returns the normalized type or the original if not a legacy type.
-    """
-    return LEGACY_TREATMENT_MAPPING.get(treatment_type, treatment_type)
 
 
 def get_visualization_rules(treatment_type: str) -> list[str]:
-    """Get the visualization rules for a treatment type."""
-    rules = []
-    normalized = normalize_treatment_type(treatment_type)
-    for rule, treatments in TREATMENT_VISUALIZATION_RULES.items():
-        if normalized in treatments:
-            rules.append(rule)
-    return rules
+    """Get the default visualization rules for a clinical type.
+
+    Fallback for treatments without a catalog_item_id (e.g. diagnostic findings).
+    """
+    return [
+        rule
+        for rule, treatments in TREATMENT_VISUALIZATION_RULES.items()
+        if treatment_type in treatments
+    ]
 
 
 def get_treatment_category(treatment_type: str) -> TreatmentCategory:
@@ -399,7 +394,7 @@ def is_valid_treatment_type(treatment_type: str) -> bool:
     return treatment_type in SURFACE_TREATMENTS or treatment_type in WHOLE_TOOTH_TREATMENTS
 
 
-# Color mapping for each condition (for frontend reference)
+# Color mapping for each condition (frontend reference).
 CONDITION_COLORS: Final[dict[str, str]] = {
     ToothCondition.HEALTHY.value: "#FFFFFF",
     ToothCondition.CARIES.value: "#EF4444",
@@ -408,8 +403,6 @@ CONDITION_COLORS: Final[dict[str, str]] = {
     ToothCondition.MISSING.value: "#9CA3AF",
     ToothCondition.ROOT_CANAL.value: "#8B5CF6",
     ToothCondition.IMPLANT.value: "#10B981",
-    ToothCondition.BRIDGE_PONTIC.value: "#F97316",
-    ToothCondition.BRIDGE_ABUTMENT.value: "#FBBF24",
     ToothCondition.EXTRACTION_INDICATED.value: "#DC2626",
     ToothCondition.SEALANT.value: "#06B6D4",
     ToothCondition.FRACTURE.value: "#BE185D",

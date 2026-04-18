@@ -51,6 +51,9 @@ const draftPlans = computed(() =>
 // Combined loading state
 const loading = computed(() => odontogramLoading.value || plansLoading.value)
 
+// Collapsible state for conditions block
+const conditionsCollapsed = ref(false)
+
 // ============================================================================
 // Lifecycle
 // ============================================================================
@@ -72,6 +75,10 @@ function handleToothHover(toothNumber: number | null) {
 
 function handleConditionHover(toothNumber: number | null) {
   hoveredTeeth.value = toothNumber ? [toothNumber] : []
+}
+
+async function handleTreatmentsChanged() {
+  await fetchTreatments(props.patientId)
 }
 </script>
 
@@ -106,14 +113,24 @@ function handleConditionHover(toothNumber: number | null) {
           mode="diagnosis"
           :highlighted-teeth-prop="hoveredTeeth"
           @tooth-hover="handleToothHover"
+          @treatments-changed="handleTreatmentsChanged"
         />
       </UCard>
 
       <!-- Registered conditions list -->
       <UCard>
         <template #header>
-          <div class="flex items-center justify-between">
+          <button
+            type="button"
+            class="w-full flex items-center justify-between gap-2 text-left"
+            :aria-expanded="!conditionsCollapsed"
+            @click="conditionsCollapsed = !conditionsCollapsed"
+          >
             <div class="flex items-center gap-2">
+              <UIcon
+                :name="conditionsCollapsed ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
+                class="w-4 h-4 text-gray-500 transition-transform"
+              />
               <UIcon
                 name="i-lucide-clipboard-list"
                 class="w-5 h-5"
@@ -127,10 +144,11 @@ function handleConditionHover(toothNumber: number | null) {
             >
               {{ conditions.length }}
             </UBadge>
-          </div>
+          </button>
         </template>
 
         <ConditionsList
+          v-if="!conditionsCollapsed"
           :conditions="conditions"
           :highlighted-teeth="hoveredTeeth"
           @tooth-hover="handleConditionHover"

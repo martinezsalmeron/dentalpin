@@ -616,7 +616,9 @@ async def test_catalog_item_with_odontogram_mapping(
             "odontogram_mapping": {
                 "odontogram_treatment_type": "crown",
                 "clinical_category": "restauradora",
-                "visualization_rules": ["outline"],
+                "visualization_rules": [
+                    {"layer": "cenital_pattern", "pattern": "outline", "color": "#3B82F6"}
+                ],
                 "visualization_config": {"color": "#3B82F6"},
             },
         },

@@ -5,7 +5,8 @@
  * Shows treatments added, modified, or completed on the selected date.
  */
 
-import type { Treatment } from '~/types'
+import type { ToothTreatmentView, Treatment } from '~/types'
+import { viewForTooth } from '~/utils/treatmentView'
 
 const props = defineProps<{
   changes: Treatment[]
@@ -13,30 +14,28 @@ const props = defineProps<{
 
 const { t } = useI18n()
 
-// Group changes by type
+// Flatten Treatment[] into per-tooth rows, then split added vs completed.
 const groupedChanges = computed(() => {
-  const added: Treatment[] = []
-  const completed: Treatment[] = []
-
+  const added: ToothTreatmentView[] = []
+  const completed: ToothTreatmentView[] = []
   for (const change of props.changes) {
-    if (change.performed_at) {
-      completed.push(change)
-    } else {
-      added.push(change)
+    for (const tooth of change.teeth) {
+      const v = viewForTooth(change, tooth.tooth_number)
+      if (!v) continue
+      if (v.performed_at) completed.push(v)
+      else added.push(v)
     }
   }
-
   return { added, completed }
 })
 
-function getTreatmentLabel(treatment: Treatment): string {
-  // Try i18n first
+function getTreatmentLabel(treatment: ToothTreatmentView): string {
   const key = `odontogram.treatments.types.${treatment.treatment_type}`
   const translated = t(key, treatment.treatment_type)
   return translated !== key ? translated : treatment.treatment_type
 }
 
-function formatToothInfo(treatment: Treatment): string {
+function formatToothInfo(treatment: ToothTreatmentView): string {
   let info = `${t('clinical.tooth')} ${treatment.tooth_number}`
   if (treatment.surfaces && treatment.surfaces.length > 0) {
     info += ` (${treatment.surfaces.join(', ')})`

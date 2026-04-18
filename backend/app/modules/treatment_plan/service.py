@@ -10,10 +10,16 @@ from sqlalchemy.orm import selectinload
 
 from app.core.events import event_bus
 from app.modules.clinical.models import Patient
+from app.modules.odontogram.models import Treatment
 
 from .models import PlannedTreatmentItem, TreatmentMedia, TreatmentPlan
 
 logger = logging.getLogger(__name__)
+
+
+def _treatment_loader() -> selectinload:
+    """Eager-load the Treatment (with teeth + catalog_item)."""
+    return selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
 
 
 class TreatmentPlanService:
@@ -70,9 +76,7 @@ class TreatmentPlanService:
             base_where.append(TreatmentPlan.status == status)
 
         # Count
-        count_result = await db.execute(
-            select(func.count(TreatmentPlan.id)).where(*base_where)
-        )
+        count_result = await db.execute(select(func.count(TreatmentPlan.id)).where(*base_where))
         total = count_result.scalar_one()
 
         # Query with relationships
@@ -82,9 +86,12 @@ class TreatmentPlanService:
             .options(
                 selectinload(TreatmentPlan.patient),
                 selectinload(TreatmentPlan.budget),
-                selectinload(TreatmentPlan.items).selectinload(
-                    PlannedTreatmentItem.catalog_item
-                ),
+                selectinload(TreatmentPlan.items)
+                .selectinload(PlannedTreatmentItem.treatment)
+                .selectinload(Treatment.teeth),
+                selectinload(TreatmentPlan.items)
+                .selectinload(PlannedTreatmentItem.treatment)
+                .selectinload(Treatment.catalog_item),
             )
             .order_by(TreatmentPlan.created_at.desc())
             .offset(offset)
@@ -112,12 +119,12 @@ class TreatmentPlanService:
             .options(
                 selectinload(TreatmentPlan.patient),
                 selectinload(TreatmentPlan.budget),
-                selectinload(TreatmentPlan.items).selectinload(
-                    PlannedTreatmentItem.tooth_treatment
-                ),
-                selectinload(TreatmentPlan.items).selectinload(
-                    PlannedTreatmentItem.catalog_item
-                ),
+                selectinload(TreatmentPlan.items)
+                .selectinload(PlannedTreatmentItem.treatment)
+                .selectinload(Treatment.teeth),
+                selectinload(TreatmentPlan.items)
+                .selectinload(PlannedTreatmentItem.treatment)
+                .selectinload(Treatment.catalog_item),
                 selectinload(TreatmentPlan.items).selectinload(PlannedTreatmentItem.media),
             )
         )
@@ -258,7 +265,7 @@ class TreatmentPlanService:
         plan_id: UUID,
         data: dict,
     ) -> PlannedTreatmentItem:
-        """Add a treatment item to the plan."""
+        """Add a Treatment to the plan as a new item."""
         plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
         if not plan:
             raise ValueError("Treatment plan not found")
@@ -266,11 +273,20 @@ class TreatmentPlanService:
         if plan.status not in ("draft", "active"):
             raise ValueError("Cannot add items to a completed/cancelled plan")
 
-        tooth_treatment_id = data.get("tooth_treatment_id")
-        catalog_item_id = data.get("catalog_item_id")
-        is_global = data.get("is_global", False)
+        treatment_id = data.get("treatment_id")
+        if treatment_id is None:
+            raise ValueError("treatment_id is required")
 
-        # Determine sequence order
+        # Validate the Treatment exists for this clinic/patient.
+        treatment = await db.get(Treatment, treatment_id)
+        if (
+            not treatment
+            or treatment.clinic_id != clinic_id
+            or treatment.patient_id != plan.patient_id
+            or treatment.deleted_at is not None
+        ):
+            raise ValueError("Invalid treatment for this plan")
+
         sequence_order = data.get("sequence_order")
         if sequence_order is None:
             result = await db.execute(
@@ -284,27 +300,31 @@ class TreatmentPlanService:
         item = PlannedTreatmentItem(
             clinic_id=clinic_id,
             treatment_plan_id=plan_id,
-            tooth_treatment_id=tooth_treatment_id,
-            catalog_item_id=catalog_item_id,
-            is_global=is_global,
+            treatment_id=treatment_id,
             sequence_order=sequence_order,
             notes=data.get("notes"),
         )
         db.add(item)
         await db.flush()
 
-        # Eagerly load relationships for response serialization
-        await db.refresh(item, attribute_names=["tooth_treatment", "catalog_item", "media"])
+        # Re-fetch with eager-loaded treatment.teeth / .catalog_item for the response.
+        reloaded = await db.execute(
+            select(PlannedTreatmentItem)
+            .options(
+                selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth),
+                selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.catalog_item),
+                selectinload(PlannedTreatmentItem.media),
+            )
+            .where(PlannedTreatmentItem.id == item.id)
+        )
+        item = reloaded.scalar_one()
 
-        # Publish event for other modules
         event_bus.publish(
             "treatment_plan.treatment_added",
             {
                 "plan_id": str(plan_id),
                 "item_id": str(item.id),
-                "tooth_treatment_id": str(tooth_treatment_id) if tooth_treatment_id else None,
-                "catalog_item_id": str(catalog_item_id) if catalog_item_id else None,
-                "is_global": is_global,
+                "treatment_id": str(treatment_id),
                 "clinic_id": str(clinic_id),
                 "patient_id": str(plan.patient_id),
             },
@@ -320,7 +340,7 @@ class TreatmentPlanService:
         item_id: UUID,
         data: dict,
     ) -> PlannedTreatmentItem | None:
-        """Update a planned treatment item."""
+        """Update scheduling metadata on a planned treatment item."""
         result = await db.execute(
             select(PlannedTreatmentItem)
             .where(
@@ -329,8 +349,7 @@ class TreatmentPlanService:
                 PlannedTreatmentItem.clinic_id == clinic_id,
             )
             .options(
-                selectinload(PlannedTreatmentItem.tooth_treatment),
-                selectinload(PlannedTreatmentItem.catalog_item),
+                _treatment_loader(),
                 selectinload(PlannedTreatmentItem.media),
             )
         )
@@ -363,17 +382,15 @@ class TreatmentPlanService:
         if not item:
             return False
 
-        tooth_treatment_id = item.tooth_treatment_id
-
+        treatment_id = item.treatment_id
         await db.delete(item)
 
-        # Publish event
         event_bus.publish(
             "treatment_plan.treatment_removed",
             {
                 "plan_id": str(plan_id),
                 "item_id": str(item_id),
-                "tooth_treatment_id": str(tooth_treatment_id) if tooth_treatment_id else None,
+                "treatment_id": str(treatment_id),
                 "clinic_id": str(clinic_id),
             },
         )
@@ -390,7 +407,7 @@ class TreatmentPlanService:
         completed_without_appointment: bool = True,
         notes: str | None = None,
     ) -> PlannedTreatmentItem | None:
-        """Mark an item as completed."""
+        """Mark a plan item as completed and perform the underlying Treatment."""
         result = await db.execute(
             select(PlannedTreatmentItem)
             .where(
@@ -399,8 +416,7 @@ class TreatmentPlanService:
                 PlannedTreatmentItem.clinic_id == clinic_id,
             )
             .options(
-                selectinload(PlannedTreatmentItem.tooth_treatment),
-                selectinload(PlannedTreatmentItem.catalog_item),
+                _treatment_loader(),
                 selectinload(PlannedTreatmentItem.media),
             )
         )
@@ -409,7 +425,7 @@ class TreatmentPlanService:
             return None
 
         if item.status == "completed":
-            return item  # Already completed
+            return item
 
         item.status = "completed"
         item.completed_at = datetime.now(UTC)
@@ -418,23 +434,29 @@ class TreatmentPlanService:
         if notes:
             item.notes = notes
 
-        # Publish event for odontogram to update ToothTreatment status
+        # Propagate to the Treatment so the odontogram reflects performed state.
+        from app.modules.odontogram.service import TreatmentService
+
+        await TreatmentService.perform(
+            db=db,
+            clinic_id=clinic_id,
+            treatment_id=item.treatment_id,
+            user_id=user_id,
+            notes=notes,
+        )
+
         event_bus.publish(
             "treatment_plan.treatment_completed",
             {
                 "plan_id": str(plan_id),
                 "item_id": str(item_id),
-                "tooth_treatment_id": str(item.tooth_treatment_id)
-                if item.tooth_treatment_id
-                else None,
+                "treatment_id": str(item.treatment_id),
                 "clinic_id": str(clinic_id),
                 "completed_by": str(user_id),
             },
         )
 
-        # Auto-complete plan if all items are now completed
         await TreatmentPlanService._check_and_complete_plan(db, clinic_id, plan_id)
-
         return item
 
     @staticmethod

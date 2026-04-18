@@ -6,7 +6,8 @@
  * Supports hover linking with odontogram.
  */
 
-import type { Treatment } from '~/types'
+import type { ToothTreatmentView, Treatment } from '~/types'
+import { viewForTooth } from '~/utils/treatmentView'
 
 const props = defineProps<{
   conditions: Treatment[]
@@ -19,30 +20,26 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// Group conditions by tooth
+// Flatten Treatment[] into per-tooth views and group by tooth number.
 const groupedByTooth = computed(() => {
-  const groups = new Map<number, Treatment[]>()
-
-  for (const condition of props.conditions) {
-    if (condition.tooth_number) {
-      const existing = groups.get(condition.tooth_number) || []
-      existing.push(condition)
-      groups.set(condition.tooth_number, existing)
+  const groups = new Map<number, ToothTreatmentView[]>()
+  for (const treatment of props.conditions) {
+    for (const tooth of treatment.teeth) {
+      const v = viewForTooth(treatment, tooth.tooth_number)
+      if (!v) continue
+      const existing = groups.get(v.tooth_number) || []
+      existing.push(v)
+      groups.set(v.tooth_number, existing)
     }
   }
-
-  // Sort by tooth number
   return Array.from(groups.entries())
     .sort(([a], [b]) => a - b)
     .map(([toothNumber, treatments]) => ({ toothNumber, treatments }))
 })
 
-// General conditions (no specific tooth)
-const generalConditions = computed(() =>
-  props.conditions.filter(c => !c.tooth_number)
-)
+const generalConditions = computed<ToothTreatmentView[]>(() => [])
 
-function getTreatmentLabel(treatment: Treatment): string {
+function getTreatmentLabel(treatment: ToothTreatmentView): string {
   const key = `odontogram.treatments.types.${treatment.treatment_type}`
   const translated = t(key, treatment.treatment_type)
   return translated !== key ? translated : treatment.treatment_type
@@ -59,7 +56,7 @@ function isHighlighted(toothNumber: number): boolean {
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div>
     <!-- No conditions -->
     <div
       v-if="conditions.length === 0"
@@ -77,46 +74,54 @@ function isHighlighted(toothNumber: number): boolean {
       </p>
     </div>
 
-    <!-- Conditions by tooth -->
-    <div
-      v-for="group in groupedByTooth"
-      :key="group.toothNumber"
-      class="p-3 rounded-lg border transition-colors"
-      :class="{
-        'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700': isHighlighted(group.toothNumber),
-        'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700': !isHighlighted(group.toothNumber)
-      }"
-      @mouseenter="emit('tooth-hover', group.toothNumber)"
-      @mouseleave="emit('tooth-hover', null)"
+    <!-- Conditions by tooth: one compact row per tooth -->
+    <ul
+      v-else
+      class="divide-y divide-gray-100 dark:divide-gray-800"
     >
-      <div class="flex items-center gap-2 mb-2">
-        <UIcon
-          name="i-lucide-circle-dot"
-          class="w-4 h-4 text-gray-500"
-        />
-        <span class="font-medium">{{ t('clinical.tooth') }} {{ group.toothNumber }}</span>
-      </div>
-      <ul class="ml-6 space-y-1">
-        <li
-          v-for="condition in group.treatments"
-          :key="condition.id"
-          class="flex items-center gap-2 text-sm"
+      <li
+        v-for="group in groupedByTooth"
+        :key="group.toothNumber"
+        class="flex items-center gap-3 py-2 px-2 rounded-md transition-colors cursor-default"
+        :class="{
+          'bg-yellow-50 dark:bg-yellow-900/20': isHighlighted(group.toothNumber),
+          'hover:bg-gray-50 dark:hover:bg-gray-800/60': !isHighlighted(group.toothNumber)
+        }"
+        @mouseenter="emit('tooth-hover', group.toothNumber)"
+        @mouseleave="emit('tooth-hover', null)"
+      >
+        <span
+          class="inline-flex items-center justify-center min-w-[2.25rem] h-7 px-2 rounded text-xs font-semibold tabular-nums bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
         >
-          <span>{{ getTreatmentLabel(condition) }}</span>
-          <span
-            v-if="condition.surfaces?.length"
-            class="text-gray-500 dark:text-gray-400"
+          {{ group.toothNumber }}
+        </span>
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm flex-1 min-w-0">
+          <template
+            v-for="(condition, idx) in group.treatments"
+            :key="condition.id"
           >
-            {{ formatSurfaces(condition.surfaces) }}
-          </span>
-        </li>
-      </ul>
-    </div>
+            <span class="flex items-baseline gap-1">
+              <span>{{ getTreatmentLabel(condition) }}</span>
+              <span
+                v-if="condition.surfaces?.length"
+                class="text-xs text-gray-500 dark:text-gray-400 tabular-nums"
+              >
+                {{ formatSurfaces(condition.surfaces) }}
+              </span>
+            </span>
+            <span
+              v-if="idx < group.treatments.length - 1"
+              class="text-gray-300 dark:text-gray-600"
+            >·</span>
+          </template>
+        </div>
+      </li>
+    </ul>
 
     <!-- General conditions (no tooth) -->
     <div
       v-if="generalConditions.length > 0"
-      class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+      class="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
     >
       <div class="flex items-center gap-2 mb-2">
         <UIcon

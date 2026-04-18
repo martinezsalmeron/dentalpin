@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Treatment } from '~/types'
 import { getToothNameKey, getToothPositionKeys, TREATMENT_COLORS } from '~/config/odontogramConstants'
+import { viewForTooth } from '~/utils/treatmentView'
 
 const props = defineProps<{
   treatments: Treatment[]
@@ -10,9 +11,16 @@ const { t } = useI18n()
 
 const isExpanded = ref(false)
 
-// Sort treatments by date (most recent first) and group by tooth
+// Flatten Treatment[] into per-tooth rows and sort by performed_at / recorded_at desc.
 const sortedTreatments = computed(() => {
-  return [...props.treatments].sort((a, b) => {
+  const rows = []
+  for (const treatment of props.treatments) {
+    for (const tooth of treatment.teeth) {
+      const v = viewForTooth(treatment, tooth.tooth_number)
+      if (v) rows.push(v)
+    }
+  }
+  return rows.sort((a, b) => {
     const dateA = new Date(a.performed_at || a.recorded_at).getTime()
     const dateB = new Date(b.performed_at || b.recorded_at).getTime()
     return dateB - dateA

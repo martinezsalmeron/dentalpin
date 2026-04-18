@@ -292,9 +292,7 @@ def downgrade() -> None:
     op.drop_column("treatment_catalog_items", "billing_mode")
 
     # Remove columns from appointment_treatments
-    op.drop_index(
-        "idx_appointment_treatments_planned_item", table_name="appointment_treatments"
-    )
+    op.drop_index("idx_appointment_treatments_planned_item", table_name="appointment_treatments")
     op.drop_column("appointment_treatments", "notes")
     op.drop_column("appointment_treatments", "completed_in_appointment")
     op.drop_column("appointment_treatments", "planned_treatment_item_id")

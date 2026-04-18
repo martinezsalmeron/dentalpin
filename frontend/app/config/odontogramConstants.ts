@@ -478,10 +478,10 @@ export const TREATMENT_CATEGORIES: Array<{
       'veneer',
       'inlay',
       'overlay',
-      'crown',
-      'pontic',
-      'bridge_abutment',
-      'splint'
+      'crown'
+      // pontic, bridge_abutment and splint are exposed via the Multi-tooth section
+      // of the TreatmentBar, not as standalone buttons. They are only valid inside
+      // a treatment group.
     ]
   },
   {
@@ -625,7 +625,8 @@ export const MULTI_TOOTH_TREATMENTS: Record<string, MultiToothTreatmentConfig> =
     selectionMode: 'range',
     minTeeth: 3,
     maxTeeth: 14,
-    requiresSameArch: true
+    requiresSameArch: true,
+    category: 'restauradora'
   },
   splint: {
     key: 'splint',
@@ -634,7 +635,8 @@ export const MULTI_TOOTH_TREATMENTS: Record<string, MultiToothTreatmentConfig> =
     selectionMode: 'free',
     minTeeth: 2,
     maxTeeth: 14,
-    requiresSameArch: true
+    requiresSameArch: true,
+    category: 'restauradora'
   },
   multiple_veneers: {
     key: 'veneer',
@@ -643,7 +645,8 @@ export const MULTI_TOOTH_TREATMENTS: Record<string, MultiToothTreatmentConfig> =
     selectionMode: 'free',
     minTeeth: 2,
     maxTeeth: 10,
-    requiresSameArch: false
+    requiresSameArch: false,
+    category: 'restauradora'
   },
   multiple_crowns: {
     key: 'crown',
@@ -652,7 +655,8 @@ export const MULTI_TOOTH_TREATMENTS: Record<string, MultiToothTreatmentConfig> =
     selectionMode: 'free',
     minTeeth: 2,
     maxTeeth: 28,
-    requiresSameArch: false
+    requiresSameArch: false,
+    category: 'restauradora'
   }
 }
 
@@ -662,6 +666,49 @@ export function getMultiToothConfig(key: string): MultiToothTreatmentConfig | nu
 
 export function isMultiToothTreatment(key: string): boolean {
   return key in MULTI_TOOTH_TREATMENTS
+}
+
+/**
+ * Treatment types that exist only as inner members of a multi-tooth group and never
+ * as a standalone clinical act (a "pontic" alone makes no sense — it's only valid
+ * inside a bridge). The TreatmentBar hides these even if the catalog exposes them.
+ *
+ * Note: `bridge` and `splint` are NOT here — they are atomic multi-tooth types and
+ * the TreatmentBar renders them as clickable catalog buttons that enter multi-tooth
+ * selection mode immediately.
+ */
+export const MULTI_TOOTH_ONLY_TYPES: ReadonlySet<string> = new Set([
+  'pontic',
+  'bridge_abutment'
+])
+
+/**
+ * Atomic multi-tooth types: a single Treatment of this type spans ≥2 teeth and
+ * cannot exist on a single tooth. Clicking a catalog button of this type enters
+ * multi-tooth selection mode immediately (no single/multi toggle).
+ */
+export const ATOMIC_MULTI_TOOTH_TYPES: ReadonlySet<string> = new Set([
+  'bridge',
+  'splint'
+])
+
+/**
+ * Types that support BOTH single-tooth and multi-tooth uniform application. A user
+ * picks the catalog variant first, then a dropdown lets them choose how many teeth
+ * to apply it to. Maps the single-tooth type to the corresponding wrapper key in
+ * MULTI_TOOTH_TREATMENTS.
+ */
+export const MULTI_TOOTH_WRAPPER_BY_TYPE: Readonly<Record<string, string>> = {
+  crown: 'multiple_crowns',
+  veneer: 'multiple_veneers'
+}
+
+export function supportsBothModes(odontogramType: string): boolean {
+  return odontogramType in MULTI_TOOTH_WRAPPER_BY_TYPE
+}
+
+export function isMultiToothOnlyType(treatmentType: string): boolean {
+  return MULTI_TOOTH_ONLY_TYPES.has(treatmentType)
 }
 
 /**

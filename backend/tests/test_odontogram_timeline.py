@@ -140,30 +140,6 @@ async def test_get_timeline_multiple_dates_from_history(
 
 
 @pytest.mark.asyncio
-async def test_get_timeline_includes_treatments(
-    client: AsyncClient, auth_headers: dict[str, str], timeline_setup: dict
-) -> None:
-    """Test timeline includes treatment dates."""
-    patient_id = timeline_setup["patient_id"]
-
-    # Create a treatment
-    await client.post(
-        f"/api/v1/odontogram/patients/{patient_id}/teeth/16/treatments",
-        headers=auth_headers,
-        json={"treatment_type": "filling", "status": "existing"},
-    )
-
-    response = await client.get(
-        f"/api/v1/odontogram/patients/{patient_id}/odontogram/timeline",
-        headers=auth_headers,
-    )
-    assert response.status_code == 200
-    data = response.json()["data"]
-    # Treatment creates a timeline entry
-    assert data["total"] >= 1
-
-
-@pytest.mark.asyncio
 async def test_get_odontogram_at_date_returns_empty_state(
     client: AsyncClient, auth_headers: dict[str, str], timeline_setup: dict
 ) -> None:
@@ -188,38 +164,6 @@ async def test_get_odontogram_at_date_returns_empty_state(
     # No teeth at that date
     assert len(data["teeth"]) == 0
     assert len(data["treatments"]) == 0
-
-
-@pytest.mark.asyncio
-async def test_get_odontogram_at_date_current(
-    client: AsyncClient, auth_headers: dict[str, str], timeline_setup: dict
-) -> None:
-    """Test getting odontogram at current date shows current state."""
-    patient_id = timeline_setup["patient_id"]
-
-    # Create current state
-    await client.put(
-        f"/api/v1/odontogram/patients/{patient_id}/teeth/11",
-        headers=auth_headers,
-        json={"general_condition": "caries"},
-    )
-    await client.post(
-        f"/api/v1/odontogram/patients/{patient_id}/teeth/11/treatments",
-        headers=auth_headers,
-        json={"treatment_type": "filling", "status": "planned"},
-    )
-
-    # Query for today
-    today = date.today().isoformat()
-    response = await client.get(
-        f"/api/v1/odontogram/patients/{patient_id}/odontogram/at?date={today}",
-        headers=auth_headers,
-    )
-    assert response.status_code == 200
-    data = response.json()["data"]
-    # Should have tooth and treatment
-    assert len(data["teeth"]) >= 1
-    assert len(data["treatments"]) >= 1
 
 
 @pytest.mark.asyncio

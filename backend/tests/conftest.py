@@ -33,7 +33,8 @@ from app.modules.media.models import Document  # noqa: F401
 from app.modules.odontogram.models import (  # noqa: F401
     OdontogramHistory,
     ToothRecord,
-    ToothTreatment,
+    Treatment,
+    TreatmentTooth,
 )
 from app.modules.treatment_plan.models import (  # noqa: F401
     PlannedTreatmentItem,

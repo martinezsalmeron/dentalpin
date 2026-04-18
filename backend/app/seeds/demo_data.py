@@ -1187,167 +1187,129 @@ def _get_patient_teeth(patient_dob: date) -> list[int]:
 
 
 # Realistic odontogram scenarios for different patient profiles
+def _single(
+    clinical_type: str, tooth: int, *, surfaces: list[str] | None = None, status: str = "performed"
+) -> dict:
+    """Shortcut for single-tooth Treatment dicts in ODONTOGRAM_PROFILES."""
+    return {
+        "clinical_type": clinical_type,
+        "status": status,
+        "teeth": [{"tooth": tooth, "role": None, "surfaces": surfaces}],
+    }
+
+
 ODONTOGRAM_PROFILES = {
-    # Profiles for adults with different dental histories
+    # Each profile holds:
+    #   tooth_conditions: {tooth_number: condition} — applied to ToothRecord.general_condition.
+    #   treatments: list of {clinical_type, status, teeth: [{tooth, role, surfaces}]}.
     "healthy_adult": {
         "description": "Adult with good dental health",
-        "tooth_conditions": {},  # All healthy
+        "tooth_conditions": {},
         "treatments": [],
     },
     "adult_with_fillings": {
         "description": "Adult with common fillings",
         "tooth_conditions": {},
         "treatments": [
-            # Molars with composite fillings
-            {"tooth": 16, "type": "filling_composite", "surfaces": ["O"], "status": "existing"},
-            {
-                "tooth": 26,
-                "type": "filling_composite",
-                "surfaces": ["M", "O"],
-                "status": "existing",
-            },
-            {
-                "tooth": 36,
-                "type": "filling_composite",
-                "surfaces": ["O", "D"],
-                "status": "existing",
-            },
-            {"tooth": 46, "type": "filling_amalgam", "surfaces": ["O"], "status": "existing"},
-            # Planned treatment
-            {"tooth": 47, "type": "caries", "surfaces": ["O"], "status": "planned"},
+            _single("filling_composite", 16, surfaces=["O"]),
+            _single("filling_composite", 26, surfaces=["M", "O"]),
+            _single("filling_composite", 36, surfaces=["O", "D"]),
+            _single("filling_amalgam", 46, surfaces=["O"]),
+            _single("filling_composite", 47, surfaces=["O"], status="planned"),
         ],
     },
     "adult_with_crowns": {
         "description": "Adult with crowns and root canals",
         "tooth_conditions": {},
         "treatments": [
-            # Root canal + crown
-            {"tooth": 36, "type": "root_canal_full", "surfaces": None, "status": "existing"},
-            {"tooth": 36, "type": "crown", "surfaces": None, "status": "existing"},
-            # Another crown
-            {"tooth": 46, "type": "crown", "surfaces": None, "status": "existing"},
-            # Fillings
-            {
-                "tooth": 17,
-                "type": "filling_composite",
-                "surfaces": ["O", "D"],
-                "status": "existing",
-            },
-            {
-                "tooth": 27,
-                "type": "filling_composite",
-                "surfaces": ["M", "O"],
-                "status": "existing",
-            },
-            # Planned crown
-            {"tooth": 26, "type": "crown", "surfaces": None, "status": "planned"},
+            _single("root_canal_full", 36),
+            _single("crown", 36),
+            _single("crown", 46),
+            _single("filling_composite", 17, surfaces=["O", "D"]),
+            _single("filling_composite", 27, surfaces=["M", "O"]),
+            _single("crown", 26, status="planned"),
         ],
     },
     "adult_with_implant": {
         "description": "Adult with implant",
-        "tooth_conditions": {
-            36: "missing",  # Missing tooth replaced by implant
-        },
+        "tooth_conditions": {36: "missing"},
         "treatments": [
-            {"tooth": 36, "type": "implant", "surfaces": None, "status": "existing"},
-            # Other treatments
-            {"tooth": 16, "type": "filling_composite", "surfaces": ["O"], "status": "existing"},
-            {
-                "tooth": 26,
-                "type": "filling_composite",
-                "surfaces": ["M", "O"],
-                "status": "existing",
-            },
-            {"tooth": 46, "type": "filling_amalgam", "surfaces": ["O", "D"], "status": "existing"},
+            _single("implant", 36),
+            _single("filling_composite", 16, surfaces=["O"]),
+            _single("filling_composite", 26, surfaces=["M", "O"]),
+            _single("filling_amalgam", 46, surfaces=["O", "D"]),
         ],
     },
     "adult_with_bridge": {
-        "description": "Adult with dental bridge",
-        "tooth_conditions": {
-            35: "missing",  # Pontic location
-        },
+        "description": "Adult with dental bridge 34-35-36",
+        "tooth_conditions": {35: "missing"},
         "treatments": [
-            # Bridge: 34 abutment, 35 pontic, 36 abutment
-            {"tooth": 34, "type": "bridge_abutment", "surfaces": None, "status": "existing"},
-            {"tooth": 35, "type": "pontic", "surfaces": None, "status": "existing"},
-            {"tooth": 36, "type": "bridge_abutment", "surfaces": None, "status": "existing"},
-            # Other fillings
-            {"tooth": 16, "type": "filling_composite", "surfaces": ["O"], "status": "existing"},
             {
-                "tooth": 47,
-                "type": "filling_composite",
-                "surfaces": ["M", "O", "D"],
-                "status": "existing",
+                "clinical_type": "bridge",
+                "status": "performed",
+                "teeth": [
+                    {"tooth": 34, "role": "pillar", "surfaces": None},
+                    {"tooth": 35, "role": "pontic", "surfaces": None},
+                    {"tooth": 36, "role": "pillar", "surfaces": None},
+                ],
             },
+            _single("filling_composite", 16, surfaces=["O"]),
+            _single("filling_composite", 47, surfaces=["M", "O", "D"]),
         ],
     },
     "adult_needs_work": {
         "description": "Adult needing multiple treatments",
         "tooth_conditions": {},
         "treatments": [
-            # Existing treatments
-            {"tooth": 16, "type": "filling_composite", "surfaces": ["O"], "status": "existing"},
-            {"tooth": 36, "type": "filling_amalgam", "surfaces": ["O", "D"], "status": "existing"},
-            # Multiple planned treatments
-            {"tooth": 17, "type": "caries", "surfaces": ["O", "D"], "status": "planned"},
-            {"tooth": 26, "type": "caries", "surfaces": ["M"], "status": "planned"},
-            {"tooth": 37, "type": "crown", "surfaces": None, "status": "planned"},
-            {"tooth": 46, "type": "root_canal_full", "surfaces": None, "status": "planned"},
+            _single("filling_composite", 16, surfaces=["O"]),
+            _single("filling_amalgam", 36, surfaces=["O", "D"]),
+            _single("filling_composite", 17, surfaces=["O", "D"], status="planned"),
+            _single("filling_composite", 26, surfaces=["M"], status="planned"),
+            _single("crown", 37, status="planned"),
+            _single("root_canal_full", 46, status="planned"),
         ],
     },
     "orthodontic_patient": {
         "description": "Patient with orthodontic treatment",
         "tooth_conditions": {},
         "treatments": [
-            # Brackets on anterior teeth
-            {"tooth": 13, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 12, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 11, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 21, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 22, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 23, "type": "bracket", "surfaces": None, "status": "existing"},
-            # Tubes on molars
-            {"tooth": 16, "type": "tube", "surfaces": None, "status": "existing"},
-            {"tooth": 26, "type": "tube", "surfaces": None, "status": "existing"},
-            # Lower brackets
-            {"tooth": 33, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 32, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 31, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 41, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 42, "type": "bracket", "surfaces": None, "status": "existing"},
-            {"tooth": 43, "type": "bracket", "surfaces": None, "status": "existing"},
-            # Displaced teeth markers
-            {"tooth": 23, "type": "rotated", "surfaces": None, "status": "existing"},
-            {"tooth": 13, "type": "displaced", "surfaces": None, "status": "existing"},
+            _single("bracket", 13),
+            _single("bracket", 12),
+            _single("bracket", 11),
+            _single("bracket", 21),
+            _single("bracket", 22),
+            _single("bracket", 23),
+            _single("tube", 16),
+            _single("tube", 26),
+            _single("bracket", 33),
+            _single("bracket", 32),
+            _single("bracket", 31),
+            _single("bracket", 41),
+            _single("bracket", 42),
+            _single("bracket", 43),
         ],
+        # Positional flags are handled via tooth_conditions — no need to emit
+        # pseudo-treatments for 'rotated'/'displaced'.
+        "positional": {23: {"is_rotated": True}, 13: {"is_displaced": True}},
     },
-    # Profiles for children
     "healthy_child": {
         "description": "Child with healthy deciduous teeth",
         "tooth_conditions": {},
         "treatments": [
-            # Sealants on molars (preventive)
-            {"tooth": 54, "type": "sealant", "surfaces": ["O"], "status": "existing"},
-            {"tooth": 64, "type": "sealant", "surfaces": ["O"], "status": "existing"},
-            {"tooth": 74, "type": "sealant", "surfaces": ["O"], "status": "existing"},
-            {"tooth": 84, "type": "sealant", "surfaces": ["O"], "status": "existing"},
+            _single("sealant", 54, surfaces=["O"]),
+            _single("sealant", 64, surfaces=["O"]),
+            _single("sealant", 74, surfaces=["O"]),
+            _single("sealant", 84, surfaces=["O"]),
         ],
     },
     "child_with_caries": {
-        "description": "Child with some caries and fillings",
+        "description": "Child with fillings and planned restorations",
         "tooth_conditions": {},
         "treatments": [
-            # Existing fillings
-            {"tooth": 54, "type": "filling_composite", "surfaces": ["O"], "status": "existing"},
-            {
-                "tooth": 74,
-                "type": "filling_composite",
-                "surfaces": ["O", "D"],
-                "status": "existing",
-            },
-            # Planned treatments
-            {"tooth": 64, "type": "caries", "surfaces": ["O"], "status": "planned"},
-            {"tooth": 84, "type": "caries", "surfaces": ["M", "O"], "status": "planned"},
+            _single("filling_composite", 54, surfaces=["O"]),
+            _single("filling_composite", 74, surfaces=["O", "D"]),
+            _single("filling_composite", 64, surfaces=["O"], status="planned"),
+            _single("filling_composite", 84, surfaces=["M", "O"], status="planned"),
         ],
     },
 }
@@ -1380,10 +1342,12 @@ def generate_odontogram_data() -> dict:
     Returns:
         Dictionary with:
         - tooth_records: List of ToothRecord data
-        - treatments: List of ToothTreatment data
+        - treatments: List of Treatment headers
+        - treatment_teeth: List of TreatmentTooth children
     """
     tooth_records = []
     treatments = []
+    treatment_teeth = []
     patients_data = get_patients_data()
 
     tooth_record_idx = 0
@@ -1434,67 +1398,62 @@ def generate_odontogram_data() -> dict:
             patient_tooth_records[tooth_number] = record
 
         # Create treatments
-        for treatment_data in profile["treatments"]:
-            tooth_number = treatment_data["tooth"]
+        # Apply explicit positional flags if the profile sets them.
+        for tooth_num, flags in profile.get("positional", {}).items():
+            rec = patient_tooth_records.get(tooth_num)
+            if rec:
+                rec.update(flags)
 
-            # Skip if tooth doesn't exist for this patient (e.g., adult treatment for child)
-            if tooth_number not in patient_tooth_records:
+        for treatment_def in profile["treatments"]:
+            # Skip treatments whose teeth don't exist for this patient.
+            teeth_defs = treatment_def["teeth"]
+            if any(t["tooth"] not in patient_tooth_records for t in teeth_defs):
                 continue
-
-            tooth_record = patient_tooth_records[tooth_number]
-
-            # Determine treatment category
-            surface_treatments = {
-                "caries",
-                "incipient_caries",
-                "pigmentation",
-                "filling_composite",
-                "filling_amalgam",
-                "filling_temporary",
-                "sealant",
-                "veneer",
-                "inlay",
-            }
-            treatment_category = (
-                "surface" if treatment_data["type"] in surface_treatments else "whole_tooth"
-            )
 
             treatment_id = TREATMENT_IDS[treatment_idx]
             treatment_idx += 1
 
-            treatment = {
-                "id": treatment_id,
-                "clinic_id": CLINIC_ID,
-                "patient_id": patient_id,
-                "tooth_record_id": tooth_record["id"],
-                "tooth_number": tooth_number,
-                "treatment_type": treatment_data["type"],
-                "treatment_category": treatment_category,
-                "surfaces": treatment_data["surfaces"],
-                "status": treatment_data["status"],
-                "recorded_at": datetime.now() - timedelta(days=30),
-                "performed_at": datetime.now() - timedelta(days=30)
-                if treatment_data["status"] == "existing"
-                else None,
-                "performed_by": USER_DENTIST_ID if treatment_data["status"] == "existing" else None,
-                "catalog_item_id": None,
-                "budget_item_id": None,
-                "source_module": "odontogram",
-                "notes": None,
-                "deleted_at": None,
-            }
+            status = treatment_def["status"]
+            recorded_at = datetime.now() - timedelta(days=30)
+            performed_at = recorded_at if status == "performed" else None
 
-            treatments.append(treatment)
+            treatments.append(
+                {
+                    "id": treatment_id,
+                    "clinic_id": CLINIC_ID,
+                    "patient_id": patient_id,
+                    "clinical_type": treatment_def["clinical_type"],
+                    "catalog_item_id": None,
+                    "status": status,
+                    "recorded_at": recorded_at,
+                    "performed_at": performed_at,
+                    "performed_by": USER_DENTIST_ID if status == "performed" else None,
+                    "price_snapshot": None,
+                    "currency_snapshot": None,
+                    "duration_snapshot": None,
+                    "vat_rate_snapshot": None,
+                    "budget_item_id": None,
+                    "notes": None,
+                    "source_module": "odontogram",
+                    "deleted_at": None,
+                }
+            )
 
-            # Update tooth record if treatment modifies markers
-            if treatment_data["type"] == "rotated":
-                tooth_record["is_rotated"] = True
-            elif treatment_data["type"] == "displaced":
-                tooth_record["is_displaced"] = True
+            for t in teeth_defs:
+                treatment_teeth.append(
+                    {
+                        "treatment_id": treatment_id,
+                        "tooth_record_id": patient_tooth_records[t["tooth"]]["id"],
+                        "tooth_number": t["tooth"],
+                        "role": t.get("role"),
+                        "surfaces": t.get("surfaces"),
+                    }
+                )
 
     return {
         "tooth_records": tooth_records,
         "treatments": treatments,
+        "treatment_teeth": treatment_teeth,
     }
 
 
@@ -1681,7 +1640,7 @@ def generate_budgets_data(catalog_items_map: dict[str, dict]) -> dict:
                 "line_total": line_total,
                 "tooth_number": item_data.get("tooth"),
                 "surfaces": None,
-                "tooth_treatment_id": None,
+                "treatment_id": None,
                 "invoiced_quantity": 0,
                 "display_order": len(budget_items) + 1,
                 "notes": None,
@@ -2128,6 +2087,9 @@ def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
 # Fixed UUIDs for treatment plans (expanded for more coverage)
 TREATMENT_PLAN_IDS = [UUID(f"fe00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(20)]
 
+# Reserved treatment IDs for plan items (separate from odontogram TREATMENT_IDS).
+PLAN_TREATMENT_IDS = [UUID(f"fa00bc99-9c0b-4ef8-bb6d-6bb9bd381{i:03x}") for i in range(200)]
+
 # Fixed UUIDs for planned treatment items (expanded for appointments)
 PLANNED_ITEM_IDS = [UUID(f"ff00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(200)]
 
@@ -2393,6 +2355,7 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
     """
     plans = []
     items = []
+    plan_treatments: list[dict] = []
     patients_data = get_patients_data()
 
     plan_idx = 0
@@ -2429,24 +2392,51 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
         }
         plans.append(plan)
 
-        # Create planned items
+        # Create planned items: each item creates a Treatment (global, no teeth) backed by
+        # the catalog item, then links a PlannedTreatmentItem via treatment_id.
         for seq_order, item_data in enumerate(scenario.get("items", []), start=1):
             catalog_item = catalog_items_map.get(item_data["catalog_code"])
             if not catalog_item:
                 continue
 
             item_id = PLANNED_ITEM_IDS[item_idx]
+            treatment_id = PLAN_TREATMENT_IDS[item_idx]
             item_idx += 1
 
             is_completed = item_data.get("completed", False)
+            status = "performed" if is_completed else "planned"
+            recorded_at = datetime.now() - timedelta(days=30)
+            performed_at = datetime.now() - timedelta(days=10) if is_completed else None
+
+            plan_treatments.append(
+                {
+                    "id": treatment_id,
+                    "clinic_id": CLINIC_ID,
+                    "patient_id": patient["id"],
+                    "clinical_type": catalog_item.get(
+                        "odontogram_treatment_type", "filling_composite"
+                    ),
+                    "catalog_item_id": catalog_item["id"],
+                    "status": status,
+                    "recorded_at": recorded_at,
+                    "performed_at": performed_at,
+                    "performed_by": USER_DENTIST_ID if is_completed else None,
+                    "price_snapshot": catalog_item.get("default_price"),
+                    "currency_snapshot": "EUR",
+                    "duration_snapshot": None,
+                    "vat_rate_snapshot": None,
+                    "budget_item_id": None,
+                    "notes": None,
+                    "source_module": "treatment_plan",
+                    "deleted_at": None,
+                }
+            )
 
             planned_item = {
                 "id": item_id,
                 "clinic_id": CLINIC_ID,
                 "treatment_plan_id": plan_id,
-                "tooth_treatment_id": None,  # Not linking to existing ToothTreatment for now
-                "catalog_item_id": catalog_item["id"],
-                "is_global": item_data.get("is_global", False),
+                "treatment_id": treatment_id,
                 "sequence_order": seq_order,
                 "status": "completed" if is_completed else "pending",
                 "completed_without_appointment": is_completed,
@@ -2459,4 +2449,5 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
     return {
         "plans": plans,
         "items": items,
+        "plan_treatments": plan_treatments,
     }

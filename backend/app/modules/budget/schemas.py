@@ -116,7 +116,7 @@ class BudgetItemCreate(BaseModel):
     surfaces: list[str] | None = None  # ["M", "O", "D"]
 
     # Odontogram integration
-    tooth_treatment_id: UUID | None = None
+    treatment_id: UUID | None = None
 
     # Display
     display_order: int = 0
@@ -172,7 +172,7 @@ class BudgetItemResponse(BaseModel):
     surfaces: list[str] | None
 
     # Odontogram integration
-    tooth_treatment_id: UUID | None
+    treatment_id: UUID | None
 
     # Billing tracking (for partial invoicing)
     invoiced_quantity: int

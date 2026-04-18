@@ -1,65 +1,76 @@
 """Treatment plan module Pydantic schemas."""
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ---------------------------------------------------------------------------
-# Brief/nested response schemas (for embedding in other responses)
+# Nested brief schemas
 # ---------------------------------------------------------------------------
 
 
 class PatientBrief(BaseModel):
-    """Brief patient info for embedding in responses."""
+    """Brief patient info."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     first_name: str
     last_name: str
 
-    class Config:
-        from_attributes = True
-
 
 class BudgetBrief(BaseModel):
-    """Brief budget info for embedding in responses."""
+    """Brief budget info."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     budget_number: str
     status: str
     total: float
 
-    class Config:
-        from_attributes = True
 
+class TreatmentToothBrief(BaseModel):
+    """Per-tooth member of a Treatment, embedded in plan items."""
 
-class ToothTreatmentBrief(BaseModel):
-    """Brief tooth treatment info for embedding in responses."""
+    model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
     tooth_number: int
-    treatment_type: str
-    status: str
+    role: str | None = None
     surfaces: list[str] | None = None
 
-    class Config:
-        from_attributes = True
+
+class TreatmentBrief(BaseModel):
+    """Brief Treatment info (header + teeth)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    clinical_type: str
+    status: str
+    catalog_item_id: UUID | None = None
+    price_snapshot: Decimal | None = None
+    currency_snapshot: str | None = None
+    teeth: list[TreatmentToothBrief] = Field(default_factory=list)
 
 
 class CatalogItemBrief(BaseModel):
-    """Brief catalog item info for embedding in responses."""
+    """Brief catalog item info."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     internal_code: str
     names: dict
     default_price: float | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class TreatmentMediaResponse(BaseModel):
     """Response for treatment media."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     document_id: UUID
@@ -68,9 +79,6 @@ class TreatmentMediaResponse(BaseModel):
     notes: str | None = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 # ---------------------------------------------------------------------------
 # Treatment Plan schemas
@@ -78,7 +86,7 @@ class TreatmentMediaResponse(BaseModel):
 
 
 class TreatmentPlanCreate(BaseModel):
-    """Schema for creating a treatment plan."""
+    """Create a treatment plan."""
 
     patient_id: UUID
     title: str | None = Field(default=None, max_length=200)
@@ -88,7 +96,7 @@ class TreatmentPlanCreate(BaseModel):
 
 
 class TreatmentPlanUpdate(BaseModel):
-    """Schema for updating a treatment plan."""
+    """Update a treatment plan."""
 
     title: str | None = Field(default=None, max_length=200)
     assigned_professional_id: UUID | None = None
@@ -97,13 +105,15 @@ class TreatmentPlanUpdate(BaseModel):
 
 
 class TreatmentPlanStatusUpdate(BaseModel):
-    """Schema for changing plan status."""
+    """Change plan status."""
 
     status: str = Field(..., pattern="^(draft|active|completed|archived|cancelled)$")
 
 
 class TreatmentPlanResponse(BaseModel):
-    """Response schema for treatment plan list."""
+    """Response for treatment plan list."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     clinic_id: UUID
@@ -122,59 +132,44 @@ class TreatmentPlanResponse(BaseModel):
     patient: PatientBrief | None = None
     budget: BudgetBrief | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class TreatmentPlanDetailResponse(TreatmentPlanResponse):
-    """Detailed response with nested items and relations."""
+    """Detailed response with nested items."""
 
-    diagnosis_notes: str | None
-    internal_notes: str | None
+    diagnosis_notes: str | None = None
+    internal_notes: str | None = None
     items: list["PlannedTreatmentItemResponse"] = []
-    patient: PatientBrief | None = None
-    budget: BudgetBrief | None = None
-
-    class Config:
-        from_attributes = True
 
 
 # ---------------------------------------------------------------------------
-# Planned Treatment Item schemas
+# Planned treatment item schemas
 # ---------------------------------------------------------------------------
 
 
 class PlannedTreatmentItemCreate(BaseModel):
-    """Schema for adding a treatment to a plan."""
+    """Add a treatment to a plan by Treatment id."""
 
-    # For tooth-specific treatments
-    tooth_treatment_id: UUID | None = None
-
-    # For global treatments (or to specify catalog item)
-    catalog_item_id: UUID | None = None
-    is_global: bool = False
-
-    # Optional fields
+    treatment_id: UUID
     sequence_order: int | None = None
     notes: str | None = None
 
 
 class PlannedTreatmentItemUpdate(BaseModel):
-    """Schema for updating a planned treatment item."""
+    """Update a planned treatment item (scheduling metadata only)."""
 
     sequence_order: int | None = None
     notes: str | None = None
 
 
 class PlannedTreatmentItemResponse(BaseModel):
-    """Response schema for planned treatment item."""
+    """Response for planned treatment item."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     clinic_id: UUID
     treatment_plan_id: UUID
-    tooth_treatment_id: UUID | None
-    catalog_item_id: UUID | None
-    is_global: bool
+    treatment_id: UUID
     sequence_order: int
     status: str
     completed_without_appointment: bool
@@ -184,17 +179,14 @@ class PlannedTreatmentItemResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    # Nested data
-    tooth_treatment: ToothTreatmentBrief | None = None
+    # Embedded Treatment + optional catalog item.
+    treatment: TreatmentBrief | None = None
     catalog_item: CatalogItemBrief | None = None
     media: list[TreatmentMediaResponse] = []
 
-    class Config:
-        from_attributes = True
-
 
 class CompleteItemRequest(BaseModel):
-    """Request to mark an item as completed."""
+    """Mark an item as completed."""
 
     completed_without_appointment: bool = True
     notes: str | None = None
@@ -206,14 +198,10 @@ class CompleteItemRequest(BaseModel):
 
 
 class LinkBudgetRequest(BaseModel):
-    """Request to link a budget to the plan."""
-
     budget_id: UUID
 
 
 class GenerateBudgetResponse(BaseModel):
-    """Response after generating a budget from the plan."""
-
     budget_id: UUID
     budget_number: str
 
@@ -224,13 +212,10 @@ class GenerateBudgetResponse(BaseModel):
 
 
 class TreatmentMediaCreate(BaseModel):
-    """Schema for adding media to a treatment item."""
-
     document_id: UUID
     media_type: str = Field(..., pattern="^(before|after|xray|reference)$")
     display_order: int = 0
     notes: str | None = None
 
 
-# Update forward references
 TreatmentPlanDetailResponse.model_rebuild()

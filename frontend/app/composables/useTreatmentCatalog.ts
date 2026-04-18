@@ -5,7 +5,7 @@
  * with fallback to hardcoded constants if catalog is empty.
  */
 
-import type { ApiResponse, OdontogramTreatment } from '~/types'
+import type { ApiResponse, OdontogramTreatment, VisualizationRuleLayer } from '~/types'
 import {
   TREATMENT_CATEGORIES,
   TREATMENT_COLORS,
@@ -13,7 +13,6 @@ import {
   DIAGNOSTIC_CATEGORIES,
   THERAPEUTIC_CATEGORIES,
   isSurfaceTreatment,
-  normalizeTreatmentType,
   type TreatmentClinicalCategory
 } from '~/config/odontogramConstants'
 
@@ -84,11 +83,13 @@ export function useTreatmentCatalog() {
         id: treatmentType,
         internal_code: treatmentType.toUpperCase(),
         names: { es: treatmentType, en: treatmentType },
-        default_price: undefined,
+        default_price: null,
+        pricing_strategy: 'flat',
+        pricing_config: null,
         treatment_scope: isSurfaceTreatment(treatmentType) ? 'surface' : 'whole_tooth',
         requires_surfaces: isSurfaceTreatment(treatmentType),
         is_diagnostic: category.key === 'diagnostico',
-        odontogram_treatment_type: treatmentType,
+        odontogram_treatment_type: treatmentType as OdontogramTreatment['odontogram_treatment_type'],
         visualization_rules: getVisualizationRulesForType(treatmentType),
         visualization_config: {
           color: TREATMENT_COLORS[treatmentType] || { light: '#6B7280', dark: '#9CA3AF' }
@@ -170,7 +171,7 @@ export function useTreatmentCatalog() {
    * Get a single treatment by its odontogram_treatment_type.
    */
   function getTreatmentByType(treatmentType: string): OdontogramTreatment | undefined {
-    const normalized = normalizeTreatmentType(treatmentType)
+    const normalized = treatmentType
 
     if (useCatalog.value) {
       return treatments.value.find(t => t.odontogram_treatment_type === normalized)
@@ -183,11 +184,13 @@ export function useTreatmentCatalog() {
           id: normalized,
           internal_code: normalized.toUpperCase(),
           names: { es: normalized, en: normalized },
-          default_price: undefined,
+          default_price: null,
+          pricing_strategy: 'flat',
+          pricing_config: null,
           treatment_scope: isSurfaceTreatment(normalized) ? 'surface' : 'whole_tooth',
           requires_surfaces: isSurfaceTreatment(normalized),
           is_diagnostic: category.key === 'diagnostico',
-          odontogram_treatment_type: normalized,
+          odontogram_treatment_type: normalized as OdontogramTreatment['odontogram_treatment_type'],
           visualization_rules: getVisualizationRulesForType(normalized),
           visualization_config: {
             color: TREATMENT_COLORS[normalized] || { light: '#6B7280', dark: '#9CA3AF' }
@@ -213,7 +216,7 @@ export function useTreatmentCatalog() {
         return treatment.odontogram_treatment_type
       }
     }
-    return normalizeTreatmentType(fallbackType)
+    return fallbackType
   }
 
   /**
@@ -231,11 +234,13 @@ export function useTreatmentCatalog() {
   }
 
   /**
-   * Get treatment price for display.
+   * Get treatment price for display (in minor units).
    */
   function getTreatmentPrice(treatmentType: string): number | undefined {
     const treatment = getTreatmentByType(treatmentType)
-    return treatment?.default_price
+    if (!treatment?.default_price) return undefined
+    const parsed = Number(treatment.default_price)
+    return Number.isFinite(parsed) ? parsed : undefined
   }
 
   /**
@@ -258,14 +263,16 @@ export function useTreatmentCatalog() {
   // Helpers
   // ============================================================================
 
-  function getVisualizationRulesForType(treatmentType: string): string[] {
-    const rules: string[] = []
+  function getVisualizationRulesForType(treatmentType: string): VisualizationRuleLayer[] {
+    const layers: VisualizationRuleLayer[] = []
     for (const [rule, treatments] of Object.entries(VISUALIZATION_RULES)) {
       if (treatments.includes(treatmentType)) {
-        rules.push(rule)
+        // Map legacy rule name (pattern_fill) to the new layer name (cenital_pattern).
+        const layer = rule === 'pattern_fill' ? 'cenital_pattern' : rule
+        layers.push({ layer: layer as VisualizationRuleLayer['layer'] })
       }
     }
-    return rules
+    return layers
   }
 
   function getCategoryLabel(categoryKey: string, locale = 'es'): string {

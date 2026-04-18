@@ -22,6 +22,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
+# Supported pricing strategies. See app.modules.catalog.pricing for the computation.
+PRICING_STRATEGIES = ("flat", "per_tooth", "per_surface", "per_role")
+
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic
 
@@ -151,11 +154,19 @@ class TreatmentCatalogItem(Base, TimestampMixin):
         ForeignKey("vat_types.id"), index=True, default=None
     )
 
-    # Legacy fields (kept for backward compatibility during migration, will be removed later)
-    vat_type: Mapped[str | None] = mapped_column(
-        String(20), default=None
-    )  # exempt, reduced, standard
-    vat_rate: Mapped[float | None] = mapped_column(Float, default=None)  # 0, 10, 21
+    # Pricing strategy (how to compute a Treatment's price_snapshot from this item).
+    # flat: default_price as-is.
+    # per_tooth: default_price * teeth.length.
+    # per_surface: tiered lookup in surface_prices by surface count, else default_price
+    #              * sum(surfaces.length across teeth) (legacy linear fallback).
+    # per_role: pricing_config[role] per tooth (for bridges: pillar vs pontic).
+    pricing_strategy: Mapped[str] = mapped_column(String(20), default="flat")
+    # Extra pricing parameters. For per_role: {"pillar": 500, "pontic": 400}.
+    pricing_config: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    # Tiered prices by surface count for per_surface strategy. Keys: "1".."5" as
+    # strings (JSONB requires string keys); values: price in default currency.
+    # Missing tier resolves to the highest populated tier <= n, or default_price.
+    surface_prices: Mapped[dict | None] = mapped_column(JSONB, default=None)
 
     # Treatment characteristics
     treatment_scope: Mapped[str] = mapped_column(
@@ -209,18 +220,24 @@ class TreatmentOdontogramMapping(Base, TimestampMixin):
         ForeignKey("treatment_catalog_items.id", ondelete="CASCADE"), unique=True
     )
 
-    # Odontogram integration
-    odontogram_treatment_type: Mapped[str] = mapped_column(
-        String(30)
-    )  # Maps to TreatmentType enum: filling_composite, crown, etc.
+    # Odontogram integration: the clinical type that drives visualization.
+    # Maps to Treatment.clinical_type (bridge, crown, filling_composite, ...).
+    odontogram_treatment_type: Mapped[str] = mapped_column(String(30))
 
-    # Visualization configuration
-    visualization_rules: Mapped[list] = mapped_column(
-        JSONB, default=list
-    )  # ["pulp_fill", "lateral_icon", etc.]
-    visualization_config: Mapped[dict] = mapped_column(
-        JSONB, default=dict
-    )  # Colors, patterns, custom config
+    # Visualization layers. Each entry renders on top of the previous.
+    # Example:
+    # [
+    #   {"layer": "cenital_pattern", "pattern": "diagonal_stripes", "color": "#F59E0B"},
+    #   {"layer": "lateral_icon",    "icon": "implant",            "color": "#10B981"}
+    # ]
+    # Supported layers:
+    #   - pulp_fill:      {"color": str, "extent"?: "partial_1_2"|"partial_2_3"|"full"|"overfill"}
+    #   - occlusal_surface: {"color": str, "kind"?: "solid_fill"|"dot"|"outline"}
+    #   - lateral_icon:    {"icon": str, "color"?: str}
+    #   - cenital_pattern: {"pattern": str, "color": str}
+    visualization_rules: Mapped[list] = mapped_column(JSONB, default=list)
+    # Free-form extras (rarely needed; layer-level config lives inside visualization_rules).
+    visualization_config: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     # Clinical category for TreatmentBar grouping
     clinical_category: Mapped[str] = mapped_column(

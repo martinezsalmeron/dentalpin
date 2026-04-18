@@ -6,7 +6,7 @@
  * (upperRight, upperLeft, lowerRight, lowerLeft)
  */
 
-import type { Surface, Treatment, TreatmentStatus, TreatmentType } from '~/types'
+import type { Surface, ToothTreatmentView, TreatmentStatus, TreatmentType } from '~/types'
 
 const props = withDefaults(defineProps<{
   /** List of tooth numbers in this quadrant */
@@ -17,8 +17,8 @@ const props = withDefaults(defineProps<{
     isDisplaced: boolean
     isRotated: boolean
   }
-  /** Function to get treatments for a tooth */
-  getTreatments: (toothNumber: number) => Treatment[]
+  /** Per-tooth flattened Treatment views for this tooth. */
+  getTreatments: (toothNumber: number) => ToothTreatmentView[]
   /** Whether chart is read-only */
   readonly: boolean
   /** Currently selected tooth number */
@@ -48,7 +48,7 @@ const emit = defineEmits<{
   toothClick: [toothNumber: number]
   toothContextMenu: [toothNumber: number, event: MouseEvent]
   toothHover: [toothNumber: number | null]
-  editTreatment: [treatment: Treatment]
+  editTreatment: [treatment: ToothTreatmentView]
 }>()
 
 function isHighlighted(toothNumber: number): boolean {
@@ -123,7 +123,7 @@ function connectorStatus(index: number): 'existing' | 'planned' | null {
           <ToothTooltip
             :tooth-number="toothNum"
             :treatments="getTreatments(toothNum)"
-            @edit-treatment="(t: Treatment) => emit('editTreatment', t)"
+            @edit-treatment="(t: ToothTreatmentView) => emit('editTreatment', t)"
           />
         </template>
       </UPopover>

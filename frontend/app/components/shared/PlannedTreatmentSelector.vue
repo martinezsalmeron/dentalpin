@@ -67,30 +67,41 @@ watch(() => props.modelValue, (newVal) => {
 // Get treatment name from item
 function getItemName(item: PlannedTreatmentItem): string {
   if (item.catalog_item?.names) {
-    return item.catalog_item.names[locale.value] || item.catalog_item.names.es || item.catalog_item.internal_code
+    return (
+      item.catalog_item.names[locale.value]
+      || item.catalog_item.names.es
+      || item.catalog_item.internal_code
+    )
   }
-  if (item.tooth_treatment) {
-    return item.tooth_treatment.treatment_type
+  if (item.treatment?.clinical_type) {
+    return item.treatment.clinical_type
   }
   return t('treatmentPlans.unknownTreatment')
 }
 
-// Get price from item
+// Get price from item (reads the Treatment's frozen price_snapshot when present).
 function getItemPrice(item: PlannedTreatmentItem): number | undefined {
-  return item.catalog_item?.default_price
+  const snap = item.treatment?.price_snapshot
+  if (snap) {
+    const parsed = Number(snap)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  const def = item.catalog_item?.default_price
+  return typeof def === 'number' ? def : undefined
 }
 
 // Get tooth info string
 function getToothInfo(item: PlannedTreatmentItem): string | null {
-  if (item.is_global) {
+  const teeth = item.treatment?.teeth ?? []
+  if (teeth.length === 0) {
     return t('treatmentPlans.globalTreatment')
   }
-  if (item.tooth_treatment?.tooth_number) {
-    const tooth = item.tooth_treatment.tooth_number
-    const surfaces = item.tooth_treatment.surfaces?.join(', ')
-    return surfaces ? `#${tooth} (${surfaces})` : `#${tooth}`
+  if (teeth.length === 1) {
+    const tooth = teeth[0]
+    const surfaces = (tooth.surfaces as string[] | undefined)?.join(', ')
+    return surfaces ? `#${tooth.tooth_number} (${surfaces})` : `#${tooth.tooth_number}`
   }
-  return null
+  return `#${teeth.map(t => t.tooth_number).join(', ')}`
 }
 
 // Get plan display name

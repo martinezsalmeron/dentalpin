@@ -55,7 +55,7 @@ async def list_treatment_plans(
         p.item_count = len(items)
         p.completed_count = sum(1 for i in items if i.status == "completed")
         p.total = sum(
-            (i.catalog_item.default_price or 0) if i.catalog_item else 0
+            float(i.treatment.price_snapshot) if i.treatment and i.treatment.price_snapshot else 0
             for i in items
         )
     return PaginatedApiResponse(
@@ -88,7 +88,7 @@ async def list_patient_plans(
         p.item_count = len(items)
         p.completed_count = sum(1 for i in items if i.status == "completed")
         p.total = sum(
-            (i.catalog_item.default_price or 0) if i.catalog_item else 0
+            float(i.treatment.price_snapshot) if i.treatment and i.treatment.price_snapshot else 0
             for i in items
         )
     return PaginatedApiResponse(
@@ -129,9 +129,7 @@ async def create_treatment_plan(
 ) -> ApiResponse[TreatmentPlanResponse]:
     """Create a new treatment plan."""
     try:
-        plan = await TreatmentPlanService.create(
-            db, ctx.clinic_id, ctx.user_id, data.model_dump()
-        )
+        plan = await TreatmentPlanService.create(db, ctx.clinic_id, ctx.user_id, data.model_dump())
         return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -170,9 +168,7 @@ async def update_plan_status(
 ) -> ApiResponse[TreatmentPlanResponse]:
     """Change treatment plan status."""
     try:
-        plan = await TreatmentPlanService.update_status(
-            db, ctx.clinic_id, plan_id, data.status
-        )
+        plan = await TreatmentPlanService.update_status(db, ctx.clinic_id, plan_id, data.status)
         if not plan:
             raise HTTPException(status_code=404, detail="Treatment plan not found")
         return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
@@ -212,9 +208,7 @@ async def add_plan_item(
 ) -> ApiResponse[PlannedTreatmentItemResponse]:
     """Add a treatment item to the plan."""
     try:
-        item = await TreatmentPlanService.add_item(
-            db, ctx.clinic_id, plan_id, data.model_dump()
-        )
+        item = await TreatmentPlanService.add_item(db, ctx.clinic_id, plan_id, data.model_dump())
         return ApiResponse(data=PlannedTreatmentItemResponse.model_validate(item))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -303,9 +297,7 @@ async def link_budget_to_plan(
 ) -> ApiResponse[TreatmentPlanResponse]:
     """Link an existing budget to the treatment plan."""
     try:
-        plan = await TreatmentPlanService.link_budget(
-            db, ctx.clinic_id, plan_id, data.budget_id
-        )
+        plan = await TreatmentPlanService.link_budget(db, ctx.clinic_id, plan_id, data.budget_id)
         if not plan:
             raise HTTPException(status_code=404, detail="Treatment plan not found")
         return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
@@ -365,25 +357,24 @@ async def generate_budget_from_plan(
     if not plan.items:
         raise HTTPException(status_code=400, detail="Plan has no items to create budget from")
 
-    # Collect catalog items from plan items
+    # Collect catalog items from plan items, resolving everything from Treatment.
     budget_items = []
     for item in plan.items:
-        if item.catalog_item_id:
-            budget_items.append(
-                {
-                    "catalog_item_id": str(item.catalog_item_id),
-                    "quantity": 1,
-                    "tooth_number": item.tooth_treatment.tooth_number
-                    if item.tooth_treatment
-                    else None,
-                    "surfaces": item.tooth_treatment.surfaces
-                    if item.tooth_treatment
-                    else None,
-                    "tooth_treatment_id": str(item.tooth_treatment_id)
-                    if item.tooth_treatment_id
-                    else None,
-                }
-            )
+        treatment = item.treatment
+        if not treatment or not treatment.catalog_item_id:
+            continue
+        primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
+        primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
+        budget_items.append(
+            {
+                "catalog_item_id": str(treatment.catalog_item_id),
+                "quantity": 1,
+                "tooth_number": primary_tooth,
+                "surfaces": primary_surfaces,
+                "treatment_id": str(treatment.id),
+                "unit_price": treatment.price_snapshot,
+            }
+        )
 
     if not budget_items:
         raise HTTPException(
@@ -436,9 +427,7 @@ async def add_media_to_item(
 ) -> ApiResponse[TreatmentMediaResponse]:
     """Add media to a treatment item."""
     try:
-        media = await TreatmentPlanService.add_media(
-            db, ctx.clinic_id, item_id, data.model_dump()
-        )
+        media = await TreatmentPlanService.add_media(db, ctx.clinic_id, item_id, data.model_dump())
         return ApiResponse(data=TreatmentMediaResponse.model_validate(media))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

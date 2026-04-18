@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { Treatment, TreatmentStatus, TreatmentType } from '~/types'
+import type { ToothTreatmentView, Treatment, TreatmentStatus, TreatmentType } from '~/types'
 import { TREATMENT_COLORS, STATUS_STYLES } from './ToothSVGPaths'
+import { viewForTooth } from '~/utils/treatmentView'
 
 const props = defineProps<{
   treatments: Treatment[]
@@ -14,14 +15,27 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// Active status filter
 const activeStatusFilter = ref<TreatmentStatus | null>(null)
 
-// Group treatments by type
-const treatmentsByType = computed(() => {
-  const grouped: Record<string, { count: number, teeth: number[], treatments: Treatment[] }> = {}
-
+/** Flatten Treatment[] into per-tooth rows. */
+const perToothTreatments = computed<ToothTreatmentView[]>(() => {
+  const rows: ToothTreatmentView[] = []
   for (const treatment of props.treatments) {
+    for (const tooth of treatment.teeth) {
+      const v = viewForTooth(treatment, tooth.tooth_number)
+      if (v) rows.push(v)
+    }
+  }
+  return rows
+})
+
+const treatmentsByType = computed(() => {
+  const grouped: Record<
+    string,
+    { count: number, teeth: number[], treatments: ToothTreatmentView[] }
+  > = {}
+
+  for (const treatment of perToothTreatments.value) {
     if (!grouped[treatment.treatment_type]) {
       grouped[treatment.treatment_type] = { count: 0, teeth: [], treatments: [] }
     }
@@ -32,39 +46,27 @@ const treatmentsByType = computed(() => {
     grouped[treatment.treatment_type].treatments.push(treatment)
   }
 
-  // Sort by count descending
   return Object.entries(grouped)
     .sort(([, a], [, b]) => b.count - a.count)
-    .map(([type, data]) => ({
-      type: type as TreatmentType,
-      ...data
-    }))
+    .map(([type, data]) => ({ type: type as TreatmentType, ...data }))
 })
 
-// Group treatments by status
+// Group per-tooth rows by status
 const treatmentsByStatus = computed(() => {
-  const grouped: Record<TreatmentStatus, number> = {
-    planned: 0,
-    existing: 0
-  }
-
-  for (const treatment of props.treatments) {
+  const grouped: Record<TreatmentStatus, number> = { planned: 0, existing: 0 }
+  for (const treatment of perToothTreatments.value) {
     grouped[treatment.status]++
   }
-
   return grouped
 })
 
-// Total count
-const totalTreatments = computed(() => props.treatments.length)
+const totalTreatments = computed(() => perToothTreatments.value.length)
 
-// Filtered treatments
 const filteredTreatments = computed(() => {
-  if (!activeStatusFilter.value) return props.treatments
-  return props.treatments.filter(t => t.status === activeStatusFilter.value)
+  if (!activeStatusFilter.value) return perToothTreatments.value
+  return perToothTreatments.value.filter(t => t.status === activeStatusFilter.value)
 })
 
-// Unique teeth count
 const uniqueTeethCount = computed(() => {
   const teeth = new Set<number>()
   for (const treatment of filteredTreatments.value) {

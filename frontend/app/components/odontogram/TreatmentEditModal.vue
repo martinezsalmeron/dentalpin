@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import type { Surface, Treatment, TreatmentStatus } from '~/types'
+import type { Surface, ToothTreatmentView, TreatmentStatus } from '~/types'
 import { TREATMENT_COLORS, isSurfaceTreatment, getAllowedStatusesForTreatment } from '~/config/odontogramConstants'
 
 const props = defineProps<{
-  treatment: Treatment | null
+  /** Per-tooth view over a Treatment (see utils/treatmentView.ts). */
+  treatment: ToothTreatmentView | null
   open: boolean
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'update': [treatmentId: string, data: { status?: TreatmentStatus, surfaces?: Surface[], notes?: string }]
+  'update': [treatmentId: string, data: { status?: TreatmentStatus, notes?: string }]
   'delete': [treatmentId: string]
   'perform': [treatmentId: string]
 }>()
@@ -79,14 +80,10 @@ function toggleSurface(surface: Surface) {
 function handleSave() {
   if (!props.treatment) return
 
-  const data: { status?: TreatmentStatus, surfaces?: Surface[], notes?: string } = {}
+  const data: { status?: TreatmentStatus, notes?: string } = {}
 
   if (status.value !== props.treatment.status) {
     data.status = status.value
-  }
-
-  if (isSurfaceType.value && JSON.stringify(selectedSurfaces.value.sort()) !== JSON.stringify((props.treatment.surfaces || []).sort())) {
-    data.surfaces = selectedSurfaces.value
   }
 
   if (notes.value !== (props.treatment.notes || '')) {
@@ -94,21 +91,20 @@ function handleSave() {
   }
 
   if (Object.keys(data).length > 0) {
-    emit('update', props.treatment.id, data)
+    emit('update', props.treatment.treatment_id, data)
   } else {
-    // No changes, just close
     emit('update:open', false)
   }
 }
 
 function handleDelete() {
   if (!props.treatment) return
-  emit('delete', props.treatment.id)
+  emit('delete', props.treatment.treatment_id)
 }
 
 function handleMarkPerformed() {
   if (!props.treatment) return
-  emit('perform', props.treatment.id)
+  emit('perform', props.treatment.treatment_id)
 }
 
 function handleClose() {

@@ -114,7 +114,7 @@ class BudgetItemService:
             vat_rate=vat_rate,
             tooth_number=data.get("tooth_number"),
             surfaces=data.get("surfaces"),
-            tooth_treatment_id=data.get("tooth_treatment_id"),
+            treatment_id=data.get("treatment_id"),
             display_order=data.get("display_order", 0),
             notes=data.get("notes"),
         )

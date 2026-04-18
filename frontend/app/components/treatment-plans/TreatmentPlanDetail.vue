@@ -56,14 +56,23 @@ function getItemTitle(item: PlannedTreatmentItem): string {
   if (item.catalog_item?.names?.es) {
     return item.catalog_item.names.es
   }
-  if (item.tooth_treatment) {
-    return `${item.tooth_treatment.treatment_type} - ${t('odontogram.tooth')} ${item.tooth_treatment.tooth_number}`
+  const treatment = item.treatment
+  if (treatment) {
+    const teeth = treatment.teeth?.map(t => t.tooth_number) ?? []
+    const teethLabel = teeth.length > 0 ? ` - ${t('odontogram.tooth')} ${teeth.join(', ')}` : ''
+    return `${treatment.clinical_type}${teethLabel}`
   }
   return t('treatmentPlans.unknownTreatment')
 }
 
 function getItemPrice(item: PlannedTreatmentItem): number | null {
-  return item.catalog_item?.default_price || null
+  const snap = item.treatment?.price_snapshot
+  if (snap) {
+    const parsed = Number(snap)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  const def = item.catalog_item?.default_price
+  return typeof def === 'number' ? def : null
 }
 
 function getBudgetStatusColor(status: string): string {
@@ -283,12 +292,12 @@ function getBudgetStatusColor(status: string): string {
                   {{ getItemTitle(item) }}
                 </p>
                 <p
-                  v-if="item.tooth_treatment"
+                  v-if="item.treatment?.teeth?.[0]"
                   class="text-sm text-gray-500 dark:text-gray-400"
                 >
-                  {{ t('odontogram.tooth') }} {{ item.tooth_treatment.tooth_number }}
-                  <span v-if="item.tooth_treatment.surfaces?.length">
-                    ({{ item.tooth_treatment.surfaces.join(', ') }})
+                  {{ t('odontogram.tooth') }} {{ item.treatment?.teeth?.[0].tooth_number }}
+                  <span v-if="item.treatment?.teeth?.[0].surfaces?.length">
+                    ({{ item.treatment?.teeth?.[0].surfaces.join(', ') }})
                   </span>
                 </p>
               </div>
@@ -434,12 +443,12 @@ function getBudgetStatusColor(status: string): string {
                 {{ getItemTitle(itemToComplete) }}
               </p>
               <p
-                v-if="itemToComplete.tooth_treatment"
+                v-if="itemToComplete.treatment?.teeth?.[0]"
                 class="text-sm text-gray-500 dark:text-gray-400 mt-1"
               >
-                {{ t('odontogram.tooth') }} {{ itemToComplete.tooth_treatment.tooth_number }}
-                <span v-if="itemToComplete.tooth_treatment.surfaces?.length">
-                  ({{ itemToComplete.tooth_treatment.surfaces.join(', ') }})
+                {{ t('odontogram.tooth') }} {{ itemToComplete.treatment?.teeth?.[0].tooth_number }}
+                <span v-if="itemToComplete.treatment?.teeth?.[0].surfaces?.length">
+                  ({{ itemToComplete.treatment?.teeth?.[0].surfaces.join(', ') }})
                 </span>
               </p>
             </div>

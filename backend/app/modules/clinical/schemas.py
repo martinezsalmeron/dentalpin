@@ -132,19 +132,28 @@ class AppointmentTreatmentBrief(BaseModel):
         planned_item = apt_treatment.planned_item
         catalog_item = apt_treatment.catalog_item
 
-        # Get catalog info from planned_item's relationships if direct catalog_item not set
-        if not catalog_item and planned_item:
-            if planned_item.catalog_item:
-                catalog_item = planned_item.catalog_item
-            elif planned_item.tooth_treatment and planned_item.tooth_treatment.catalog_item:
-                catalog_item = planned_item.tooth_treatment.catalog_item
+        treatment = planned_item.treatment if planned_item else None
 
-        # Get tooth info from planned_item
+        # Resolve catalog item through Treatment if not set directly.
+        if not catalog_item and treatment:
+            catalog_item = treatment.catalog_item
+
+        # Tooth info from first member of the Treatment (primary tooth).
         tooth_number = None
         surfaces = None
-        if planned_item and planned_item.tooth_treatment:
-            tooth_number = planned_item.tooth_treatment.tooth_number
-            surfaces = planned_item.tooth_treatment.surfaces
+        is_global = True
+        if treatment and treatment.teeth:
+            primary = treatment.teeth[0]
+            tooth_number = primary.tooth_number
+            surfaces = primary.surfaces
+            is_global = False
+
+        # Prefer the frozen price snapshot when available, fall back to catalog default.
+        price: float | None = None
+        if treatment and treatment.price_snapshot is not None:
+            price = float(treatment.price_snapshot)
+        elif catalog_item and catalog_item.default_price is not None:
+            price = float(catalog_item.default_price)
 
         return cls(
             id=apt_treatment.id,
@@ -153,15 +162,13 @@ class AppointmentTreatmentBrief(BaseModel):
             catalog_item_id=catalog_item.id if catalog_item else None,
             internal_code=catalog_item.internal_code if catalog_item else "",
             names=catalog_item.names if catalog_item else {},
-            default_price=float(catalog_item.default_price)
-            if catalog_item and catalog_item.default_price
-            else None,
+            default_price=price,
             default_duration_minutes=catalog_item.default_duration_minutes
             if catalog_item
             else None,
             tooth_number=tooth_number,
             surfaces=surfaces,
-            is_global=planned_item.is_global if planned_item else False,
+            is_global=is_global,
             plan_id=planned_item.treatment_plan_id if planned_item else None,
             plan_number=planned_item.treatment_plan.plan_number
             if planned_item and planned_item.treatment_plan

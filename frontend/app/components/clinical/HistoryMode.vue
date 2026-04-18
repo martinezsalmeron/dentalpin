@@ -8,6 +8,8 @@
  * - List of changes that occurred on selected date
  */
 
+import type { OdontogramHistoryEntry } from '~/types'
+
 const props = defineProps<{
   patientId: string
 }>()
@@ -24,8 +26,11 @@ const {
   timelineLoading,
   isViewingHistory,
   historicalTreatments,
+  treatments,
   fetchTimeline,
   fetchOdontogramAtDate,
+  fetchTreatments,
+  fetchPatientHistory,
   returnToCurrentView
 } = useOdontogram()
 
@@ -34,6 +39,8 @@ const {
 // ============================================================================
 
 const loading = ref(false)
+const historyData = ref<OdontogramHistoryEntry[]>([])
+const historyLoading = ref(false)
 
 // ============================================================================
 // Computed
@@ -64,7 +71,10 @@ const changesAtDate = computed(() => {
 onMounted(async () => {
   loading.value = true
   try {
-    await fetchTimeline(props.patientId)
+    await Promise.all([
+      fetchTimeline(props.patientId),
+      fetchTreatments(props.patientId)
+    ])
     // If there are dates, select the most recent one by default
     if (timelineDates.value.length > 0) {
       const mostRecent = timelineDates.value[timelineDates.value.length - 1]
@@ -84,6 +94,15 @@ async function handleDateChange(date: string | null) {
     await fetchOdontogramAtDate(props.patientId, date)
   } else {
     returnToCurrentView()
+  }
+}
+
+async function onHistoryExpanded(expanded: boolean) {
+  if (expanded && !historyData.value.length) {
+    historyLoading.value = true
+    const response = await fetchPatientHistory(props.patientId)
+    if (response) historyData.value = response.data
+    historyLoading.value = false
   }
 }
 </script>
@@ -188,6 +207,17 @@ async function handleDateChange(date: string | null) {
 
           <ChangesList :changes="changesAtDate" />
         </UCard>
+
+        <!-- Treatment list -->
+        <TreatmentListSection :treatments="treatments" />
+
+        <!-- Change history -->
+        <ChangeHistorySection
+          :history="historyData"
+          :treatments="treatments"
+          :loading="historyLoading"
+          @update:expanded="onHistoryExpanded"
+        />
       </template>
     </template>
   </div>

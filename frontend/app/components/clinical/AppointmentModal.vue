@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { Appointment, AppointmentCreate, Patient, PlannedTreatmentItem } from '~/types'
+import type {
+  Appointment,
+  AppointmentCreate,
+  Patient,
+  PlannedTreatmentItem,
+  Surface
+} from '~/types'
 
 const props = defineProps<{
   open: boolean
@@ -234,15 +240,16 @@ watch(() => props.open, async (isOpen) => {
       formData.cabinet = apt.cabinet
       formData.notes = apt.notes || ''
 
-      // Load treatments from appointment (mapped to PlannedTreatmentItem format)
+      // Map each AppointmentTreatmentBrief into a PlannedTreatmentItem shape so the
+      // shared selector can render it. The Treatment.id is not available in the
+      // brief, so we leave treatment_id empty; it is only used server-side when
+      // submitting, and the selector keys off the PlannedTreatmentItem.id.
       if (apt.treatments && apt.treatments.length > 0) {
-        selectedTreatments.value = apt.treatments.map(t => ({
+        selectedTreatments.value = apt.treatments.map((t): PlannedTreatmentItem => ({
           id: t.planned_item_id,
           clinic_id: apt.clinic_id,
           treatment_plan_id: t.plan_id || '',
-          tooth_treatment_id: undefined,
-          catalog_item_id: t.catalog_item_id,
-          is_global: t.is_global,
+          treatment_id: '',
           sequence_order: 0,
           status: t.planned_item_status,
           completed_without_appointment: false,
@@ -251,21 +258,28 @@ watch(() => props.open, async (isOpen) => {
           notes: undefined,
           created_at: '',
           updated_at: '',
-          tooth_treatment: t.tooth_number
-            ? {
-                id: '',
-                tooth_number: t.tooth_number,
-                treatment_type: '',
-                status: 'planned',
-                surfaces: t.surfaces
-              }
-            : undefined,
+          treatment: {
+            id: '',
+            clinical_type: 'crown',
+            status: 'planned',
+            catalog_item_id: t.catalog_item_id,
+            price_snapshot: t.default_price ? String(t.default_price) : null,
+            currency_snapshot: 'EUR',
+            teeth: t.tooth_number
+              ? [{
+                  tooth_number: t.tooth_number,
+                  role: null,
+                  surfaces: (t.surfaces as Surface[] | undefined) ?? null
+                }]
+              : []
+          },
           catalog_item: t.catalog_item_id
             ? {
                 id: t.catalog_item_id,
                 internal_code: t.internal_code,
                 names: t.names,
-                default_price: t.default_price
+                default_price: t.default_price != null ? String(t.default_price) : null,
+                currency: 'EUR'
               }
             : undefined,
           media: []

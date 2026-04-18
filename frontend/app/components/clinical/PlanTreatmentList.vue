@@ -60,48 +60,50 @@ function isHighlighted(itemId: string): boolean {
   return props.highlightedItems?.includes(itemId) ?? false
 }
 
-// Format item name
+// Format item name: catalog name (localized) > clinical_type i18n key.
 function getItemName(item: PlannedTreatmentItem): string {
-  // Try catalog item names (localized)
   if (item.catalog_item?.names) {
     const name = item.catalog_item.names[locale.value] || item.catalog_item.names.es
     if (name) return name
   }
-
-  // Try tooth_treatment for odontogram treatments
-  if (item.tooth_treatment?.treatment_type) {
-    const key = `odontogram.treatments.types.${item.tooth_treatment.treatment_type}`
+  const clinicalType = item.treatment?.clinical_type
+  if (clinicalType) {
+    const key = `odontogram.treatments.types.${clinicalType}`
     const translated = t(key)
     if (translated !== key) return translated
+    return clinicalType
   }
-
-  // Try treatment_type directly
-  if (item.treatment_type) {
-    const key = `odontogram.treatments.types.${item.treatment_type}`
-    const translated = t(key)
-    if (translated !== key) return translated
-    return item.treatment_type
-  }
-
-  return item.description || t('clinical.plans.unknownTreatment')
+  return t('clinical.plans.unknownTreatment')
 }
 
-// Format tooth info
+function itemTeeth(item: PlannedTreatmentItem): number[] {
+  return (item.treatment?.teeth ?? []).map(t => t.tooth_number)
+}
+
+function itemSurfaces(item: PlannedTreatmentItem): string[] {
+  const first = item.treatment?.teeth?.[0]
+  return (first?.surfaces as string[] | undefined) ?? []
+}
+
 function formatToothInfo(item: PlannedTreatmentItem): string {
-  const toothNumber = item.tooth_number || item.tooth_treatment?.tooth_number
-  if (!toothNumber) return ''
-
-  let info = `${t('clinical.tooth')} ${toothNumber}`
-  const surfaces = item.surfaces || item.tooth_treatment?.surfaces
-  if (surfaces && surfaces.length > 0) {
-    info += ` (${surfaces.join(', ')})`
-  }
-  return info
+  const teeth = itemTeeth(item)
+  if (teeth.length === 0) return ''
+  const label = teeth.length === 1
+    ? `${t('clinical.tooth')} ${teeth[0]}`
+    : `${t('clinical.tooth')} ${teeth.join(', ')}`
+  const surfaces = itemSurfaces(item)
+  return surfaces.length > 0 ? `${label} (${surfaces.join(', ')})` : label
 }
 
-// Check if item has tooth info
 function hasToothInfo(item: PlannedTreatmentItem): boolean {
-  return !!(item.tooth_number || item.tooth_treatment?.tooth_number)
+  return itemTeeth(item).length > 0
+}
+
+function getItemPrice(item: PlannedTreatmentItem): number | undefined {
+  const snap = item.treatment?.price_snapshot
+  if (!snap) return undefined
+  const parsed = Number(snap)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 // Format currency
@@ -159,10 +161,10 @@ function formatCurrency(amount: number | undefined): string {
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <span
-            v-if="item.price"
+            v-if="getItemPrice(item) !== undefined"
             class="font-medium text-sm"
           >
-            {{ formatCurrency(item.price) }}
+            {{ formatCurrency(getItemPrice(item)) }}
           </span>
           <template v-if="!readonly">
             <UButton

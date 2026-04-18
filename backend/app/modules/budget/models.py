@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.catalog.models import TreatmentCatalogItem, VatType
     from app.modules.clinical.models import Patient
-    from app.modules.odontogram.models import ToothTreatment
+    from app.modules.odontogram.models import Treatment
 
 
 class Budget(Base, TimestampMixin):
@@ -181,9 +181,9 @@ class BudgetItem(Base, TimestampMixin):
     tooth_number: Mapped[int | None] = mapped_column(Integer, default=None)  # FDI notation
     surfaces: Mapped[list | None] = mapped_column(JSONB, default=None)  # ["M", "O", "D"]
 
-    # Odontogram integration
-    tooth_treatment_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("tooth_treatments.id"), index=True, default=None
+    # Odontogram integration - link to a Treatment (header + teeth).
+    treatment_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("treatments.id"), index=True, default=None
     )
 
     # Billing tracking (for partial invoicing)
@@ -198,13 +198,13 @@ class BudgetItem(Base, TimestampMixin):
     budget: Mapped["Budget"] = relationship(back_populates="items")
     catalog_item: Mapped["TreatmentCatalogItem"] = relationship()
     vat_type: Mapped["VatType | None"] = relationship()
-    tooth_treatment: Mapped["ToothTreatment | None"] = relationship()
+    treatment: Mapped["Treatment | None"] = relationship()
 
     __table_args__ = (
         Index("idx_budget_items_budget", "budget_id"),
         Index("idx_budget_items_catalog", "catalog_item_id"),
         Index("idx_budget_items_tooth", "budget_id", "tooth_number"),
-        Index("idx_budget_items_tooth_treatment", "tooth_treatment_id"),
+        Index("idx_budget_items_treatment", "treatment_id"),
     )
 
 

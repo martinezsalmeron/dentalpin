@@ -2,12 +2,15 @@
 import type { TreatmentStatus, TreatmentPlan } from '~/types'
 import { TREATMENT_ICONS, isSurfaceTreatment } from './TreatmentIcons'
 import {
-  MULTI_TOOTH_TREATMENTS,
+  ATOMIC_MULTI_TOOTH_TYPES,
+  MULTI_TOOTH_WRAPPER_BY_TYPE,
   TREATMENT_CATEGORIES,
   THERAPEUTIC_CATEGORIES,
   getAllowedStatusesForTreatment,
   getMultiToothConfig,
   getTreatmentColor,
+  isMultiToothOnlyType,
+  supportsBothModes,
   type TreatmentClinicalCategory
 } from '~/config/odontogramConstants'
 
@@ -16,6 +19,8 @@ export type TreatmentBarMode = 'diagnosis' | 'planning' | 'full'
 const props = withDefaults(defineProps<{
   /** Accepts both persisted TreatmentType values and UI-only multi-tooth keys (bridge, multiple_veneers...). */
   selectedTreatment?: string | null
+  /** Catalog item id selected via the bar — enables price/duration/material snapshot. */
+  selectedCatalogItemId?: string | null
   selectedStatus: TreatmentStatus
   selectedPlanId?: string | null
   patientId?: string
@@ -29,6 +34,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:selectedTreatment': [treatment: string | null]
+  'update:selectedCatalogItemId': [catalogItemId: string | null]
   'update:selectedStatus': [status: TreatmentStatus]
   'update:selectedPlanId': [planId: string | null]
   'treatmentSelect': [treatment: string]
@@ -36,7 +42,7 @@ const emit = defineEmits<{
   'cancel': []
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Catalog integration - fetch treatments from catalog with fallback to constants
 const treatmentCatalog = useTreatmentCatalog()
@@ -117,53 +123,151 @@ const effectiveStatus = computed(() =>
   props.mode === 'diagnosis' ? 'existing' : props.selectedStatus
 )
 
-// Current category treatments - uses catalog if available, fallback to constants
-const currentTreatments = computed(() => {
+// Atomic multi-tooth icon overlay shown on the catalog button (bridge, splint).
+const ATOMIC_MULTI_ICONS: Record<string, string> = {
+  bridge: 'i-lucide-link',
+  splint: 'i-lucide-align-horizontal-distribute-center'
+}
+
+interface TreatmentBarItem {
+  /** Unique key for the button (catalog item id, or odontogram type for fallback). */
+  key: string
+  /** Display label — catalog name when available, else i18n type label. */
+  label: string
+  /** Tooltip — label plus optional price-range hint when tiered pricing applies. */
+  tooltip: string
+  /** Backend clinical_type ('crown', 'bridge', ...). */
+  odontogramType: string
+  /** Catalog item id, or null for the constants fallback. */
+  catalogItemId: string | null
+  /** True for atomic multi-tooth types (bridge, splint) — clicking enters multi-mode. */
+  isAtomicMulti: boolean
+  /** Icon name for atomic multi-tooth badge overlay. */
+  atomicMultiIcon?: string
+  /** True when the catalog item uses per-surface tiered pricing. */
+  hasSurfacePricing: boolean
+}
+
+function formatSurfaceRangeLabel(
+  surfacePrices: Record<string, number> | null | undefined,
+  currency: string | undefined
+): string | null {
+  if (!surfacePrices) return null
+  const values = Object.values(surfacePrices)
+    .map(v => (typeof v === 'string' ? Number(v) : v))
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+  if (values.length === 0) return null
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const cur = currency === 'EUR' ? '€' : (currency || '')
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2))
+  return min === max ? `${fmt(min)}${cur}` : `${fmt(min)}–${fmt(max)}${cur}`
+}
+
+// One button per catalog item (no dedupe by type — Metal-cerámica vs Zirconio bridges
+// have different prices/materials and must remain selectable as distinct catalog items).
+// Pontic and bridge_abutment are filtered out (only valid as inner members of a bridge).
+// In diagnosis-only mode (props.disabled) we still want to record existing work, but
+// without the multi-tooth selection flow — currently the disabled prop blocks the whole
+// bar so this branch is unused; left in case the prop semantics change.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const currentTreatments = computed<TreatmentBarItem[]>(() => {
   const catalogTreatments = treatmentCatalog.getTreatmentsForCategory(activeCategory.value)
+
   if (catalogTreatments.length > 0) {
-    // Return treatment types from catalog (for odontogram compatibility)
-    return catalogTreatments.map(t => t.odontogram_treatment_type)
+    return catalogTreatments
+      .filter(c => !isMultiToothOnlyType(c.odontogram_treatment_type))
+      .map((c) => {
+        const oType = c.odontogram_treatment_type
+        const isAtomic = ATOMIC_MULTI_TOOTH_TYPES.has(oType)
+        // Fallback items from useTreatmentCatalog use the treatment type as id;
+        // only real catalog items (UUID ids) should flow into catalog_item_id.
+        const isRealCatalogItem = UUID_RE.test(c.id)
+        // Real catalog items carry localized names; fallback items have names
+        // set to the raw type string, so translate via i18n instead.
+        const label = isRealCatalogItem
+          ? (c.names[locale.value] || c.names.es || c.names.en || oType)
+          : t(`odontogram.treatments.types.${oType}`, oType)
+        const rangeLabel = formatSurfaceRangeLabel(c.surface_prices, c.currency)
+        const tooltip = rangeLabel
+          ? `${label}  •  ${t('odontogram.surfacePricingHint', { range: rangeLabel })}`
+          : label
+        return {
+          key: c.id,
+          label,
+          tooltip,
+          odontogramType: oType,
+          catalogItemId: isRealCatalogItem ? c.id : null,
+          isAtomicMulti: isAtomic,
+          atomicMultiIcon: isAtomic ? ATOMIC_MULTI_ICONS[oType] : undefined,
+          hasSurfacePricing: !!c.surface_prices && Object.keys(c.surface_prices).length > 0
+        }
+      })
   }
 
-  // Fallback to constants
-  const category = TREATMENT_CATEGORIES.find(c => c.key === activeCategory.value)
-  return category?.treatments || []
+  // Constants fallback (catalog empty). One button per type, multi-tooth-only filtered.
+  const fallback = TREATMENT_CATEGORIES.find(c => c.key === activeCategory.value)?.treatments || []
+  return fallback
+    .filter(type => !isMultiToothOnlyType(type))
+    .map((type) => {
+      const isAtomic = ATOMIC_MULTI_TOOTH_TYPES.has(type)
+      const label = t(`odontogram.treatments.types.${type}`, type)
+      return {
+        key: type,
+        label,
+        tooltip: label,
+        odontogramType: type,
+        catalogItemId: null,
+        isAtomicMulti: isAtomic,
+        atomicMultiIcon: isAtomic ? ATOMIC_MULTI_ICONS[type] : undefined,
+        hasSurfacePricing: false
+      }
+    })
 })
 
-function selectTreatment(treatment: string) {
+function selectTreatment(item: TreatmentBarItem) {
   // Check allowed statuses and auto-set if restricted
-  const allowedStatuses = getEffectiveAllowedStatuses(treatment)
+  const allowedStatuses = getEffectiveAllowedStatuses(item.odontogramType)
   if (allowedStatuses.length === 1 && !allowedStatuses.includes(props.selectedStatus)) {
-    // Auto-select the only allowed status (e.g., existing for diagnostic)
     emit('update:selectedStatus', allowedStatuses[0])
   } else if (!allowedStatuses.includes(props.selectedStatus)) {
-    // Current status not allowed, switch to first allowed
     emit('update:selectedStatus', allowedStatuses[0])
   }
 
-  emit('update:selectedTreatment', treatment)
-  emit('treatmentSelect', treatment)
+  // Atomic multi-tooth (bridge, splint) and regular treatments share the same flow:
+  // emit the odontogram type. The wrapper-key swap for crown/veneer happens via
+  // setMultiMode() once the user picks "Multiple teeth" from the toggle.
+  emit('update:selectedCatalogItemId', item.catalogItemId)
+  emit('update:selectedTreatment', item.odontogramType)
+  emit('treatmentSelect', item.odontogramType)
 }
 
-// Multi-tooth button list with icons + i18n labels.
-const MULTI_TOOTH_ICONS: Record<string, string> = {
-  bridge: 'i-lucide-link',
-  splint: 'i-lucide-align-horizontal-distribute-center',
-  multiple_veneers: 'i-lucide-layers',
-  multiple_crowns: 'i-lucide-crown'
-}
-
-const multiToothButtons = computed(() =>
-  Object.values(MULTI_TOOTH_TREATMENTS).map(cfg => ({
-    key: cfg.key,
-    label: t(cfg.labelKey),
-    icon: MULTI_TOOTH_ICONS[cfg.key] ?? 'i-lucide-link'
-  }))
+// Derived from props so a parent-driven selectedTreatment change keeps the chip
+// state in sync (e.g. on cancel + re-select, or SSR-restored state).
+const selectedMultiMode = computed(() =>
+  props.selectedTreatment !== null
+  && props.selectedTreatment !== undefined
+  && Object.values(MULTI_TOOTH_WRAPPER_BY_TYPE).includes(props.selectedTreatment)
 )
 
-// Show multi-tooth section only outside diagnosis-only mode (diagnosis can still register
-// existing multi-tooth work like a pre-existing bridge).
-const showMultiToothSection = computed(() => !props.disabled)
+function setMultiMode(multi: boolean) {
+  const sel = props.selectedTreatment
+  if (!sel) return
+  if (multi) {
+    const wrapperKey = MULTI_TOOTH_WRAPPER_BY_TYPE[sel]
+    if (wrapperKey) {
+      emit('update:selectedTreatment', wrapperKey)
+      emit('treatmentSelect', wrapperKey)
+    }
+  } else {
+    const cfg = getMultiToothConfig(sel)
+    if (cfg) {
+      emit('update:selectedTreatment', cfg.key)
+      emit('treatmentSelect', cfg.key)
+    }
+  }
+}
 
 function selectStatus(status: TreatmentStatus) {
   emit('update:selectedStatus', status)
@@ -171,12 +275,18 @@ function selectStatus(status: TreatmentStatus) {
 
 function handleCancel() {
   emit('update:selectedTreatment', null)
+  emit('update:selectedCatalogItemId', null)
   emit('cancel')
 }
 
-// Check if a treatment is selected
-function isSelected(item: string): boolean {
-  return props.selectedTreatment === item
+// A button is "selected" when it matches the active selection. Catalog items must
+// match by id (multiple buttons can share the same odontogram type — only the one
+// the user clicked should highlight). Fallback items match by odontogram type.
+function isSelected(item: TreatmentBarItem): boolean {
+  if (item.catalogItemId !== null) {
+    return props.selectedCatalogItemId === item.catalogItemId
+  }
+  return props.selectedTreatment === item.odontogramType
 }
 
 // Check if any treatment is selected
@@ -186,17 +296,6 @@ const hasActiveMode = computed(() => props.selectedTreatment !== null)
 const activeMultiToothConfig = computed(() =>
   props.selectedTreatment ? getMultiToothConfig(props.selectedTreatment) : null
 )
-
-// Get treatment label - tries catalog first, then i18n fallback
-function getTreatmentLabel(treatment: string): string {
-  // Try to get name from catalog
-  const catalogName = treatmentCatalog.getTreatmentName(treatment)
-  if (catalogName && catalogName !== treatment) {
-    return catalogName
-  }
-  // Fall back to i18n
-  return t(`odontogram.treatments.types.${treatment}`, treatment)
-}
 
 // Get category label - catalog aware
 function getCategoryLabel(categoryKey: string): string {
@@ -399,7 +498,7 @@ function handleCreatePlan() {
         </UButton>
       </div>
 
-      <!-- Instructions -->
+      <!-- Instructions + mode toggle -->
       <div
         class="instructions"
         :class="{ 'multi-tooth-hint': activeMultiToothConfig }"
@@ -432,65 +531,82 @@ function handleCreatePlan() {
       </div>
     </div>
 
-    <!-- Bottom row: Treatment Icons Grid -->
+    <!-- Bottom row: Treatment Icons Grid (one button per catalog item). -->
     <div class="treatment-grid">
-      <button
-        v-for="treatment in currentTreatments"
-        :key="treatment"
-        type="button"
-        class="treatment-btn"
-        :class="{
-          'selected': isSelected(treatment),
-          'is-surface': isSurfaceTreatment(treatment)
-        }"
-        :title="getTreatmentLabel(treatment)"
-        @click="selectTreatment(treatment)"
+      <div
+        v-for="item in currentTreatments"
+        :key="item.key"
+        class="treatment-cell"
       >
-        <div
-          class="treatment-icon"
-          :style="{ color: getTreatmentColor(treatment) }"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            v-html="TREATMENT_ICONS[treatment]"
-          />
-        </div>
-        <span class="treatment-label">{{ getTreatmentLabel(treatment) }}</span>
-      </button>
-    </div>
-
-    <!-- Multi-tooth treatments (bridges, splints, multiple veneers/crowns) -->
-    <div
-      v-if="showMultiToothSection"
-      class="multi-tooth-grid"
-    >
-      <div class="multi-tooth-divider">
-        <UIcon
-          name="i-lucide-link"
-          class="w-3.5 h-3.5"
-        />
-        <span>{{ t('odontogram.multiTooth.sectionLabel') }}</span>
-      </div>
-      <div class="multi-tooth-buttons">
         <button
-          v-for="btn in multiToothButtons"
-          :key="btn.key"
           type="button"
-          class="treatment-btn multi-tooth-btn"
-          :class="{ selected: isSelected(btn.key) }"
-          :title="btn.label"
-          @click="selectTreatment(btn.key)"
+          class="treatment-btn"
+          :class="{
+            'selected': isSelected(item),
+            'is-surface': isSurfaceTreatment(item.odontogramType),
+            'atomic-multi-btn': item.isAtomicMulti,
+            'has-mode-selector': isSelected(item) && supportsBothModes(item.odontogramType),
+            'has-surface-pricing': item.hasSurfacePricing
+          }"
+          :title="item.tooltip"
+          @click="selectTreatment(item)"
         >
-          <div class="treatment-icon">
-            <UIcon
-              :name="btn.icon"
-              class="w-6 h-6"
+          <div
+            class="treatment-icon"
+            :style="{ color: getTreatmentColor(item.odontogramType) }"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              v-html="TREATMENT_ICONS[item.odontogramType]"
             />
           </div>
-          <span class="treatment-label">{{ btn.label }}</span>
+          <span class="treatment-label">{{ item.label }}</span>
+          <UIcon
+            v-if="item.isAtomicMulti"
+            :name="item.atomicMultiIcon!"
+            class="multi-tooth-badge"
+          />
+          <UIcon
+            v-else-if="supportsBothModes(item.odontogramType)"
+            name="i-lucide-layers"
+            class="multi-tooth-badge multi-tooth-badge-hint"
+          />
         </button>
+
+        <!-- Inline mode selector: anchored directly under selected crown/veneer.
+             Replaces the disconnected mode-toggle that previously sat in the
+             top instructions row. -->
+        <div
+          v-if="isSelected(item) && supportsBothModes(item.odontogramType)"
+          class="mode-selector-inline"
+        >
+          <button
+            type="button"
+            class="mode-chip"
+            :class="{ active: !selectedMultiMode }"
+            @click.stop="setMultiMode(false)"
+          >
+            <UIcon
+              name="i-lucide-circle-dot"
+              class="w-3 h-3"
+            />
+            <span>{{ t('odontogram.oneTooth') }}</span>
+          </button>
+          <button
+            type="button"
+            class="mode-chip"
+            :class="{ active: selectedMultiMode }"
+            @click.stop="setMultiMode(true)"
+          >
+            <UIcon
+              name="i-lucide-link"
+              class="w-3 h-3"
+            />
+            <span>{{ t('odontogram.multipleTeeth') }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -728,26 +844,43 @@ function handleCreatePlan() {
   color: #60A5FA;
 }
 
-/* Treatment Grid - Second row */
+/* Treatment Grid - Second row.
+   CSS grid: auto-fill columns with a sensible min width let long names breathe
+   across 2-3 lines, while grid's row-stretch keeps every button in the same row
+   at equal height regardless of label length. */
 .treatment-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.treatment-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  position: relative;
 }
 
 .treatment-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 10px;
+  justify-content: flex-start;
+  gap: 3px;
+  padding: 7px 6px;
   border-radius: 8px;
   border: 2px solid transparent;
   background: white;
-  transition: all 0.15s ease;
-  min-width: 70px;
-  max-width: 100px;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  width: 100%;
+  height: 100%;
+  min-height: 72px;
+}
+
+.treatment-btn.has-mode-selector {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 :root.dark .treatment-btn {
@@ -785,65 +918,148 @@ function handleCreatePlan() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
 }
 
 .treatment-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 .treatment-label {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
   color: #52525B;
   text-align: center;
   line-height: 1.3;
-  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   hyphens: auto;
+  width: 100%;
 }
 
 :root.dark .treatment-label {
   color: #A1A1AA;
 }
 
-/* Multi-tooth section */
-.multi-tooth-grid {
+/* Atomic multi-tooth catalog buttons (bridge, splint) — distinguished by a small
+   link badge in the top-right corner. */
+.treatment-btn {
+  position: relative;
+}
+
+.multi-tooth-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  color: #3B82F6;
+  background: #DBEAFE;
+  border-radius: 4px;
+  padding: 1px;
+}
+
+:root.dark .multi-tooth-badge {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60A5FA;
+}
+
+/* Multi-tooth hint badge (subtle layers icon) on dual-mode catalog buttons (crown,
+   veneer) — signals that clicking opens mode chips below. */
+.multi-tooth-badge-hint {
+  color: #A1A1AA;
+  background: #F4F4F5;
+}
+
+:root.dark .multi-tooth-badge-hint {
+  color: #71717A;
+  background: #27272A;
+}
+
+.treatment-btn.selected .multi-tooth-badge-hint {
+  color: #3B82F6;
+  background: #DBEAFE;
+}
+
+/* Inline mode selector — anchored directly under the selected crown/veneer button.
+   Stacks two full-width chips vertically so labels never overflow the cell's
+   narrow width. Shares the button's border on the seam so the relationship is
+   visually unambiguous. */
+.mode-selector-inline {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-top: 8px;
-  border-top: 1px dashed #D4D4D8;
+  gap: 2px;
+  padding: 3px;
+  background: #EFF6FF;
+  border: 2px solid #3B82F6;
+  border-top: none;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  box-shadow: 0 8px 18px -4px rgba(59, 130, 246, 0.35), 0 2px 4px rgba(0, 0, 0, 0.05);
+  animation: mode-selector-reveal 0.18s ease-out;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
 }
 
-:root.dark .multi-tooth-grid {
-  border-top-color: #52525B;
+:root.dark .mode-selector-inline {
+  background: #172554;
+  box-shadow: 0 8px 18px -4px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.multi-tooth-divider {
+@keyframes mode-selector-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mode-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #71717A;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.multi-tooth-buttons {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.multi-tooth-btn .treatment-icon {
-  color: #3B82F6;
-}
-
-.multi-tooth-btn.selected .treatment-icon {
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 6px;
+  font-size: 10.5px;
+  font-weight: 500;
   color: #1D4ED8;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.mode-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:root.dark .mode-chip {
+  color: #93C5FD;
+}
+
+.mode-chip:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+:root.dark .mode-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mode-chip.active {
+  background: white;
+  color: #1E40AF;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+:root.dark .mode-chip.active {
+  background: #1E3A8A;
+  color: #DBEAFE;
 }
 
 /* Responsive */

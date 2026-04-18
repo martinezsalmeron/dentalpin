@@ -9,9 +9,18 @@
  * - Treatment management (add, edit, delete, perform)
  */
 
-import type { OdontogramHistoryEntry, Surface, Treatment, TreatmentGroupCreate, TreatmentStatus, TreatmentType } from '~/types'
+import type {
+  ClinicalType,
+  OdontogramHistoryEntry,
+  Surface,
+  ToothTreatmentView,
+  Treatment,
+  TreatmentCreate,
+  TreatmentStatus
+} from '~/types'
 import { PERMANENT_TEETH, DECIDUOUS_TEETH, TREATMENT_SHORTCUTS } from '~/constants/odontogram'
 import { calculateToothRange, getMultiToothConfig, isSameArch } from '~/config/odontogramConstants'
+import { viewsForTooth } from '~/utils/treatmentView'
 import { isSurfaceTreatment } from './TreatmentIcons'
 
 export type OdontogramMode = 'full' | 'view-only' | 'diagnosis' | 'planning'
@@ -32,6 +41,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   treatmentAdd: [treatment: Treatment]
   treatmentPerform: [treatmentId: string]
+  /** Fired after any treatment mutation (add/update/delete/perform) */
+  treatmentsChanged: []
   /** Emitted when user hovers over a tooth (for hover linking) */
   toothHover: [toothNumber: number | null]
 }>()
@@ -56,8 +67,6 @@ const {
   deleteTreatment,
   updateTreatment,
   getToothTreatments,
-  createTreatmentGroup,
-  deleteTreatmentGroup,
   timelineDates,
   viewingDate,
   timelineLoading,
@@ -85,25 +94,27 @@ const highlightedTeeth = computed(() => [
   ...props.highlightedTeethProp
 ])
 
-// Click-to-apply mode. Accepts both persisted TreatmentType values and UI-only
-// multi-tooth keys (e.g. 'bridge', 'multiple_veneers').
+// Click-to-apply mode. Stores the clinical_type (e.g. 'crown', 'bridge') and/or
+// catalog item selected via the TreatmentBar. Catalog-item selection is tracked
+// separately in `selectedCatalogItemId`.
 const selectedTreatmentType = ref<string | null>(null)
+const selectedCatalogItemId = ref<string | null>(null)
 const selectedTreatmentStatus = ref<TreatmentStatus>('existing')
 
 // Multi-tooth selection (bridges, splints, multiple veneers/crowns)
 const multiToothSelection = ref<{ teeth: number[], anchor: number | null }>({ teeth: [], anchor: null })
 const showMultiToothConfirm = ref(false)
 
-// Undo stack
-const undoStack = ref<Array<{ treatmentId?: string, groupId?: string, tooth?: number, type: string }>>([])
+// Undo stack (single entry per Treatment, whether single- or multi-tooth).
+const undoStack = ref<Array<{ treatmentId: string, type: string }>>([])
 
 // History section
 const historyData = ref<OdontogramHistoryEntry[]>([])
 const historyLoading = ref(false)
 
-// Treatment editing
+// Treatment editing (per-tooth view — edit modal operates on single-tooth context).
 const showTreatmentEditModal = ref(false)
-const editingTreatment = ref<Treatment | null>(null)
+const editingTreatment = ref<ToothTreatmentView | null>(null)
 
 // Always show dual view
 const showLateral = true
@@ -140,7 +151,7 @@ const pendingTreatment = computed(() => {
   // Multi-tooth keys (bridge, multiple_veneers...) are UI-only. Skip the single-tooth preview.
   if (isMultiToothMode.value) return null
   return {
-    type: selectedTreatmentType.value as TreatmentType,
+    type: selectedTreatmentType.value as ClinicalType,
     status: selectedTreatmentStatus.value
   }
 })
@@ -184,35 +195,39 @@ watch(hoveredTooth, (toothNumber) => {
 
 function getToothData(toothNumber: number) {
   const record = getToothRecord(toothNumber)
-  const toothTreatments = getToothTreatments(toothNumber)
-
   return {
     generalCondition: record?.general_condition || 'healthy',
-    isDisplaced: toothTreatments.some(t => t.treatment_type === 'displaced'),
-    isRotated: toothTreatments.some(t => t.treatment_type === 'rotated')
+    isDisplaced: record?.is_displaced ?? false,
+    isRotated: record?.is_rotated ?? false
   }
 }
 
-function getFilteredTreatments(toothNumber: number): Treatment[] {
-  const toothTreatments = isViewingHistory.value
-    ? displayTreatments.value.filter(t => t.tooth_number === toothNumber)
+function treatmentIncludesTooth(treatment: Treatment, toothNumber: number): boolean {
+  return treatment.teeth.some(t => t.tooth_number === toothNumber)
+}
+
+/** Return per-tooth views for a given tooth number, honoring statusFilter. */
+function getFilteredTreatments(toothNumber: number): ToothTreatmentView[] {
+  const source: Treatment[] = isViewingHistory.value
+    ? displayTreatments.value.filter(t => treatmentIncludesTooth(t, toothNumber))
     : getToothTreatments(toothNumber)
 
-  if (!props.statusFilter?.length) return toothTreatments
-  return toothTreatments.filter(t => props.statusFilter?.includes(t.status))
+  const views = viewsForTooth(source, toothNumber)
+  if (!props.statusFilter?.length) return views
+  return views.filter(v => props.statusFilter?.includes(v.status))
 }
 
-/** Return the first group id any active treatment on the given tooth participates in. */
+/** Treatment id shared by all teeth of a multi-tooth treatment (used for connectors). */
 function getToothGroupId(toothNumber: number): string | null {
   const list = getFilteredTreatments(toothNumber)
-  return list.find(t => t.treatment_group_id)?.treatment_group_id ?? null
+  const multi = list.find(v => v.is_multi)
+  return multi?.treatment_id ?? null
 }
 
-/** Return the status of the group the tooth participates in (for connector styling). */
-function getToothGroupStatus(toothNumber: number): 'existing' | 'planned' | null {
+function getToothGroupStatus(toothNumber: number): TreatmentStatus | null {
   const list = getFilteredTreatments(toothNumber)
-  const withGroup = list.find(t => t.treatment_group_id)
-  return (withGroup?.status as 'existing' | 'planned' | undefined) ?? null
+  const multi = list.find(v => v.is_multi)
+  return multi?.status ?? null
 }
 
 // ============================================================================
@@ -384,36 +399,36 @@ async function confirmMultiToothSelection() {
   if (!cfg) return
   const sortedTeeth = [...multiToothSelection.value.teeth].sort((a, b) => a - b)
 
-  // Determine status based on mode
   let status: TreatmentStatus = selectedTreatmentStatus.value
   if (isDiagnosisMode.value) status = 'existing'
   else if (isPlanningMode.value) status = 'planned'
 
-  const payload: TreatmentGroupCreate = {
+  const payload: TreatmentCreate = {
     mode: cfg.mode,
     tooth_numbers: sortedTeeth,
     status
   }
   if (cfg.mode === 'uniform') {
-    payload.treatment_type = cfg.key as TreatmentType
+    payload.clinical_type = cfg.key as ClinicalType
+  } else {
+    payload.clinical_type = 'bridge'
+  }
+  if (selectedCatalogItemId.value) {
+    payload.catalog_item_id = selectedCatalogItemId.value
   }
 
-  const created = await createTreatmentGroup(props.patientId, payload)
-  if (!created || created.length === 0) {
+  const created = await createTreatment(props.patientId, payload)
+  if (!created) {
     showMultiToothConfirm.value = false
     return
   }
 
-  const groupId = created[0]?.treatment_group_id
-  if (groupId) {
-    undoStack.value.push({ groupId, type: cfg.key })
-  }
-
+  undoStack.value.push({ treatmentId: created.id, type: cfg.key })
   resetMultiToothSelection()
-  for (const treatment of created) {
-    emit('treatmentAdd', treatment)
-  }
+  emit('treatmentAdd', created)
+  emit('treatmentsChanged')
   selectedTreatmentType.value = null
+  selectedCatalogItemId.value = null
 }
 
 function resetMultiToothSelection() {
@@ -428,42 +443,41 @@ function handleToothContextMenu(toothNumber: number, event: MouseEvent) {
 }
 
 async function applyTreatment(toothNumber: number, surfaces?: Surface[]) {
-  if (!selectedTreatmentType.value) return
+  if (!selectedTreatmentType.value && !selectedCatalogItemId.value) return
 
-  // Determine status based on mode
   let status: TreatmentStatus = selectedTreatmentStatus.value
-  if (isDiagnosisMode.value) {
-    status = 'existing' // Diagnosis mode always records existing conditions
-  } else if (isPlanningMode.value) {
-    status = 'planned'
+  if (isDiagnosisMode.value) status = 'existing'
+  else if (isPlanningMode.value) status = 'planned'
+
+  const payload: TreatmentCreate = {
+    tooth_numbers: [toothNumber],
+    status,
+    mode: 'single'
   }
-
-  const data: { treatment_type: TreatmentType, status: TreatmentStatus, surfaces?: Surface[] } = {
-    treatment_type: selectedTreatmentType.value as TreatmentType,
-    status
+  if (selectedCatalogItemId.value) {
+    payload.catalog_item_id = selectedCatalogItemId.value
   }
-
-  if (surfaces?.length) data.surfaces = surfaces
-
-  const treatment = await createTreatment(props.patientId, toothNumber, data)
-
-  if (treatment) {
-    undoStack.value.push({
-      treatmentId: treatment.id,
-      tooth: toothNumber,
-      type: treatment.treatment_type
-    })
-
-    toast.add({
-      title: `${t(`odontogram.treatments.types.${treatment.treatment_type}`)} - ${t('odontogram.tooth')} ${toothNumber}`,
-      description: t('odontogram.treatments.treatmentAdded'),
-      color: 'success',
-      actions: [{ label: t('common.undo'), click: handleUndo }]
-    })
-
-    emit('treatmentAdd', treatment)
-    selectedTreatmentType.value = null
+  if (selectedTreatmentType.value) {
+    payload.clinical_type = selectedTreatmentType.value as ClinicalType
   }
+  if (surfaces?.length) payload.surfaces = surfaces
+
+  const treatment = await createTreatment(props.patientId, payload)
+  if (!treatment) return
+
+  undoStack.value.push({ treatmentId: treatment.id, type: treatment.clinical_type })
+
+  toast.add({
+    title: `${t(`odontogram.treatments.types.${treatment.clinical_type}`, treatment.clinical_type)} - ${t('odontogram.tooth')} ${toothNumber}`,
+    description: t('odontogram.treatments.treatmentAdded'),
+    color: 'success',
+    actions: [{ label: t('common.undo'), click: handleUndo }]
+  })
+
+  emit('treatmentAdd', treatment)
+  emit('treatmentsChanged')
+  selectedTreatmentType.value = null
+  selectedCatalogItemId.value = null
 }
 
 function handleSurfaceConfirm(surfaces: Surface[]) {
@@ -476,16 +490,14 @@ function handleSurfaceConfirm(surfaces: Surface[]) {
 async function handleUndo() {
   const lastAction = undoStack.value.pop()
   if (!lastAction) return
-  if (lastAction.groupId) {
-    await deleteTreatmentGroup(lastAction.groupId)
-  } else if (lastAction.treatmentId) {
-    await deleteTreatment(lastAction.treatmentId)
-  }
+  await deleteTreatment(lastAction.treatmentId)
+  emit('treatmentsChanged')
   toast.add({ title: t('common.undone'), color: 'neutral' })
 }
 
 function cancelClickToApplyMode() {
   selectedTreatmentType.value = null
+  selectedCatalogItemId.value = null
   hoveredTooth.value = null
   resetMultiToothSelection()
 }
@@ -494,22 +506,24 @@ function cancelClickToApplyMode() {
 // Treatment Editing
 // ============================================================================
 
-function handleEditTreatment(treatment: Treatment) {
+function handleEditTreatment(treatment: ToothTreatmentView) {
   editingTreatment.value = treatment
   showTreatmentEditModal.value = true
 }
 
 async function handleTreatmentUpdate(
   treatmentId: string,
-  data: { status?: TreatmentStatus, surfaces?: Surface[], notes?: string }
+  data: { status?: TreatmentStatus, notes?: string }
 ) {
   await updateTreatment(treatmentId, data)
+  emit('treatmentsChanged')
   showTreatmentEditModal.value = false
   editingTreatment.value = null
 }
 
 async function handleTreatmentDelete(treatmentId: string) {
   await deleteTreatment(treatmentId)
+  emit('treatmentsChanged')
   showTreatmentEditModal.value = false
   editingTreatment.value = null
 }
@@ -517,6 +531,7 @@ async function handleTreatmentDelete(treatmentId: string) {
 async function handleTreatmentPerform(treatmentId: string) {
   const updated = await performTreatment(treatmentId)
   if (updated) emit('treatmentPerform', treatmentId)
+  emit('treatmentsChanged')
   showTreatmentEditModal.value = false
   editingTreatment.value = null
 }
@@ -594,9 +609,9 @@ async function onHistoryExpanded(expanded: boolean) {
       </UButtonGroup>
     </div>
 
-    <!-- Timeline Slider -->
+    <!-- Timeline Slider (only in standalone 'full' mode; HistoryMode renders its own) -->
     <TimelineSlider
-      v-if="timelineDates.length > 1"
+      v-if="mode === 'full' && timelineDates.length > 1"
       :dates="timelineDates"
       :current-date="viewingDate"
       :disabled="timelineLoading"
@@ -733,6 +748,7 @@ async function onHistoryExpanded(expanded: boolean) {
       <TreatmentBar
         v-if="!isReadonly && !isPlanningMode"
         v-model:selected-treatment="selectedTreatmentType"
+        v-model:selected-catalog-item-id="selectedCatalogItemId"
         :selected-status="selectedTreatmentStatus"
         :mode="treatmentBarMode"
         :disabled="isReadonly"
@@ -744,15 +760,15 @@ async function onHistoryExpanded(expanded: boolean) {
       <!-- Legend -->
       <OdontogramLegend />
 
-      <!-- Treatment List (hidden in diagnosis/planning modes - parent has its own) -->
+      <!-- Treatment List (only in standalone 'full' mode; other modes' parents render their own) -->
       <TreatmentListSection
-        v-if="!isDiagnosisMode && !isPlanningMode"
+        v-if="mode === 'full'"
         :treatments="treatments"
       />
 
-      <!-- History (hidden in diagnosis/planning modes) -->
+      <!-- History (only in standalone 'full' mode) -->
       <ChangeHistorySection
-        v-if="!isDiagnosisMode && !isPlanningMode"
+        v-if="mode === 'full'"
         :history="historyData"
         :treatments="treatments"
         :loading="historyLoading"
@@ -764,7 +780,7 @@ async function onHistoryExpanded(expanded: boolean) {
     <SurfaceSelectorPopup
       v-model:open="showSurfaceSelector"
       :tooth-number="selectedTooth || 0"
-      :treatment-type="(selectedTreatmentType as TreatmentType) || 'filling'"
+      :treatment-type="(selectedTreatmentType as ClinicalType) || 'filling_composite'"
       :status="selectedTreatmentStatus"
       @confirm="handleSurfaceConfirm"
       @cancel="selectedTooth = null"

@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.auth.models import ClinicMembership
 from app.core.events import EventType, event_bus
+from app.modules.odontogram.models import Treatment
 from app.modules.treatment_plan.models import PlannedTreatmentItem
 
 from .models import Appointment, AppointmentTreatment, Patient, PatientTimeline
@@ -225,8 +226,10 @@ class AppointmentService:
                 selectinload(Appointment.professional),
                 selectinload(Appointment.treatments).options(
                     selectinload(AppointmentTreatment.planned_item).options(
-                        selectinload(PlannedTreatmentItem.catalog_item),
-                        selectinload(PlannedTreatmentItem.tooth_treatment),
+                        selectinload(PlannedTreatmentItem.treatment).options(
+                            selectinload(Treatment.teeth),
+                            selectinload(Treatment.catalog_item),
+                        ),
                         selectinload(PlannedTreatmentItem.treatment_plan),
                     ),
                     selectinload(AppointmentTreatment.catalog_item),
@@ -272,8 +275,10 @@ class AppointmentService:
                 selectinload(Appointment.professional),
                 selectinload(Appointment.treatments).options(
                     selectinload(AppointmentTreatment.planned_item).options(
-                        selectinload(PlannedTreatmentItem.catalog_item),
-                        selectinload(PlannedTreatmentItem.tooth_treatment),
+                        selectinload(PlannedTreatmentItem.treatment).options(
+                            selectinload(Treatment.teeth),
+                            selectinload(Treatment.catalog_item),
+                        ),
                         selectinload(PlannedTreatmentItem.treatment_plan),
                     ),
                     selectinload(AppointmentTreatment.catalog_item),
@@ -364,9 +369,7 @@ class AppointmentService:
                 continue
 
             if plan.status not in ("active", "draft"):
-                errors.append(
-                    f"Treatment item {item_id} belongs to {plan.status} plan"
-                )
+                errors.append(f"Treatment item {item_id} belongs to {plan.status} plan")
                 continue
 
             if item.status != "pending":
@@ -403,18 +406,13 @@ class AppointmentService:
         # Add treatments from planned items
         if planned_item_ids:
             for order, planned_item_id in enumerate(planned_item_ids):
-                # Fetch the planned item to get its catalog_item_id
+                # Resolve catalog_item_id from the referenced Treatment.
                 planned_item = await db.get(PlannedTreatmentItem, planned_item_id)
                 catalog_item_id = None
                 if planned_item:
-                    # Get catalog_item_id from planned_item or its tooth_treatment
-                    if planned_item.catalog_item_id:
-                        catalog_item_id = planned_item.catalog_item_id
-                    elif planned_item.tooth_treatment_id:
-                        # Load tooth_treatment to get its catalog_item_id
-                        await db.refresh(planned_item, ["tooth_treatment"])
-                        if planned_item.tooth_treatment:
-                            catalog_item_id = planned_item.tooth_treatment.catalog_item_id
+                    await db.refresh(planned_item, ["treatment"])
+                    if planned_item.treatment:
+                        catalog_item_id = planned_item.treatment.catalog_item_id
 
                 treatment = AppointmentTreatment(
                     appointment_id=appointment.id,
@@ -435,15 +433,13 @@ class AppointmentService:
             },
         )
 
-        # Refresh to load relationships including treatments
         await db.refresh(appointment, ["patient", "professional", "treatments"])
-        # Load nested relationships for each treatment
         for treatment in appointment.treatments:
             await db.refresh(treatment, ["planned_item", "catalog_item"])
             if treatment.planned_item:
-                await db.refresh(
-                    treatment.planned_item, ["catalog_item", "tooth_treatment", "treatment_plan"]
-                )
+                await db.refresh(treatment.planned_item, ["treatment", "treatment_plan"])
+                if treatment.planned_item.treatment:
+                    await db.refresh(treatment.planned_item.treatment, ["teeth", "catalog_item"])
 
         return appointment
 
@@ -487,16 +483,12 @@ class AppointmentService:
 
             # Add new treatments from planned items
             for order, planned_item_id in enumerate(planned_item_ids):
-                # Fetch the planned item to get its catalog_item_id
                 planned_item = await db.get(PlannedTreatmentItem, planned_item_id)
                 catalog_item_id = None
                 if planned_item:
-                    if planned_item.catalog_item_id:
-                        catalog_item_id = planned_item.catalog_item_id
-                    elif planned_item.tooth_treatment_id:
-                        await db.refresh(planned_item, ["tooth_treatment"])
-                        if planned_item.tooth_treatment:
-                            catalog_item_id = planned_item.tooth_treatment.catalog_item_id
+                    await db.refresh(planned_item, ["treatment"])
+                    if planned_item.treatment:
+                        catalog_item_id = planned_item.treatment.catalog_item_id
 
                 treatment = AppointmentTreatment(
                     appointment_id=appointment.id,
@@ -512,10 +504,11 @@ class AppointmentService:
             for treatment in appointment.treatments:
                 await db.refresh(treatment, ["planned_item", "catalog_item"])
                 if treatment.planned_item:
-                    await db.refresh(
-                        treatment.planned_item,
-                        ["catalog_item", "tooth_treatment", "treatment_plan"],
-                    )
+                    await db.refresh(treatment.planned_item, ["treatment", "treatment_plan"])
+                    if treatment.planned_item.treatment:
+                        await db.refresh(
+                            treatment.planned_item.treatment, ["teeth", "catalog_item"]
+                        )
 
         # Publish appropriate event based on status change
         new_status = appointment.status

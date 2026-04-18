@@ -58,15 +58,12 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
                         item.status = "completed"
                         item.completed_without_appointment = False
 
-                        # Publish completion event
                         event_bus.publish(
                             "treatment_plan.treatment_completed",
                             {
                                 "plan_id": str(item.treatment_plan_id),
                                 "item_id": str(item.id),
-                                "tooth_treatment_id": str(item.tooth_treatment_id)
-                                if item.tooth_treatment_id
-                                else None,
+                                "treatment_id": str(item.treatment_id),
                                 "clinic_id": clinic_id,
                             },
                         )
@@ -137,22 +134,21 @@ async def on_budget_accepted(data: dict[str, Any]) -> None:
 async def on_treatment_performed(data: dict[str, Any]) -> None:
     """Handle treatment performed from odontogram.
 
-    When a treatment is performed directly in the odontogram,
-    mark the corresponding planned item as completed.
+    Mark the corresponding planned item as completed when the odontogram performs
+    a Treatment that belongs to an active plan item.
     """
-    tooth_treatment_id = data.get("tooth_treatment_id")
+    treatment_id = data.get("treatment_id")
     clinic_id = data.get("clinic_id")
 
-    if not tooth_treatment_id or not clinic_id:
-        logger.warning("on_treatment_performed: missing tooth_treatment_id or clinic_id")
+    if not treatment_id or not clinic_id:
+        logger.warning("on_treatment_performed: missing treatment_id or clinic_id")
         return
 
     async with async_session_maker() as db:
         try:
-            # Find planned item referencing this tooth treatment
             result = await db.execute(
                 select(PlannedTreatmentItem).where(
-                    PlannedTreatmentItem.tooth_treatment_id == UUID(tooth_treatment_id),
+                    PlannedTreatmentItem.treatment_id == UUID(treatment_id),
                     PlannedTreatmentItem.clinic_id == UUID(clinic_id),
                     PlannedTreatmentItem.status == "pending",
                 )
@@ -168,13 +164,12 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                     {
                         "plan_id": str(item.treatment_plan_id),
                         "item_id": str(item.id),
-                        "tooth_treatment_id": tooth_treatment_id,
+                        "treatment_id": treatment_id,
                         "clinic_id": clinic_id,
                         "triggered_by": "odontogram_performed",
                     },
                 )
 
-                # Check if plan should auto-complete
                 from .service import TreatmentPlanService
 
                 await TreatmentPlanService._check_and_complete_plan(
@@ -182,10 +177,8 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                 )
 
                 await db.commit()
-                logger.info(
-                    f"Marked planned item {item.id} as completed from odontogram"
-                )
+                logger.info("Marked planned item %s as completed from odontogram", item.id)
 
         except Exception as e:
-            logger.error(f"Error processing treatment performed: {e}", exc_info=True)
+            logger.error("Error processing treatment performed: %s", e, exc_info=True)
             await db.rollback()
