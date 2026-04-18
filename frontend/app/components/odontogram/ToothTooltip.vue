@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ToothTreatmentView, TreatmentStatus } from '~/types'
 import { TREATMENT_COLORS } from '~/config/odontogramConstants'
+import { getTreatmentDisplayName } from '~/utils/treatmentView'
 
 const props = defineProps<{
   toothNumber: number
@@ -13,7 +14,7 @@ const emit = defineEmits<{
   deleteTreatment: [treatment: ToothTreatmentView]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Get tooth name based on number
 function getToothName(toothNumber: number): string {
@@ -53,8 +54,8 @@ const groupedTreatments = computed(() => {
 
 const hasAnyTreatments = computed(() => props.treatments.length > 0)
 
-function getTreatmentLabel(type: string): string {
-  return t(`odontogram.treatments.types.${type}`, type)
+function getTreatmentLabel(treatment: ToothTreatmentView): string {
+  return getTreatmentDisplayName(treatment, locale.value, t)
 }
 
 function _getStatusColor(status: TreatmentStatus): string {
@@ -114,7 +115,7 @@ function handleEditClick(event: Event, treatment: Treatment) {
               class="treatment-dot"
               :style="{ backgroundColor: TREATMENT_COLORS[treatment.treatment_type] || '#9CA3AF' }"
             />
-            <span class="treatment-name">{{ getTreatmentLabel(treatment.treatment_type) }}</span>
+            <span class="treatment-name">{{ getTreatmentLabel(treatment) }}</span>
             <UBadge
               v-if="treatment.surfaces?.length"
               color="neutral"
@@ -150,7 +151,7 @@ function handleEditClick(event: Event, treatment: Treatment) {
               class="treatment-dot"
               :style="{ backgroundColor: TREATMENT_COLORS[treatment.treatment_type] || '#9CA3AF' }"
             />
-            <span class="treatment-name">{{ getTreatmentLabel(treatment.treatment_type) }}</span>
+            <span class="treatment-name">{{ getTreatmentLabel(treatment) }}</span>
             <UBadge
               v-if="treatment.surfaces?.length"
               color="neutral"

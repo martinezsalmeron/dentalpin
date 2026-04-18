@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { MultiToothTreatmentConfig, TreatmentStatus } from '~/types'
 
+type BridgeRole = 'pillar' | 'pontic'
+
 const props = defineProps<{
   open: boolean
   config: MultiToothTreatmentConfig
@@ -10,32 +12,61 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'confirm': []
+  /** Bridge: emits teeth with chosen roles. Uniform: emits null. */
+  'confirm': [teethRoles: Array<{ tooth_number: number, role: BridgeRole }> | null]
   'cancel': []
 }>()
 
 const { t } = useI18n()
+const toast = useToast()
 
 const isBridge = computed(() => props.config.mode === 'bridge')
-
 const sortedTeeth = computed(() => [...props.teeth].sort((a, b) => a - b))
 
-const pillars = computed(() => {
-  if (!isBridge.value || sortedTeeth.value.length < 2) return new Set<number>()
+/** Per-tooth role state (bridge only). Default: first+last pillar, middle pontic. */
+const roles = ref<Record<number, BridgeRole>>({})
+
+function resetRoles() {
+  const next: Record<number, BridgeRole> = {}
   const s = sortedTeeth.value
-  return new Set<number>([s[0]!, s[s.length - 1]!])
-})
-
-const pontics = computed(() => {
-  if (!isBridge.value) return new Set<number>()
-  return new Set<number>(sortedTeeth.value.slice(1, -1))
-})
-
-function roleFor(tooth: number): 'pillar' | 'pontic' | null {
-  if (pillars.value.has(tooth)) return 'pillar'
-  if (pontics.value.has(tooth)) return 'pontic'
-  return null
+  if (s.length === 0) {
+    roles.value = next
+    return
+  }
+  if (s.length === 1) {
+    next[s[0]!] = 'pillar'
+  } else {
+    const first = s[0]!
+    const last = s[s.length - 1]!
+    for (const n of s) {
+      next[n] = (n === first || n === last) ? 'pillar' : 'pontic'
+    }
+  }
+  roles.value = next
 }
+
+watch(
+  () => [props.open, sortedTeeth.value.join(',')],
+  ([isOpen]) => {
+    if (isOpen && isBridge.value) resetRoles()
+  },
+  { immediate: true }
+)
+
+function toggleRole(tooth: number) {
+  if (!isBridge.value) return
+  const current = roles.value[tooth] ?? 'pontic'
+  roles.value = { ...roles.value, [tooth]: current === 'pillar' ? 'pontic' : 'pillar' }
+}
+
+function roleFor(tooth: number): BridgeRole | null {
+  if (!isBridge.value) return null
+  return roles.value[tooth] ?? null
+}
+
+const pillarCount = computed(() =>
+  Object.values(roles.value).filter(r => r === 'pillar').length
+)
 
 function handleCancel() {
   emit('cancel')
@@ -43,7 +74,19 @@ function handleCancel() {
 }
 
 function handleConfirm() {
-  emit('confirm')
+  if (isBridge.value) {
+    if (pillarCount.value < 1) {
+      toast.add({ title: t('odontogram.multiTooth.needPillar'), color: 'warning' })
+      return
+    }
+    const payload = sortedTeeth.value.map(tooth_number => ({
+      tooth_number,
+      role: roles.value[tooth_number] ?? 'pontic'
+    }))
+    emit('confirm', payload)
+  } else {
+    emit('confirm', null)
+  }
 }
 </script>
 
@@ -62,6 +105,13 @@ function handleConfirm() {
           {{ t('odontogram.multiTooth.confirmHint', { n: teeth.length }) }}
         </p>
 
+        <p
+          v-if="isBridge"
+          class="text-xs text-[var(--ui-text-muted)]"
+        >
+          {{ t('odontogram.multiTooth.roleHint') }}
+        </p>
+
         <div class="flex flex-wrap gap-2">
           <UBadge
             v-for="tooth in sortedTeeth"
@@ -69,6 +119,8 @@ function handleConfirm() {
             :color="roleFor(tooth) === 'pillar' ? 'primary' : 'neutral'"
             variant="subtle"
             size="lg"
+            :class="isBridge ? 'cursor-pointer select-none' : ''"
+            @click="toggleRole(tooth)"
           >
             {{ tooth }}
             <span

@@ -113,6 +113,28 @@ const hasImplantTreatment = computed(() => {
   return toothTreatments.value.some(t => t.treatment_type === 'implant')
 })
 
+// Bridge treatment on this tooth (clinical_type === 'bridge').
+// Roles come from the per-tooth membership: 'pillar' | 'pontic' | null.
+const bridgeTreatment = computed(() => {
+  return toothTreatments.value.find(t => t.treatment_type === 'bridge')
+})
+
+const hasBridgeTreatment = computed(() => bridgeTreatment.value !== undefined)
+
+// Pontic teeth have no root: the natural tooth is missing and the prosthetic
+// pontic floats between the two abutments.
+const isBridgePontic = computed(() => bridgeTreatment.value?.role === 'pontic')
+
+const bridgeFillColor = computed(() => {
+  if (!bridgeTreatment.value) return 'none'
+  return getTreatmentColor(bridgeTreatment.value.treatment_type)
+})
+
+const bridgeFillOpacity = computed(() => {
+  if (!bridgeTreatment.value) return 0
+  return STATUS_STYLES[bridgeTreatment.value.status]?.opacity ?? 1
+})
+
 function hasTreatment(type: string, status?: TreatmentStatus): boolean {
   return toothTreatments.value.some(t =>
     t.treatment_type === type && (status === undefined || t.status === status)
@@ -322,9 +344,10 @@ const hasPlannedLateralTreatments = computed(() => {
           </clipPath>
         </defs>
 
-        <!-- Roots (render first, behind crown) - hidden when implant present -->
+        <!-- Roots (render first, behind crown) - hidden when implant present
+             or when tooth is a pontic (missing natural tooth in a bridge). -->
         <g
-          v-if="!hasImplantTreatment"
+          v-if="!hasImplantTreatment && !isBridgePontic"
           class="roots"
         >
           <!-- Single root -->
@@ -375,10 +398,21 @@ const hasPlannedLateralTreatments = computed(() => {
             stroke-linejoin="round"
           />
 
+          <!-- Bridge crown fill (pillar + pontic share the same prosthetic material) -->
+          <path
+            v-if="hasBridgeTreatment"
+            :d="lateralPaths.crown"
+            :fill="bridgeFillColor"
+            :fill-opacity="bridgeFillOpacity"
+            stroke="none"
+            class="bridge-crown-fill"
+          />
+
           <!-- Rule 1: Pulp chamber with dynamic fill based on treatment type -->
+          <!-- Bridge crown covers natural anatomy: hide pulp chamber. -->
           <!-- Pulp outline (always visible when no treatment) -->
           <path
-            v-if="lateralPaths.pulp && !hasImplantTreatment && !hasPulpTreatment"
+            v-if="lateralPaths.pulp && !hasImplantTreatment && !hasPulpTreatment && !hasBridgeTreatment"
             :d="lateralPaths.pulp"
             class="tooth-pulp"
             fill="none"
@@ -388,7 +422,7 @@ const hasPlannedLateralTreatments = computed(() => {
           />
           <!-- Pulp outline (visible when partial fill to show unfilled area) -->
           <path
-            v-if="lateralPaths.pulp && hasPulpTreatment && !hasImplantTreatment && needsPulpClip"
+            v-if="lateralPaths.pulp && hasPulpTreatment && !hasImplantTreatment && needsPulpClip && !hasBridgeTreatment"
             :d="lateralPaths.pulp"
             class="tooth-pulp"
             fill="none"
@@ -399,7 +433,7 @@ const hasPlannedLateralTreatments = computed(() => {
           <!-- Filled pulp (Rule 1 treatments - pulpitis, root canal, etc.) -->
           <!-- Uses clip-path for partial fills (half, two_thirds) to ensure fill stays within pulp bounds -->
           <path
-            v-if="hasPulpTreatment && !hasImplantTreatment"
+            v-if="hasPulpTreatment && !hasImplantTreatment && !hasBridgeTreatment"
             :d="getPulpFillPath()"
             class="tooth-pulp pulp-filled"
             :fill="getPulpFillColor()"
@@ -541,24 +575,14 @@ const hasPlannedLateralTreatments = computed(() => {
               />
             </template>
 
-            <!-- Rotated indicator - circular arrow at crown center -->
+            <!-- Rotated indicator - circular rotation arrow (Lucide rotate-cw) -->
             <template v-else-if="treatment.treatment_type === 'rotated' && iconAnchors">
               <g :transform="`translate(${iconAnchors.crownCenter.x}, ${iconAnchors.crownCenter.y})`">
-                <!-- Circular arrow (270 degree arc) -->
                 <path
-                  d="M 0,-10 A 10,10 0 1,1 -10,0"
+                  d="M 9,0 A 9,9 0 1,1 0,-9 C 2.52,-9 4.93,-8 6.74,-6.26 L 9,-4 M 9,-9 V -4 H 4"
                   fill="none"
                   :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="2.5"
-                  :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
-                  stroke-linecap="round"
-                />
-                <!-- Arrowhead rotated 60° clockwise -->
-                <path
-                  d="M -10,0 L -12,-7 M -10,0 L -3,-2"
-                  fill="none"
-                  :stroke="getTreatmentColor(treatment.treatment_type)"
-                  stroke-width="2.5"
+                  stroke-width="2"
                   :stroke-opacity="STATUS_STYLES[treatment.status]?.opacity ?? 1"
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -878,7 +902,7 @@ const hasPlannedLateralTreatments = computed(() => {
             v-for="treatment in toothTreatments.filter(t =>
               !hasVisualizationRule(t.treatment_type, 'occlusal_surface')
               && !hasVisualizationRule(t.treatment_type, 'pattern_fill')
-              && !['bracket', 'tube', 'band', 'attachment', 'retainer', 'implant'].includes(t.treatment_type)
+              && !['bracket', 'tube', 'band', 'attachment', 'retainer', 'implant', 'bridge'].includes(t.treatment_type)
               && !hasVisualizationRule(t.treatment_type, 'pulp_fill')
               && !hasVisualizationRule(t.treatment_type, 'lateral_icon')
             )"

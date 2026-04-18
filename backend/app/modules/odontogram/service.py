@@ -605,14 +605,27 @@ class TreatmentService:
 
     @staticmethod
     def _assign_roles(teeth_inputs: list[dict], mode: str, clinical_type: str) -> list[dict]:
-        """For bridges, auto-assign pillar/pontic roles by position. Others untouched."""
+        """For bridges, honor caller-supplied roles; auto-assign only when none set.
+
+        Auto rule (fallback): sorted first+last = pillar, middle = pontic.
+        Valid bridges allow cantilevers (1 pillar) and mid-span pillars —
+        only enforce ≥1 pillar and reject all-pontic.
+        """
         if mode != "bridge" and clinical_type != "bridge":
             return teeth_inputs
         sorted_teeth = sorted(teeth_inputs, key=lambda x: x["tooth_number"])
-        first_n = sorted_teeth[0]["tooth_number"]
-        last_n = sorted_teeth[-1]["tooth_number"]
-        for t in sorted_teeth:
-            t["role"] = "pillar" if t["tooth_number"] in (first_n, last_n) else "pontic"
+        has_explicit = any(t.get("role") in ("pillar", "pontic") for t in sorted_teeth)
+        if has_explicit:
+            for t in sorted_teeth:
+                if t.get("role") not in ("pillar", "pontic"):
+                    t["role"] = "pontic"
+        else:
+            first_n = sorted_teeth[0]["tooth_number"]
+            last_n = sorted_teeth[-1]["tooth_number"]
+            for t in sorted_teeth:
+                t["role"] = "pillar" if t["tooth_number"] in (first_n, last_n) else "pontic"
+        if not any(t["role"] == "pillar" for t in sorted_teeth):
+            raise ValueError("bridge requires at least one pillar tooth")
         return sorted_teeth
 
     # ----- write operations -----

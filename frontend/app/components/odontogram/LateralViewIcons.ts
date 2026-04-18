@@ -73,13 +73,13 @@ export const LATERAL_ICONS: Record<string, LateralIconConfig> = {
     fillOpacity: 0.7
   },
 
-  // Rotated - Circular arrow at crown center
+  // Rotated - circular rotation arrow (clockwise, Lucide rotate-cw)
   rotated: {
-    path: 'M 0,-10 A 10,10 0 1,1 -10,0 M -10,0 L -12,-7 M -10,0 L -3,-2',
+    path: 'M 9,0 A 9,9 0 1,1 0,-9 C 2.52,-9 4.93,-8 6.74,-6.26 L 9,-4 M 9,-9 V -4 H 4',
     width: 24,
     height: 24,
     anchorPosition: 'crownCenter',
-    strokeWidth: 2.5,
+    strokeWidth: 2,
     fillOpacity: 0
   },
 

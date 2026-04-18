@@ -35,11 +35,14 @@ const props = withDefaults(defineProps<{
   getGroupId?: (toothNumber: number) => string | null
   /** Status of the group for styling (planned -> dashed, existing -> solid). */
   getGroupStatus?: (toothNumber: number) => 'existing' | 'planned' | null
+  /** Optional: return the clinical_type of the group (e.g. 'bridge', 'splint'). */
+  getGroupType?: (toothNumber: number) => string | null
   /** Teeth currently in an in-progress multi-tooth selection (range/free). */
   multiSelectedTeeth?: number[]
 }>(), {
   getGroupId: () => () => null,
   getGroupStatus: () => () => null,
+  getGroupType: () => () => null,
   multiSelectedTeeth: () => []
 })
 
@@ -78,6 +81,18 @@ function connectorStatus(index: number): 'existing' | 'planned' | null {
   if (current === undefined || !props.getGroupStatus) return null
   return props.getGroupStatus(current)
 }
+
+function connectorType(index: number): string | null {
+  const current = props.teeth[index]
+  if (current === undefined || !props.getGroupType) return null
+  return props.getGroupType(current)
+}
+
+function isUpperTooth(toothNumber: number): boolean {
+  // FDI: 11-28 = permanent upper, 51-65 = deciduous upper
+  const q = Math.floor(toothNumber / 10)
+  return q === 1 || q === 2 || q === 5 || q === 6
+}
 </script>
 
 <template>
@@ -95,7 +110,7 @@ function connectorStatus(index: number): 'existing' | 'planned' | null {
           class="tooth-cell"
           :class="[
             { 'tooth-cell-dual': showLateral },
-            getGroupId(toothNum) ? 'in-group' : '',
+            getGroupId(toothNum) && getGroupType(toothNum) !== 'bridge' ? 'in-group' : '',
             isInMultiSelection(toothNum) ? 'in-multi-selection' : ''
           ]"
         >
@@ -128,11 +143,29 @@ function connectorStatus(index: number): 'existing' | 'planned' | null {
         </template>
       </UPopover>
 
-      <!-- Connector bar: rendered between two adjacent teeth of the same group. -->
+      <!-- Inline connector for non-bridge groups (splint, multi-crown...). -->
       <div
-        v-if="connectorGroupId(idx)"
+        v-if="connectorGroupId(idx) && connectorType(idx) !== 'bridge'"
         class="group-connector"
         :class="['status-' + (connectorStatus(idx) ?? 'planned')]"
+      />
+    </template>
+
+    <!-- Bridge connectors: absolute overlays so they don't push teeth apart.
+         Centered on the gap between cell[idx] and cell[idx+1]; left in px is
+         deterministic from cell width + flex gap. -->
+    <template
+      v-for="(toothNum, idx) in teeth"
+      :key="'br-' + toothNum"
+    >
+      <div
+        v-if="connectorGroupId(idx) && connectorType(idx) === 'bridge' && toothNum !== undefined"
+        class="bridge-connector"
+        :class="[
+          'status-' + (connectorStatus(idx) ?? 'planned'),
+          isUpperTooth(toothNum) ? 'upper' : 'lower'
+        ]"
+        :style="{ left: (idx * 62 + 61) + 'px' }"
       />
     </template>
   </div>
@@ -143,6 +176,7 @@ function connectorStatus(index: number): 'existing' | 'planned' | null {
   display: flex;
   gap: 2px;
   align-items: center;
+  position: relative;
 }
 
 .tooth-cell {
@@ -196,6 +230,7 @@ function connectorStatus(index: number): 'existing' | 'planned' | null {
   align-self: end;
   margin-bottom: 2px;
   background: #3B82F6;
+  position: relative;
 }
 
 .group-connector.status-planned {
@@ -210,5 +245,43 @@ function connectorStatus(index: number): 'existing' | 'planned' | null {
 
 .group-connector.status-existing {
   background: #3B82F6;
+}
+
+/* Bridge connector: absolute overlay at crown level. Zero flex footprint so
+   adjacent teeth stay at their original positions (no horizontal shift vs a
+   non-bridge tooth row). */
+.bridge-connector {
+  position: absolute;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 12px;
+  border-radius: 2px;
+  background: #F59E0B;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Upper crowns: rectangle sits just above the row's bottom half. */
+.bridge-connector.upper {
+  bottom: 62px;
+}
+
+/* Lower crowns: slightly lower than upper to match the flipped crown position. */
+.bridge-connector.lower {
+  bottom: 72px;
+}
+
+.bridge-connector.status-planned {
+  background: repeating-linear-gradient(
+    90deg,
+    #F59E0B 0,
+    #F59E0B 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.bridge-connector.status-existing {
+  background: #F59E0B;
 }
 </style>

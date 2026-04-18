@@ -212,7 +212,7 @@ async def test_bridge_assigns_roles_and_prices_per_role(
 
 
 @pytest.mark.asyncio
-async def test_bridge_requires_three_teeth(
+async def test_bridge_requires_at_least_two_teeth(
     client: AsyncClient, auth_headers: dict, setup: dict
 ) -> None:
     r = await client.post(
@@ -221,11 +221,87 @@ async def test_bridge_requires_three_teeth(
         json={
             "catalog_item_id": setup["bridge_id"],
             "mode": "bridge",
-            "tooth_numbers": [14, 15],
+            "tooth_numbers": [14],
             "status": "planned",
         },
     )
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_bridge_cantilever_two_teeth_with_explicit_roles(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    """Cantilever bridge: 2 teeth, 1 pillar + 1 pontic — caller supplies roles."""
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["bridge_id"],
+            "mode": "bridge",
+            "teeth": [
+                {"tooth_number": 14, "role": "pillar"},
+                {"tooth_number": 15, "role": "pontic"},
+            ],
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()["data"]
+    by_tooth = {t["tooth_number"]: t["role"] for t in data["teeth"]}
+    assert by_tooth == {14: "pillar", 15: "pontic"}
+    assert Decimal(data["price_snapshot"]) == Decimal("800")  # 500 + 300
+
+
+@pytest.mark.asyncio
+async def test_bridge_honors_explicit_mid_span_pillar(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    """Mid-span pillar bridge: pillar-pontic-pillar-pontic-pillar."""
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["bridge_id"],
+            "mode": "bridge",
+            "teeth": [
+                {"tooth_number": 14, "role": "pillar"},
+                {"tooth_number": 15, "role": "pontic"},
+                {"tooth_number": 16, "role": "pillar"},
+                {"tooth_number": 17, "role": "pontic"},
+                {"tooth_number": 18, "role": "pillar"},
+            ],
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()["data"]
+    by_tooth = {t["tooth_number"]: t["role"] for t in data["teeth"]}
+    assert by_tooth == {14: "pillar", 15: "pontic", 16: "pillar", 17: "pontic", 18: "pillar"}
+
+
+@pytest.mark.asyncio
+async def test_bridge_rejects_all_pontic(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["bridge_id"],
+            "mode": "bridge",
+            "teeth": [
+                {"tooth_number": 14, "role": "pontic"},
+                {"tooth_number": 15, "role": "pontic"},
+                {"tooth_number": 16, "role": "pontic"},
+            ],
+            "status": "planned",
+        },
+    )
+    assert r.status_code in (400, 422)
 
 
 # ----------------------------------------------------------------------------

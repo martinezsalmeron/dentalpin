@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { Treatment } from '~/types'
 import { getToothNameKey, getToothPositionKeys, TREATMENT_COLORS } from '~/config/odontogramConstants'
-import { viewForTooth } from '~/utils/treatmentView'
+import { getTreatmentDisplayName, viewForTooth } from '~/utils/treatmentView'
 
 const props = defineProps<{
   treatments: Treatment[]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const isExpanded = ref(false)
 
@@ -125,7 +125,7 @@ function getStatusBadgeColor(status: string): 'success' | 'warning' | 'neutral' 
             </div>
             <div class="flex items-center gap-2 text-sm">
               <span class="text-gray-700 dark:text-gray-300">
-                {{ t(`odontogram.treatments.types.${treatment.treatment_type}`) }}
+                {{ getTreatmentDisplayName(treatment, locale, t) }}
               </span>
               <span
                 v-if="treatment.surfaces && treatment.surfaces.length > 0"

@@ -459,6 +459,8 @@
       },
       "pillar": "pilar",
       "pontic": "póntico",
+      "roleHint": "Clic en un diente para alternar pilar / póntico.",
+      "needPillar": "El puente necesita al menos un diente pilar.",
       "confirmHint": "Vas a crear un grupo de tratamiento con {n} dientes.",
       "willBePlanned": "El grupo se marcará como planificado.",
       "willBeExisting": "El grupo se registrará como existente.",

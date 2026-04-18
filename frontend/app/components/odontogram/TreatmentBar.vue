@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TreatmentStatus, TreatmentPlan } from '~/types'
-import { TREATMENT_ICONS, isSurfaceTreatment } from './TreatmentIcons'
+import { TREATMENT_ICONS, isSurfaceTreatment, resolveTreatmentIconKey } from './TreatmentIcons'
 import {
   ATOMIC_MULTI_TOOTH_TYPES,
   MULTI_TOOTH_WRAPPER_BY_TYPE,
@@ -138,6 +138,9 @@ interface TreatmentBarItem {
   tooltip: string
   /** Backend clinical_type ('crown', 'bridge', ...). */
   odontogramType: string
+  /** Resolved icon key in TREATMENT_ICONS — may differ from odontogramType when a
+   * catalog item has a variant icon (e.g. REST-BRIDGE-MARY → bridge_maryland). */
+  iconKey: string
   /** Catalog item id, or null for the constants fallback. */
   catalogItemId: string | null
   /** True for atomic multi-tooth types (bridge, splint) — clicking enters multi-mode. */
@@ -198,6 +201,7 @@ const currentTreatments = computed<TreatmentBarItem[]>(() => {
           label,
           tooltip,
           odontogramType: oType,
+          iconKey: resolveTreatmentIconKey(oType, c.internal_code),
           catalogItemId: isRealCatalogItem ? c.id : null,
           isAtomicMulti: isAtomic,
           atomicMultiIcon: isAtomic ? ATOMIC_MULTI_ICONS[oType] : undefined,
@@ -218,6 +222,7 @@ const currentTreatments = computed<TreatmentBarItem[]>(() => {
         label,
         tooltip: label,
         odontogramType: type,
+        iconKey: type,
         catalogItemId: null,
         isAtomicMulti: isAtomic,
         atomicMultiIcon: isAtomic ? ATOMIC_MULTI_ICONS[type] : undefined,
@@ -559,7 +564,7 @@ function handleCreatePlan() {
               viewBox="0 0 24 24"
               width="24"
               height="24"
-              v-html="TREATMENT_ICONS[item.odontogramType]"
+              v-html="TREATMENT_ICONS[item.iconKey] || TREATMENT_ICONS[item.odontogramType]"
             />
           </div>
           <span class="treatment-label">{{ item.label }}</span>

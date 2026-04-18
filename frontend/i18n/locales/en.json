@@ -438,6 +438,8 @@
       },
       "pillar": "pillar",
       "pontic": "pontic",
+      "roleHint": "Click a tooth to toggle pillar / pontic.",
+      "needPillar": "Bridge requires at least one pillar tooth.",
       "confirmHint": "You are about to create a treatment group with {n} teeth.",
       "willBePlanned": "The group will be marked as planned.",
       "willBeExisting": "The group will be recorded as existing.",

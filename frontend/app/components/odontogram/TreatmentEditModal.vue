@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Surface, ToothTreatmentView, TreatmentStatus } from '~/types'
 import { TREATMENT_COLORS, isSurfaceTreatment, getAllowedStatusesForTreatment } from '~/config/odontogramConstants'
+import { getTreatmentDisplayName } from '~/utils/treatmentView'
 
 const props = defineProps<{
   /** Per-tooth view over a Treatment (see utils/treatmentView.ts). */
@@ -15,7 +16,7 @@ const emit = defineEmits<{
   'perform': [treatmentId: string]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Local state
 const status = ref<TreatmentStatus>('existing')
@@ -43,7 +44,7 @@ watch(() => props.treatment, (treatment) => {
 // Treatment label
 const treatmentLabel = computed(() => {
   if (!props.treatment) return ''
-  return t(`odontogram.treatments.types.${props.treatment.treatment_type}`, props.treatment.treatment_type)
+  return getTreatmentDisplayName(props.treatment, locale.value, t)
 })
 
 // Treatment color

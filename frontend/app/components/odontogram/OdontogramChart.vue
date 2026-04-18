@@ -230,6 +230,42 @@ function getToothGroupStatus(toothNumber: number): TreatmentStatus | null {
   return multi?.status ?? null
 }
 
+function getToothGroupType(toothNumber: number): string | null {
+  const list = getFilteredTreatments(toothNumber)
+  const multi = list.find(v => v.is_multi)
+  return multi?.clinical_type ?? null
+}
+
+/** If the bridge crosses the midline (e.g. 12-11-21-22), both teeth belong
+ *  to the same group and the connector sits in the quadrant divider slot. */
+function midlineBridgeStatus(leftTooth: number, rightTooth: number): 'existing' | 'planned' | null {
+  const leftId = getToothGroupId(leftTooth)
+  const rightId = getToothGroupId(rightTooth)
+  if (!leftId || leftId !== rightId) return null
+  if (getToothGroupType(leftTooth) !== 'bridge') return null
+  const status = getToothGroupStatus(leftTooth)
+  if (status !== 'existing' && status !== 'planned') return null
+  return status
+}
+
+const upperMidlineBridgeStatus = computed<'existing' | 'planned' | null>(() => {
+  const right = teethLayout.value.upperRight
+  const left = teethLayout.value.upperLeft
+  const r = right[right.length - 1]
+  const l = left[0]
+  if (r === undefined || l === undefined) return null
+  return midlineBridgeStatus(r, l)
+})
+
+const lowerMidlineBridgeStatus = computed<'existing' | 'planned' | null>(() => {
+  const right = teethLayout.value.lowerRight
+  const left = teethLayout.value.lowerLeft
+  const r = right[right.length - 1]
+  const l = left[0]
+  if (r === undefined || l === undefined) return null
+  return midlineBridgeStatus(r, l)
+})
+
 // ============================================================================
 // Keyboard Shortcuts
 // ============================================================================
@@ -247,9 +283,9 @@ function handleKeydown(e: KeyboardEvent) {
   }
 
   if (e.key === 'Enter' && isMultiToothMode.value) {
-    if (showMultiToothConfirm.value) {
-      confirmMultiToothSelection()
-    } else {
+    // When the confirm popup is open it owns the confirm action (including
+    // per-tooth role toggles for bridges); let it handle Enter natively.
+    if (!showMultiToothConfirm.value) {
       requestMultiToothConfirm()
     }
     return
@@ -394,7 +430,9 @@ function requestMultiToothConfirm() {
   }
 }
 
-async function confirmMultiToothSelection() {
+async function confirmMultiToothSelection(
+  teethRoles: Array<{ tooth_number: number, role: 'pillar' | 'pontic' }> | null = null
+) {
   const cfg = multiToothConfig.value
   if (!cfg) return
   const sortedTeeth = [...multiToothSelection.value.teeth].sort((a, b) => a - b)
@@ -405,8 +443,12 @@ async function confirmMultiToothSelection() {
 
   const payload: TreatmentCreate = {
     mode: cfg.mode,
-    tooth_numbers: sortedTeeth,
     status
+  }
+  if (cfg.mode === 'bridge' && teethRoles && teethRoles.length > 0) {
+    payload.teeth = teethRoles
+  } else {
+    payload.tooth_numbers = sortedTeeth
   }
   if (cfg.mode === 'uniform') {
     payload.clinical_type = cfg.key as ClinicalType
@@ -645,7 +687,12 @@ async function onHistoryExpanded(expanded: boolean) {
             <div class="text-xs text-gray-500 text-center mb-2">
               {{ t('odontogram.quadrants.upper') }}
             </div>
-            <div class="flex justify-center gap-1">
+            <div class="flex justify-center gap-1 relative">
+              <div
+                v-if="upperMidlineBridgeStatus"
+                class="midline-bridge upper"
+                :class="'status-' + upperMidlineBridgeStatus"
+              />
               <ToothQuadrant
                 :teeth="teethLayout.upperRight"
                 :get-tooth-data="getToothData"
@@ -658,6 +705,7 @@ async function onHistoryExpanded(expanded: boolean) {
                 :pending-treatment="pendingTreatment"
                 :get-group-id="getToothGroupId"
                 :get-group-status="getToothGroupStatus"
+                :get-group-type="getToothGroupType"
                 :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
@@ -680,6 +728,7 @@ async function onHistoryExpanded(expanded: boolean) {
                 :pending-treatment="pendingTreatment"
                 :get-group-id="getToothGroupId"
                 :get-group-status="getToothGroupStatus"
+                :get-group-type="getToothGroupType"
                 :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
@@ -694,7 +743,12 @@ async function onHistoryExpanded(expanded: boolean) {
 
           <!-- Lower arch -->
           <div>
-            <div class="flex justify-center gap-1">
+            <div class="flex justify-center gap-1 relative">
+              <div
+                v-if="lowerMidlineBridgeStatus"
+                class="midline-bridge lower"
+                :class="'status-' + lowerMidlineBridgeStatus"
+              />
               <ToothQuadrant
                 :teeth="teethLayout.lowerRight"
                 :get-tooth-data="getToothData"
@@ -707,6 +761,7 @@ async function onHistoryExpanded(expanded: boolean) {
                 :pending-treatment="pendingTreatment"
                 :get-group-id="getToothGroupId"
                 :get-group-status="getToothGroupStatus"
+                :get-group-type="getToothGroupType"
                 :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
@@ -729,6 +784,7 @@ async function onHistoryExpanded(expanded: boolean) {
                 :pending-treatment="pendingTreatment"
                 :get-group-id="getToothGroupId"
                 :get-group-status="getToothGroupStatus"
+                :get-group-type="getToothGroupType"
                 :multi-selected-teeth="multiToothSelection.teeth"
                 @surface-click="handleSurfaceClick"
                 @tooth-click="handleToothClick"
@@ -882,5 +938,41 @@ async function onHistoryExpanded(expanded: boolean) {
   .odontogram-grid {
     zoom: 0.5;
   }
+}
+
+/* Midline bridge connector: absolute overlay so the vertical divider keeps
+   its original 17px footprint and teeth columns stay aligned across arches. */
+.midline-bridge {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 12px;
+  border-radius: 2px;
+  background: #F59E0B;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.midline-bridge.upper {
+  top: 88px;
+}
+
+.midline-bridge.lower {
+  top: 78px;
+}
+
+.midline-bridge.status-planned {
+  background: repeating-linear-gradient(
+    90deg,
+    #F59E0B 0,
+    #F59E0B 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.midline-bridge.status-existing {
+  background: #F59E0B;
 }
 </style>

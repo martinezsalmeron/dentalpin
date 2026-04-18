@@ -7,7 +7,7 @@
  */
 
 import type { ToothTreatmentView, Treatment } from '~/types'
-import { viewForTooth } from '~/utils/treatmentView'
+import { getTreatmentDisplayName, viewForTooth } from '~/utils/treatmentView'
 
 const props = defineProps<{
   conditions: Treatment[]
@@ -18,7 +18,7 @@ const emit = defineEmits<{
   'tooth-hover': [toothNumber: number | null]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Flatten Treatment[] into per-tooth views and group by tooth number.
 const groupedByTooth = computed(() => {
@@ -40,9 +40,7 @@ const groupedByTooth = computed(() => {
 const generalConditions = computed<ToothTreatmentView[]>(() => [])
 
 function getTreatmentLabel(treatment: ToothTreatmentView): string {
-  const key = `odontogram.treatments.types.${treatment.treatment_type}`
-  const translated = t(key, treatment.treatment_type)
-  return translated !== key ? translated : treatment.treatment_type
+  return getTreatmentDisplayName(treatment, locale.value, t)
 }
 
 function formatSurfaces(surfaces: string[] | undefined): string {

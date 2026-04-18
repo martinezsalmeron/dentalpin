@@ -329,8 +329,8 @@ class TreatmentCreate(BaseModel):
 
         if self.mode == "bridge":
             count = len(self.teeth) if self.teeth else len(self.tooth_numbers)
-            if count < 3:
-                raise ValueError("Bridge requires at least 3 teeth")
+            if count < 2:
+                raise ValueError("Bridge requires at least 2 teeth")
 
         if self.mode == "uniform":
             count = len(self.teeth) if self.teeth else len(self.tooth_numbers)

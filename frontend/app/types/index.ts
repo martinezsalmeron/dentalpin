@@ -508,6 +508,7 @@ export interface ToothTreatmentView {
   price_snapshot?: string | null
   currency_snapshot?: string | null
   catalog_item_id?: string | null
+  catalog_item?: TreatmentCatalogItemBrief | null
   source_module: string
   created_at: string
   updated_at: string

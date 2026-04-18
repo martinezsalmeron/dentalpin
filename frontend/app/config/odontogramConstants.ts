@@ -316,6 +316,8 @@ export const TREATMENT_COLORS: Record<string, TreatmentColorConfig> = {
   crown: { light: '#F59E0B', dark: '#FBBF24' },
   pontic: { light: '#F97316', dark: '#FB923C' },
   bridge_abutment: { light: '#FBBF24', dark: '#FDE68A' },
+  bridge: { light: '#F59E0B', dark: '#FBBF24' },
+  splint: { light: '#3B82F6', dark: '#60A5FA' },
 
   // Cirugía
   extraction: { light: '#DC2626', dark: '#EF4444' },
@@ -623,7 +625,7 @@ export const MULTI_TOOTH_TREATMENTS: Record<string, MultiToothTreatmentConfig> =
     labelKey: 'odontogram.multiTooth.bridge.label',
     mode: 'bridge',
     selectionMode: 'range',
-    minTeeth: 3,
+    minTeeth: 2,
     maxTeeth: 14,
     requiresSameArch: true,
     category: 'restauradora'

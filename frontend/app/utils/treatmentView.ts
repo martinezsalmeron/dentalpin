@@ -30,6 +30,7 @@ export function viewForTooth(treatment: Treatment, toothNumber: number): ToothTr
     price_snapshot: treatment.price_snapshot,
     currency_snapshot: treatment.currency_snapshot,
     catalog_item_id: treatment.catalog_item_id,
+    catalog_item: treatment.catalog_item,
     source_module: treatment.source_module,
     created_at: treatment.created_at,
     updated_at: treatment.updated_at,
@@ -45,4 +46,25 @@ export function viewsForTooth(treatments: Treatment[], toothNumber: number): Too
     if (v) out.push(v)
   }
   return out
+}
+
+/**
+ * Resolve the display name for a treatment view.
+ * Prefers the catalog item's localized name (so variants like "Puente metal-cerámica"
+ * or "Puente zirconio" survive), then the i18n label for the generic clinical type,
+ * then the raw clinical_type string.
+ */
+export function getTreatmentDisplayName(
+  view: Pick<ToothTreatmentView, 'treatment_type' | 'catalog_item'>,
+  locale: string,
+  t: (key: string, fallback?: string) => string
+): string {
+  const names = view.catalog_item?.names
+  if (names) {
+    const name = names[locale] || names.es || names.en
+    if (name) return name
+  }
+  const key = `odontogram.treatments.types.${view.treatment_type}`
+  const translated = t(key, view.treatment_type)
+  return translated !== key ? translated : view.treatment_type
 }
