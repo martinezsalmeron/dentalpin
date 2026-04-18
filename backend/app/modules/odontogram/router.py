@@ -308,9 +308,13 @@ async def create_treatment(
 ) -> ApiResponse[TreatmentResponse]:
     """Create a Treatment.
 
-    Single-tooth, multi-tooth (uniform) and bridge flows all go through this endpoint.
+    Tooth, multi-tooth (uniform and bridge), global_mouth and global_arch flows all
+    go through this endpoint. `scope` is derived from tooth count when omitted for
+    non-global treatments; globals must pass `scope` explicitly.
     """
     await validate_patient_access(db, ctx.clinic_id, patient_id)
+    # Schema `validate_shape` always resolves `scope` (raising if ambiguous).
+    assert data.scope is not None
     try:
         treatment = await TreatmentService.create(
             db=db,
@@ -326,7 +330,8 @@ async def create_treatment(
             notes=data.notes,
             budget_item_id=data.budget_item_id,
             source_module=data.source_module,
-            mode=data.mode,
+            scope=data.scope,
+            arch=data.arch,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

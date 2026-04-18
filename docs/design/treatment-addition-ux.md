@@ -1,904 +1,294 @@
-# Plan de UX: Sistema de Tratamientos Dentales
+# Plan de UX: Añadir Tratamientos al Plan de Tratamiento
 
-**Fecha:** 2026-04-17
-**Estado:** Propuesta
+**Fecha:** 2026-04-18
+**Estado:** Propuesta (v2 — reescritura post-refactor, alcance reducido)
 **Autor:** Análisis UX
+**Reemplaza:** v1 (2026-04-17)
+
+---
+
+## 0. Cambios respecto a v1
+
+La v1 se escribió antes de la refactorización del odontograma y del catálogo. Buena parte de la **PARTE A** original (multi-diente, estados visuales, roles de puente) ya está implementada. Este documento:
+
+1. Reconoce qué quedó cubierto por la refactorización.
+2. Es crítico con decisiones de v1 que no envejecieron bien (los "tres modos de añadir", la separación artificial "por diente / global / catálogo").
+3. **Reduce el alcance** a dos mejoras que aportan valor inmediato sin sobrecargar el modelo:
+   - Tratamientos globales como ciudadanos de primera clase.
+   - Reordenar items del plan por drag & drop.
+4. Documenta huecos menores del odontograma y los pospone explícitamente.
 
 ---
 
 ## Índice
 
-1. [Contexto y Alcance](#1-contexto-y-alcance)
-2. [Análisis del Estado Actual](#2-análisis-del-estado-actual)
-3. [Taxonomía de Tratamientos](#3-taxonomía-de-tratamientos)
-4. [PARTE A: Mejoras del Módulo Odontograma](#4-parte-a-mejoras-del-módulo-odontograma)
-5. [PARTE B: Mejoras de la Ficha de Plan de Tratamiento](#5-parte-b-mejoras-de-la-ficha-de-plan-de-tratamiento)
-6. [Flujos de Usuario](#6-flujos-de-usuario)
-7. [Sincronización Odontograma ↔ Plan](#7-sincronización-odontograma--plan)
-8. [Estados y Feedback](#8-estados-y-feedback)
-9. [Consideraciones de Accesibilidad](#9-consideraciones-de-accesibilidad)
-10. [Resumen y Priorización](#10-resumen-y-priorización)
+1. [Estado actual tras la refactorización](#1-estado-actual-tras-la-refactorización)
+2. [Reflexión crítica sobre v1 y reducción de alcance](#2-reflexión-crítica-sobre-v1-y-reducción-de-alcance)
+3. [Principios de UX](#3-principios-de-ux)
+4. [Tratamientos globales (arcada / boca completa)](#4-tratamientos-globales-arcada--boca-completa)
+5. [Reordenar items del plan con drag & drop](#5-reordenar-items-del-plan-con-drag--drop)
+6. [Huecos pendientes del odontograma (pospuestos)](#6-huecos-pendientes-del-odontograma-pospuestos)
+7. [Cambios en datos y API](#7-cambios-en-datos-y-api)
+8. [Prioridades y fases](#8-prioridades-y-fases)
+9. [Riesgos](#9-riesgos)
 
 ---
 
-## 1. Contexto y Alcance
+## 1. Estado actual tras la refactorización
 
-### 1.1 Dos Contextos de Uso del Odontograma
+### 1.1 Lo que **ya está implementado**
 
-El odontograma se usa en DOS contextos diferentes con necesidades distintas:
+| Área | Cobertura | Archivos clave |
+|------|-----------|----------------|
+| **Multi-diente (puentes, férulas, carillas/coronas múltiples)** | ✅ Completo con roles (pilar/póntico/cantilever), arcada, mínimos por tipo | `OdontogramChart.vue`, `MultiToothConfirmPopup.vue`, `odontogramConstants.ts` |
+| **Catálogo con pricing strategies** | ✅ flat / per_tooth / per_surface / per_role + mapping odontograma | `catalog/models.py`, `catalog/pricing.py`, `CatalogItemModal.vue` |
+| **TreatmentBar modos** | ✅ `full` / `diagnosis` / `planning` (filtra terapéuticas) | `TreatmentBar.vue` |
+| **Estados visuales `existing` vs `planned`** | ✅ Con reglas de visualización (pulp fill, occlusal, lateral icon, pattern) | `VISUALIZATION_RULES` |
+| **Sincronización PlannedTreatmentItem ↔ Treatment** | ✅ 1:1 FK, `perform` marca completado, sync a `existing` | `treatment_plan/models.py`, `useTreatments.ts` |
+| **Hover bidireccional plan ↔ odontograma** | ✅ | `PlanDetailView.vue` |
+| **Timeline / vista histórica** | ✅ | `useOdontogramTimeline.ts`, `TimelineSlider.vue` |
+| **Vinculación Plan ↔ Presupuesto** | ✅ `link-budget`, `sync-budget`, `generate-budget` | `treatment_plan/router.py` |
+| **ClinicalTab con 4 modos** | ✅ `history` / `diagnosis` / `plans` / `appointments` | `ClinicalTab.vue` |
+| **ConditionsList (bloque diagnosticadas)** | ✅ Rediseñado, agrupa por diente con hover-link | `ConditionsList.vue` |
 
-| Contexto | Ubicación | Propósito | Status de tratamientos |
-|----------|-----------|-----------|------------------------|
-| **Diagnóstico** | Pestaña "Diagnóstico" en ficha paciente | Registrar estado actual de la boca | Solo `existing` |
-| **Planificación** | Ficha de Plan de Tratamiento | Planificar tratamientos futuros | Solo `planned` |
+### 1.2 Gaps reales
 
-### 1.2 Modelo de Sincronización
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        CICLO DE VIDA                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  DIAGNÓSTICO (existing)              PLANIFICACIÓN (planned)        │
-│  ─────────────────────               ─────────────────────          │
-│                                                                     │
-│  Usuario registra:                   Usuario planifica:             │
-│  • Caries existente                  • Empaste para caries          │
-│  • Puente existente                  • Nuevo puente                 │
-│  • Corona vieja                      • Corona a reemplazar          │
-│         │                                     │                     │
-│         │                                     │                     │
-│         ▼                                     ▼                     │
-│  ToothTreatment                      ToothTreatment                 │
-│  status: "existing"                  status: "planned"              │
-│                                             │                       │
-│                                             │                       │
-│                                             ▼                       │
-│                                      PlannedTreatmentItem           │
-│                                      status: "pending"              │
-│                                             │                       │
-│                                             │ [Marcar completado]   │
-│                                             ▼                       │
-│                                      PlannedTreatmentItem           │
-│                                      status: "completed"            │
-│                                             │                       │
-│                                             │ [Auto-sync]           │
-│                                             ▼                       │
-│                                      ToothTreatment                 │
-│                                      status: "existing" ◄───────────┘
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Regla clave:** Al marcar un tratamiento como "completado" en el plan, el ToothTreatment cambia de `planned` a `existing`, reflejando que ya se realizó.
-
-### 1.3 Alcance de Este Documento
-
-| Sección | Aplica a | Descripción |
-|---------|----------|-------------|
-| **PARTE A** | Odontograma (Diagnóstico + Plan) | Mejoras del componente base |
-| **PARTE B** | Solo Ficha de Plan | Mejoras específicas de planificación |
+| Gap | Decisión |
+|-----|----------|
+| No hay tratamientos globales (limpieza, blanqueamiento) como first-class | **En alcance** (§4) |
+| Reordenar items del plan no es posible | **En alcance** (§5) |
+| No hay búsqueda por nombre en catálogo desde editor | Fuera de alcance |
+| No hay presupuesto en vivo en la vista de plan | Fuera de alcance (se resuelve con Budget actual) |
+| No hay plantillas, alternativas, fases, sugerencias desde diagnóstico | Fuera de alcance (ver v1 archivada en git) |
+| Selector superficies modal, no inline | Pospuesto (§6) |
+| Micro-feedback y teclado | Pospuesto (§6) |
 
 ---
 
-## 2. Análisis del Estado Actual
+## 2. Reflexión crítica sobre v1 y reducción de alcance
 
-### 2.1 Problemas del Módulo Odontograma (afectan Diagnóstico Y Plan)
+### 2.1 Decisiones de v1 que descartamos
 
-| Problema | Impacto | Severidad |
-|----------|---------|-----------|
-| No hay soporte para tratamientos multi-diente | No se pueden registrar puentes existentes ni planificar nuevos | **Crítica** |
-| Modal de superficies interrumpe el flujo | Fatiga de clics, pérdida de contexto | Media |
-| Sin feedback visual claro al aplicar tratamiento | Usuario no sabe si funcionó | Alta |
-| Barra de tratamientos no indica estado de selección | Confusión sobre qué está activo | Alta |
+- **"Tres modos de añadir (🦷 Por Diente / 🌐 Boca Completa / 📋 Del Catálogo)".** Obliga al usuario a clasificar la intención antes de saber el tratamiento. El catálogo ya determina `treatment_scope` y `pricing_strategy`; la UI debería derivar el modo de interacción del item seleccionado, no al revés. El "modo catálogo" es en realidad cómo funciona el sistema siempre, no un modo aparte.
+- **"Panel lateral fijo al 35%".** El layout actual (odontograma 3/5, lista 2/5, barra abajo) funciona. Reabrirlo sin razón ergonómica concreta es churn.
+- **"Sincronización dura: eliminar item del plan elimina ToothTreatment".** Un `Treatment` `planned` puede ser referenciado por otros planes futuros. La regla correcta: borrar item solo limpia el `Treatment` si queda huérfano y está en `planned`. Si está `performed`, se conserva como historia clínica. Ver §7.
 
-### 2.2 Problemas Específicos de la Ficha de Plan
+### 2.2 Por qué reducimos el alcance a dos features
 
-| Problema | Impacto | Severidad |
-|----------|---------|-----------|
-| Desconexión: crear tratamiento no lo añade al plan | Tratamientos creados no aparecen en lista | **Crítica** |
-| No hay integración con catálogo de precios | Presupuesto no se calcula automáticamente | Alta |
-| Sin guía al usuario para empezar | No hay instrucciones claras | Alta |
-| Sin tratamientos globales (limpieza, etc.) | Funcionalidad incompleta | Alta |
-| Lista del plan no muestra preview de presupuesto | Usuario no ve valor monetario | Media |
+Los grandes añadidos que barajamos (plantillas, fases, sugerencias, alternativas, búsqueda, presupuesto vivo, vista paciente) aportan valor, pero:
 
-### 2.3 Lo Que Funciona Bien
+- Requieren nuevas entidades y endpoints.
+- Empujan complejidad conceptual a la UI (fases colapsables, alternativas agrupadas, etc.).
+- No los valida nadie aún con uso real.
 
-- Categorías de tratamientos organizadas
-- Iconos visuales intuitivos
-- Modo "planning" que filtra tratamientos terapéuticos
-- Existe catálogo de tratamientos con precios
+Las **dos mejoras que sí conservamos** desbloquean casos reales frecuentes (limpieza = la mayoría de pacientes; reordenar = esperable en cualquier lista larga) sin inflar el modelo.
 
----
+Todo lo demás queda documentado en el historial de git (v1 y primera versión de v2) por si se quiere recuperar.
 
-## 3. Taxonomía de Tratamientos
+### 2.3 Sin datos a preservar
 
-### 3.1 Clasificación por Selección de Dientes
+La aplicación aún no está en producción. Esto libera decisiones:
 
-```
-TRATAMIENTOS
-│
-├── DIENTE ÚNICO (tooth_number: number)
-│   ├── Diente Completo (sin superficies)
-│   │   ├── Extracción
-│   │   ├── Implante
-│   │   ├── Corona unitaria
-│   │   └── Endodoncia
-│   │
-│   └── Superficie(s) de Diente (surfaces: string[])
-│       ├── Empaste/Obturación
-│       ├── Sellador
-│       └── Incrustación
-│
-├── MULTI-DIENTE (tooth_numbers: number[])
-│   ├── Rango Continuo (dientes adyacentes)
-│   │   ├── Puente fijo metal-cerámica
-│   │   ├── Puente fijo zirconio
-│   │   └── Puente Maryland
-│   │
-│   ├── Selección Libre (cualquier combinación)
-│   │   ├── Férula periodontal
-│   │   ├── Carillas múltiples
-│   │   └── Coronas múltiples
-│   │
-│   └── Arcada Completa
-│       ├── Férula de descarga
-│       └── Prótesis parcial removible
-│
-└── GLOBALES (is_global: true) ─── Solo en Plan, no en Diagnóstico
-    ├── Boca Completa
-    │   ├── Limpieza/Profilaxis
-    │   ├── Blanqueamiento
-    │   └── Fluorización
-    │
-    └── Por Arcada
-        ├── Ortodoncia
-        └── Prótesis completa
-```
+- Podemos **redefinir enums** limpiamente en lugar de extender con valores nuevos por compatibilidad.
+- Podemos **cambiar columnas a opcionales** sin migración condicionada.
+- El seeder de catálogo puede rehacerse desde cero con la taxonomía correcta (incluyendo globales).
+- No se escribe código de compatibilidad hacia atrás en servicios ni en el frontend.
 
-### 3.2 Matriz de Interacción
-
-| Tipo | Contextos | Selección | Superficies | Precio |
-|------|-----------|-----------|-------------|--------|
-| **DIENTE ÚNICO** |
-| Extracción | Diagnóstico + Plan | 1 clic | No | Catálogo |
-| Corona unitaria | Diagnóstico + Plan | 1 clic | No | Catálogo |
-| Empaste | Diagnóstico + Plan | 1 clic + superficies | Sí | Catálogo × nº |
-| **MULTI-DIENTE** |
-| Puente existente | Solo Diagnóstico | Clic inicio + fin | No | — |
-| Puente planificado | Solo Plan | Clic inicio + fin | No | Catálogo × piezas |
-| Carillas múltiples | Diagnóstico + Plan | Clics múltiples | No | Catálogo × piezas |
-| Férula | Diagnóstico + Plan | Clics múltiples | No | Catálogo |
-| **GLOBALES** |
-| Limpieza | Solo Plan | Ninguno | No | Catálogo |
-| Blanqueamiento | Solo Plan | Ninguno | No | Catálogo |
-
-### 3.3 Modos de Selección Multi-Diente
-
-| Patrón | Descripción | Uso | Interacción |
-|--------|-------------|-----|-------------|
-| **Rango Continuo** | Dientes adyacentes | Puentes | Clic inicio + clic fin |
-| **Selección Libre** | Cualquier combinación | Carillas, férulas | Clics múltiples + confirmar |
-| **Arcada Completa** | Todos de una arcada | Férula descarga | Botón "Arcada superior/inferior" |
-
-**Validaciones:**
-
-| Tratamiento | Mínimo | Máximo | Restricción |
-|-------------|--------|--------|-------------|
-| Puente fijo | 3 | 14 | Dientes contiguos, misma arcada |
-| Férula periodontal | 2 | 14 | Misma arcada |
-| Carillas | 2 | 10 | Zona estética recomendada |
+Las reglas de borrado de `Treatment` al quitar items del plan (§7.3) no son legacy — son corrección arquitectónica: un tratamiento ya realizado es historia clínica y no se borra aunque se quite del plan. Eso se conserva.
 
 ---
 
-## 4. PARTE A: Mejoras del Módulo Odontograma
+## 3. Principios de UX
 
-> **Estas mejoras aplican TANTO a la pestaña Diagnóstico COMO a la ficha de Plan de Tratamiento.**
+Guías que resuelven ambigüedades:
 
-### 4.1 A1: Soporte Multi-Diente
-
-**Estado actual:** No existe forma de registrar tratamientos que abarcan varios dientes.
-
-**Propuesta:**
-
-#### Modo Rango Continuo (Puentes)
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│ 🌉 Puente fijo                    Seleccionados: 14, 15, 16    │
-│    Clic en diente inicial, luego en diente final   [Cancelar] │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│     [18][17][16][15][14][13][12][11] [21][22][23]...          │
-│            ███ ─── ███ ─── ███                                 │
-│            │       │       │                                   │
-│           FIN    (auto)  INICIO                                │
-│            │               │                                   │
-│            └───────┬───────┘                                   │
-│                    │                                           │
-│             ┌──────┴──────┐                                    │
-│             │ Puente      │                                    │
-│             │ 14 ─ 15 ─ 16│                                    │
-│             │             │                                    │
-│             │ Pilares: 14, 16                                  │
-│             │ Póntico: 15 │                                    │
-│             │             │                                    │
-│             │[Cancel][OK] │                                    │
-│             └─────────────┘                                    │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
-
-**Flujo:**
-1. Usuario selecciona "Puente fijo" en barra de tratamientos
-2. Banner indica: "Clic en diente inicial, luego en diente final"
-3. Clic en diente 14 → se marca como "inicio" (borde azul)
-4. Dientes adyacentes muestran línea guía punteada
-5. Clic en diente 16 → sistema auto-selecciona 14, 15, 16
-6. Popup confirma: pilares (14, 16) y póntico (15)
-7. Confirmar → ToothTreatment creado con `tooth_numbers: [14, 15, 16]`
-
-#### Modo Selección Libre (Carillas, Férulas)
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│ 😁 Carillas                       4 dientes seleccionados      │
-│    Clic para añadir/quitar dientes             [Cancelar]     │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│     [...][13][12][11] [21][22][23][...]                        │
-│              ███  ███  ███  ███                                │
-│               ↑    ↑    ↑    ↑                                 │
-│             Seleccionados (clic para quitar)                   │
-│                                                                │
-│     ┌─────────────────────────────────────────────┐            │
-│     │ Selección: 11, 12, 21, 22    [Listo]        │            │
-│     └─────────────────────────────────────────────┘            │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
-
-**Flujo:**
-1. Usuario selecciona "Carillas" en barra de tratamientos
-2. Banner: "Clic para añadir/quitar dientes"
-3. Clic en 11 → seleccionado (contador: 1)
-4. Clic en 12 → seleccionado (contador: 2)
-5. Clic en 21, 22 → seleccionados (contador: 4)
-6. Clic en 12 de nuevo → deseleccionado (contador: 3)
-7. Barra flotante muestra selección actual + botón "Listo"
-8. Clic "Listo" → confirmar → ToothTreatment creado
-
-### 4.2 A2: Selector de Superficies Inline
-
-**Estado actual:** Modal que interrumpe el flujo y oculta el odontograma.
-
-**Propuesta:** Popup inline junto al diente seleccionado.
-
-```
-                        ┌─────────────────────┐
-                        │  Empaste - Diente 16│
-     [14][15][16]       │  ─────────────────  │
-           ↑            │                     │
-           └────────────│  [M] [O] [D]        │
-                        │  [V]     [L]        │
-                        │                     │
-                        │  Seleccionadas: MOD │
-                        │                     │
-                        │  [Cancelar] [OK]    │
-                        └─────────────────────┘
-```
-
-**Beneficios:**
-- No pierde contexto visual del odontograma
-- Puede ver dientes adyacentes mientras selecciona
-- Flujo más rápido (menos transiciones modales)
-- Clic fuera cierra el popup
-
-### 4.3 A3: Estados Visuales del Odontograma
-
-| Estado | Indicadores Visuales |
-|--------|---------------------|
-| **Inactivo** | Dientes neutros, cursor default |
-| **Tratamiento seleccionado** | Banner superior, cursor crosshair, dientes válidos con borde punteado |
-| **Superficie seleccionando** | Diente destacado, popup visible, otros dientes atenuados |
-| **Multi-diente seleccionando** | Banner con contador, dientes seleccionados con borde azul, línea de conexión |
-
-### 4.4 A4: Colores y Representación Visual
-
-| Elemento | Color/Estilo | Uso |
-|----------|--------------|-----|
-| Diente sano | Blanco/Gris claro | Sin tratamientos |
-| Tratamiento existente | Azul sólido | Ya realizado |
-| Tratamiento planificado | Azul rayado (patrón diagonal) | Por hacer |
-| Diente seleccionado | Amarillo | Actualmente editando |
-| Multi-diente: inicio | Azul + badge "1" | Primer diente |
-| Multi-diente: fin | Azul + badge "2" | Último diente |
-| Multi-diente: conexión | Línea azul entre dientes | Puente |
-| Hover en modo aplicar | Verde suave | Preview |
-
-### 4.5 A5: Barra de Tratamientos Mejorada
-
-**Mejoras aplicables a ambos contextos:**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ TRATAMIENTOS                                                │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│ [Diagnóstico] [Restauradora] [Protésica] [Quirúrgica]       │
-│                     ▲                                       │
-│                 activa                                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐           │
-│  │ 🦷  │ │ 👑  │ │ 🌉  │ │ 😁  │ │ 🔧  │ │ ... │           │
-│  │Empa.│ │Coron│ │Puent│ │Caril│ │Endod│ │     │           │
-│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘           │
-│     │                                                       │
-│     └── Seleccionado: borde azul + fondo claro              │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│ ✓ Empaste seleccionado                                      │
-│   Haz clic en el diente a tratar                           │
-│                                         [Cancelar selección]│
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Cambios:**
-- Indicador visual claro del tratamiento seleccionado
-- Mensaje de ayuda contextual
-- Botón "Cancelar selección" visible
-- Categorías filtradas según contexto (Diagnóstico muestra "Diagnóstico", Plan no)
-
-### 4.6 A6: Atajos de Teclado (Odontograma)
-
-| Tecla | Acción |
-|-------|--------|
-| `Escape` | Cancelar selección / Salir del modo |
-| `Enter` | Confirmar selección actual |
-| `1-5` | Superficies: M=1, O=2, D=3, V=4, L=5 |
-| `Ctrl+Z` | Deshacer último tratamiento |
-| `Shift+Clic` | Multi-diente: seleccionar rango |
-| `Ctrl+Clic` | Multi-diente: añadir/quitar de selección |
+1. **Una sola vía, contextual.** El modo de interacción se deriva del tratamiento elegido. Limpieza no pide diente; puente pide rango. Sin botones para clasificar intención por adelantado.
+2. **Catálogo como fuente de verdad.** No crear conceptos de UI que dupliquen lo que ya modela el catálogo.
+3. **Odontograma es visualización, no formulario.** Cualquier acción que lleve más de dos clics en el odontograma sugiere que el punto de entrada correcto es otro.
+4. **Reversibilidad por defecto.** Añadir, quitar y reordenar en el plan no requieren confirmación. Completar un tratamiento (cambia historia clínica) sí.
+5. **Planning ≠ Diagnóstico.** Estados `planned` vs `existing` no se mezclan en los mismos controles; ya están separados por modo.
 
 ---
 
-## 5. PARTE B: Mejoras de la Ficha de Plan de Tratamiento
+## 4. Tratamientos globales (arcada / boca completa)
 
-> **Estas mejoras son ESPECÍFICAS de la ficha de plan. No aplican a Diagnóstico.**
+### 4.1 Problema
 
-### 5.1 B1: Layout con Panel Lateral
+Limpieza, blanqueamiento, flúor, férula de descarga, ortodoncia global no encajan en el modelo actual: `Treatment` requiere al menos un `TreatmentTooth`. El dentista acaba añadiéndolos como notas sueltas al budget o fuera del sistema.
 
-**Estado actual:** Odontograma arriba, barra de tratamientos abajo, sin lista de plan visible.
+### 4.2 Decisión de modelo
 
-**Propuesta:** Panel lateral derecho integrado.
+**Extender `Treatment.scope`** con dos valores nuevos: `global_mouth` y `global_arch`.
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│ ← Paciente    Plan: Restauración completa          [Borrador] │
-├────────────────────────────────────────────────────────────────┤
-│                                         │                      │
-│  ┌───────────────────────────────────┐  │  ┌────────────────┐  │
-│  │                                   │  │  │ AÑADIR         │  │
-│  │         ODONTOGRAMA               │  │  │ ────────────── │  │
-│  │                                   │  │  │                │  │
-│  │         (65% ancho)               │  │  │ [🦷 Diente   ] │  │
-│  │                                   │  │  │ [🌐 Global   ] │  │
-│  │                                   │  │  │ [📋 Catálogo ] │  │
-│  │                                   │  │  │                │  │
-│  └───────────────────────────────────┘  │  │ ────────────── │  │
-│                                         │  │ PLAN (3)  €595 │  │
-│  ┌───────────────────────────────────┐  │  │ ────────────── │  │
-│  │ Empaste seleccionado              │  │  │ □ Empaste  €85 │  │
-│  │ Clic en diente para aplicar       │  │  │ □ Corona  €450 │  │
-│  └───────────────────────────────────┘  │  │ □ Limpiez  €60 │  │
-│                                         │  │ ────────────── │  │
-│                                         │  │ [Presupuesto →]│  │
-│                                         │  └────────────────┘  │
-│                                         │        (35%)         │
-└────────────────────────────────────────────────────────────────┘
-```
+- `global_mouth` → 0 `TreatmentTooth`. Aplica a todo.
+- `global_arch` → 0 `TreatmentTooth`; campo `arch` (`upper` / `lower`) indica la arcada.
 
-### 5.2 B2: Tres Modos de Añadir Tratamiento
+`TreatmentTooth` pasa a ser opcional (count 0 válido cuando el scope es global).
 
-El panel lateral ofrece tres formas de añadir tratamientos al plan:
+**Alternativa descartada:** entidad `GlobalTreatment` separada. Duplica precios, estados y pertenencia al plan; rompe la unificación actual.
 
-#### Modo 1: Por Diente (🦷)
+### 4.3 UI
+
+En la barra de tratamientos, botón **"Boca completa ▸"** despliega un panel vertical con los items globales del catálogo:
 
 ```
-Clic en "🦷 Por Diente"
-    ↓
-Se despliega selector de tratamientos (usa TreatmentBar)
-    ↓
-Usuario selecciona tipo → Odontograma entra en modo aplicar
-    ↓
-Clic en diente(s) → Selección superficies si aplica
-    ↓
-Confirmar
-    ↓
-✓ ToothTreatment creado (status: "planned")
-✓ PlannedTreatmentItem creado (status: "pending")
-✓ Item aparece en lista con precio del catálogo
-✓ Total se actualiza
+┌────────────────────────────────┐
+│ BOCA COMPLETA                  │
+│                                │
+│ 🪥 Limpieza dental       €60   │
+│ ✨ Blanqueamiento       €180   │
+│ 🦷 Fluorización          €25   │
+│ 📋 Revisión             €30   │
+│                                │
+│ ARCADA                         │
+│ 🔧 Férula descarga sup. €120   │
+│ 🔧 Férula descarga inf. €120   │
+└────────────────────────────────┘
 ```
 
-#### Modo 2: Boca Completa (🌐)
+**Interacciones:**
 
-```
-Clic en "🌐 Boca Completa"
-    ↓
-Lista de tratamientos globales:
-• Limpieza dental - €60
-• Blanqueamiento - €180
-• Fluorización - €25
-    ↓
-Clic en "Limpieza dental"
-    ↓
-✓ PlannedTreatmentItem creado (is_global: true)
-✓ Item aparece en lista
-✓ Total se actualiza
-```
+- Clic en item global de boca completa → se añade directamente al plan, sin interactuar con el odontograma. Feedback: toast + item con icono 🌐 en la lista.
+- Clic en item de arcada → banner pide seleccionar arcada con dos botones grandes sobre el odontograma (Superior / Inferior). No requiere selección diente a diente.
 
-**Nota:** Los tratamientos globales NO crean ToothTreatment porque no se asocian a dientes específicos.
+**Visualización en odontograma:**
 
-#### Modo 3: Del Catálogo (📋)
+- Items `global_mouth` no se pintan sobre dientes concretos. Aparecen en una cinta inferior del odontograma con el icono del tratamiento y un badge numérico si hay varios. Hover del item en la lista → parpadeo sutil de todo el odontograma (o de la arcada) para indicar pertenencia.
+- Items `global_arch` pintan una línea/cinta sobre la arcada afectada.
 
-```
-Clic en "📋 Del Catálogo"
-    ↓
-Modal de búsqueda del catálogo
-Barra de búsqueda + filtros por categoría
-    ↓
-Usuario busca "corona zirconio"
-    ↓
-Selecciona "Corona de zirconio - €550"
-    ↓
-Si requiere diente: "¿En qué diente?" → clic en odontograma
-Si es global: se añade directamente
-    ↓
-✓ Tratamiento añadido con precio del catálogo
-```
+### 4.4 Catálogo
 
-### 5.3 B3: Lista del Plan en Tiempo Real
-
-```
-┌──────────────────────────────────────┐
-│ TRATAMIENTOS DEL PLAN        3 items │
-├──────────────────────────────────────┤
-│                                      │
-│ ┌──────────────────────────────────┐ │
-│ │ □ Empaste                        │ │
-│ │   Diente 16 - MOD                │ │
-│ │   €85                        [×] │ │
-│ └──────────────────────────────────┘ │
-│                                      │
-│ ┌──────────────────────────────────┐ │
-│ │ 🌉 Puente fijo                   │ │
-│ │   Dientes 14-15-16 (3 piezas)    │ │
-│ │   Pilares: 14, 16                │ │
-│ │   €1,200                     [×] │ │
-│ └──────────────────────────────────┘ │
-│                                      │
-│ ┌──────────────────────────────────┐ │
-│ │ 🌐 Limpieza                      │ │
-│ │   Boca completa                  │ │
-│ │   €60                        [×] │ │
-│ └──────────────────────────────────┘ │
-│                                      │
-├──────────────────────────────────────┤
-│ SUBTOTAL:                    €1,345  │
-├──────────────────────────────────────┤
-│                                      │
-│ [    Guardar borrador     ]          │
-│ [    Generar presupuesto →]          │
-│                                      │
-└──────────────────────────────────────┘
-```
-
-**Representación por tipo:**
-
-| Tipo | Icono | Formato |
-|------|-------|---------|
-| Diente único | — | "Diente 16" |
-| Diente + superficies | — | "Diente 16 - MOD" |
-| Puente | 🌉 | "Dientes 14-15-16 (3)" + "Pilares: X, Y" |
-| Grupo | ×N | "Dientes 11, 12, 21, 22" |
-| Global | 🌐 | "Boca completa" |
-
-### 5.4 B4: Interacción Odontograma ↔ Lista
-
-**Hover en lista → Resalta diente(s):**
-
-```
-Hover sobre "Empaste (16-MOD)"
-    → Diente 16 resaltado, superficies MOD iluminadas
-
-Hover sobre "Puente (14-15-16)"
-    → Dientes 14, 15, 16 resaltados con línea de conexión
-    → Tooltips: "Pilar" en 14 y 16, "Póntico" en 15
-
-Hover sobre "Limpieza"
-    → Todos los dientes parpadean suavemente (es global)
-```
-
-**Hover en diente → Resalta items:**
-
-```
-Hover sobre diente 16
-    → "Empaste (16-MOD)" resaltado en lista
-    → Tooltip: "Empaste MOD - Planificado"
-
-Hover sobre diente 15 (póntico)
-    → "Puente (14-15-16)" resaltado en lista
-    → Tooltip: "Póntico - Parte de puente 14-15-16"
-```
-
-### 5.5 B5: Estado Vacío del Plan
-
-```
-┌──────────────────────────────────────┐
-│                                      │
-│           📋                         │
-│                                      │
-│     Este plan está vacío             │
-│                                      │
-│     Añade tratamientos usando        │
-│     los botones de arriba o          │
-│     haciendo clic en el              │
-│     odontograma.                     │
-│                                      │
-│     [🦷 Empezar añadiendo]           │
-│                                      │
-└──────────────────────────────────────┘
-```
-
-### 5.6 B6: Integración con Catálogo de Precios
-
-Cuando el usuario añade un tratamiento:
-
-1. Sistema busca en catálogo por tipo de tratamiento
-2. Si hay match único → usa ese precio
-3. Si hay múltiples opciones (ej: "Corona metal" vs "Corona zirconio") → muestra selector
-4. Precio se calcula automáticamente:
-   - Superficies: precio base × número de superficies
-   - Multi-diente: precio base × número de piezas
-   - Puentes: puede tener precio distinto por pilar vs póntico
-
-```
-┌────────────────────────────────────────┐
-│ Selecciona el tipo de corona          │
-├────────────────────────────────────────┤
-│ ○ Corona metal-cerámica      €350     │
-│ ● Corona zirconio            €550     │
-│ ○ Corona composite           €280     │
-├────────────────────────────────────────┤
-│                        [Cancelar] [OK] │
-└────────────────────────────────────────┘
-```
+Los items de catálogo globales ya pueden existir con `treatment_scope` apropiado; añadir `global` (y opcionalmente `global_arch`) al enum del catálogo y permitir su creación desde `CatalogItemModal`. El seeder de catálogo por defecto debería incluir limpieza, blanqueamiento, fluorización y revisión como globales de boca completa.
 
 ---
 
-## 6. Flujos de Usuario
+## 5. Reordenar items del plan con drag & drop
 
-### 6.1 Flujo: Registrar Puente Existente (Diagnóstico)
+### 5.1 Problema
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ CONTEXTO: Pestaña Diagnóstico en ficha paciente             │
-│ OBJETIVO: Registrar que el paciente tiene un puente 14-15-16│
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 1: Seleccionar tratamiento                             │
-│ En barra de tratamientos, categoría "Protésica"             │
-│ Clic en "Puente fijo"                                       │
-│ Banner: "Puente fijo - Clic en diente inicial y final"      │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 2: Seleccionar rango                                   │
-│ Clic en diente 14 → marcado como inicio                     │
-│ Clic en diente 16 → marcado como fin                        │
-│ Sistema auto-selecciona 14, 15, 16                          │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 3: Confirmar                                           │
-│ Popup: "Puente 14-15-16 | Pilares: 14, 16 | Póntico: 15"    │
-│ Clic "Confirmar"                                            │
-│                                                             │
-│ ✓ ToothTreatment creado con status: "existing"              │
-│ ✓ Odontograma muestra puente con color sólido               │
-│ ✓ Toast: "Puente (14-15-16) registrado"                     │
-└─────────────────────────────────────────────────────────────┘
-```
+El orden de los items del plan no se puede modificar desde la UI. El campo `sequence_order` existe en `PlannedTreatmentItem` pero no se expone en el frontend. El orden importa cuando el plan se usa como guía de ejecución.
 
-### 6.2 Flujo: Planificar Puente Nuevo (Plan de Tratamiento)
+### 5.2 UI
+
+En la lista del plan (`PlanTreatmentList`):
+
+- Cada fila de **pendientes** muestra un handle de arrastre (`⋮⋮` o `i-lucide-grip-vertical`) a la izquierda.
+- Drag para reordenar dentro de la sección "Pendientes". Mientras se arrastra, fila semitransparente + drop indicator entre filas.
+- Los items completados **no se reordenan** (orden por `completed_at`).
+- Soltar → `PATCH` al backend con el nuevo orden.
+
+**Accesibilidad:** no abandonar teclado. Flechas `Alt+↑` / `Alt+↓` sobre una fila enfocada la mueven una posición.
+
+**Feedback:** sin toast (sería ruido). Animación de reacomodo de la lista.
+
+### 5.3 Backend
+
+Nuevo endpoint:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ CONTEXTO: Ficha de Plan de Tratamiento                      │
-│ OBJETIVO: Añadir puente 24-25-26 al plan                    │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 1: Iniciar desde panel lateral                         │
-│ Clic en "🦷 Por Diente"                                     │
-│ Categoría "Protésica" → Clic en "Puente fijo"               │
-│ Banner: "Puente fijo - Clic en diente inicial y final"      │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 2: Seleccionar rango                                   │
-│ Clic en diente 24 → marcado como inicio                     │
-│ Clic en diente 26 → marcado como fin                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 3: Seleccionar material (integración catálogo)         │
-│ Sistema detecta múltiples opciones en catálogo              │
-│ Modal: "Selecciona tipo de puente"                          │
-│ • Puente metal-cerámica - €900 (3 piezas)                   │
-│ • Puente zirconio - €1,500 (3 piezas)                       │
-│ Usuario selecciona "Puente zirconio"                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 4: Confirmar                                           │
-│ Popup: "Puente zirconio 24-25-26 (3 piezas) - €1,500"       │
-│ Clic "Añadir al plan"                                       │
-│                                                             │
-│ ✓ ToothTreatment creado con status: "planned"               │
-│ ✓ PlannedTreatmentItem creado (links ToothTreatment +       │
-│   CatalogItem)                                              │
-│ ✓ Item aparece en lista del plan con precio                 │
-│ ✓ Odontograma muestra puente con patrón rayado              │
-│ ✓ Total se actualiza                                        │
-└─────────────────────────────────────────────────────────────┘
+PATCH /treatment-plans/{id}/items/reorder
+Body: { "item_ids": ["...", "...", "..."] }
 ```
 
-### 6.3 Flujo: Añadir Empaste con Superficies (Plan)
+Recalcula `sequence_order` para los items listados (persistente). Valida que todos los `item_ids` pertenecen al plan. Un solo round-trip por reordenación.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 1: Seleccionar tipo                                    │
-│ Panel lateral → "🦷 Por Diente" → "Empaste"                 │
-│ Banner: "Empaste seleccionado - Clic en diente"             │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 2: Seleccionar diente                                  │
-│ Clic en diente 36                                           │
-│ Popup inline aparece junto al diente                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 3: Seleccionar superficies                             │
-│ Clic en M (mesial) → se ilumina                             │
-│ Clic en O (oclusal) → se ilumina                            │
-│ Preview: "Empaste 36-MO - €60"                              │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 4: Confirmar                                           │
-│ Clic "Añadir"                                               │
-│ Popup se cierra                                             │
-│                                                             │
-│ ✓ ToothTreatment + PlannedTreatmentItem creados             │
-│ ✓ Item aparece en lista: "Empaste - Diente 36 MO - €60"     │
-│ ✓ Modo aplicar sigue activo para añadir más empastes        │
-└─────────────────────────────────────────────────────────────┘
-```
+Alternativa: mandar `PATCH` por cada item movido. Descartada: varios round-trips, estado inconsistente en fallos parciales.
 
-### 6.4 Flujo: Añadir Limpieza (Global)
+### 5.4 Ordenación por defecto
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 1: Abrir tratamientos globales                         │
-│ Panel lateral → Clic en "🌐 Boca Completa"                  │
-│ Lista se despliega:                                         │
-│ • Limpieza dental - €60                                     │
-│ • Blanqueamiento - €180                                     │
-│ • Fluorización - €25                                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 2: Seleccionar y confirmar                             │
-│ Clic en "Limpieza dental - €60"                             │
-│ (No requiere selección de dientes)                          │
-│                                                             │
-│ ✓ PlannedTreatmentItem creado (is_global: true)             │
-│ ✓ Item aparece en lista: "🌐 Limpieza - Boca completa - €60"│
-│ ✓ Total se actualiza                                        │
-│ ✓ Toast: "Limpieza dental añadida al plan"                  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 6.5 Flujo: Marcar Tratamiento como Completado
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ CONTEXTO: Plan aprobado, paciente en cita                   │
-│ OBJETIVO: Marcar empaste como realizado                     │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 1: Localizar tratamiento                               │
-│ En lista del plan, localizar "Empaste - Diente 36 MO"       │
-│ Checkbox a la izquierda del item                            │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASO 2: Marcar como completado                              │
-│ Clic en checkbox                                            │
-│ Confirmación: "¿Marcar empaste 36-MO como completado?"      │
-│ Clic "Confirmar"                                            │
-│                                                             │
-│ ✓ PlannedTreatmentItem.status → "completed"                 │
-│ ✓ PlannedTreatmentItem.completed_at → fecha actual          │
-│ ✓ ToothTreatment.status → "existing" (auto-sync)            │
-│ ✓ Item se mueve a sección "Completados"                     │
-│ ✓ Odontograma: patrón rayado → color sólido                 │
-└─────────────────────────────────────────────────────────────┘
-```
+`GET /treatment-plans/{id}` ya devuelve items ordenados por `sequence_order`. Al crear un item, `sequence_order = max(siblings) + 1`. Sin cambios aquí.
 
 ---
 
-## 7. Sincronización Odontograma ↔ Plan
+## 6. Huecos pendientes del odontograma (pospuestos)
 
-### 7.1 Reglas de Sincronización
+Puntos menores de v1 que siguen abiertos. Se documentan para trazabilidad; **no se incluyen en este alcance**. Revisitar tras uso real si generan fricción.
 
-| Acción | Odontograma | Plan |
-|--------|-------------|------|
-| Añadir tratamiento al plan | ToothTreatment creado (planned) | PlannedTreatmentItem creado (pending) |
-| Marcar tratamiento completado | ToothTreatment → existing | PlannedTreatmentItem → completed |
-| Eliminar item del plan (no completado) | ToothTreatment eliminado | PlannedTreatmentItem eliminado |
-| Eliminar item del plan (completado) | ToothTreatment permanece (existing) | PlannedTreatmentItem eliminado |
-
-### 7.2 Visualización en Odontograma
-
-El odontograma debe mostrar TODOS los tratamientos del paciente, tanto existentes como planificados:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      ODONTOGRAMA                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Diente 14: ████ (puente existente - sólido)                │
-│  Diente 15: ████ (puente existente - sólido)                │
-│  Diente 16: ████ (puente existente - sólido)                │
-│                                                             │
-│  Diente 36: ░░░░ (empaste planificado - rayado)             │
-│  Diente 37: ░░░░ (corona planificada - rayado)              │
-│                                                             │
-│  ─────────────────────────────────────────────              │
-│  Leyenda:                                                   │
-│  ████ = Existente (ya realizado)                            │
-│  ░░░░ = Planificado (por hacer)                             │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 7.3 Vista en Ficha de Plan
-
-En la ficha de plan, el odontograma muestra:
-- Tratamientos existentes (para contexto)
-- Tratamientos planificados de ESTE plan (destacados)
-- Tratamientos planificados de OTROS planes (atenuados, opcional)
+- **Selector de superficies inline.** Actual: `SurfaceSelectorPopup` modal. Ideal: popover anclado al diente, sin bloquear el resto del odontograma.
+- **Accesibilidad de teclado.** `/` buscador (no aplica hasta que exista búsqueda), `Esc` cancela modo armado (existe parcialmente), `Tab` ordenado.
+- **Micro-feedback al añadir / eliminar.** Slide-in animado y deshacer rápido en toast.
 
 ---
 
-## 8. Estados y Feedback
+## 7. Cambios en datos y API
 
-### 8.1 Feedback al Añadir Tratamiento
+Sin legacy, redefiniciones limpias.
 
-```
-1. Item aparece en lista con animación slide-in
-2. Item tiene fondo verde claro por 2 segundos
-3. Total se actualiza con animación de contador
-4. Toast: "✓ [Tratamiento] añadido al plan"
-5. Odontograma actualiza visualización
-```
+### 7.1 Backend — modelos
 
-### 8.2 Feedback al Eliminar Tratamiento
+**`odontogram.Treatment`**
 
-```
-1. Confirmación: "¿Eliminar [tratamiento] del plan?"
-2. Item tiene fondo rojo claro por 500ms
-3. Item desaparece con animación slide-out
-4. Toast: "[Tratamiento] eliminado" + botón "Deshacer" (5s)
-5. Total se actualiza
-6. Odontograma actualiza visualización
-```
+Redefinir `scope` como enum unificado (reemplaza el actual `mode: single/bridge/uniform`):
 
-### 8.3 Estados del Plan
+| Valor | Dientes asociados | Uso |
+|-------|-------------------|-----|
+| `tooth` | 1 `TreatmentTooth`, `surfaces` opcional | Empaste, corona, endo, implante, etc. |
+| `multi_tooth` | N `TreatmentTooth` con `role` opcional | Puente, férula, carillas/coronas múltiples |
+| `global_mouth` | 0 `TreatmentTooth` | Limpieza, blanqueamiento, flúor, revisión |
+| `global_arch` | 0 `TreatmentTooth`, `arch` requerido (`upper`/`lower`) | Férula de descarga, ortodoncia global por arcada |
 
-| Estado | Badge | Acciones Disponibles |
-|--------|-------|---------------------|
-| `draft` | Gris "Borrador" | Añadir, editar, eliminar items |
-| `budgeted` | Azul "Presupuestado" | Editar, aprobar, rechazar |
-| `approved` | Verde "Aprobado" | Completar tratamientos |
-| `in_progress` | Amarillo "En progreso" | Completar tratamientos |
-| `completed` | Verde oscuro "Completado" | Solo lectura |
-| `cancelled` | Rojo "Cancelado" | Solo lectura |
+Cambios concretos:
 
-### 8.4 Validaciones y Errores
+- Nueva columna `scope` (enum arriba). Reemplaza `mode`.
+- Nueva columna `arch` (enum nullable `upper`/`lower`). Obligatoria si `scope == global_arch`.
+- `TreatmentTooth` ya no es obligatorio (cero filas válido).
+- `TreatmentTooth.surfaces` sigue siendo el único portador de superficies; no se añade campo `surface` a nivel `Treatment`.
 
-| Error | Mensaje | Acción |
-|-------|---------|--------|
-| Tratamiento duplicado | "El diente 36 ya tiene un empaste planificado" | [Ver existente] [Reemplazar] |
-| Dientes no contiguos (puente) | "Los dientes de un puente deben ser adyacentes" | Mostrar dientes válidos |
-| Mínimo no alcanzado | "Un puente requiere mínimo 3 dientes" | Deshabilitar confirmar |
-| Error de red | "No se pudo añadir. Reintentando..." | Reintentar automático |
+**`catalog.TreatmentCatalogItem`**
 
----
+Redefinir `treatment_scope` con los mismos 4 valores (`tooth` / `multi_tooth` / `global_mouth` / `global_arch`). Sustituye los actuales `surface` / `whole_tooth`. El flag `requires_surfaces` se mantiene como bool independiente (aplicable solo a `tooth`).
 
-## 9. Consideraciones de Accesibilidad
+### 7.2 Backend — endpoints nuevos
 
-### 9.1 Navegación por Teclado
+| Endpoint | Propósito |
+|----------|-----------|
+| `PATCH /treatment-plans/{id}/items/reorder` `{ item_ids: [...] }` | Reordenar items del plan |
 
-- Tab order: Panel lateral → Odontograma → Lista
-- Dientes navegables con flechas
-- Focus visible con outline
+El flujo de añadir tratamiento global reusa `POST /patients/{id}/treatments` con `scope` y `arch`, sin `teeth`. El `POST /treatment-plans/{id}/items` existente basta para enlazar al plan.
 
-### 9.2 Screen Readers
+### 7.3 Regla de borrado de `Treatment` al quitar item del plan
 
-- ARIA labels en todos los botones
-- Live regions para actualizaciones
-- Anuncios: "Empaste añadido al plan. Total: 85 euros"
+- Si el `Treatment` está referenciado por otro `PlannedTreatmentItem` activo → no tocar.
+- Si es huérfano y `status == 'planned'` → borrar `Treatment`.
+- Si es huérfano y `status == 'performed'` → mantener (historia clínica).
 
-### 9.3 Responsive
+Encapsular en `TreatmentPlanService.remove_item`, no en el router.
 
-**Tablet:** Panel lateral colapsable
-**Móvil:** Layout vertical, panel como bottom sheet
+### 7.4 Frontend — composables y tipos
+
+- `useTreatmentPlans` → añadir `reorderItems(planId, itemIds)`.
+- `useTreatments` → ajustar `createTreatment` para aceptar `scope` global y `arch` sin `tooth_numbers`.
+- `TreatmentBar` → nuevo botón "Boca completa" con panel desplegable de items globales.
+- `PlanTreatmentList` → handle de drag, lógica de reorder con librería drag & drop ya usada en el proyecto si existe (buscar antes de añadir dep nueva).
+- `OdontogramChart` → cinta inferior para globales (`global_mouth`) y highlight de arcada (`global_arch`).
+- Tipos `Treatment`, `TreatmentCatalogItem` y `PlannedTreatmentItem` en `types/index.ts` → ampliar `scope` y añadir `arch`.
 
 ---
 
-## 10. Resumen y Priorización
+## 8. Prioridades y fases
 
-### 10.1 Mejoras del Módulo Odontograma (PARTE A)
+| ID | Feature | Valor | Esfuerzo | Orden |
+|----|---------|-------|----------|-------|
+| G1 | Tratamientos globales en modelo + catálogo | Alto | Medio | 1 |
+| G2 | UI de globales en TreatmentBar + visualización en odontograma | Alto | Medio | 2 |
+| G3 | Seeder de catálogo con globales por defecto | Medio | Bajo | 3 |
+| R1 | Endpoint `reorder` + `reorderItems` en composable | Alto | Bajo | 4 |
+| R2 | Drag & drop en `PlanTreatmentList` (handle, animación, atajos teclado) | Alto | Medio | 5 |
 
-| ID | Mejora | Prioridad | Complejidad |
-|----|--------|-----------|-------------|
-| A1 | Soporte multi-diente (puentes, férulas) | **P0** | Alta |
-| A2 | Selector superficies inline | P1 | Media |
-| A3 | Estados visuales claros | P1 | Baja |
-| A4 | Colores/representación multi-diente | P1 | Media |
-| A5 | Barra tratamientos mejorada | P2 | Baja |
-| A6 | Atajos de teclado | P3 | Baja |
-
-### 10.2 Mejoras de la Ficha de Plan (PARTE B)
-
-| ID | Mejora | Prioridad | Complejidad |
-|----|--------|-----------|-------------|
-| B1 | Layout con panel lateral | **P0** | Alta |
-| B2 | Tres modos de añadir | **P0** | Media |
-| B3 | Lista del plan en tiempo real | **P0** | Media |
-| B4 | Interacción hover bidireccional | P1 | Media |
-| B5 | Estado vacío | P2 | Baja |
-| B6 | Integración catálogo precios | **P0** | Alta |
-
-### 10.3 Orden de Implementación Sugerido
-
-**Fase 1: Funcionalidad Core**
-1. B1 + B2 + B3: Panel lateral con lista y modos de añadir
-2. A1: Soporte multi-diente
-3. B6: Integración catálogo
-
-**Fase 2: Polish UX**
-4. A2: Selector superficies inline
-5. A3 + A4: Estados visuales y colores
-6. B4: Hover bidireccional
-
-**Fase 3: Refinamiento**
-7. A5 + A6: Barra mejorada y atajos
-8. B5: Estado vacío
+**Fase única**, sin paralelización estricta. G1–G3 y R1–R2 pueden hacerse en PRs independientes. G2 depende de G1; R2 depende de R1.
 
 ---
 
-## Próximos Pasos
+## 9. Riesgos
 
-1. **Validar con usuarios:** Test con 3-5 dentistas
-2. **Prototipo:** Figma para flujos multi-diente
-3. **Plan técnico:** Definir cambios en modelos y API
-4. **Implementar Fase 1:** Comenzar por panel lateral
+- **Código que asume `TreatmentTooth` no vacío.** Servicios, response builders, visualización y reportes. Auditar usos y ajustar a listas posiblemente vacías. No es un tema de datos (no hay prod), es de corrección de código.
+- **Dep de drag & drop.** Si no hay librería ya en el proyecto, evaluar `vue-draggable-plus` o HTML5 nativo. Preferir nativo si el caso es simple (lista plana, sin anidamiento); librería si aparece complejidad.
+- **Reorder con carrera en red.** Si dos usuarios reordenan a la vez, el último gana. Aceptable por el volumen esperado; no invertir en locking optimista.
+
+---
+
+## Siguientes pasos
+
+1. Plan técnico con desglose de PRs (G1 aislado, G2+G3 juntos, R1+R2 juntos).
+2. Decidir librería drag & drop antes de empezar R2.
+3. Rehacer el seeder de catálogo con la taxonomía de `treatment_scope` nueva, incluyendo globales por defecto.

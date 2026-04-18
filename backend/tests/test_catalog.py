@@ -239,7 +239,7 @@ async def test_create_catalog_item(
             "default_price": 100.00,
             "currency": "EUR",
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
             "is_diagnostic": False,
             "requires_surfaces": False,
             "requires_appointment": True,
@@ -281,7 +281,7 @@ async def test_create_catalog_item_duplicate_code(
             "internal_code": "DUP-001",
             "names": {"es": "Primero", "en": "First"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -294,7 +294,7 @@ async def test_create_catalog_item_duplicate_code(
             "internal_code": "DUP-001",
             "names": {"es": "Segundo", "en": "Second"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -325,7 +325,7 @@ async def test_get_catalog_item(
             "internal_code": "GET-001",
             "names": {"es": "Obtener", "en": "Get"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -366,7 +366,7 @@ async def test_update_catalog_item(
             "names": {"es": "Original", "en": "Original"},
             "default_price": 50.00,
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -411,7 +411,7 @@ async def test_delete_catalog_item(
             "internal_code": "DEL-001",
             "names": {"es": "Borrar", "en": "Delete"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -457,7 +457,7 @@ async def test_search_catalog_items(
             "internal_code": "SRCH-CORONA",
             "names": {"es": "Corona Dental", "en": "Dental Crown"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -469,7 +469,7 @@ async def test_search_catalog_items(
             "internal_code": "SRCH-EXTRAC",
             "names": {"es": "Extracción", "en": "Extraction"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -528,7 +528,7 @@ async def test_list_items_with_category_filter(
             "internal_code": "FILT-CAT1",
             "names": {"es": "En Cat 1", "en": "In Cat 1"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -540,7 +540,7 @@ async def test_list_items_with_category_filter(
             "internal_code": "FILT-CAT2",
             "names": {"es": "En Cat 2", "en": "In Cat 2"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -612,7 +612,7 @@ async def test_catalog_item_with_odontogram_mapping(
             "internal_code": "ODONTO-001",
             "names": {"es": "Con Mapeo", "en": "With Mapping"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
             "odontogram_mapping": {
                 "odontogram_treatment_type": "crown",
                 "clinical_category": "restauradora",
@@ -667,7 +667,7 @@ async def test_catalog_item_pagination(
                 "names": {"es": f"Item {i}", "en": f"Item {i}"},
                 "vat_type": "exempt",
                 "vat_rate": 0,
-                "treatment_scope": "whole_tooth",
+                "treatment_scope": "tooth",
             },
             headers=auth_headers,
         )
@@ -709,7 +709,7 @@ async def test_catalog_item_vat_types(
             "internal_code": "VAT-EXEMPT",
             "names": {"es": "Exento", "en": "Exempt"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -727,7 +727,7 @@ async def test_catalog_item_vat_types(
             "internal_code": "VAT-REDUCED",
             "names": {"es": "Reducido", "en": "Reduced"},
             "vat_type_id": catalog_clinic_setup["vat_reduced_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -744,7 +744,7 @@ async def test_catalog_item_vat_types(
             "internal_code": "VAT-STANDARD",
             "names": {"es": "General", "en": "Standard"},
             "vat_type_id": catalog_clinic_setup["vat_standard_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
         },
         headers=auth_headers,
     )
@@ -778,16 +778,16 @@ async def test_catalog_item_treatment_scopes(
             "internal_code": "SCOPE-TOOTH",
             "names": {"es": "Diente Completo", "en": "Whole Tooth"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "whole_tooth",
+            "treatment_scope": "tooth",
             "requires_surfaces": False,
         },
         headers=auth_headers,
     )
     assert response.status_code == 201
-    assert response.json()["data"]["treatment_scope"] == "whole_tooth"
+    assert response.json()["data"]["treatment_scope"] == "tooth"
     assert response.json()["data"]["requires_surfaces"] is False
 
-    # Create surface treatment
+    # Create surface-sensitive tooth treatment (requires_surfaces flag drives per-surface pricing).
     response = await client.post(
         "/api/v1/catalog/items",
         json={
@@ -795,13 +795,13 @@ async def test_catalog_item_treatment_scopes(
             "internal_code": "SCOPE-SURFACE",
             "names": {"es": "Por Superficie", "en": "Per Surface"},
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
-            "treatment_scope": "surface",
+            "treatment_scope": "tooth",
             "requires_surfaces": True,
         },
         headers=auth_headers,
     )
     assert response.status_code == 201
-    assert response.json()["data"]["treatment_scope"] == "surface"
+    assert response.json()["data"]["treatment_scope"] == "tooth"
     assert response.json()["data"]["requires_surfaces"] is True
 
 

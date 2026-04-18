@@ -56,6 +56,10 @@
     "archiveDescription": "Esta acción ocultará al paciente de las búsquedas. Las citas existentes no se eliminarán.",
     "cancel": "Cancelar",
     "archive": "Archivar",
+    "dangerZone": {
+      "title": "Zona peligrosa",
+      "archiveHelp": "Archiva al paciente para ocultarlo de búsquedas. Las citas e historial se conservan."
+    },
     "billingSection": "Datos de facturación",
     "billingSectionHint": "Estos datos se usarán automáticamente al crear facturas para este paciente.",
     "editingBillingForInvoice": "Editando datos de facturación. Los cambios se reflejarán en la factura.",
@@ -254,6 +258,13 @@
   "odontogram": {
     "title": "Odontograma",
     "tooth": "Diente",
+    "globals": {
+      "category": "Boca completa",
+      "applied": "{name} añadido al plan",
+      "archPickerTitle": "¿En qué arcada aplicar «{name}»?",
+      "upperArch": "Arcada superior",
+      "lowerArch": "Arcada inferior"
+    },
     "selectCondition": "Seleccionar Condición",
     "readOnly": "Solo lectura",
     "legend": "Leyenda",
@@ -520,7 +531,34 @@
       "removeItem": "Eliminar del plan",
       "unknownTreatment": "Tratamiento",
       "odontogram": "Odontograma",
-      "pending": "pendientes"
+      "pending": "pendientes",
+      "dragToReorder": "Arrastrar para reordenar",
+      "reorderHint": "Usa Alt + flechas para mover",
+      "emptyDraft": {
+        "title": "Planifica los tratamientos",
+        "step1": "Elige un tratamiento en la barra inferior",
+        "step2": "Haz click en un diente del odontograma",
+        "step3": "Confirma el plan para generar presupuesto y citas"
+      },
+      "steps": {
+        "plan": "Planificar",
+        "confirm": "Confirmar",
+        "billingScheduling": "Presupuesto + Citas"
+      },
+      "confirmCta": {
+        "titleWithItems": "Confirmar plan",
+        "subtitleWithItems": "Al confirmar se desbloquean el presupuesto y la programación de citas.",
+        "empty": "Añade al menos un tratamiento para confirmar el plan"
+      },
+      "ghostHint": "Disponible tras confirmar el plan",
+      "addedToPlan": "Añadido al plan",
+      "addingToPlan": "Añadiendo a este plan",
+      "modifyPlan": "Modificar plan",
+      "cancelPlan": "Cancelar plan",
+      "locked": {
+        "title": "Plan bloqueado",
+        "subtitle": "Presupuesto {number} emitido. Para modificar el plan, debes cancelar el presupuesto actual."
+      }
     },
     "tooth": "Diente"
   },
@@ -784,8 +822,10 @@
       "standard": "General"
     },
     "scopeTypes": {
-      "surface": "Por superficie",
-      "whole_tooth": "Diente completo"
+      "tooth": "Diente",
+      "multi_tooth": "Multi-diente",
+      "global_mouth": "Boca completa",
+      "global_arch": "Por arcada"
     },
     "pricingStrategy": {
       "label": "Estrategia de precio",
@@ -922,10 +962,13 @@
     },
     "actions": {
       "activate": "Activar plan",
+      "confirm": "Confirmar plan",
       "complete": "Marcar completado",
       "generateBudget": "Generar presupuesto",
       "linkBudget": "Vincular presupuesto",
-      "syncBudget": "Sincronizar presupuesto"
+      "syncBudget": "Sincronizar presupuesto",
+      "unlockConfirm": "Cancelar presupuesto y modificar",
+      "cancelPlan": "Cancelar plan"
     },
     "items": {
       "title": "Tratamientos",
@@ -940,7 +983,17 @@
     "confirmations": {
       "delete": "¿Eliminar este plan de tratamiento?",
       "completeItem": "¿Marcar tratamiento como completado?",
-      "completeItemDescription": "Esta acción no se puede deshacer."
+      "completeItemDescription": "Esta acción no se puede deshacer.",
+      "activateTitle": "¿Confirmar el plan de tratamiento?",
+      "activateDescription": "Al confirmar se desbloquean la generación del presupuesto y la programación de citas. Podrás seguir añadiendo o completando tratamientos después.",
+      "unlockTitle": "¿Modificar el plan?",
+      "unlockIntro": "Este plan tiene el presupuesto {number} emitido. Para modificarlo, hay que cancelar el presupuesto actual.",
+      "unlockConsequence1": "El presupuesto {number} se cancelará y ya no será válido para el paciente.",
+      "unlockConsequence2": "Podrás añadir, editar o eliminar tratamientos del plan.",
+      "unlockConsequence3": "Tendrás que generar un presupuesto nuevo cuando termines los cambios.",
+      "unlockConsequence4": "El presupuesto cancelado se conserva en el historial para trazabilidad.",
+      "cancelTitle": "¿Cancelar el plan de tratamiento?",
+      "cancelDescription": "El plan pasará a estado cancelado y se quitarán del odontograma los tratamientos planificados que no se hayan realizado. El historial del plan se conserva."
     },
     "messages": {
       "created": "Plan de tratamiento creado",
@@ -950,6 +1003,13 @@
     },
     "itemCompleted": "Tratamiento completado",
     "budgetGenerated": "Presupuesto generado",
+    "created": "Plan de tratamiento creado",
+    "updated": "Plan de tratamiento actualizado",
+    "statusUpdated": "Estado del plan actualizado",
+    "deleted": "Plan de tratamiento eliminado",
+    "budgetLinked": "Presupuesto vinculado al plan",
+    "budgetSynced": "Presupuesto sincronizado",
+    "unlocked": "Plan desbloqueado. El presupuesto se ha cancelado.",
     "errors": {
       "load": "Error al cargar planes de tratamiento",
       "create": "Error al crear plan de tratamiento",

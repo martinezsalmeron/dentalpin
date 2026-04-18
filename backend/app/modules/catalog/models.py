@@ -168,10 +168,10 @@ class TreatmentCatalogItem(Base, TimestampMixin):
     # Missing tier resolves to the highest populated tier <= n, or default_price.
     surface_prices: Mapped[dict | None] = mapped_column(JSONB, default=None)
 
-    # Treatment characteristics
-    treatment_scope: Mapped[str] = mapped_column(
-        String(20), default="whole_tooth"
-    )  # "surface" or "whole_tooth"
+    # Treatment characteristics.
+    # treatment_scope aligns with Treatment.scope enum:
+    #   tooth / multi_tooth / global_mouth / global_arch
+    treatment_scope: Mapped[str] = mapped_column(String(20), default="tooth")
     is_diagnostic: Mapped[bool] = mapped_column(Boolean, default=False)
     requires_surfaces: Mapped[bool] = mapped_column(Boolean, default=False)
 

@@ -42,20 +42,6 @@ class TreatmentToothBrief(BaseModel):
     surfaces: list[str] | None = None
 
 
-class TreatmentBrief(BaseModel):
-    """Brief Treatment info (header + teeth)."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    clinical_type: str
-    status: str
-    catalog_item_id: UUID | None = None
-    price_snapshot: Decimal | None = None
-    currency_snapshot: str | None = None
-    teeth: list[TreatmentToothBrief] = Field(default_factory=list)
-
-
 class CatalogItemBrief(BaseModel):
     """Brief catalog item info."""
 
@@ -65,6 +51,23 @@ class CatalogItemBrief(BaseModel):
     internal_code: str
     names: dict
     default_price: float | None = None
+
+
+class TreatmentBrief(BaseModel):
+    """Brief Treatment info (header + teeth)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    clinical_type: str
+    scope: str
+    arch: str | None = None
+    status: str
+    catalog_item_id: UUID | None = None
+    catalog_item: CatalogItemBrief | None = None
+    price_snapshot: Decimal | None = None
+    currency_snapshot: str | None = None
+    teeth: list[TreatmentToothBrief] = Field(default_factory=list)
 
 
 class TreatmentMediaResponse(BaseModel):
@@ -190,6 +193,16 @@ class CompleteItemRequest(BaseModel):
 
     completed_without_appointment: bool = True
     notes: str | None = None
+
+
+class ReorderItemsRequest(BaseModel):
+    """Reorder all items of a plan in a single atomic update.
+
+    `item_ids` MUST cover exactly the plan's current items — no missing, no extras.
+    `sequence_order` is rewritten as 0, 1, 2, ... in the given order.
+    """
+
+    item_ids: list[UUID]
 
 
 # ---------------------------------------------------------------------------

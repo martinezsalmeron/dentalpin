@@ -421,10 +421,12 @@ export interface TreatmentCatalogItemBrief {
 }
 
 /** Treatment = one clinical act. Bridges, splints and multiple-veneers/crowns are
- *  a single Treatment with several TreatmentTooth entries. */
+ *  a single Treatment with several TreatmentTooth entries. Globals have empty teeth. */
 export interface Treatment {
   id: string
   clinical_type: ClinicalType
+  scope: 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
+  arch?: 'upper' | 'lower' | null
   status: TreatmentStatus
   catalog_item_id?: string | null
   catalog_item?: TreatmentCatalogItemBrief | null
@@ -444,9 +446,11 @@ export interface Treatment {
   updated_at: string
 }
 
-/** Mode for POST /treatments. Single: one tooth (default). Bridge: backend assigns
- *  pillar/pontic roles. Uniform: same clinical_type for all teeth. */
-export type TreatmentMode = 'single' | 'bridge' | 'uniform'
+/** Scope of a Treatment (how it relates to teeth). Derived when omitted for
+ *  tooth/multi_tooth; globals must be passed explicitly. */
+export type TreatmentScope = 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
+
+export type Arch = 'upper' | 'lower'
 
 export interface TreatmentToothInput {
   tooth_number: number
@@ -458,6 +462,8 @@ export interface TreatmentToothInput {
 export interface TreatmentCreate {
   catalog_item_id?: string
   clinical_type?: ClinicalType
+  scope?: TreatmentScope
+  arch?: Arch
   tooth_numbers?: number[]
   teeth?: TreatmentToothInput[]
   surfaces?: Surface[]
@@ -465,7 +471,6 @@ export interface TreatmentCreate {
   notes?: string
   budget_item_id?: string
   source_module?: string
-  mode?: TreatmentMode
 }
 
 /** PUT /treatments/{id} — header-level edits only. */
@@ -638,7 +643,7 @@ export interface TreatmentCatalogItem {
   vat_type_id?: string
   vat_type?: VatTypeBrief
   // Treatment characteristics
-  treatment_scope: 'surface' | 'whole_tooth'
+  treatment_scope: 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
   is_diagnostic: boolean
   requires_surfaces: boolean
   // Material
@@ -673,7 +678,7 @@ export interface TreatmentCatalogItemCreate {
   // Tax - references VatType (uses clinic default if not provided)
   vat_type_id?: string
   // Treatment characteristics
-  treatment_scope?: 'surface' | 'whole_tooth'
+  treatment_scope?: 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
   is_diagnostic?: boolean
   requires_surfaces?: boolean
   // Material
@@ -696,7 +701,7 @@ export interface TreatmentCatalogItemUpdate {
   default_duration_minutes?: number
   requires_appointment?: boolean
   vat_type_id?: string
-  treatment_scope?: 'surface' | 'whole_tooth'
+  treatment_scope?: 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
   is_diagnostic?: boolean
   requires_surfaces?: boolean
   material_notes?: string
@@ -720,7 +725,7 @@ export interface OdontogramTreatment {
   names: Record<string, string>
   default_price?: string | null
   currency?: string
-  treatment_scope: 'surface' | 'whole_tooth'
+  treatment_scope: 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
   requires_surfaces: boolean
   is_diagnostic: boolean
   // Pricing
@@ -1774,8 +1779,11 @@ export type TreatmentMediaType = 'before' | 'after' | 'xray' | 'reference'
 export interface TreatmentBrief {
   id: string
   clinical_type: ClinicalType
+  scope: 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
+  arch?: 'upper' | 'lower' | null
   status: TreatmentStatus
   catalog_item_id?: string | null
+  catalog_item?: TreatmentCatalogItemBrief | null
   price_snapshot?: string | null
   currency_snapshot?: string | null
   teeth: Array<{

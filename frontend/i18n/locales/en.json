@@ -56,6 +56,10 @@
     "archiveDescription": "This action will hide the patient from searches. Existing appointments will not be deleted.",
     "cancel": "Cancel",
     "archive": "Archive",
+    "dangerZone": {
+      "title": "Danger zone",
+      "archiveHelp": "Archive the patient to hide them from searches. Appointments and history are preserved."
+    },
     "billingSection": "Billing information",
     "billingSectionHint": "This data will be automatically used when creating invoices for this patient.",
     "editingBillingForInvoice": "Editing billing data. Changes will reflect in the invoice.",
@@ -226,6 +230,13 @@
   "odontogram": {
     "title": "Dental Chart",
     "tooth": "Tooth",
+    "globals": {
+      "category": "Whole mouth",
+      "applied": "{name} added to plan",
+      "archPickerTitle": "Which arch for \"{name}\"?",
+      "upperArch": "Upper arch",
+      "lowerArch": "Lower arch"
+    },
     "selectCondition": "Select Condition",
     "readOnly": "View only",
     "legend": "Legend",
@@ -499,7 +510,34 @@
       "removeItem": "Remove from plan",
       "unknownTreatment": "Treatment",
       "odontogram": "Odontogram",
-      "pending": "pending"
+      "pending": "pending",
+      "dragToReorder": "Drag to reorder",
+      "reorderHint": "Use Alt + arrow keys to move",
+      "emptyDraft": {
+        "title": "Plan the treatments",
+        "step1": "Pick a treatment from the bar below",
+        "step2": "Click a tooth on the odontogram",
+        "step3": "Confirm the plan to generate quote and appointments"
+      },
+      "steps": {
+        "plan": "Plan",
+        "confirm": "Confirm",
+        "billingScheduling": "Quote + Appointments"
+      },
+      "confirmCta": {
+        "titleWithItems": "Confirm plan",
+        "subtitleWithItems": "Confirming unlocks quote generation and appointment scheduling.",
+        "empty": "Add at least one treatment to confirm the plan"
+      },
+      "ghostHint": "Available after confirming the plan",
+      "addedToPlan": "Added to plan",
+      "addingToPlan": "Adding to this plan",
+      "modifyPlan": "Modify plan",
+      "cancelPlan": "Cancel plan",
+      "locked": {
+        "title": "Plan locked",
+        "subtitle": "Quote {number} has been issued. To modify the plan, the current quote must be cancelled."
+      }
     },
     "tooth": "Tooth"
   },
@@ -762,8 +800,10 @@
       "standard": "Standard"
     },
     "scopeTypes": {
-      "surface": "Per surface",
-      "whole_tooth": "Whole tooth"
+      "tooth": "Tooth",
+      "multi_tooth": "Multi-tooth",
+      "global_mouth": "Whole mouth",
+      "global_arch": "Per arch"
     },
     "pricingStrategy": {
       "label": "Pricing strategy",
@@ -900,10 +940,13 @@
     },
     "actions": {
       "activate": "Activate plan",
+      "confirm": "Confirm plan",
       "complete": "Mark completed",
       "generateBudget": "Generate quote",
       "linkBudget": "Link quote",
-      "syncBudget": "Sync quote"
+      "syncBudget": "Sync quote",
+      "unlockConfirm": "Cancel quote and modify",
+      "cancelPlan": "Cancel plan"
     },
     "items": {
       "title": "Treatments",
@@ -918,7 +961,17 @@
     "confirmations": {
       "delete": "Delete this treatment plan?",
       "completeItem": "Mark treatment as completed?",
-      "completeItemDescription": "This action cannot be undone."
+      "completeItemDescription": "This action cannot be undone.",
+      "activateTitle": "Confirm treatment plan?",
+      "activateDescription": "Confirming unlocks quote generation and appointment scheduling. You can keep adding or completing treatments afterwards.",
+      "unlockTitle": "Modify the plan?",
+      "unlockIntro": "This plan has quote {number} already issued. To modify it, the current quote must be cancelled.",
+      "unlockConsequence1": "Quote {number} will be cancelled and no longer valid for the patient.",
+      "unlockConsequence2": "You can add, edit or remove treatments from the plan.",
+      "unlockConsequence3": "You will need to generate a new quote when you are done with the changes.",
+      "unlockConsequence4": "The cancelled quote is kept in history for traceability.",
+      "cancelTitle": "Cancel the treatment plan?",
+      "cancelDescription": "The plan will move to cancelled state and any non-performed planned treatments will be removed from the odontogram. Plan history is kept."
     },
     "messages": {
       "created": "Treatment plan created",
@@ -928,6 +981,13 @@
     },
     "itemCompleted": "Treatment completed",
     "budgetGenerated": "Budget generated",
+    "created": "Treatment plan created",
+    "updated": "Treatment plan updated",
+    "statusUpdated": "Plan status updated",
+    "deleted": "Treatment plan deleted",
+    "budgetLinked": "Budget linked to plan",
+    "budgetSynced": "Budget synced",
+    "unlocked": "Plan unlocked. The quote has been cancelled.",
     "errors": {
       "load": "Error loading treatment plans",
       "create": "Error creating treatment plan",

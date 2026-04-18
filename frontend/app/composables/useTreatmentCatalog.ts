@@ -86,7 +86,7 @@ export function useTreatmentCatalog() {
         default_price: null,
         pricing_strategy: 'flat',
         pricing_config: null,
-        treatment_scope: isSurfaceTreatment(treatmentType) ? 'surface' : 'whole_tooth',
+        treatment_scope: 'tooth',
         requires_surfaces: isSurfaceTreatment(treatmentType),
         is_diagnostic: category.key === 'diagnostico',
         odontogram_treatment_type: treatmentType as OdontogramTreatment['odontogram_treatment_type'],
@@ -149,11 +149,13 @@ export function useTreatmentCatalog() {
         id: treatmentType,
         internal_code: treatmentType.toUpperCase(),
         names: { es: treatmentType, en: treatmentType },
-        default_price: undefined,
-        treatment_scope: isSurfaceTreatment(treatmentType) ? 'surface' : 'whole_tooth',
+        default_price: null,
+        pricing_strategy: 'flat' as const,
+        pricing_config: null,
+        treatment_scope: 'tooth' as const,
         requires_surfaces: isSurfaceTreatment(treatmentType),
         is_diagnostic: categoryKey === 'diagnostico',
-        odontogram_treatment_type: treatmentType,
+        odontogram_treatment_type: treatmentType as OdontogramTreatment['odontogram_treatment_type'],
         visualization_rules: getVisualizationRulesForType(treatmentType),
         visualization_config: {
           color: TREATMENT_COLORS[treatmentType] || { light: '#6B7280', dark: '#9CA3AF' }
@@ -187,7 +189,7 @@ export function useTreatmentCatalog() {
           default_price: null,
           pricing_strategy: 'flat',
           pricing_config: null,
-          treatment_scope: isSurfaceTreatment(normalized) ? 'surface' : 'whole_tooth',
+          treatment_scope: 'tooth',
           requires_surfaces: isSurfaceTreatment(normalized),
           is_diagnostic: category.key === 'diagnostico',
           odontogram_treatment_type: normalized as OdontogramTreatment['odontogram_treatment_type'],
@@ -292,6 +294,26 @@ export function useTreatmentCatalog() {
     return categoryKey === 'diagnostico'
   }
 
+  // ============================================================================
+  // Global treatments (boca completa / arcada)
+  // ============================================================================
+
+  /** Items whose scope is global_mouth — applied to the whole mouth. */
+  const globalMouthItems = computed(() =>
+    treatments.value.filter(t => t.treatment_scope === 'global_mouth')
+  )
+
+  /** Items whose scope is global_arch — require arch selection on apply. */
+  const globalArchItems = computed(() =>
+    treatments.value.filter(t => t.treatment_scope === 'global_arch')
+  )
+
+  /** Convenience: all global items split by scope for rendering. */
+  const globalItems = computed(() => ({
+    mouth: globalMouthItems.value,
+    arch: globalArchItems.value
+  }))
+
   return {
     // State
     treatments,
@@ -320,6 +342,11 @@ export function useTreatmentCatalog() {
 
     // Helpers
     getCategoryLabel,
-    isCategoryDiagnostic
+    isCategoryDiagnostic,
+
+    // Globals
+    globalMouthItems,
+    globalArchItems,
+    globalItems
   }
 }

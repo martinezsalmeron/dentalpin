@@ -175,8 +175,8 @@ class CatalogItemCreate(BaseModel):
     # pricing_strategy == "per_surface". See pricing.py for tier resolution.
     surface_prices: dict[str, Decimal] | None = None
 
-    # Treatment characteristics
-    treatment_scope: Literal["surface", "whole_tooth"] = "whole_tooth"
+    # Treatment characteristics (aligns with Treatment.scope).
+    treatment_scope: Literal["tooth", "multi_tooth", "global_mouth", "global_arch"] = "tooth"
     is_diagnostic: bool = False
     requires_surfaces: bool = False
 
@@ -213,7 +213,7 @@ class CatalogItemUpdate(BaseModel):
     surface_prices: dict[str, Decimal] | None = None
 
     # Treatment characteristics
-    treatment_scope: Literal["surface", "whole_tooth"] | None = None
+    treatment_scope: Literal["tooth", "multi_tooth", "global_mouth", "global_arch"] | None = None
     is_diagnostic: bool | None = None
     requires_surfaces: bool | None = None
 
@@ -354,5 +354,5 @@ class CatalogSearchParams(BaseModel):
     query: str | None = None  # Search in names, codes
     category_id: UUID | None = None
     is_active: bool | None = True
-    treatment_scope: Literal["surface", "whole_tooth"] | None = None
+    treatment_scope: Literal["tooth", "multi_tooth", "global_mouth", "global_arch"] | None = None
     has_odontogram_mapping: bool | None = None

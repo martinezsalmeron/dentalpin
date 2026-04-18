@@ -70,7 +70,7 @@ async def _seed_catalog_items(db_session: AsyncSession, clinic_id) -> dict:
         names={"es": "Empaste"},
         default_price=Decimal("80.00"),
         pricing_strategy="flat",
-        treatment_scope="surface",
+        treatment_scope="tooth",
         requires_surfaces=True,
         vat_type_id=vat.id,
     )
@@ -81,7 +81,7 @@ async def _seed_catalog_items(db_session: AsyncSession, clinic_id) -> dict:
         names={"es": "Corona"},
         default_price=Decimal("500.00"),
         pricing_strategy="per_tooth",
-        treatment_scope="whole_tooth",
+        treatment_scope="tooth",
         vat_type_id=vat.id,
     )
     bridge = TreatmentCatalogItem(
@@ -92,16 +92,38 @@ async def _seed_catalog_items(db_session: AsyncSession, clinic_id) -> dict:
         default_price=Decimal("400.00"),
         pricing_strategy="per_role",
         pricing_config={"pillar": 500, "pontic": 300},
-        treatment_scope="whole_tooth",
+        treatment_scope="multi_tooth",
         vat_type_id=vat.id,
     )
-    db_session.add_all([filling, crown, bridge])
+    cleaning = TreatmentCatalogItem(
+        clinic_id=clinic_id,
+        category_id=cat.id,
+        internal_code="TST-CLEAN",
+        names={"es": "Limpieza"},
+        default_price=Decimal("60.00"),
+        pricing_strategy="flat",
+        treatment_scope="global_mouth",
+        vat_type_id=vat.id,
+    )
+    splint = TreatmentCatalogItem(
+        clinic_id=clinic_id,
+        category_id=cat.id,
+        internal_code="TST-SPLINT-ARCH",
+        names={"es": "Férula de descarga"},
+        default_price=Decimal("120.00"),
+        pricing_strategy="flat",
+        treatment_scope="global_arch",
+        vat_type_id=vat.id,
+    )
+    db_session.add_all([filling, crown, bridge, cleaning, splint])
     await db_session.flush()
 
     for item, otype in (
         (filling, "filling_composite"),
         (crown, "crown"),
         (bridge, "bridge"),
+        (cleaning, "caries"),  # arbitrary visual type; cleaning has no dedicated rule
+        (splint, "splint"),
     ):
         db_session.add(
             TreatmentOdontogramMapping(
@@ -115,7 +137,13 @@ async def _seed_catalog_items(db_session: AsyncSession, clinic_id) -> dict:
         )
     await db_session.commit()
 
-    return {"filling_id": str(filling.id), "crown_id": str(crown.id), "bridge_id": str(bridge.id)}
+    return {
+        "filling_id": str(filling.id),
+        "crown_id": str(crown.id),
+        "bridge_id": str(bridge.id),
+        "cleaning_id": str(cleaning.id),
+        "splint_arch_id": str(splint.id),
+    }
 
 
 @pytest.fixture
@@ -171,7 +199,7 @@ async def test_uniform_multiple_crowns_scales_price(
         headers=auth_headers,
         json={
             "catalog_item_id": setup["crown_id"],
-            "mode": "uniform",
+            "scope": "multi_tooth",
             "tooth_numbers": [12, 11, 21, 22],
             "status": "planned",
         },
@@ -198,7 +226,7 @@ async def test_bridge_assigns_roles_and_prices_per_role(
         headers=auth_headers,
         json={
             "catalog_item_id": setup["bridge_id"],
-            "mode": "bridge",
+            "scope": "multi_tooth",
             "tooth_numbers": [14, 15, 16],
             "status": "planned",
         },
@@ -220,7 +248,7 @@ async def test_bridge_requires_at_least_two_teeth(
         headers=auth_headers,
         json={
             "catalog_item_id": setup["bridge_id"],
-            "mode": "bridge",
+            "scope": "multi_tooth",
             "tooth_numbers": [14],
             "status": "planned",
         },
@@ -239,7 +267,7 @@ async def test_bridge_cantilever_two_teeth_with_explicit_roles(
         headers=auth_headers,
         json={
             "catalog_item_id": setup["bridge_id"],
-            "mode": "bridge",
+            "scope": "multi_tooth",
             "teeth": [
                 {"tooth_number": 14, "role": "pillar"},
                 {"tooth_number": 15, "role": "pontic"},
@@ -265,7 +293,7 @@ async def test_bridge_honors_explicit_mid_span_pillar(
         headers=auth_headers,
         json={
             "catalog_item_id": setup["bridge_id"],
-            "mode": "bridge",
+            "scope": "multi_tooth",
             "teeth": [
                 {"tooth_number": 14, "role": "pillar"},
                 {"tooth_number": 15, "role": "pontic"},
@@ -292,7 +320,7 @@ async def test_bridge_rejects_all_pontic(
         headers=auth_headers,
         json={
             "catalog_item_id": setup["bridge_id"],
-            "mode": "bridge",
+            "scope": "multi_tooth",
             "teeth": [
                 {"tooth_number": 14, "role": "pontic"},
                 {"tooth_number": 15, "role": "pontic"},
@@ -399,3 +427,159 @@ async def test_delete_soft_deletes(
         f"/api/v1/odontogram/patients/{pid}/treatments", headers=auth_headers
     )
     assert listing.json()["total"] == 0  # soft-deleted excluded
+
+
+# ----------------------------------------------------------------------------
+# scope derivation and global treatments
+# ----------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scope_tooth_derived_from_single_tooth(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["crown_id"],
+            "tooth_numbers": [26],
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()["data"]
+    assert data["scope"] == "tooth"
+    assert data["arch"] is None
+
+
+@pytest.mark.asyncio
+async def test_scope_multi_tooth_derived_when_two_teeth(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["crown_id"],
+            "tooth_numbers": [11, 21],
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["data"]["scope"] == "multi_tooth"
+
+
+@pytest.mark.asyncio
+async def test_create_global_mouth_treatment(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["cleaning_id"],
+            "scope": "global_mouth",
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()["data"]
+    assert data["scope"] == "global_mouth"
+    assert data["arch"] is None
+    assert data["teeth"] == []
+    assert data["price_snapshot"] == "60.00"
+
+
+@pytest.mark.asyncio
+async def test_create_global_arch_treatment(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["splint_arch_id"],
+            "scope": "global_arch",
+            "arch": "upper",
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()["data"]
+    assert data["scope"] == "global_arch"
+    assert data["arch"] == "upper"
+    assert data["teeth"] == []
+
+
+@pytest.mark.asyncio
+async def test_global_arch_requires_arch(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["splint_arch_id"],
+            "scope": "global_arch",
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_arch_rejected_for_non_global_arch_scope(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["crown_id"],
+            "tooth_numbers": [26],
+            "arch": "upper",
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_global_mouth_rejects_teeth(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["cleaning_id"],
+            "scope": "global_mouth",
+            "tooth_numbers": [11],
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_no_scope_no_teeth_raises(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    pid = setup["patient_id"]
+    r = await client.post(
+        f"/api/v1/odontogram/patients/{pid}/treatments",
+        headers=auth_headers,
+        json={
+            "catalog_item_id": setup["crown_id"],
+            "status": "planned",
+        },
+    )
+    assert r.status_code == 422

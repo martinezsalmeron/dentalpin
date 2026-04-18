@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TreatmentStatus, TreatmentPlan } from '~/types'
+import type { Arch, OdontogramTreatment, Treatment, TreatmentStatus, TreatmentPlan } from '~/types'
 import { TREATMENT_ICONS, isSurfaceTreatment, resolveTreatmentIconKey } from './TreatmentIcons'
 import {
   ATOMIC_MULTI_TOOTH_TYPES,
@@ -16,6 +16,10 @@ import {
 
 export type TreatmentBarMode = 'diagnosis' | 'planning' | 'full'
 
+/** Synthetic category key for whole-mouth / whole-arch treatments. Only surfaces
+ *  in planning mode (never in diagnosis). */
+const GLOBALS_CATEGORY = 'globals'
+
 const props = withDefaults(defineProps<{
   /** Accepts both persisted TreatmentType values and UI-only multi-tooth keys (bridge, multiple_veneers...). */
   selectedTreatment?: string | null
@@ -28,6 +32,8 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   /** Mode determines which categories are shown and UI behavior */
   mode?: TreatmentBarMode
+  /** When set (fixed-plan context), shows a "Adding to: {title}" banner instead of the plan selector. */
+  planContextTitle?: string
 }>(), {
   mode: 'full'
 })
@@ -38,6 +44,8 @@ const emit = defineEmits<{
   'update:selectedStatus': [status: TreatmentStatus]
   'update:selectedPlanId': [planId: string | null]
   'treatmentSelect': [treatment: string]
+  /** Fired after a global treatment is created and (optionally) added to the plan. */
+  'treatmentApplied': [treatment: Treatment]
   'createPlan': []
   'cancel': []
 }>()
@@ -54,6 +62,12 @@ onMounted(async () => {
   }
 })
 
+// Does the catalog have any global items? Drives visibility of the Globals tab.
+const hasGlobalItems = computed(() =>
+  treatmentCatalog.globalMouthItems.value.length > 0
+  || treatmentCatalog.globalArchItems.value.length > 0
+)
+
 // Categories from catalog (with fallback to constants), filtered by mode
 // NOTE: Must be defined before activeCategory watch that references it
 const categories = computed(() => {
@@ -66,11 +80,13 @@ const categories = computed(() => {
   const allCategories = [...new Set([...constantCategories, ...catalogCategories])]
 
   // Diagnosis mode: show ALL categories (dentist needs to record existing treatments too)
-  // Planning mode: show only therapeutic categories (no diagnostic conditions)
+  // Planning mode: show only therapeutic categories (no diagnostic conditions) + globals
   if (props.mode === 'planning') {
-    return allCategories.filter(cat =>
+    const therapeutic = allCategories.filter(cat =>
       THERAPEUTIC_CATEGORIES.includes(cat as TreatmentClinicalCategory)
     )
+    if (hasGlobalItems.value) therapeutic.push(GLOBALS_CATEGORY)
+    return therapeutic
   }
 
   // 'full' and 'diagnosis' modes show all categories
@@ -112,16 +128,20 @@ const statusOptions = computed(() => {
   return allStatusOptions.filter(opt => allowedStatuses.includes(opt.value))
 })
 
-// Show status toggle only when not in diagnosis mode
-const showStatusToggle = computed(() => props.mode !== 'diagnosis')
+// Status toggle only belongs in the free 'full' odontogram where the dentist
+// may be logging existing or planned work. Diagnosis locks to 'existing',
+// planning locks to 'planned' — showing a toggle there is misleading.
+const showStatusToggle = computed(() => props.mode === 'full')
 
 // Show diagnosis mode indicator
 const isDiagnosisMode = computed(() => props.mode === 'diagnosis')
 
-// Effective status - forced to 'existing' in diagnosis mode
-const effectiveStatus = computed(() =>
-  props.mode === 'diagnosis' ? 'existing' : props.selectedStatus
-)
+// Effective status — diagnosis locks to 'existing', planning locks to 'planned'.
+const effectiveStatus = computed<TreatmentStatus>(() => {
+  if (props.mode === 'diagnosis') return 'existing'
+  if (props.mode === 'planning') return 'planned'
+  return props.selectedStatus
+})
 
 // Atomic multi-tooth icon overlay shown on the catalog button (bridge, splint).
 const ATOMIC_MULTI_ICONS: Record<string, string> = {
@@ -175,7 +195,33 @@ function formatSurfaceRangeLabel(
 // bar so this branch is unused; left in case the prop semantics change.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+function globalItemToBarItem(
+  c: OdontogramTreatment,
+  subGroup: 'mouth' | 'arch'
+): TreatmentBarItem {
+  const oType = c.odontogram_treatment_type
+  const label = c.names[locale.value] || c.names.es || c.names.en || oType
+  return {
+    key: c.id,
+    label,
+    tooltip: label,
+    odontogramType: oType,
+    iconKey: resolveTreatmentIconKey(oType, c.internal_code),
+    catalogItemId: c.id,
+    isAtomicMulti: false,
+    atomicMultiIcon: subGroup === 'arch' ? 'i-lucide-layers-2' : 'i-lucide-scan-face',
+    hasSurfacePricing: false
+  }
+}
+
 const currentTreatments = computed<TreatmentBarItem[]>(() => {
+  if (activeCategory.value === GLOBALS_CATEGORY) {
+    // Globals flow — render boca-completa first, then arcada.
+    const mouth = treatmentCatalog.globalMouthItems.value.map(c => globalItemToBarItem(c, 'mouth'))
+    const arch = treatmentCatalog.globalArchItems.value.map(c => globalItemToBarItem(c, 'arch'))
+    return [...mouth, ...arch]
+  }
+
   const catalogTreatments = treatmentCatalog.getTreatmentsForCategory(activeCategory.value)
 
   if (catalogTreatments.length > 0) {
@@ -231,7 +277,94 @@ const currentTreatments = computed<TreatmentBarItem[]>(() => {
     })
 })
 
+// ============================================================================
+// Global treatments (boca completa / arcada)
+// ============================================================================
+
+const toast = useToast()
+const { createGlobalTreatment } = useTreatments()
+const treatmentPlansApi = useTreatmentPlans()
+
+// Arch picker state: non-null while user must choose upper/lower for a global_arch.
+const archPickerItem = ref<OdontogramTreatment | null>(null)
+const applyingGlobal = ref(false)
+
+function isGlobalItem(item: TreatmentBarItem): {
+  catalog: OdontogramTreatment
+  scope: 'global_mouth' | 'global_arch'
+} | null {
+  if (!item.catalogItemId) return null
+  const mouth = treatmentCatalog.globalMouthItems.value.find(i => i.id === item.catalogItemId)
+  if (mouth) return { catalog: mouth, scope: 'global_mouth' }
+  const arch = treatmentCatalog.globalArchItems.value.find(i => i.id === item.catalogItemId)
+  if (arch) return { catalog: arch, scope: 'global_arch' }
+  return null
+}
+
+async function applyGlobalTreatment(
+  catalogItemId: string,
+  scope: 'global_mouth' | 'global_arch',
+  arch?: Arch
+) {
+  if (!props.patientId) {
+    console.error('TreatmentBar: patientId is required to apply a global treatment')
+    return
+  }
+  applyingGlobal.value = true
+  try {
+    const created = await createGlobalTreatment(props.patientId, {
+      catalogItemId,
+      scope,
+      arch,
+      status: 'planned'
+    })
+    if (!created) return
+
+    // Link to the currently selected plan (if any).
+    if (props.selectedPlanId) {
+      await treatmentPlansApi.addItem(props.selectedPlanId, { treatment_id: created.id })
+    }
+
+    toast.add({
+      title: t('odontogram.globals.applied', {
+        name: created.catalog_item?.names?.[locale.value]
+          || created.catalog_item?.names?.es
+          || created.clinical_type
+      }),
+      color: 'success'
+    })
+    emit('treatmentApplied', created)
+  } finally {
+    applyingGlobal.value = false
+  }
+}
+
+async function selectGlobalArch(arch: Arch) {
+  const item = archPickerItem.value
+  archPickerItem.value = null
+  if (!item) return
+  await applyGlobalTreatment(item.id, 'global_arch', arch)
+}
+
+function cancelArchPicker() {
+  archPickerItem.value = null
+}
+
 function selectTreatment(item: TreatmentBarItem) {
+  // Globals shortcut: apply directly (mouth) or prompt for arch (arch).
+  const global = isGlobalItem(item)
+  if (global) {
+    if (global.scope === 'global_mouth') {
+      void applyGlobalTreatment(global.catalog.id, 'global_mouth')
+    } else {
+      archPickerItem.value = global.catalog
+    }
+    return
+  }
+  return selectTreatmentRegular(item)
+}
+
+function selectTreatmentRegular(item: TreatmentBarItem) {
   // Check allowed statuses and auto-set if restricted
   const allowedStatuses = getEffectiveAllowedStatuses(item.odontogramType)
   if (allowedStatuses.length === 1 && !allowedStatuses.includes(props.selectedStatus)) {
@@ -304,6 +437,9 @@ const activeMultiToothConfig = computed(() =>
 
 // Get category label - catalog aware
 function getCategoryLabel(categoryKey: string): string {
+  if (categoryKey === GLOBALS_CATEGORY) {
+    return t('odontogram.globals.category')
+  }
   const label = treatmentCatalog.getCategoryLabel(categoryKey)
   // If label looks like an i18n key, translate it
   if (label.startsWith('odontogram.')) {
@@ -312,11 +448,12 @@ function getCategoryLabel(categoryKey: string): string {
   return label
 }
 
-// Plan selector - only visible when status is "planned" and not in diagnosis mode
+// Plan selector - only visible when status is "planned" and not in diagnosis mode.
+// Hidden when no `treatmentPlans` list is provided — caller is working in a fixed
+// plan context (PlanDetailView) where switching plans makes no sense.
 const showPlanSelector = computed(() => {
-  // Never show in diagnosis mode
   if (props.mode === 'diagnosis') return false
-  // Show plan selector when status is "planned"
+  if (!props.treatmentPlans) return false
   return effectiveStatus.value === 'planned'
 })
 
@@ -363,6 +500,19 @@ function handleCreatePlan() {
     class="treatment-bar"
     :class="{ disabled }"
   >
+    <!-- Fixed-plan context banner: shown when adding treatments inside a plan detail view. -->
+    <div
+      v-if="planContextTitle && mode === 'planning'"
+      class="plan-context-banner"
+    >
+      <UIcon
+        name="i-lucide-clipboard-list"
+        class="w-4 h-4"
+      />
+      <span class="plan-context-label">{{ t('clinical.plans.addingToPlan') }}:</span>
+      <span class="plan-context-title">{{ planContextTitle }}</span>
+    </div>
+
     <!-- Top row: Status + Categories + Instructions -->
     <div class="top-row">
       <!-- Diagnosis Mode Indicator -->
@@ -536,6 +686,65 @@ function handleCreatePlan() {
       </div>
     </div>
 
+    <!-- Arch picker: shown when user selected a global_arch item and must pick arch. -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 -translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="archPickerItem"
+        class="arch-picker"
+      >
+        <div class="arch-picker-label">
+          {{ t('odontogram.globals.archPickerTitle', {
+            name: archPickerItem.names[locale] || archPickerItem.names.es || archPickerItem.odontogram_treatment_type
+          }) }}
+        </div>
+        <div class="arch-picker-buttons">
+          <button
+            type="button"
+            class="arch-btn"
+            :disabled="applyingGlobal"
+            @click="selectGlobalArch('upper')"
+          >
+            <UIcon
+              name="i-lucide-arrow-up"
+              class="w-4 h-4"
+            />
+            <span>{{ t('odontogram.globals.upperArch') }}</span>
+          </button>
+          <button
+            type="button"
+            class="arch-btn"
+            :disabled="applyingGlobal"
+            @click="selectGlobalArch('lower')"
+          >
+            <UIcon
+              name="i-lucide-arrow-down"
+              class="w-4 h-4"
+            />
+            <span>{{ t('odontogram.globals.lowerArch') }}</span>
+          </button>
+          <button
+            type="button"
+            class="arch-btn arch-btn-cancel"
+            :disabled="applyingGlobal"
+            @click="cancelArchPicker"
+          >
+            <UIcon
+              name="i-lucide-x"
+              class="w-4 h-4"
+            />
+            <span>{{ t('common.cancel') }}</span>
+          </button>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Bottom row: Treatment Icons Grid (one button per catalog item). -->
     <div class="treatment-grid">
       <div
@@ -636,6 +845,37 @@ function handleCreatePlan() {
 .treatment-bar.disabled {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* Fixed-plan context banner */
+.plan-context-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(90deg, #FEF3C7 0%, #FDE68A 100%);
+  border: 1px solid #FCD34D;
+  border-radius: 8px;
+  color: #78350F;
+  font-size: 13px;
+}
+
+:root.dark .plan-context-banner {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0.22) 100%);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #FCD34D;
+}
+
+.plan-context-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.plan-context-title {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Top row */
@@ -1065,6 +1305,95 @@ function handleCreatePlan() {
 :root.dark .mode-chip.active {
   background: #1E3A8A;
   color: #DBEAFE;
+}
+
+/* Arch picker */
+.arch-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #EFF6FF;
+  border: 2px solid #3B82F6;
+  border-radius: 8px;
+}
+
+:root.dark .arch-picker {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.arch-picker-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1D4ED8;
+}
+
+:root.dark .arch-picker-label {
+  color: #93C5FD;
+}
+
+.arch-picker-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E3A8A;
+  background: white;
+  border: 1px solid #93C5FD;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  flex: 1;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.arch-btn:hover:not(:disabled) {
+  background: #DBEAFE;
+  border-color: #3B82F6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+}
+
+.arch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:root.dark .arch-btn {
+  background: #1E293B;
+  color: #BFDBFE;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.arch-btn-cancel {
+  background: transparent;
+  color: #71717A;
+  border-color: #D4D4D8;
+  flex: 0 0 auto;
+  min-width: 90px;
+}
+
+.arch-btn-cancel:hover:not(:disabled) {
+  background: #F4F4F5;
+}
+
+:root.dark .arch-btn-cancel {
+  color: #A1A1AA;
+  border-color: #52525B;
+}
+
+:root.dark .arch-btn-cancel:hover:not(:disabled) {
+  background: #27272A;
 }
 
 /* Responsive */

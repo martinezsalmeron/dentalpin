@@ -328,14 +328,6 @@ const infoAccordionItems = computed(() => {
             {{ patient.first_name }} {{ patient.last_name }}
           </h1>
         </div>
-        <UButton
-          variant="outline"
-          color="neutral"
-          icon="i-lucide-archive"
-          @click="isArchiveModalOpen = true"
-        >
-          {{ t('patients.archive') }}
-        </UButton>
       </div>
 
       <!-- Main layout: Sidebar + Content -->
@@ -603,6 +595,29 @@ const infoAccordionItems = computed(() => {
                       </div>
                     </template>
                   </UAccordion>
+                </UCard>
+
+                <!-- Danger zone: archive moved here to prevent accidental clicks -->
+                <UCard>
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-sm font-semibold text-red-700 dark:text-red-300">
+                        {{ t('patients.dangerZone.title') }}
+                      </div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {{ t('patients.dangerZone.archiveHelp') }}
+                      </div>
+                    </div>
+                    <UButton
+                      variant="outline"
+                      color="error"
+                      icon="i-lucide-archive"
+                      size="sm"
+                      @click="isArchiveModalOpen = true"
+                    >
+                      {{ t('patients.archive') }}
+                    </UButton>
+                  </div>
                 </UCard>
               </div>
             </template>

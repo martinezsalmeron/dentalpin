@@ -1,12 +1,14 @@
 /**
  * useTreatments - CRUD for Treatment (header + teeth[] model)
  *
- * Single unified endpoint `/patients/{id}/treatments`. Bridges and uniform multi-tooth
- * treatments use the `mode` parameter; single-tooth is the default.
+ * Single unified endpoint `/patients/{id}/treatments`. Scope is derived from
+ * tooth count for tooth/multi_tooth cases; global_mouth and global_arch must
+ * be passed explicitly.
  */
 
 import type {
   ApiResponse,
+  Arch,
   PaginatedResponse,
   ToothRecordWithTreatments,
   Treatment,
@@ -191,6 +193,30 @@ export function useTreatments() {
     }
   }
 
+  /** Create a global treatment (no teeth). `arch` required only for global_arch. */
+  async function createGlobalTreatment(
+    patientId: string,
+    params: {
+      catalogItemId: string
+      scope: 'global_mouth' | 'global_arch'
+      arch?: Arch
+      status?: TreatmentStatus
+      notes?: string
+    }
+  ): Promise<Treatment | null> {
+    if (params.scope === 'global_arch' && !params.arch) {
+      console.error('createGlobalTreatment: arch is required for global_arch')
+      return null
+    }
+    return createTreatment(patientId, {
+      catalog_item_id: params.catalogItemId,
+      scope: params.scope,
+      arch: params.arch,
+      status: params.status ?? 'planned',
+      notes: params.notes
+    })
+  }
+
   async function fetchToothWithTreatments(
     patientId: string,
     toothNumber: number
@@ -223,6 +249,7 @@ export function useTreatments() {
     // API
     fetchTreatments,
     createTreatment,
+    createGlobalTreatment,
     updateTreatment,
     deleteTreatment,
     performTreatment,

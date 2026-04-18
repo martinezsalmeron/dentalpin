@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -88,6 +89,16 @@ class Treatment(Base, TimestampMixin):
     # Examples: bridge, crown, filling_composite, splint, caries, pulpitis, ...
     clinical_type: Mapped[str] = mapped_column(String(30))
 
+    # Scope determines how the treatment relates to teeth:
+    #   tooth         → 1 TreatmentTooth, surfaces optional (inside tooth row)
+    #   multi_tooth   → N TreatmentTooth with optional role (pillar/pontic/cantilever)
+    #   global_mouth  → 0 TreatmentTooth (e.g. cleaning, whitening)
+    #   global_arch   → 0 TreatmentTooth, `arch` required
+    scope: Mapped[str] = mapped_column(String(20), default="tooth")
+
+    # Arch (only meaningful when scope == 'global_arch').
+    arch: Mapped[str | None] = mapped_column(String(10))
+
     # Link to catalog item. NULL is valid only for pre-existing diagnostic conditions
     # without a known catalog entry (caries, missing, pre-existing prosthesis).
     catalog_item_id: Mapped[UUID | None] = mapped_column(
@@ -134,6 +145,19 @@ class Treatment(Base, TimestampMixin):
         Index("idx_treatments_status", "patient_id", "status"),
         Index("idx_treatments_catalog", "catalog_item_id"),
         Index("idx_treatments_budget", "budget_item_id"),
+        CheckConstraint(
+            "scope IN ('tooth', 'multi_tooth', 'global_mouth', 'global_arch')",
+            name="ck_treatments_scope",
+        ),
+        CheckConstraint(
+            "(scope = 'global_arch' AND arch IS NOT NULL) OR "
+            "(scope <> 'global_arch' AND arch IS NULL)",
+            name="ck_treatments_arch_matches_scope",
+        ),
+        CheckConstraint(
+            "arch IS NULL OR arch IN ('upper', 'lower')",
+            name="ck_treatments_arch_value",
+        ),
     )
 
 

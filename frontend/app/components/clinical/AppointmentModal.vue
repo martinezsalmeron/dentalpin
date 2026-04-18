@@ -261,6 +261,8 @@ watch(() => props.open, async (isOpen) => {
           treatment: {
             id: '',
             clinical_type: 'crown',
+            scope: 'tooth',
+            arch: null,
             status: 'planned',
             catalog_item_id: t.catalog_item_id,
             price_snapshot: t.default_price ? String(t.default_price) : null,

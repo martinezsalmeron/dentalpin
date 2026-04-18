@@ -1,5 +1,7 @@
 """Treatment plan module service layer."""
 
+from __future__ import annotations
+
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
@@ -20,6 +22,23 @@ logger = logging.getLogger(__name__)
 def _treatment_loader() -> selectinload:
     """Eager-load the Treatment (with teeth + catalog_item)."""
     return selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
+
+
+class PlanLockedError(ValueError):
+    """Raised when a mutation is attempted on a plan locked by an active budget."""
+
+
+def _is_plan_locked(plan: TreatmentPlan) -> bool:
+    """A plan is locked once it has a non-cancelled budget attached.
+
+    Rationale: generating/sending/accepting a budget turns the plan into a
+    contract with the patient. Any structural change would silently invalidate
+    that contract, so mutations must go through the explicit unlock flow
+    (which cancels the budget).
+    """
+    if not plan.budget_id or plan.budget is None:
+        return False
+    return plan.budget.status != "cancelled"
 
 
 class TreatmentPlanService:
@@ -199,6 +218,7 @@ class TreatmentPlanService:
         clinic_id: UUID,
         plan_id: UUID,
         new_status: str,
+        user_id: UUID,
     ) -> TreatmentPlan | None:
         """Update treatment plan status with validation."""
         plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
@@ -227,6 +247,13 @@ class TreatmentPlanService:
 
         plan.status = new_status
 
+        # Terminal transitions drop the plan's hold on its planned Treatments — clean
+        # up any that become orphaned so the odontogram reflects reality.
+        if new_status in ("cancelled", "archived"):
+            await TreatmentPlanService._cleanup_orphan_planned_treatments(
+                db, clinic_id, plan, user_id
+            )
+
         # Publish event
         event_bus.publish(
             "treatment_plan.status_changed",
@@ -245,14 +272,66 @@ class TreatmentPlanService:
         db: AsyncSession,
         clinic_id: UUID,
         plan_id: UUID,
+        user_id: UUID,
     ) -> bool:
-        """Soft delete (archive) a treatment plan."""
+        """Soft delete (archive) a treatment plan.
+
+        Also runs orphan cleanup: planned Treatments that only lived inside this
+        plan are soft-deleted so they disappear from the odontogram. `performed`
+        Treatments are always preserved as clinical history.
+        """
         plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
         if not plan:
             return False
 
+        await TreatmentPlanService._cleanup_orphan_planned_treatments(db, clinic_id, plan, user_id)
         plan.deleted_at = datetime.now(UTC)
         return True
+
+    @staticmethod
+    async def _cleanup_orphan_planned_treatments(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan: TreatmentPlan,
+        user_id: UUID,
+    ) -> None:
+        """Soft-delete Treatments that become orphaned when `plan` goes terminal.
+
+        For every Treatment referenced by this plan's items, check whether any
+        *other* non-terminal plan still references it. If not, and the Treatment
+        is still `planned` (never performed), soft-delete it so the odontogram
+        stops showing it. Performed Treatments are left alone (clinical history).
+        """
+        from app.modules.odontogram.service import TreatmentService
+
+        treatment_ids = {item.treatment_id for item in plan.items if item.treatment_id}
+        if not treatment_ids:
+            return
+
+        for treatment_id in treatment_ids:
+            # Count references from OTHER plans that are still "live" (non-terminal,
+            # non-deleted). We exclude this plan explicitly — its items stay in DB
+            # as history but no longer count as a live reference.
+            result = await db.execute(
+                select(func.count(PlannedTreatmentItem.id))
+                .join(
+                    TreatmentPlan,
+                    TreatmentPlan.id == PlannedTreatmentItem.treatment_plan_id,
+                )
+                .where(
+                    PlannedTreatmentItem.treatment_id == treatment_id,
+                    PlannedTreatmentItem.clinic_id == clinic_id,
+                    PlannedTreatmentItem.treatment_plan_id != plan.id,
+                    TreatmentPlan.deleted_at.is_(None),
+                    TreatmentPlan.status.notin_(("archived", "cancelled")),
+                )
+            )
+            if (result.scalar_one() or 0) > 0:
+                continue
+
+            treatment = await db.get(Treatment, treatment_id)
+            if treatment and treatment.deleted_at is None and treatment.status == "planned":
+                await TreatmentService.delete(db, clinic_id, treatment_id, user_id)
 
     # -------------------------------------------------------------------------
     # Item Operations
@@ -272,6 +351,9 @@ class TreatmentPlanService:
 
         if plan.status not in ("draft", "active"):
             raise ValueError("Cannot add items to a completed/cancelled plan")
+
+        if _is_plan_locked(plan):
+            raise PlanLockedError("Plan is locked by an active budget")
 
         treatment_id = data.get("treatment_id")
         if treatment_id is None:
@@ -341,6 +423,12 @@ class TreatmentPlanService:
         data: dict,
     ) -> PlannedTreatmentItem | None:
         """Update scheduling metadata on a planned treatment item."""
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            return None
+        if _is_plan_locked(plan):
+            raise PlanLockedError("Plan is locked by an active budget")
+
         result = await db.execute(
             select(PlannedTreatmentItem)
             .where(
@@ -364,13 +452,88 @@ class TreatmentPlanService:
         return item
 
     @staticmethod
+    async def reorder_items(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+        item_ids: list[UUID],
+    ) -> list[PlannedTreatmentItem] | None:
+        """Set `sequence_order` of items to match the position in `item_ids`.
+
+        Validates that `item_ids` covers exactly the plan's items (no missing, no
+        extras). Returns the reordered items or None if the plan does not exist.
+        Raises ValueError on validation failure.
+        """
+        # Load plan to confirm ownership (with budget for lock check).
+        plan_q = await db.execute(
+            select(TreatmentPlan)
+            .where(
+                TreatmentPlan.id == plan_id,
+                TreatmentPlan.clinic_id == clinic_id,
+                TreatmentPlan.deleted_at.is_(None),
+            )
+            .options(selectinload(TreatmentPlan.budget))
+        )
+        plan = plan_q.scalar_one_or_none()
+        if not plan:
+            return None
+        if _is_plan_locked(plan):
+            raise PlanLockedError("Plan is locked by an active budget")
+
+        # Load current items.
+        items_q = await db.execute(
+            select(PlannedTreatmentItem).where(
+                PlannedTreatmentItem.treatment_plan_id == plan_id,
+                PlannedTreatmentItem.clinic_id == clinic_id,
+            )
+        )
+        current = {i.id: i for i in items_q.scalars().all()}
+
+        # Validate set equality — no missing or extra IDs.
+        requested = list(item_ids)
+        if len(requested) != len(set(requested)):
+            raise ValueError("Duplicate item ids not allowed")
+        if set(requested) != set(current.keys()):
+            raise ValueError("item_ids must cover exactly the plan's current items")
+
+        # Apply new order.
+        for index, item_id in enumerate(requested):
+            current[item_id].sequence_order = index
+
+        await db.flush()
+
+        event_bus.publish(
+            "treatment_plan.items_reordered",
+            {
+                "clinic_id": str(clinic_id),
+                "plan_id": str(plan_id),
+                "item_ids": [str(i) for i in requested],
+            },
+        )
+
+        return [current[i] for i in requested]
+
+    @staticmethod
     async def remove_item(
         db: AsyncSession,
         clinic_id: UUID,
         plan_id: UUID,
         item_id: UUID,
+        user_id: UUID,
     ) -> bool:
-        """Remove an item from the plan."""
+        """Remove an item from the plan.
+
+        Orphan rule: if the removed item was the last active PlannedTreatmentItem
+        referencing its Treatment and that Treatment is still `planned`, soft-delete
+        the Treatment so the odontogram reflects the removal. `performed` Treatments
+        are kept (clinical history).
+        """
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            return False
+        if _is_plan_locked(plan):
+            raise PlanLockedError("Plan is locked by an active budget")
+
         result = await db.execute(
             select(PlannedTreatmentItem).where(
                 PlannedTreatmentItem.id == item_id,
@@ -384,6 +547,22 @@ class TreatmentPlanService:
 
         treatment_id = item.treatment_id
         await db.delete(item)
+        await db.flush()
+
+        # Orphan check — any other active item still referencing the Treatment?
+        other_refs = await db.execute(
+            select(func.count(PlannedTreatmentItem.id)).where(
+                PlannedTreatmentItem.treatment_id == treatment_id,
+                PlannedTreatmentItem.clinic_id == clinic_id,
+            )
+        )
+        remaining = other_refs.scalar_one() or 0
+        if remaining == 0:
+            treatment = await db.get(Treatment, treatment_id)
+            if treatment and treatment.deleted_at is None and treatment.status == "planned":
+                from app.modules.odontogram.service import TreatmentService
+
+                await TreatmentService.delete(db, clinic_id, treatment_id, user_id)
 
         event_bus.publish(
             "treatment_plan.treatment_removed",
@@ -521,6 +700,56 @@ class TreatmentPlanService:
             raise ValueError("Budget belongs to different patient")
 
         plan.budget_id = budget_id
+
+        return plan
+
+    @staticmethod
+    async def unlock(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+        user_id: UUID,
+    ) -> TreatmentPlan | None:
+        """Unlock a plan by cancelling its linked budget.
+
+        Used when the clinician needs to modify a plan that already has a
+        budget issued to the patient. The budget transitions to `cancelled`
+        (preserving history for traceability) and the plan becomes mutable
+        again. A new budget can be generated afterwards.
+        """
+        from app.modules.budget.models import Budget
+        from app.modules.budget.workflow import BudgetWorkflowError, BudgetWorkflowService
+
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            return None
+
+        if not plan.budget_id:
+            raise ValueError("Plan has no budget to unlock")
+
+        budget = await db.get(Budget, plan.budget_id)
+        if not budget or budget.clinic_id != clinic_id:
+            raise ValueError("Linked budget not found")
+
+        if budget.status == "cancelled":
+            return plan
+
+        try:
+            await BudgetWorkflowService.cancel_budget(
+                db, budget, user_id, reason="Plan unlocked for modification"
+            )
+        except BudgetWorkflowError as e:
+            raise ValueError(str(e)) from e
+
+        event_bus.publish(
+            "treatment_plan.unlocked",
+            {
+                "plan_id": str(plan_id),
+                "budget_id": str(budget.id),
+                "clinic_id": str(clinic_id),
+                "user_id": str(user_id),
+            },
+        )
 
         return plan
 

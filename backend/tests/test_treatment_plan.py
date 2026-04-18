@@ -62,7 +62,7 @@ async def _seed_catalog_crown(db_session: AsyncSession, clinic_id) -> str:
         names={"es": "Corona"},
         default_price=Decimal("500.00"),
         pricing_strategy="flat",
-        treatment_scope="whole_tooth",
+        treatment_scope="tooth",
         vat_type_id=vat.id,
     )
     db_session.add(crown)
@@ -90,18 +90,48 @@ async def setup(
     return ctx
 
 
-async def _create_treatment(client: AsyncClient, auth_headers: dict, setup: dict) -> str:
+async def _create_treatment(
+    client: AsyncClient,
+    auth_headers: dict,
+    setup: dict,
+    tooth_number: int = 16,
+) -> str:
     r = await client.post(
         f"/api/v1/odontogram/patients/{setup['patient_id']}/treatments",
         headers=auth_headers,
         json={
             "catalog_item_id": setup["crown_id"],
-            "tooth_numbers": [16],
+            "tooth_numbers": [tooth_number],
             "status": "planned",
         },
     )
     assert r.status_code == 201, r.text
     return r.json()["data"]["id"]
+
+
+async def _create_plan_with_items(
+    client: AsyncClient, auth_headers: dict, setup: dict, tooth_numbers: list[int]
+) -> tuple[str, list[str]]:
+    """Helper: create a plan and add N items (one per tooth). Returns (plan_id, item_ids)."""
+    plan_resp = await client.post(
+        "/api/v1/treatment_plan/treatment-plans",
+        headers=auth_headers,
+        json={"patient_id": setup["patient_id"], "title": "Reorder plan"},
+    )
+    assert plan_resp.status_code == 201, plan_resp.text
+    plan_id = plan_resp.json()["data"]["id"]
+
+    item_ids: list[str] = []
+    for tn in tooth_numbers:
+        treatment_id = await _create_treatment(client, auth_headers, setup, tooth_number=tn)
+        add = await client.post(
+            f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items",
+            headers=auth_headers,
+            json={"treatment_id": treatment_id},
+        )
+        assert add.status_code == 201, add.text
+        item_ids.append(add.json()["data"]["id"])
+    return plan_id, item_ids
 
 
 @pytest.mark.asyncio
@@ -172,3 +202,316 @@ async def test_duplicate_treatment_id_rejected(
         assert second.status_code in (400, 409, 500)
     except IntegrityError:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Reorder
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reorder_items_happy_path(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    plan_id, item_ids = await _create_plan_with_items(client, auth_headers, setup, [16, 15, 14])
+    reversed_ids = list(reversed(item_ids))
+
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/reorder",
+        headers=auth_headers,
+        json={"item_ids": reversed_ids},
+    )
+    assert r.status_code == 200, r.text
+    returned = [i["id"] for i in r.json()["data"]["items"]]
+    assert returned == reversed_ids
+
+    # Persistence: re-fetch.
+    g = await client.get(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    again = [i["id"] for i in g.json()["data"]["items"]]
+    assert again == reversed_ids
+
+
+@pytest.mark.asyncio
+async def test_reorder_rejects_missing_item(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    plan_id, item_ids = await _create_plan_with_items(client, auth_headers, setup, [16, 15])
+    # Drop one.
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/reorder",
+        headers=auth_headers,
+        json={"item_ids": [item_ids[0]]},
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_reorder_rejects_foreign_item(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    from uuid import uuid4
+
+    plan_id, item_ids = await _create_plan_with_items(client, auth_headers, setup, [16, 15])
+    bogus = str(uuid4())
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/reorder",
+        headers=auth_headers,
+        json={"item_ids": [item_ids[0], bogus]},
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_reorder_rejects_duplicate_ids(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    plan_id, item_ids = await _create_plan_with_items(client, auth_headers, setup, [16, 15])
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/reorder",
+        headers=auth_headers,
+        json={"item_ids": [item_ids[0], item_ids[0]]},
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_reorder_unknown_plan_returns_404(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    from uuid import uuid4
+
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{uuid4()}/items/reorder",
+        headers=auth_headers,
+        json={"item_ids": []},
+    )
+    assert r.status_code == 404
+
+
+# -----------------------------------------------------------------------------
+# Orphan cleanup on terminal plan states (archive / cancel)
+# -----------------------------------------------------------------------------
+
+
+async def _treatment_is_deleted(
+    client: AsyncClient, auth_headers: dict, patient_id: str, treatment_id: str
+) -> bool:
+    """Check whether a Treatment is soft-deleted by looking for it in the odontogram list."""
+    r = await client.get(
+        f"/api/v1/odontogram/patients/{patient_id}/treatments",
+        headers=auth_headers,
+    )
+    assert r.status_code == 200, r.text
+    active_ids = {t["id"] for t in r.json()["data"]}
+    return treatment_id not in active_ids
+
+
+@pytest.mark.asyncio
+async def test_delete_plan_removes_planned_treatments_from_odontogram(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    """Archiving a plan via DELETE soft-deletes its planned Treatments."""
+    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16, 15])
+
+    # Snapshot treatment ids from the plan items
+    plan_resp = await client.get(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    treatment_ids = [i["treatment"]["id"] for i in plan_resp.json()["data"]["items"]]
+    assert len(treatment_ids) == 2
+
+    # Archive plan
+    r = await client.delete(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    assert r.status_code == 204, r.text
+
+    # Both planned treatments should be gone from the odontogram
+    for tid in treatment_ids:
+        assert await _treatment_is_deleted(client, auth_headers, setup["patient_id"], tid), (
+            f"treatment {tid} should be soft-deleted"
+        )
+
+
+@pytest.mark.asyncio
+async def test_delete_plan_keeps_performed_treatments(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    """Archiving a plan preserves Treatments that were already performed."""
+    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16, 15])
+
+    plan_resp = await client.get(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    items = plan_resp.json()["data"]["items"]
+    treatment_ids = [i["treatment"]["id"] for i in items]
+    performed_id, planned_id = treatment_ids[0], treatment_ids[1]
+
+    # Mark first treatment as performed
+    r = await client.patch(
+        f"/api/v1/odontogram/treatments/{performed_id}/perform",
+        headers=auth_headers,
+        json={},
+    )
+    assert r.status_code == 200, r.text
+
+    # Archive plan
+    r = await client.delete(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    assert r.status_code == 204, r.text
+
+    # Performed survives, planned removed
+    assert not await _treatment_is_deleted(
+        client, auth_headers, setup["patient_id"], performed_id
+    ), "performed treatment must be preserved"
+    assert await _treatment_is_deleted(client, auth_headers, setup["patient_id"], planned_id), (
+        "planned treatment must be soft-deleted"
+    )
+
+
+# -----------------------------------------------------------------------------
+# Lock / unlock on budget generation
+# -----------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_add_item_blocked_when_budget_generated(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    """Generating a budget locks the plan — further items are rejected with 409."""
+    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
+
+    # Activate and generate budget.
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
+        headers=auth_headers,
+        json={"status": "active"},
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/generate-budget",
+        headers=auth_headers,
+    )
+    assert r.status_code == 201, r.text
+
+    # Try to add another item — should be 409 locked.
+    new_treatment_id = await _create_treatment(client, auth_headers, setup, tooth_number=15)
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items",
+        headers=auth_headers,
+        json={"treatment_id": new_treatment_id},
+    )
+    assert r.status_code == 409, r.text
+
+
+@pytest.mark.asyncio
+async def test_remove_item_blocked_when_budget_generated(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    plan_id, item_ids = await _create_plan_with_items(client, auth_headers, setup, [16, 15])
+
+    await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
+        headers=auth_headers,
+        json={"status": "active"},
+    )
+    await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/generate-budget",
+        headers=auth_headers,
+    )
+
+    r = await client.delete(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items/{item_ids[0]}",
+        headers=auth_headers,
+    )
+    assert r.status_code == 409, r.text
+
+
+@pytest.mark.asyncio
+async def test_unlock_plan_cancels_budget_and_allows_modifications(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    """Unlock cancels the linked budget and restores mutability of the plan."""
+    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
+    await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
+        headers=auth_headers,
+        json={"status": "active"},
+    )
+    budget_resp = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/generate-budget",
+        headers=auth_headers,
+    )
+    budget_id = budget_resp.json()["data"]["budget_id"]
+
+    # Unlock.
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/unlock",
+        headers=auth_headers,
+    )
+    assert r.status_code == 200, r.text
+
+    # Budget moved to cancelled.
+    b = await client.get(f"/api/v1/budget/budgets/{budget_id}", headers=auth_headers)
+    assert b.status_code == 200, b.text
+    assert b.json()["data"]["status"] == "cancelled"
+
+    # Can now add an item.
+    new_treatment_id = await _create_treatment(client, auth_headers, setup, tooth_number=15)
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items",
+        headers=auth_headers,
+        json={"treatment_id": new_treatment_id},
+    )
+    assert r.status_code == 201, r.text
+
+
+@pytest.mark.asyncio
+async def test_unlock_plan_without_budget_returns_400(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/unlock",
+        headers=auth_headers,
+    )
+    assert r.status_code == 400, r.text
+
+
+@pytest.mark.asyncio
+async def test_cancel_plan_removes_planned_treatments(
+    client: AsyncClient, auth_headers: dict, setup: dict
+) -> None:
+    """Cancelling an active plan cleans up its orphaned planned Treatments."""
+    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
+    plan_resp = await client.get(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
+        headers=auth_headers,
+    )
+    treatment_id = plan_resp.json()["data"]["items"][0]["treatment"]["id"]
+
+    # draft → active → cancelled
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
+        headers=auth_headers,
+        json={"status": "active"},
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.patch(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
+        headers=auth_headers,
+        json={"status": "cancelled"},
+    )
+    assert r.status_code == 200, r.text
+
+    assert await _treatment_is_deleted(client, auth_headers, setup["patient_id"], treatment_id)

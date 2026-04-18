@@ -52,6 +52,15 @@ function handleSchedule() {
     router.push(`/appointments?patient_id=${patientId.value}`)
   }
 }
+
+// After cancellation, drop back to the patient's plans list.
+function handleCancelled() {
+  if (patientId.value) {
+    router.push(`/patients/${patientId.value}?tab=clinical&clinicalMode=plans`)
+  } else {
+    router.push('/treatment-plans')
+  }
+}
 </script>
 
 <template>
@@ -97,6 +106,7 @@ function handleSchedule() {
       @updated="handleUpdated"
       @generate-budget="handleGenerateBudget"
       @schedule="handleSchedule"
+      @cancelled="handleCancelled"
     />
   </div>
 </template>

@@ -208,6 +208,8 @@ class TreatmentResponse(BaseModel):
 
     id: UUID
     clinical_type: str
+    scope: Literal["tooth", "multi_tooth", "global_mouth", "global_arch"]
+    arch: Literal["upper", "lower"] | None = None
     status: str
     catalog_item_id: UUID | None = None
     catalog_item: CatalogItemBrief | None = None
@@ -237,6 +239,8 @@ class HistoricalTreatmentResponse(BaseModel):
 
     id: UUID
     clinical_type: str
+    scope: Literal["tooth", "multi_tooth", "global_mouth", "global_arch"]
+    arch: Literal["upper", "lower"] | None = None
     status: str
     catalog_item_id: UUID | None = None
     teeth: list[TreatmentToothResponse] = Field(default_factory=list)
@@ -285,6 +289,10 @@ class TreatmentCreate(BaseModel):
 
     catalog_item_id: UUID | None = None
     clinical_type: str | None = None
+    scope: Literal["tooth", "multi_tooth", "global_mouth", "global_arch"] | None = None
+    """Relation to teeth. If omitted, derived from tooth count: 0→error (globals must
+    be explicit), 1→tooth, 2+→multi_tooth. Globals MUST be set explicitly."""
+    arch: Literal["upper", "lower"] | None = None
     tooth_numbers: list[int] = Field(default_factory=list)
     teeth: list[ToothInput] | None = None
     """Optional fine-grained input. When given, overrides `tooth_numbers`."""
@@ -294,8 +302,6 @@ class TreatmentCreate(BaseModel):
     notes: str | None = None
     budget_item_id: UUID | None = None
     source_module: str = "odontogram"
-    # Bridges ignore `clinical_type`/surfaces and auto-assign pillar/pontic roles.
-    mode: Literal["single", "bridge", "uniform"] = "single"
 
     @field_validator("tooth_numbers")
     @classmethod
@@ -317,25 +323,40 @@ class TreatmentCreate(BaseModel):
                 raise ValueError(f"Invalid surface: {s}. Must be one of {SURFACES}")
         return v
 
+    def _teeth_count(self) -> int:
+        return len(self.teeth) if self.teeth else len(self.tooth_numbers)
+
     @model_validator(mode="after")
     def validate_shape(self) -> "TreatmentCreate":
-        if not self.teeth and not self.tooth_numbers:
-            # Empty teeth are allowed for global treatments (e.g. full-mouth cleaning).
-            pass
+        count = self._teeth_count()
+
         if self.teeth:
             nums = [t.tooth_number for t in self.teeth]
             if len(nums) != len(set(nums)):
                 raise ValueError("Duplicate tooth numbers in teeth[] not allowed")
 
-        if self.mode == "bridge":
-            count = len(self.teeth) if self.teeth else len(self.tooth_numbers)
-            if count < 2:
-                raise ValueError("Bridge requires at least 2 teeth")
+        # Derive scope when omitted (only for non-global cases — globals must be explicit).
+        if self.scope is None:
+            if count == 0:
+                raise ValueError(
+                    "scope is required for treatments with no teeth "
+                    "(use global_mouth or global_arch)"
+                )
+            self.scope = "tooth" if count == 1 else "multi_tooth"
 
-        if self.mode == "uniform":
-            count = len(self.teeth) if self.teeth else len(self.tooth_numbers)
-            if count < 2:
-                raise ValueError("Uniform group requires at least 2 teeth")
+        # Scope ↔ tooth count constraints.
+        if self.scope == "tooth" and count != 1:
+            raise ValueError("scope=tooth requires exactly 1 tooth")
+        if self.scope == "multi_tooth" and count < 2:
+            raise ValueError("scope=multi_tooth requires at least 2 teeth")
+        if self.scope in ("global_mouth", "global_arch") and count != 0:
+            raise ValueError(f"scope={self.scope} must have no teeth")
+
+        # arch ↔ scope constraints.
+        if self.scope == "global_arch" and self.arch is None:
+            raise ValueError("arch is required when scope=global_arch")
+        if self.scope != "global_arch" and self.arch is not None:
+            raise ValueError("arch is only valid when scope=global_arch")
 
         if self.catalog_item_id is None and self.clinical_type is None:
             raise ValueError("Either catalog_item_id or clinical_type is required")
@@ -344,13 +365,14 @@ class TreatmentCreate(BaseModel):
             valid_types = [t.value for t in TreatmentType]
             if self.clinical_type not in valid_types:
                 raise ValueError(f"Invalid clinical_type: {self.clinical_type}")
-            # Atomic multi-tooth types must have enough teeth.
-            if self.clinical_type in ATOMIC_MULTI_TOOTH_TYPES:
-                count = len(self.teeth) if self.teeth else len(self.tooth_numbers)
-                if count < 2:
-                    raise ValueError(
-                        f"clinical_type={self.clinical_type} requires at least 2 teeth"
-                    )
+            # Atomic multi-tooth clinical types must have enough teeth — only when
+            # the scope refers to teeth (global scopes bypass this check).
+            if (
+                self.scope in ("tooth", "multi_tooth")
+                and self.clinical_type in ATOMIC_MULTI_TOOTH_TYPES
+                and count < 2
+            ):
+                raise ValueError(f"clinical_type={self.clinical_type} requires at least 2 teeth")
         return self
 
 

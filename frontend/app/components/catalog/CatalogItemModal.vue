@@ -108,7 +108,7 @@ watch(
         default_duration_minutes: 30,
         requires_appointment: true,
         vat_type_id: defaultVatType.value?.id,
-        treatment_scope: 'whole_tooth',
+        treatment_scope: 'tooth',
         is_diagnostic: false,
         requires_surfaces: false,
         is_active: true
@@ -120,10 +120,12 @@ watch(
   { immediate: true }
 )
 
-// Treatment scope options
+// Treatment scope options — aligned with Treatment.scope.
 const scopeOptions = [
-  { value: 'surface', label: t('catalog.scopeTypes.surface') },
-  { value: 'whole_tooth', label: t('catalog.scopeTypes.whole_tooth') }
+  { value: 'tooth', label: t('catalog.scopeTypes.tooth') },
+  { value: 'multi_tooth', label: t('catalog.scopeTypes.multi_tooth') },
+  { value: 'global_mouth', label: t('catalog.scopeTypes.global_mouth') },
+  { value: 'global_arch', label: t('catalog.scopeTypes.global_arch') }
 ]
 
 // Pricing strategy options
@@ -207,9 +209,10 @@ watch(odontogramType, (newType) => {
     if (category) {
       clinicalCategory.value = category.key
     }
-    // Also update treatment characteristics based on type
+    // Also update treatment characteristics based on type.
+    // `treatment_scope` stays `tooth` by default — multi_tooth/globals are an explicit
+    // admin choice. Only the `requires_surfaces` flag is inferred automatically.
     formData.value.requires_surfaces = isSurfaceTreatment(newType)
-    formData.value.treatment_scope = isSurfaceTreatment(newType) ? 'surface' : 'whole_tooth'
   }
 })
 

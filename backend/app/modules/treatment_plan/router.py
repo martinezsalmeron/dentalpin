@@ -17,6 +17,7 @@ from .schemas import (
     PlannedTreatmentItemCreate,
     PlannedTreatmentItemResponse,
     PlannedTreatmentItemUpdate,
+    ReorderItemsRequest,
     TreatmentMediaCreate,
     TreatmentMediaResponse,
     TreatmentPlanCreate,
@@ -25,7 +26,7 @@ from .schemas import (
     TreatmentPlanStatusUpdate,
     TreatmentPlanUpdate,
 )
-from .service import TreatmentPlanService
+from .service import PlanLockedError, TreatmentPlanService
 
 router = APIRouter()
 
@@ -168,7 +169,9 @@ async def update_plan_status(
 ) -> ApiResponse[TreatmentPlanResponse]:
     """Change treatment plan status."""
     try:
-        plan = await TreatmentPlanService.update_status(db, ctx.clinic_id, plan_id, data.status)
+        plan = await TreatmentPlanService.update_status(
+            db, ctx.clinic_id, plan_id, data.status, ctx.user_id
+        )
         if not plan:
             raise HTTPException(status_code=404, detail="Treatment plan not found")
         return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
@@ -184,7 +187,7 @@ async def delete_treatment_plan(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Soft delete (archive) a treatment plan."""
-    deleted = await TreatmentPlanService.delete(db, ctx.clinic_id, plan_id)
+    deleted = await TreatmentPlanService.delete(db, ctx.clinic_id, plan_id, ctx.user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Treatment plan not found")
 
@@ -210,6 +213,8 @@ async def add_plan_item(
     try:
         item = await TreatmentPlanService.add_item(db, ctx.clinic_id, plan_id, data.model_dump())
         return ApiResponse(data=PlannedTreatmentItemResponse.model_validate(item))
+    except PlanLockedError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -227,9 +232,12 @@ async def update_plan_item(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PlannedTreatmentItemResponse]:
     """Update a planned treatment item."""
-    item = await TreatmentPlanService.update_item(
-        db, ctx.clinic_id, plan_id, item_id, data.model_dump(exclude_unset=True)
-    )
+    try:
+        item = await TreatmentPlanService.update_item(
+            db, ctx.clinic_id, plan_id, item_id, data.model_dump(exclude_unset=True)
+        )
+    except PlanLockedError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not item:
         raise HTTPException(status_code=404, detail="Treatment item not found")
     return ApiResponse(data=PlannedTreatmentItemResponse.model_validate(item))
@@ -247,9 +255,45 @@ async def remove_plan_item(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Remove an item from the plan."""
-    removed = await TreatmentPlanService.remove_item(db, ctx.clinic_id, plan_id, item_id)
+    try:
+        removed = await TreatmentPlanService.remove_item(
+            db, ctx.clinic_id, plan_id, item_id, ctx.user_id
+        )
+    except PlanLockedError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not removed:
         raise HTTPException(status_code=404, detail="Treatment item not found")
+
+
+@router.patch(
+    "/treatment-plans/{plan_id}/items/reorder",
+    response_model=ApiResponse[TreatmentPlanDetailResponse],
+)
+async def reorder_plan_items(
+    plan_id: UUID,
+    data: ReorderItemsRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanDetailResponse]:
+    """Reorder all items of a plan in a single atomic call.
+
+    `item_ids` MUST cover exactly the plan's current items. Returns the full plan
+    with items in the new order so the caller doesn't need a second round-trip.
+    """
+    try:
+        items = await TreatmentPlanService.reorder_items(db, ctx.clinic_id, plan_id, data.item_ids)
+    except PlanLockedError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if items is None:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+
+    plan = await TreatmentPlanService.get(db, ctx.clinic_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+    return ApiResponse(data=TreatmentPlanDetailResponse.model_validate(plan))
 
 
 @router.patch(
@@ -323,6 +367,26 @@ async def sync_plan_with_budget(
             detail="Cannot sync: plan not found or no budget linked",
         )
     return ApiResponse(data={"synced": True})
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/unlock",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def unlock_treatment_plan(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Unlock a plan by cancelling its linked budget so it can be modified."""
+    try:
+        plan = await TreatmentPlanService.unlock(db, ctx.clinic_id, plan_id, ctx.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not plan:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
 
 
 @router.post(

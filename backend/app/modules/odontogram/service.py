@@ -48,6 +48,8 @@ def build_treatment_response(treatment: Treatment) -> dict:
     return {
         "id": treatment.id,
         "clinical_type": treatment.clinical_type,
+        "scope": treatment.scope,
+        "arch": treatment.arch,
         "status": treatment.status,
         "catalog_item_id": treatment.catalog_item_id,
         "catalog_item": catalog_brief,
@@ -604,14 +606,14 @@ class TreatmentService:
         ]
 
     @staticmethod
-    def _assign_roles(teeth_inputs: list[dict], mode: str, clinical_type: str) -> list[dict]:
+    def _assign_roles(teeth_inputs: list[dict], clinical_type: str) -> list[dict]:
         """For bridges, honor caller-supplied roles; auto-assign only when none set.
 
         Auto rule (fallback): sorted first+last = pillar, middle = pontic.
         Valid bridges allow cantilevers (1 pillar) and mid-span pillars —
         only enforce ≥1 pillar and reject all-pontic.
         """
-        if mode != "bridge" and clinical_type != "bridge":
+        if clinical_type != "bridge":
             return teeth_inputs
         sorted_teeth = sorted(teeth_inputs, key=lambda x: x["tooth_number"])
         has_explicit = any(t.get("role") in ("pillar", "pontic") for t in sorted_teeth)
@@ -645,7 +647,8 @@ class TreatmentService:
         notes: str | None,
         budget_item_id: UUID | None,
         source_module: str,
-        mode: str,
+        scope: str,
+        arch: str | None = None,
     ) -> Treatment:
         """Create a Treatment with its TreatmentTooth children."""
         now = datetime.now(UTC)
@@ -660,10 +663,12 @@ class TreatmentService:
 
         # 2. Normalize teeth input + assign roles for bridges.
         teeth_inputs = TreatmentService._build_teeth_inputs(tooth_numbers, teeth, common_surfaces)
-        teeth_inputs = TreatmentService._assign_roles(teeth_inputs, mode, resolved_clinical_type)
+        teeth_inputs = TreatmentService._assign_roles(teeth_inputs, resolved_clinical_type)
 
-        # 3. Validate atomic multi-tooth minimums.
-        if resolved_clinical_type in ATOMIC_MULTI_TOOTH_TYPES and len(teeth_inputs) < 2:
+        # 3. Validate atomic multi-tooth minimums (only for tooth-level scopes).
+        if scope in ("tooth", "multi_tooth") and (
+            resolved_clinical_type in ATOMIC_MULTI_TOOTH_TYPES and len(teeth_inputs) < 2
+        ):
             raise ValueError(f"clinical_type={resolved_clinical_type} requires at least 2 teeth")
 
         # 4. Compute snapshots.
@@ -687,6 +692,8 @@ class TreatmentService:
             clinic_id=clinic_id,
             patient_id=patient_id,
             clinical_type=resolved_clinical_type,
+            scope=scope,
+            arch=arch,
             catalog_item_id=catalog_item.id if catalog_item else None,
             status=status,
             recorded_at=now,

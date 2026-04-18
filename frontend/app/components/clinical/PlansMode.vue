@@ -110,6 +110,14 @@ async function handlePlanUpdated() {
   }
 }
 
+async function handlePlanCancelled() {
+  // Cancelling a plan ends its lifecycle — back to the list so the user sees
+  // the updated status and can pick another plan.
+  selectedPlan.value = null
+  view.value = 'list'
+  await fetchPatientPlans(props.patientId)
+}
+
 // ============================================================================
 // Lifecycle
 // ============================================================================
@@ -156,6 +164,7 @@ watch(() => props.initialPlanId, (newId) => {
       @activate="fetchPatientPlans(patientId)"
       @generate-budget="handleDetailGenerateBudget"
       @schedule="router.push(`/appointments?patient_id=${patientId}`)"
+      @cancelled="handlePlanCancelled"
     />
 
     <!-- Create Plan Modal -->

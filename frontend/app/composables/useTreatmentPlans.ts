@@ -280,6 +280,43 @@ export function useTreatmentPlans() {
     }
   }
 
+  // Reorder items (optimistic)
+  async function reorderItems(
+    planId: string,
+    itemIds: string[]
+  ): Promise<TreatmentPlanDetail | null> {
+    if (currentPlan.value?.id !== planId) {
+      console.error('reorderItems: plan not currently loaded')
+      return null
+    }
+    const snapshot = [...currentPlan.value.items]
+    const indexById = new Map(itemIds.map((id, i) => [id, i]))
+    currentPlan.value.items = [...snapshot].sort((a, b) => {
+      const ia = indexById.get(a.id) ?? Number.MAX_SAFE_INTEGER
+      const ib = indexById.get(b.id) ?? Number.MAX_SAFE_INTEGER
+      return ia - ib
+    })
+
+    try {
+      const response = await api.patch<ApiResponse<TreatmentPlanDetail>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/items/reorder`,
+        { item_ids: itemIds }
+      )
+      currentPlan.value = response.data
+      return response.data
+    } catch (error) {
+      console.error('Error reordering treatment items:', error)
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value.items = snapshot
+      }
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    }
+  }
+
   // Complete item
   async function completeItem(
     planId: string,
@@ -394,6 +431,33 @@ export function useTreatmentPlans() {
     }
   }
 
+  // Unlock plan (cancels linked budget to allow modifications)
+  async function unlockPlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/unlock`
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({
+        title: t('treatmentPlans.unlocked'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error unlocking plan:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Add media to item
   async function addMedia(itemId: string, data: TreatmentMediaCreate) {
     try {
@@ -499,12 +563,14 @@ export function useTreatmentPlans() {
     addItem,
     updateItem,
     removeItem,
+    reorderItems,
     completeItem,
 
     // Budget operations
     linkToBudget,
     syncBudget,
     generateBudget,
+    unlockPlan,
 
     // Media operations
     addMedia,

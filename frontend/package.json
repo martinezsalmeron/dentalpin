@@ -21,7 +21,8 @@
     "@types/nprogress": "^0.2.3",
     "nprogress": "^0.2.0",
     "nuxt": "^4.4.2",
-    "tailwindcss": "^4.2.1"
+    "tailwindcss": "^4.2.1",
+    "vue-draggable-plus": "^0.6.1"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",

@@ -31,11 +31,16 @@ const props = withDefaults(defineProps<{
   statusFilter?: TreatmentStatus[]
   /** Teeth to highlight (for hover linking from parent) */
   highlightedTeethProp?: number[]
+  /** Global treatment IDs to highlight in the globals strip (hover linking). */
+  highlightedGlobalIds?: string[]
   /** Plan ID for filtering treatments in planning mode */
   planId?: string
+  /** Plan title shown as context banner inside the TreatmentBar (planning mode). */
+  planTitle?: string
 }>(), {
   mode: 'full',
-  highlightedTeethProp: () => []
+  highlightedTeethProp: () => [],
+  highlightedGlobalIds: () => []
 })
 
 const emit = defineEmits<{
@@ -45,6 +50,10 @@ const emit = defineEmits<{
   treatmentsChanged: []
   /** Emitted when user hovers over a tooth (for hover linking) */
   toothHover: [toothNumber: number | null]
+  /** Emitted when user hovers a chip in the globals strip. */
+  globalHover: [treatmentId: string | null]
+  /** Arch currently under hover (for painting the arch halo). */
+  archHover: [arch: 'upper' | 'lower' | null]
 }>()
 
 const { t } = useI18n()
@@ -77,6 +86,8 @@ const {
   returnToCurrentView
 } = useOdontogram()
 
+const treatmentPlansApi = useTreatmentPlans()
+
 // ============================================================================
 // State
 // ============================================================================
@@ -86,6 +97,16 @@ const selectedTooth = ref<number | null>(null)
 const showSurfaceSelector = ref(false)
 const hoveredTooth = ref<number | null>(null)
 const internalHighlightedTeeth = ref<number[]>([])
+/** Arch currently under hover from the globals strip — paints a subtle halo. */
+const hoveredArch = ref<'upper' | 'lower' | null>(null)
+
+function handleGlobalHover(id: string | null) {
+  emit('globalHover', id)
+}
+function handleArchHover(arch: 'upper' | 'lower' | null) {
+  hoveredArch.value = arch
+  emit('archHover', arch)
+}
 
 // Merge internal highlighted teeth with prop (for hover linking).
 // Multi-tooth selection has its own dedicated style via `multi-selected-teeth`.
@@ -442,7 +463,7 @@ async function confirmMultiToothSelection(
   else if (isPlanningMode.value) status = 'planned'
 
   const payload: TreatmentCreate = {
-    mode: cfg.mode,
+    scope: 'multi_tooth',
     status
   }
   if (cfg.mode === 'bridge' && teethRoles && teethRoles.length > 0) {
@@ -463,6 +484,10 @@ async function confirmMultiToothSelection(
   if (!created) {
     showMultiToothConfirm.value = false
     return
+  }
+
+  if (isPlanningMode.value && props.planId) {
+    await treatmentPlansApi.addItem(props.planId, { treatment_id: created.id })
   }
 
   undoStack.value.push({ treatmentId: created.id, type: cfg.key })
@@ -494,7 +519,7 @@ async function applyTreatment(toothNumber: number, surfaces?: Surface[]) {
   const payload: TreatmentCreate = {
     tooth_numbers: [toothNumber],
     status,
-    mode: 'single'
+    scope: 'tooth'
   }
   if (selectedCatalogItemId.value) {
     payload.catalog_item_id = selectedCatalogItemId.value
@@ -506,6 +531,12 @@ async function applyTreatment(toothNumber: number, surfaces?: Surface[]) {
 
   const treatment = await createTreatment(props.patientId, payload)
   if (!treatment) return
+
+  // In planning mode linked to a specific plan, attach the new Treatment as a
+  // PlannedTreatmentItem so it shows up in the plan's list.
+  if (isPlanningMode.value && props.planId) {
+    await treatmentPlansApi.addItem(props.planId, { treatment_id: treatment.id })
+  }
 
   undoStack.value.push({ treatmentId: treatment.id, type: treatment.clinical_type })
 
@@ -542,6 +573,15 @@ function cancelClickToApplyMode() {
   selectedCatalogItemId.value = null
   hoveredTooth.value = null
   resetMultiToothSelection()
+}
+
+// Global treatments are created inside TreatmentBar using its own useTreatments()
+// instance, so the chart's local treatments[] doesn't see them — refetch so the
+// globals strip and any parent listeners stay in sync.
+async function handleGlobalTreatmentApplied(treatment: Treatment) {
+  await fetchTreatments(props.patientId)
+  emit('treatmentAdd', treatment)
+  emit('treatmentsChanged')
 }
 
 // ============================================================================
@@ -598,6 +638,12 @@ async function onHistoryExpanded(expanded: boolean) {
     historyLoading.value = false
   }
 }
+
+// Exposed so parents (PlanDetailView) can refresh the local treatments cache
+// after mutations they own (remove item, complete item).
+defineExpose({
+  refetchTreatments: () => fetchTreatments(props.patientId)
+})
 </script>
 
 <template>
@@ -683,7 +729,10 @@ async function onHistoryExpanded(expanded: boolean) {
           :class="{ 'cursor-crosshair': isClickToApplyMode }"
         >
           <!-- Upper arch -->
-          <div class="mb-6">
+          <div
+            class="mb-6 arch-container"
+            :class="{ 'arch-halo': hoveredArch === 'upper' }"
+          >
             <div class="text-xs text-gray-500 text-center mb-2">
               {{ t('odontogram.quadrants.upper') }}
             </div>
@@ -742,7 +791,10 @@ async function onHistoryExpanded(expanded: boolean) {
           <div class="h-px bg-gray-200 dark:bg-gray-700 my-4" />
 
           <!-- Lower arch -->
-          <div>
+          <div
+            class="arch-container"
+            :class="{ 'arch-halo': hoveredArch === 'lower' }"
+          >
             <div class="flex justify-center gap-1 relative">
               <div
                 v-if="lowerMidlineBridgeStatus"
@@ -800,16 +852,30 @@ async function onHistoryExpanded(expanded: boolean) {
         </div>
       </div>
 
-      <!-- Treatment Bar (hidden in planning mode - parent provides its own) -->
+      <!-- Globals strip (boca completa / arcada) — sits between the chart and the
+           treatment bar so the dentist sees active global treatments without
+           scrolling. -->
+      <GlobalTreatmentsStrip
+        :treatments="displayTreatments"
+        :highlighted-ids="highlightedGlobalIds"
+        @treatment-hover="handleGlobalHover"
+        @arch-hover="handleArchHover"
+      />
+
+      <!-- Treatment Bar -->
       <TreatmentBar
-        v-if="!isReadonly && !isPlanningMode"
+        v-if="!isReadonly"
         v-model:selected-treatment="selectedTreatmentType"
         v-model:selected-catalog-item-id="selectedCatalogItemId"
         :selected-status="selectedTreatmentStatus"
+        :selected-plan-id="planId"
+        :plan-context-title="planTitle"
+        :patient-id="patientId"
         :mode="treatmentBarMode"
         :disabled="isReadonly"
         @update:selected-status="selectedTreatmentStatus = $event"
         @treatment-select="selectedTreatmentType = $event"
+        @treatment-applied="handleGlobalTreatmentApplied"
         @cancel="cancelClickToApplyMode"
       />
 
@@ -903,6 +969,23 @@ async function onHistoryExpanded(expanded: boolean) {
 .odontogram-wrapper {
   container-type: inline-size;
   overflow: hidden;
+}
+
+/* Arch halo: highlights the upper or lower arch when the user hovers a global_arch
+   chip in the globals strip. Paints a subtle blue outline around the full arch. */
+.arch-container {
+  position: relative;
+  border-radius: 12px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.arch-container.arch-halo {
+  background: rgba(59, 130, 246, 0.08);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35), 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+:root.dark .arch-container.arch-halo {
+  background: rgba(59, 130, 246, 0.18);
 }
 
 .odontogram-grid {

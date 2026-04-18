@@ -134,6 +134,28 @@ class TreatmentStatus(StrEnum):
     PERFORMED = "performed"
 
 
+class TreatmentScope(StrEnum):
+    """How a Treatment relates to teeth.
+
+    tooth         → 1 TreatmentTooth, surfaces optional (inside the row)
+    multi_tooth   → N TreatmentTooth with optional role (pillar/pontic/cantilever)
+    global_mouth  → 0 TreatmentTooth (e.g. cleaning, whitening, fluorization)
+    global_arch   → 0 TreatmentTooth; `arch` required (e.g. splint upper/lower)
+    """
+
+    TOOTH = "tooth"
+    MULTI_TOOTH = "multi_tooth"
+    GLOBAL_MOUTH = "global_mouth"
+    GLOBAL_ARCH = "global_arch"
+
+
+class Arch(StrEnum):
+    """Dental arch (for global_arch treatments)."""
+
+    UPPER = "upper"
+    LOWER = "lower"
+
+
 class TreatmentCategory(StrEnum):
     """Category of treatment based on what it affects."""
 
