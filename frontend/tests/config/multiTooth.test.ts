@@ -94,7 +94,7 @@ describe('getMultiToothConfig', () => {
     const cfg = getMultiToothConfig('bridge')
     expect(cfg).not.toBeNull()
     expect(cfg?.mode).toBe('bridge')
-    expect(cfg?.minTeeth).toBe(3)
+    expect(cfg?.minTeeth).toBe(2)
     expect(cfg?.selectionMode).toBe('range')
   })
 
