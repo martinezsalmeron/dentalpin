@@ -61,12 +61,15 @@ function isActive(to: string): boolean {
         <NuxtLink
           to="/"
           class="flex items-center gap-2 overflow-hidden"
+          aria-label="DentalPin"
         >
-          <UIcon
-            name="i-lucide-smile"
-            class="w-7 h-7 shrink-0"
-            :style="{ color: 'var(--color-primary)' }"
-          />
+          <img
+            src="/logo-icon.svg"
+            alt=""
+            width="32"
+            height="32"
+            class="shrink-0"
+          >
           <span
             v-if="!isSidebarCollapsed"
             class="text-h2 text-default truncate"

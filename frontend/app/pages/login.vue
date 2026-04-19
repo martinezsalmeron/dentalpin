@@ -50,11 +50,13 @@ async function onSubmit() {
   <div class="w-full max-w-[400px] p-6">
     <!-- Brand -->
     <div class="text-center mb-6">
-      <UIcon
-        name="i-lucide-smile"
-        class="w-10 h-10 mx-auto mb-2"
-        :style="{ color: 'var(--color-primary)' }"
-      />
+      <img
+        src="/logo-icon.svg"
+        alt="DentalPin"
+        width="56"
+        height="56"
+        class="mx-auto mb-3"
+      >
       <h1 class="text-h1 text-default">
         DentalPin
       </h1>
