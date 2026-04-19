@@ -1,33 +1,31 @@
 #!/usr/bin/env python3
 """Seed script to populate DentalPin with demo data.
 
-This script creates a complete demo environment including:
+Creates the full clinical narrative for a demo clinic:
+    patients → treatment plans → (budgets + appointments) → invoices
+
 - 1 clinic with full configuration
 - 5 users (admin, dentist, hygienist, assistant, receptionist)
 - 15 patients of varied ages
-- 35-40 appointments across past, current, and next week
-- Odontogram data (tooth records and treatments for each patient)
-- Treatment catalog with categories and items
-- 7 budgets with various statuses (draft, accepted, completed, etc.)
-- 8 invoices with various statuses (draft, issued, partial, paid) and payments
+- Odontogram data (tooth records + treatments per patient)
+- Treatment catalog (categories + items)
+- 15 treatment plans (one per patient)
+- ~10 budgets derived from plan items (some draft, accepted+signed, rejected, completed)
+- ~35 appointments anchored to plan items (no random appointments)
+- 2 invoice series + ~8 invoices derived from budgets, with payments
 
 Usage:
-    # Default (English)
-    docker-compose exec -T backend python scripts/seed_demo.py
-
-    # Spanish
-    docker-compose exec -T backend python scripts/seed_demo.py --lang es
-
-    # English (explicit)
-    docker-compose exec -T backend python scripts/seed_demo.py --lang en
+    docker-compose exec -T backend python scripts/seed_demo.py              # English
+    docker-compose exec -T backend python scripts/seed_demo.py --lang es    # Spanish
 
 All users have password: demo1234
 """
 
 import argparse
 import asyncio
+from collections import Counter
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -44,8 +42,9 @@ from app.modules.odontogram.models import ToothRecord, Treatment, TreatmentTooth
 from app.modules.treatment_plan.models import PlannedTreatmentItem, TreatmentPlan
 from app.seeds.demo_data import (
     CLINIC_ID,
-    generate_appointments,
+    generate_appointments_data,
     generate_budgets_data,
+    generate_invoice_series_data,
     generate_invoices_data,
     generate_odontogram_data,
     generate_treatment_plans_data,
@@ -55,11 +54,61 @@ from app.seeds.demo_data import (
     set_language,
 )
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 
 async def check_existing_data(db: AsyncSession) -> bool:
     """Check if demo data already exists."""
     result = await db.execute(select(Clinic).where(Clinic.id == CLINIC_ID))
     return result.scalar_one_or_none() is not None
+
+
+async def _load_catalog_map(db: AsyncSession) -> dict[str, dict]:
+    """Load catalog items into a single map consumed by all journey generators.
+
+    Each value carries everything the generators need — default_price, VAT info
+    and the odontogram_treatment_type — so the map is built once per seed run.
+    """
+    result = await db.execute(
+        select(TreatmentCatalogItem)
+        .options(
+            selectinload(TreatmentCatalogItem.vat_type_rel),
+            selectinload(TreatmentCatalogItem.odontogram_mapping),
+        )
+        .where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
+    )
+    mapping: dict[str, dict] = {}
+    for item in result.scalars():
+        vat_rate = item.vat_type_rel.rate if item.vat_type_rel else 0.0
+        odontogram_type = (
+            item.odontogram_mapping.odontogram_treatment_type if item.odontogram_mapping else None
+        )
+        mapping[item.internal_code] = {
+            "id": item.id,
+            "default_price": item.default_price,
+            "vat_type_id": item.vat_type_id,
+            "vat_rate": rate_or_zero(vat_rate),
+            "odontogram_treatment_type": odontogram_type,
+        }
+    return mapping
+
+
+def rate_or_zero(rate) -> float:
+    return float(rate) if rate is not None else 0.0
+
+
+def _print_status_counts(header: str, rows: list[dict], status_key: str = "status") -> None:
+    counts = Counter(r[status_key] for r in rows)
+    print(header)
+    for status, count in sorted(counts.items()):
+        print(f"    - {status}: {count}")
+
+
+# ---------------------------------------------------------------------------
+# Entity creators (mirror the clinical workflow order)
+# ---------------------------------------------------------------------------
 
 
 async def seed_clinic(db: AsyncSession) -> Clinic:
@@ -83,9 +132,8 @@ async def seed_clinic(db: AsyncSession) -> Clinic:
 
 async def seed_users(db: AsyncSession, password_hash: str) -> list[User]:
     """Create demo users with their clinic memberships."""
-    users = []
-    users_data = get_users_data()
-    for user_data in users_data:
+    users: list[User] = []
+    for user_data in get_users_data():
         user = User(
             id=user_data["id"],
             email=user_data["email"],
@@ -99,14 +147,14 @@ async def seed_users(db: AsyncSession, password_hash: str) -> list[User]:
         db.add(user)
         users.append(user)
 
-        # Create membership
-        membership = ClinicMembership(
-            id=user_data["membership_id"],
-            user_id=user_data["id"],
-            clinic_id=CLINIC_ID,
-            role=user_data["role"],
+        db.add(
+            ClinicMembership(
+                id=user_data["membership_id"],
+                user_id=user_data["id"],
+                clinic_id=CLINIC_ID,
+                role=user_data["role"],
+            )
         )
-        db.add(membership)
         print(f"  Created user: {user.email} ({user_data['role']})")
 
     await db.flush()
@@ -115,9 +163,8 @@ async def seed_users(db: AsyncSession, password_hash: str) -> list[User]:
 
 async def seed_patients(db: AsyncSession) -> list[Patient]:
     """Create demo patients."""
-    patients = []
-    patients_data = get_patients_data()
-    for patient_data in patients_data:
+    patients: list[Patient] = []
+    for patient_data in get_patients_data():
         patient = Patient(
             id=patient_data["id"],
             clinic_id=CLINIC_ID,
@@ -139,613 +186,154 @@ async def seed_patients(db: AsyncSession) -> list[Patient]:
     return patients
 
 
-async def seed_appointments(db: AsyncSession) -> tuple[list[Appointment], list[dict]]:
-    """Create demo appointments.
-
-    Returns:
-        Tuple of (appointments list, appointments_data for later treatment linking)
-    """
-    appointments_data = generate_appointments()
-    appointments = []
-
-    for appt_data in appointments_data:
-        appointment = Appointment(
-            id=appt_data["id"],
-            clinic_id=appt_data["clinic_id"],
-            patient_id=appt_data["patient_id"],
-            professional_id=appt_data["professional_id"],
-            cabinet=appt_data["cabinet"],
-            start_time=appt_data["start_time"],
-            end_time=appt_data["end_time"],
-            treatment_type=appt_data["treatment_type"],
-            status=appt_data["status"],
-            notes=appt_data["notes"],
-            color=appt_data["color"],
-        )
-        db.add(appointment)
-        appointments.append(appointment)
-
-    await db.flush()
-
-    # Count by status
-    status_counts = {}
-    for appt in appointments:
-        status_counts[appt.status] = status_counts.get(appt.status, 0) + 1
-
-    print(f"  Created {len(appointments)} appointments:")
-    for status, count in sorted(status_counts.items()):
-        print(f"    - {status}: {count}")
-
-    return appointments, appointments_data
-
-
-async def seed_appointment_treatments(db: AsyncSession, appointments_data: list[dict]) -> int:
-    """Link appointments to planned treatment items via AppointmentTreatment.
-
-    For each appointment's catalog_codes, finds a matching PlannedTreatmentItem
-    from the same patient's treatment plans and links to it.
-
-    Args:
-        db: Database session
-        appointments_data: List of appointment dicts with catalog_codes and patient_id
-
-    Returns:
-        Number of AppointmentTreatment records created
-    """
-    # Get catalog items map (internal_code -> catalog_item_id)
-    result = await db.execute(
-        select(TreatmentCatalogItem).where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
-    )
-    catalog_items = result.scalars().all()
-    code_to_catalog_id = {item.internal_code: item.id for item in catalog_items}
-
-    # Get all planned items joined with their Treatment (for catalog_item_id), by patient.
-    result = await db.execute(
-        select(PlannedTreatmentItem, Treatment, TreatmentPlan.patient_id)
-        .join(TreatmentPlan, PlannedTreatmentItem.treatment_plan_id == TreatmentPlan.id)
-        .join(Treatment, Treatment.id == PlannedTreatmentItem.treatment_id)
-        .where(TreatmentPlan.clinic_id == CLINIC_ID)
-    )
-    planned_items_data = result.all()
-
-    patient_catalog_to_planned: dict[tuple, list] = {}
-    for planned_item, treatment, patient_id in planned_items_data:
-        if treatment.catalog_item_id:
-            key = (patient_id, treatment.catalog_item_id)
-            patient_catalog_to_planned.setdefault(key, []).append(planned_item)
-
-    # Track used planned items (to not reuse same item for multiple appointments)
-    used_planned_ids: set = set()
-
-    created_count = 0
-    for appt_data in appointments_data:
-        patient_id = appt_data.get("patient_id")
-        if not patient_id:
-            continue
-
-        catalog_codes = appt_data.get("catalog_codes", [])
-        for order, code in enumerate(catalog_codes):
-            catalog_item_id = code_to_catalog_id.get(code)
-            if not catalog_item_id:
-                continue
-
-            # Find a planned item for this patient with this catalog_item
-            key = (patient_id, catalog_item_id)
-            planned_items = patient_catalog_to_planned.get(key, [])
-
-            # Find first unused planned item
-            planned_item = None
-            for pi in planned_items:
-                if pi.id not in used_planned_ids:
-                    planned_item = pi
-                    used_planned_ids.add(pi.id)
-                    break
-
-            if planned_item:
-                # Link to planned item
-                apt_treatment = AppointmentTreatment(
-                    appointment_id=appt_data["id"],
-                    planned_treatment_item_id=planned_item.id,
-                    catalog_item_id=catalog_item_id,
-                    display_order=order,
-                )
-                db.add(apt_treatment)
-                created_count += 1
-
-    await db.flush()
-    print(f"  Linked {created_count} treatments to appointments via planned items")
-    return created_count
-
-
 async def seed_odontogram(db: AsyncSession) -> dict:
-    """Create demo odontogram data (tooth records and treatments).
+    """Create demo odontogram data (tooth records + treatments + treatment_teeth)."""
+    data = generate_odontogram_data()
 
-    Returns:
-        Dictionary with counts of created records.
-    """
-    odontogram_data = generate_odontogram_data()
-
-    # Create tooth records
-    tooth_records = []
-    for record_data in odontogram_data["tooth_records"]:
-        record = ToothRecord(
-            id=record_data["id"],
-            clinic_id=record_data["clinic_id"],
-            patient_id=record_data["patient_id"],
-            tooth_number=record_data["tooth_number"],
-            tooth_type=record_data["tooth_type"],
-            general_condition=record_data["general_condition"],
-            surfaces=record_data["surfaces"],
-            notes=record_data["notes"],
-            is_displaced=record_data["is_displaced"],
-            is_rotated=record_data["is_rotated"],
-            displacement_notes=record_data["displacement_notes"],
-        )
-        db.add(record)
-        tooth_records.append(record)
-
+    for record_data in data["tooth_records"]:
+        db.add(ToothRecord(**record_data))
     await db.flush()
 
-    # Create treatments (headers).
-    treatments = []
-    for t_data in odontogram_data["treatments"]:
-        treatment = Treatment(
-            id=t_data["id"],
-            clinic_id=t_data["clinic_id"],
-            patient_id=t_data["patient_id"],
-            clinical_type=t_data["clinical_type"],
-            catalog_item_id=t_data["catalog_item_id"],
-            status=t_data["status"],
-            recorded_at=t_data["recorded_at"],
-            performed_at=t_data["performed_at"],
-            performed_by=t_data["performed_by"],
-            price_snapshot=t_data["price_snapshot"],
-            currency_snapshot=t_data["currency_snapshot"],
-            duration_snapshot=t_data["duration_snapshot"],
-            vat_rate_snapshot=t_data["vat_rate_snapshot"],
-            budget_item_id=t_data["budget_item_id"],
-            notes=t_data["notes"],
-            source_module=t_data["source_module"],
-            deleted_at=t_data["deleted_at"],
-        )
-        db.add(treatment)
-        treatments.append(treatment)
-
+    for t_data in data["treatments"]:
+        db.add(Treatment(**t_data))
     await db.flush()
 
-    # Create treatment_teeth (children).
-    for tt in odontogram_data["treatment_teeth"]:
-        db.add(
-            TreatmentTooth(
-                treatment_id=tt["treatment_id"],
-                tooth_record_id=tt["tooth_record_id"],
-                tooth_number=tt["tooth_number"],
-                role=tt["role"],
-                surfaces=tt["surfaces"],
-            )
-        )
-
+    for tt in data["treatment_teeth"]:
+        db.add(TreatmentTooth(**tt))
     await db.flush()
 
-    patient_ids = set(r.patient_id for r in tooth_records)
-    performed = sum(1 for t in treatments if t.status == "performed")
-    planned = sum(1 for t in treatments if t.status == "planned")
+    patient_ids = {r["patient_id"] for r in data["tooth_records"]}
+    performed = sum(1 for t in data["treatments"] if t["status"] == "performed")
+    planned = sum(1 for t in data["treatments"] if t["status"] == "planned")
 
-    print(f"  Created {len(tooth_records)} tooth records for {len(patient_ids)} patients")
-    print(f"  Created {len(treatments)} treatments:")
+    print(f"  Created {len(data['tooth_records'])} tooth records for {len(patient_ids)} patients")
+    print(f"  Created {len(data['treatments'])} treatments:")
     print(f"    - performed: {performed}")
     print(f"    - planned: {planned}")
-
     return {
-        "tooth_records": len(tooth_records),
-        "treatments": len(treatments),
+        "tooth_records": len(data["tooth_records"]),
+        "treatments": len(data["treatments"]),
         "patients": len(patient_ids),
     }
 
 
-async def seed_budgets(db: AsyncSession) -> dict:
-    """Create demo budgets with items and signatures.
+async def seed_treatment_plans(db: AsyncSession, catalog_map: dict) -> dict:
+    """Create treatment plans + backing Treatments + planned items.
 
-    Returns:
-        Dictionary with counts of created records.
+    Plans are inserted with budget_id=None; the link is wired by seed_budgets
+    once the budgets exist.
     """
-    # First, get catalog items to reference them in budgets
-    result = await db.execute(
-        select(TreatmentCatalogItem)
-        .options(selectinload(TreatmentCatalogItem.vat_type_rel))
-        .where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
+    data = generate_treatment_plans_data(catalog_map)
+
+    for plan_dict in data["plans"]:
+        db.add(TreatmentPlan(**plan_dict))
+    await db.flush()
+
+    # Treatments backing each planned item must exist before PlannedTreatmentItem
+    # can reference them (FK + unique constraint on treatment_id).
+    for pt in data["plan_treatments"]:
+        db.add(Treatment(**pt))
+    await db.flush()
+
+    for item_dict in data["items"]:
+        db.add(PlannedTreatmentItem(**item_dict))
+    await db.flush()
+
+    _print_status_counts(f"  Created {len(data['plans'])} treatment plans:", data["plans"])
+    print(f"  Created {len(data['items'])} planned items")
+    return data
+
+
+async def seed_budgets(db: AsyncSession, catalog_map: dict, plans_result: dict) -> dict:
+    """Create budgets + items + signatures derived from plans, then wire plan→budget FK."""
+    data = generate_budgets_data(catalog_map, plans_result)
+
+    for budget_dict in data["budgets"]:
+        db.add(Budget(**budget_dict))
+    await db.flush()
+
+    for item_dict in data["items"]:
+        db.add(BudgetItem(**item_dict))
+    await db.flush()
+
+    for sig_dict in data["signatures"]:
+        db.add(BudgetSignature(**sig_dict))
+    await db.flush()
+
+    # Wire TreatmentPlan.budget_id now that budgets exist.
+    for plan_id, budget_id in data["plan_to_budget"].items():
+        await db.execute(
+            update(TreatmentPlan).where(TreatmentPlan.id == plan_id).values(budget_id=budget_id)
+        )
+    await db.flush()
+
+    _print_status_counts(f"  Created {len(data['budgets'])} budgets:", data["budgets"])
+    print(f"  Created {len(data['items'])} budget items")
+    print(f"  Created {len(data['signatures'])} signatures")
+    print(f"  Linked {len(data['plan_to_budget'])} plan(s) to budget(s)")
+    return data
+
+
+async def seed_appointments(db: AsyncSession, plans_result: dict) -> dict:
+    """Create appointments anchored to plan items + their AppointmentTreatment rows."""
+    data = generate_appointments_data(plans_result)
+
+    for appt_dict in data["appointments"]:
+        db.add(Appointment(**appt_dict))
+    await db.flush()
+
+    for at_dict in data["appointment_treatments"]:
+        db.add(AppointmentTreatment(**at_dict))
+    await db.flush()
+
+    _print_status_counts(
+        f"  Created {len(data['appointments'])} appointments:", data["appointments"]
     )
-    catalog_items = result.scalars().all()
-
-    # Build map of internal_code -> item data
-    catalog_items_map = {}
-    for item in catalog_items:
-        rate = item.vat_type_rel.rate if item.vat_type_rel else 0.0
-        catalog_items_map[item.internal_code] = {
-            "id": item.id,
-            "default_price": item.default_price,
-            "vat_type_id": item.vat_type_id,
-            "vat_rate": rate,
-        }
-
-    # Generate budget data
-    budget_data = generate_budgets_data(catalog_items_map)
-
-    # Create budgets
-    for budget_dict in budget_data["budgets"]:
-        budget = Budget(
-            id=budget_dict["id"],
-            clinic_id=budget_dict["clinic_id"],
-            patient_id=budget_dict["patient_id"],
-            budget_number=budget_dict["budget_number"],
-            version=budget_dict["version"],
-            parent_budget_id=budget_dict["parent_budget_id"],
-            status=budget_dict["status"],
-            valid_from=budget_dict["valid_from"],
-            valid_until=budget_dict["valid_until"],
-            created_by=budget_dict["created_by"],
-            assigned_professional_id=budget_dict["assigned_professional_id"],
-            global_discount_type=budget_dict["global_discount_type"],
-            global_discount_value=budget_dict["global_discount_value"],
-            subtotal=budget_dict["subtotal"],
-            total_discount=budget_dict["total_discount"],
-            total_tax=budget_dict["total_tax"],
-            total=budget_dict["total"],
-            currency=budget_dict["currency"],
-            internal_notes=budget_dict["internal_notes"],
-            patient_notes=budget_dict["patient_notes"],
-            insurance_estimate=budget_dict["insurance_estimate"],
-            deleted_at=budget_dict["deleted_at"],
-        )
-        db.add(budget)
-
-    await db.flush()
-
-    # Create budget items
-    for item_dict in budget_data["items"]:
-        item = BudgetItem(
-            id=item_dict["id"],
-            clinic_id=item_dict["clinic_id"],
-            budget_id=item_dict["budget_id"],
-            catalog_item_id=item_dict["catalog_item_id"],
-            unit_price=item_dict["unit_price"],
-            quantity=item_dict["quantity"],
-            discount_type=item_dict["discount_type"],
-            discount_value=item_dict["discount_value"],
-            vat_type_id=item_dict["vat_type_id"],
-            vat_rate=item_dict["vat_rate"],
-            line_subtotal=item_dict["line_subtotal"],
-            line_discount=item_dict["line_discount"],
-            line_tax=item_dict["line_tax"],
-            line_total=item_dict["line_total"],
-            tooth_number=item_dict["tooth_number"],
-            surfaces=item_dict["surfaces"],
-            treatment_id=item_dict.get("treatment_id"),
-            invoiced_quantity=item_dict.get("invoiced_quantity", 0),
-            display_order=item_dict["display_order"],
-            notes=item_dict["notes"],
-        )
-        db.add(item)
-
-    await db.flush()
-
-    # Create signatures
-    for sig_dict in budget_data["signatures"]:
-        signature = BudgetSignature(
-            id=sig_dict["id"],
-            clinic_id=sig_dict["clinic_id"],
-            budget_id=sig_dict["budget_id"],
-            signature_type=sig_dict["signature_type"],
-            signed_items=sig_dict["signed_items"],
-            signed_by_name=sig_dict["signed_by_name"],
-            signed_by_email=sig_dict["signed_by_email"],
-            relationship_to_patient=sig_dict["relationship_to_patient"],
-            signature_method=sig_dict["signature_method"],
-            signature_data=sig_dict["signature_data"],
-            ip_address=sig_dict["ip_address"],
-            user_agent=sig_dict["user_agent"],
-            signed_at=sig_dict["signed_at"],
-            external_signature_id=sig_dict["external_signature_id"],
-            external_provider=sig_dict["external_provider"],
-            document_hash=sig_dict["document_hash"],
-        )
-        db.add(signature)
-
-    await db.flush()
-
-    # Count by status
-    status_counts = {}
-    for budget in budget_data["budgets"]:
-        status = budget["status"]
-        status_counts[status] = status_counts.get(status, 0) + 1
-
-    print(f"  Created {len(budget_data['budgets'])} budgets:")
-    for status, count in sorted(status_counts.items()):
-        print(f"    - {status}: {count}")
-    print(f"  Created {len(budget_data['items'])} budget items")
-    print(f"  Created {len(budget_data['signatures'])} signatures")
-
-    return {
-        "budgets": len(budget_data["budgets"]),
-        "items": len(budget_data["items"]),
-        "signatures": len(budget_data["signatures"]),
-    }
-
-
-async def seed_treatment_plans(db: AsyncSession) -> dict:
-    """Create demo treatment plans with items.
-
-    Returns:
-        Dictionary with counts of created records.
-    """
-    # First, get catalog items + their odontogram mappings.
-    from sqlalchemy.orm import selectinload
-
-    result = await db.execute(
-        select(TreatmentCatalogItem)
-        .options(selectinload(TreatmentCatalogItem.odontogram_mapping))
-        .where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
-    )
-    catalog_items = result.scalars().all()
-
-    catalog_items_map = {}
-    for item in catalog_items:
-        mapping = item.odontogram_mapping
-        catalog_items_map[item.internal_code] = {
-            "id": item.id,
-            "default_price": item.default_price,
-            "odontogram_treatment_type": (mapping.odontogram_treatment_type if mapping else None),
-        }
-
-    # Generate treatment plan data
-    plan_data = generate_treatment_plans_data(catalog_items_map)
-
-    # Create treatment plans
-    for plan_dict in plan_data["plans"]:
-        plan = TreatmentPlan(
-            id=plan_dict["id"],
-            clinic_id=plan_dict["clinic_id"],
-            patient_id=plan_dict["patient_id"],
-            plan_number=plan_dict["plan_number"],
-            title=plan_dict["title"],
-            status=plan_dict["status"],
-            budget_id=plan_dict["budget_id"],
-            assigned_professional_id=plan_dict["assigned_professional_id"],
-            created_by=plan_dict["created_by"],
-            diagnosis_notes=plan_dict["diagnosis_notes"],
-            internal_notes=plan_dict["internal_notes"],
-            deleted_at=plan_dict["deleted_at"],
-        )
-        db.add(plan)
-
-    await db.flush()
-
-    # Create the underlying Treatment rows for plan items.
-    for pt in plan_data["plan_treatments"]:
-        if pt["clinical_type"] is None:
-            # Global non-tooth treatment (e.g. cleaning): fall back to a generic label.
-            pt["clinical_type"] = "filling_composite"
-        treatment = Treatment(
-            id=pt["id"],
-            clinic_id=pt["clinic_id"],
-            patient_id=pt["patient_id"],
-            clinical_type=pt["clinical_type"],
-            catalog_item_id=pt["catalog_item_id"],
-            status=pt["status"],
-            recorded_at=pt["recorded_at"],
-            performed_at=pt["performed_at"],
-            performed_by=pt["performed_by"],
-            price_snapshot=pt["price_snapshot"],
-            currency_snapshot=pt["currency_snapshot"],
-            duration_snapshot=pt["duration_snapshot"],
-            vat_rate_snapshot=pt["vat_rate_snapshot"],
-            budget_item_id=pt["budget_item_id"],
-            notes=pt["notes"],
-            source_module=pt["source_module"],
-            deleted_at=pt["deleted_at"],
-        )
-        db.add(treatment)
-
-    await db.flush()
-
-    # Create planned items
-    for item_dict in plan_data["items"]:
-        item = PlannedTreatmentItem(
-            id=item_dict["id"],
-            clinic_id=item_dict["clinic_id"],
-            treatment_plan_id=item_dict["treatment_plan_id"],
-            treatment_id=item_dict["treatment_id"],
-            sequence_order=item_dict["sequence_order"],
-            status=item_dict["status"],
-            completed_without_appointment=item_dict["completed_without_appointment"],
-            completed_at=item_dict["completed_at"],
-            completed_by=item_dict["completed_by"],
-            notes=item_dict["notes"],
-        )
-        db.add(item)
-
-    await db.flush()
-
-    # Count by status
-    status_counts = {}
-    for plan in plan_data["plans"]:
-        status = plan["status"]
-        status_counts[status] = status_counts.get(status, 0) + 1
-
-    print(f"  Created {len(plan_data['plans'])} treatment plans:")
-    for status, count in sorted(status_counts.items()):
-        print(f"    - {status}: {count}")
-    print(f"  Created {len(plan_data['items'])} planned items")
-
-    return {
-        "plans": len(plan_data["plans"]),
-        "items": len(plan_data["items"]),
-    }
+    print(f"  Linked {len(data['appointment_treatments'])} appointment treatments")
+    return data
 
 
 async def seed_invoice_series(db: AsyncSession) -> int:
-    """Create demo invoice series.
-
-    Returns:
-        Number of series created.
-    """
-    from app.seeds.demo_data import generate_invoice_series_data
-
+    """Create demo invoice series."""
     series_data = generate_invoice_series_data()
-
     for series_dict in series_data:
-        series = InvoiceSeries(
-            id=series_dict["id"],
-            clinic_id=series_dict["clinic_id"],
-            prefix=series_dict["prefix"],
-            series_type=series_dict["series_type"],
-            description=series_dict["description"],
-            current_number=series_dict["current_number"],
-            reset_yearly=series_dict["reset_yearly"],
-            last_reset_year=series_dict["last_reset_year"],
-            is_default=series_dict["is_default"],
-            is_active=series_dict["is_active"],
-        )
-        db.add(series)
-
+        db.add(InvoiceSeries(**series_dict))
     await db.flush()
     print(f"  Created {len(series_data)} invoice series")
     return len(series_data)
 
 
-async def seed_invoices(db: AsyncSession) -> dict:
-    """Create demo invoices with items and payments.
+async def seed_invoices(db: AsyncSession, catalog_map: dict, budgets_result: dict) -> dict:
+    """Create invoices derived from budgets and update BudgetItem.invoiced_quantity."""
+    data = generate_invoices_data(catalog_map, budgets_result)
 
-    Returns:
-        Dictionary with counts of created records.
-    """
-    # First, get catalog items to reference them in invoices
-    result = await db.execute(
-        select(TreatmentCatalogItem)
-        .options(selectinload(TreatmentCatalogItem.vat_type_rel))
-        .where(TreatmentCatalogItem.clinic_id == CLINIC_ID)
-    )
-    catalog_items = result.scalars().all()
-
-    # Build map of internal_code -> item data
-    catalog_items_map = {}
-    for item in catalog_items:
-        rate = item.vat_type_rel.rate if item.vat_type_rel else 0.0
-        catalog_items_map[item.internal_code] = {
-            "id": item.id,
-            "default_price": item.default_price,
-            "vat_type_id": item.vat_type_id,
-            "vat_rate": rate,
-        }
-
-    # Generate invoice data (series already created)
-    invoice_data = generate_invoices_data(catalog_items_map)
-
-    # Create invoices
-    for invoice_dict in invoice_data["invoices"]:
-        invoice = Invoice(
-            id=invoice_dict["id"],
-            clinic_id=invoice_dict["clinic_id"],
-            patient_id=invoice_dict["patient_id"],
-            invoice_number=invoice_dict["invoice_number"],
-            series_id=invoice_dict["series_id"],
-            sequential_number=invoice_dict["sequential_number"],
-            budget_id=invoice_dict["budget_id"],
-            credit_note_for_id=invoice_dict["credit_note_for_id"],
-            status=invoice_dict["status"],
-            issue_date=invoice_dict["issue_date"],
-            due_date=invoice_dict["due_date"],
-            payment_term_days=invoice_dict["payment_term_days"],
-            billing_name=invoice_dict["billing_name"],
-            billing_tax_id=invoice_dict["billing_tax_id"],
-            billing_address=invoice_dict["billing_address"],
-            billing_email=invoice_dict["billing_email"],
-            subtotal=invoice_dict["subtotal"],
-            total_discount=invoice_dict["total_discount"],
-            total_tax=invoice_dict["total_tax"],
-            total=invoice_dict["total"],
-            total_paid=invoice_dict["total_paid"],
-            balance_due=invoice_dict["balance_due"],
-            currency=invoice_dict["currency"],
-            internal_notes=invoice_dict["internal_notes"],
-            public_notes=invoice_dict["public_notes"],
-            compliance_data=invoice_dict["compliance_data"],
-            document_hash=invoice_dict["document_hash"],
-            created_by=invoice_dict["created_by"],
-            issued_by=invoice_dict["issued_by"],
-            deleted_at=invoice_dict["deleted_at"],
-        )
-        db.add(invoice)
-
+    for invoice_dict in data["invoices"]:
+        db.add(Invoice(**invoice_dict))
     await db.flush()
 
-    # Create invoice items
-    for item_dict in invoice_data["items"]:
-        item = InvoiceItem(
-            id=item_dict["id"],
-            clinic_id=item_dict["clinic_id"],
-            invoice_id=item_dict["invoice_id"],
-            budget_item_id=item_dict["budget_item_id"],
-            catalog_item_id=item_dict["catalog_item_id"],
-            description=item_dict["description"],
-            internal_code=item_dict["internal_code"],
-            unit_price=item_dict["unit_price"],
-            quantity=item_dict["quantity"],
-            discount_type=item_dict["discount_type"],
-            discount_value=item_dict["discount_value"],
-            vat_type_id=item_dict["vat_type_id"],
-            vat_rate=item_dict["vat_rate"],
-            vat_exempt_reason=item_dict["vat_exempt_reason"],
-            line_subtotal=item_dict["line_subtotal"],
-            line_discount=item_dict["line_discount"],
-            line_tax=item_dict["line_tax"],
-            line_total=item_dict["line_total"],
-            tooth_number=item_dict["tooth_number"],
-            surfaces=item_dict["surfaces"],
-            display_order=item_dict["display_order"],
-        )
-        db.add(item)
-
+    for item_dict in data["items"]:
+        db.add(InvoiceItem(**item_dict))
     await db.flush()
 
-    # Create payments
-    for payment_dict in invoice_data["payments"]:
-        payment = Payment(
-            id=payment_dict["id"],
-            clinic_id=payment_dict["clinic_id"],
-            invoice_id=payment_dict["invoice_id"],
-            amount=payment_dict["amount"],
-            payment_method=payment_dict["payment_method"],
-            payment_date=payment_dict["payment_date"],
-            reference=payment_dict["reference"],
-            notes=payment_dict["notes"],
-            recorded_by=payment_dict["recorded_by"],
-            is_voided=payment_dict["is_voided"],
-            voided_at=payment_dict["voided_at"],
-            voided_by=payment_dict["voided_by"],
-            void_reason=payment_dict["void_reason"],
-        )
-        db.add(payment)
-
+    for payment_dict in data["payments"]:
+        db.add(Payment(**payment_dict))
     await db.flush()
 
-    # Count by status
-    status_counts = {}
-    for invoice in invoice_data["invoices"]:
-        status = invoice["status"]
-        status_counts[status] = status_counts.get(status, 0) + 1
+    for budget_item_id, qty in data["invoiced_quantity_by_budget_item"].items():
+        await db.execute(
+            update(BudgetItem).where(BudgetItem.id == budget_item_id).values(invoiced_quantity=qty)
+        )
+    await db.flush()
 
-    print(f"  Created {len(invoice_data['invoices'])} invoices:")
-    for status, count in sorted(status_counts.items()):
-        print(f"    - {status}: {count}")
-    print(f"  Created {len(invoice_data['items'])} invoice items")
-    print(f"  Created {len(invoice_data['payments'])} payments")
+    _print_status_counts(f"  Created {len(data['invoices'])} invoices:", data["invoices"])
+    print(f"  Created {len(data['items'])} invoice items")
+    print(f"  Created {len(data['payments'])} payments")
+    return data
 
-    return {
-        "invoices": len(invoice_data["invoices"]),
-        "items": len(invoice_data["items"]),
-        "payments": len(invoice_data["payments"]),
-    }
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def parse_args():
@@ -770,9 +358,8 @@ Examples:
     return parser.parse_args()
 
 
-async def main(lang: str = "en"):
-    """Main seed function."""
-    # Set language for demo data
+async def main(lang: str = "en") -> None:
+    """Seed the full demo clinical workflow."""
     set_language(lang)
     lang_name = "English" if lang == "en" else "Spanish"
 
@@ -781,7 +368,6 @@ async def main(lang: str = "en"):
     print("=" * 60 + "\n")
 
     async with async_session_maker() as db:
-        # Check for existing data
         if await check_existing_data(db):
             print("Demo data already exists!")
             print("To reset, run: ./scripts/reset-db.sh")
@@ -790,48 +376,40 @@ async def main(lang: str = "en"):
 
         print("Creating demo data...\n")
 
-        # Generate password hash once
         password_hash = hash_password("demo1234")
 
         try:
-            # Seed in order (respecting foreign keys)
-            print("[1/10] Creating clinic...")
+            print("[1/9] Creating clinic...")
             await seed_clinic(db)
 
-            print("\n[2/10] Creating users...")
+            print("\n[2/9] Creating users...")
             await seed_users(db, password_hash)
 
-            print("\n[3/10] Creating patients...")
+            print("\n[3/9] Creating patients...")
             await seed_patients(db)
 
-            print("\n[4/10] Creating appointments...")
-            _, appointments_data = await seed_appointments(db)
-
-            print("\n[5/10] Creating odontogram data...")
-            await seed_odontogram(db)
-
-            print("\n[6/10] Creating treatment catalog...")
+            print("\n[4/9] Creating treatment catalog...")
             catalog_result = await seed_catalog(db, CLINIC_ID)
             print(f"  Created {catalog_result['categories']} categories")
             print(f"  Created {catalog_result['items']} catalog items")
+            catalog_map = await _load_catalog_map(db)
 
-            print("\n[7/10] Creating budgets...")
-            await seed_budgets(db)
+            print("\n[5/9] Creating odontogram data...")
+            await seed_odontogram(db)
 
-            print("\n[8/10] Creating treatment plans...")
-            await seed_treatment_plans(db)
+            print("\n[6/9] Creating treatment plans...")
+            plans_result = await seed_treatment_plans(db, catalog_map)
 
-            # Link appointments to planned treatment items (must be after treatment plans)
-            print("\n[8b/10] Linking appointments to planned treatment items...")
-            await seed_appointment_treatments(db, appointments_data)
+            print("\n[7/9] Creating budgets (derived from plans)...")
+            budgets_result = await seed_budgets(db, catalog_map, plans_result)
 
-            print("\n[9/10] Creating invoice series...")
+            print("\n[8/9] Creating appointments (anchored to plan items)...")
+            await seed_appointments(db, plans_result)
+
+            print("\n[9/9] Creating invoice series + invoices (derived from budgets)...")
             await seed_invoice_series(db)
+            await seed_invoices(db, catalog_map, budgets_result)
 
-            print("\n[10/10] Creating invoices...")
-            await seed_invoices(db)
-
-            # Commit all changes
             await db.commit()
             print("\n" + "=" * 60)
             print("Demo data created successfully!")
@@ -842,7 +420,6 @@ async def main(lang: str = "en"):
             print(f"\nError creating demo data: {e}")
             raise
 
-    # Print credentials summary
     users_data = get_users_data()
     print("\n" + "-" * 60)
     print("DEMO CREDENTIALS (all passwords: demo1234)")

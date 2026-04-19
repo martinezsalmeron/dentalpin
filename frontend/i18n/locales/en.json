@@ -536,7 +536,8 @@
       "cancelPlan": "Cancel plan",
       "locked": {
         "title": "Plan locked",
-        "subtitle": "Quote {number} has been issued. To modify the plan, the current quote must be cancelled."
+        "subtitle": "Quote {number} has been issued. To modify the plan, the current quote must be cancelled.",
+        "viewBudget": "View quote"
       }
     },
     "tooth": "Tooth"
@@ -706,6 +707,8 @@
     "removed": "Removed",
     "page": "Page {current} of {total}",
     "noData": "No data",
+    "noResults": "No results",
+    "search": "Search...",
     "selectAll": "All",
     "deselectAll": "None",
     "all": "All",

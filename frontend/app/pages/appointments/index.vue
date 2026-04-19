@@ -543,7 +543,7 @@ onMounted(async () => {
         />
         <UButton
           color="primary"
-          variant="solid"
+          variant="soft"
           icon="i-lucide-plus"
           @click="openCreateModal"
         >

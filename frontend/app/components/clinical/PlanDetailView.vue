@@ -431,7 +431,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
     >
       <UIcon
         name="i-lucide-lock"
-        class="w-4 h-4 shrink-0"
+        class="w-4 h-4 shrink-0 mt-0.5"
       />
       <div class="plan-locked-text">
         <div class="plan-locked-title">
@@ -441,6 +441,18 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           {{ t('clinical.plans.locked.subtitle', { number: plan.budget?.budget_number || '' }) }}
         </div>
       </div>
+      <UButton
+        v-if="plan.budget_id"
+        :to="`/budgets/${plan.budget_id}`"
+        size="xs"
+        color="warning"
+        variant="soft"
+        icon="i-lucide-external-link"
+        trailing
+        class="plan-locked-action shrink-0"
+      >
+        {{ t('clinical.plans.locked.viewBudget') }}
+      </UButton>
     </div>
 
     <!-- Two-column layout -->
@@ -499,6 +511,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           :items="plan.items"
           :highlighted-items="highlightedItems"
           :readonly="effectiveReadonly"
+          :allow-complete="isLocked && !readonly"
           :plan-status="plan.status"
           @item-hover="hoveredItemId = $event"
           @item-complete="handleCompleteItem"
@@ -893,7 +906,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
 .plan-locked-banner {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   padding: 10px 14px;
   background: #FEF3C7;
   border: 1px solid #FCD34D;
@@ -901,6 +914,15 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
   color: #92400E;
   font-size: 13px;
   line-height: 1.4;
+}
+
+.plan-locked-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-locked-action {
+  align-self: center;
 }
 
 :root.dark .plan-locked-banner {

@@ -64,17 +64,26 @@ watch(() => props.modelValue, (newVal) => {
   selectedItems.value = newVal || []
 })
 
-// Get treatment name from item
+// Catalog link lives on the Treatment; item.catalog_item is kept for historical
+// records and may be absent, so fall back to treatment.catalog_item.
+function getCatalog(item: PlannedTreatmentItem) {
+  return item.catalog_item || item.treatment?.catalog_item
+}
+
 function getItemName(item: PlannedTreatmentItem): string {
-  if (item.catalog_item?.names) {
-    return (
-      item.catalog_item.names[locale.value]
-      || item.catalog_item.names.es
-      || item.catalog_item.internal_code
-    )
+  const catalog = getCatalog(item)
+  const names = catalog?.names
+  if (names) {
+    const name = names[locale.value] || names.es
+    if (name) return name
+    if (catalog?.internal_code) return catalog.internal_code
   }
-  if (item.treatment?.clinical_type) {
-    return item.treatment.clinical_type
+  const clinicalType = item.treatment?.clinical_type
+  if (clinicalType) {
+    const key = `odontogram.treatments.types.${clinicalType}`
+    const translated = t(key)
+    if (translated !== key) return translated
+    return clinicalType
   }
   return t('treatmentPlans.unknownTreatment')
 }
@@ -86,8 +95,9 @@ function getItemPrice(item: PlannedTreatmentItem): number | undefined {
     const parsed = Number(snap)
     if (Number.isFinite(parsed)) return parsed
   }
-  const def = item.catalog_item?.default_price
-  return typeof def === 'number' ? def : undefined
+  const def = getCatalog(item)?.default_price
+  const parsed = typeof def === 'string' ? Number(def) : def
+  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined
 }
 
 // Get tooth info string
@@ -120,7 +130,7 @@ const availableItems = computed(() => {
     const query = searchQuery.value.toLowerCase()
     items = items.filter((item) => {
       const name = getItemName(item).toLowerCase()
-      const code = item.catalog_item?.internal_code?.toLowerCase() || ''
+      const code = getCatalog(item)?.internal_code?.toLowerCase() || ''
       return name.includes(query) || code.includes(query)
     })
   }
@@ -187,10 +197,10 @@ const hasPendingTreatments = computed(() => {
             </p>
             <div class="flex items-center gap-2 flex-wrap">
               <span
-                v-if="item.catalog_item?.internal_code"
+                v-if="getCatalog(item)?.internal_code"
                 class="text-caption text-subtle"
               >
-                {{ item.catalog_item.internal_code }}
+                {{ getCatalog(item)?.internal_code }}
               </span>
               <UBadge
                 v-if="getToothInfo(item)"
@@ -284,10 +294,10 @@ const hasPendingTreatments = computed(() => {
                 </p>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
                   <span
-                    v-if="item.catalog_item?.internal_code"
+                    v-if="getCatalog(item)?.internal_code"
                     class="text-caption text-subtle"
                   >
-                    {{ item.catalog_item.internal_code }}
+                    {{ getCatalog(item)?.internal_code }}
                   </span>
                   <UBadge
                     v-if="getToothInfo(item)"

@@ -44,7 +44,7 @@ async def list_treatment_plans(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     patient_id: UUID | None = None,
-    status: str | None = None,
+    status: list[str] | None = Query(default=None),
 ) -> PaginatedApiResponse[TreatmentPlanResponse]:
     """List treatment plans with pagination and filters."""
     plans, total = await TreatmentPlanService.list(

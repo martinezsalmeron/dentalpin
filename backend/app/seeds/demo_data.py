@@ -7,6 +7,7 @@ Supports bilingual data (English and Spanish) via LANG setting.
 """
 
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
@@ -884,86 +885,10 @@ def get_patients_data() -> list[dict]:
 
 
 # =============================================================================
-# Appointment Templates
+# Scheduling helpers
 # =============================================================================
 
-# Treatment types with typical durations (in minutes)
-# catalog_codes: list of internal_code from treatment catalog to associate with appointment
-TREATMENT_TYPES_I18N = [
-    {
-        "names": {"es": "Revisión", "en": "Checkup"},
-        "duration": 30,
-        "color": "#3B82F6",
-        "catalog_codes": ["DX-VISIT"],
-    },
-    {
-        "names": {"es": "Limpieza dental", "en": "Dental cleaning"},
-        "duration": 45,
-        "color": "#10B981",
-        "catalog_codes": ["PREV-LIMP"],
-    },
-    {
-        "names": {"es": "Empaste", "en": "Filling"},
-        "duration": 45,
-        "color": "#F59E0B",
-        "catalog_codes": ["REST-COMP"],
-    },
-    {
-        "names": {"es": "Extracción", "en": "Extraction"},
-        "duration": 60,
-        "color": "#EF4444",
-        "catalog_codes": ["CIR-EXT-S"],
-    },
-    {
-        "names": {"es": "Endodoncia", "en": "Root canal"},
-        "duration": 90,
-        "color": "#8B5CF6",
-        "catalog_codes": ["ENDO-UNI"],
-    },
-    {
-        "names": {"es": "Ortodoncia - Revisión", "en": "Orthodontics - Checkup"},
-        "duration": 30,
-        "color": "#EC4899",
-        "catalog_codes": ["DX-VISIT"],
-    },
-    {
-        "names": {"es": "Blanqueamiento", "en": "Whitening"},
-        "duration": 60,
-        "color": "#06B6D4",
-        "catalog_codes": ["EST-BLANQ-C"],
-    },
-    {
-        "names": {"es": "Implante - Consulta", "en": "Implant - Consultation"},
-        "duration": 45,
-        "color": "#84CC16",
-        "catalog_codes": ["DX-VISIT", "DX-RXPAN"],
-    },
-    {
-        "names": {"es": "Urgencia", "en": "Emergency"},
-        "duration": 30,
-        "color": "#DC2626",
-        "catalog_codes": ["DX-VISIT"],
-    },
-]
-
-
-def get_treatment_types() -> list[dict]:
-    """Get treatment types in current language."""
-    return [
-        {
-            "name": t(tt["names"]),
-            "duration": tt["duration"],
-            "color": tt["color"],
-            "catalog_codes": tt.get("catalog_codes", []),
-        }
-        for tt in TREATMENT_TYPES_I18N
-    ]
-
-
-# Appointment statuses for past appointments
-PAST_STATUSES = ["completed", "completed", "completed", "completed", "no_show"]
-
-# Time slots (morning and afternoon)
+# Time slots (morning and afternoon) used by the appointment generator.
 MORNING_SLOTS = [
     "09:00",
     "09:30",
@@ -977,123 +902,6 @@ MORNING_SLOTS = [
     "13:30",
 ]
 AFTERNOON_SLOTS = ["16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"]
-
-
-def generate_appointments(reference_date: date | None = None) -> list[dict]:
-    """Generate realistic appointment data relative to a reference date.
-
-    Args:
-        reference_date: The date to use as "today". Defaults to actual today.
-
-    Returns:
-        List of appointment dictionaries ready for database insertion.
-    """
-    import random
-    from uuid import uuid4
-
-    if reference_date is None:
-        reference_date = date.today()
-
-    appointments = []
-    treatment_types = get_treatment_types()
-    clinic_data = get_clinic_data()
-    cabinets = [c["name"] for c in clinic_data["cabinets"]]
-
-    # Get Monday of current week
-    current_monday = reference_date - timedelta(days=reference_date.weekday())
-
-    # Weeks to generate: last week, current week, next week
-    weeks = [
-        ("past", current_monday - timedelta(days=7)),
-        ("current", current_monday),
-        ("future", current_monday + timedelta(days=7)),
-    ]
-
-    # Professionals to assign appointments to
-    professionals = [USER_DENTIST_ID, USER_HYGIENIST_ID]
-
-    # Track used slots to avoid conflicts: (cabinet, professional_id, start_time)
-    used_slots: set[tuple[str, str, datetime]] = set()
-
-    for week_type, week_start in weeks:
-        # Determine number of appointments for this week
-        if week_type == "past":
-            num_appointments = random.randint(10, 12)
-        elif week_type == "current":
-            num_appointments = random.randint(15, 18)
-        else:  # future
-            num_appointments = random.randint(10, 12)
-
-        # Generate appointments distributed across weekdays
-        attempts = 0
-        created = 0
-        while created < num_appointments and attempts < num_appointments * 10:
-            attempts += 1
-
-            # Pick a random weekday (0-4 = Mon-Fri)
-            day_offset = random.randint(0, 4)
-            appt_date = week_start + timedelta(days=day_offset)
-
-            # Pick morning or afternoon slot
-            if random.random() < 0.6:  # 60% morning
-                time_str = random.choice(MORNING_SLOTS)
-            else:
-                time_str = random.choice(AFTERNOON_SLOTS)
-
-            hour, minute = map(int, time_str.split(":"))
-            start_time = datetime(appt_date.year, appt_date.month, appt_date.day, hour, minute, 0)
-
-            # Pick professional and cabinet
-            professional_id = random.choice(professionals)
-            cabinet = random.choice(cabinets)
-
-            # Check for slot conflict
-            slot_key = (cabinet, str(professional_id), start_time)
-            if slot_key in used_slots:
-                continue  # Try again with different slot
-
-            used_slots.add(slot_key)
-
-            # Pick treatment type
-            treatment = random.choice(treatment_types)
-            end_time = start_time + timedelta(minutes=treatment["duration"])
-
-            # Pick patient
-            patient_id = random.choice(PATIENT_IDS)
-
-            # Determine status based on week type
-            if week_type == "past":
-                status = random.choice(PAST_STATUSES)
-            elif week_type == "current":
-                # If appointment is before "now", it might be completed
-                if appt_date < reference_date:
-                    status = random.choice(["completed", "completed", "no_show"])
-                elif appt_date == reference_date:
-                    status = random.choice(["scheduled", "confirmed", "in_progress"])
-                else:
-                    status = random.choice(["scheduled", "confirmed"])
-            else:  # future
-                status = random.choice(["scheduled", "scheduled", "confirmed"])
-
-            appointments.append(
-                {
-                    "id": uuid4(),
-                    "clinic_id": CLINIC_ID,
-                    "patient_id": patient_id,
-                    "professional_id": professional_id,
-                    "cabinet": cabinet,
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "treatment_type": treatment["name"],
-                    "status": status,
-                    "notes": None,
-                    "color": treatment["color"],
-                    "catalog_codes": treatment.get("catalog_codes", []),
-                }
-            )
-            created += 1
-
-    return appointments
 
 
 # =============================================================================
@@ -1458,953 +1266,667 @@ def generate_odontogram_data() -> dict:
 
 
 # =============================================================================
-# Budget Seed Data
+# Patient Journey Data — single source of truth for plan/budget/appointment/invoice
 # =============================================================================
 
-# Fixed UUIDs for budgets
-BUDGET_IDS = [UUID(f"aa00bc99-9c0b-4ef8-bb6d-6bb9bd380b{i:02x}") for i in range(10)]
-
-# Fixed UUIDs for budget items
-BUDGET_ITEM_IDS = [UUID(f"bb00bc99-9c0b-4ef8-bb6d-6bb9bd380c{i:02x}") for i in range(50)]
-
-# Fixed UUIDs for budget signatures
-BUDGET_SIGNATURE_IDS = [UUID(f"cc00bc99-9c0b-4ef8-bb6d-6bb9bd380d{i:02x}") for i in range(10)]
-
-# Budget scenarios for different patients
-BUDGET_SCENARIOS = [
-    # Budget 0: Draft budget for patient 3 (Carmen/Emma - sensitivity)
-    {
-        "patient_idx": 3,
-        "status": "draft",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "DX-RXPAN", "qty": 1, "tooth": None},
-            {"code": "REST-COMP", "qty": 2, "tooth": 16},
-        ],
-        "global_discount": None,
-        "notes": {"es": "Presupuesto pendiente de revisión", "en": "Budget pending review"},
-    },
-    # Budget 1: Draft budget for patient 4 (David/William)
-    {
-        "patient_idx": 4,
-        "status": "draft",
-        "items": [
-            {"code": "PREV-LIMP", "qty": 1, "tooth": None},
-            {"code": "REST-COMP", "qty": 3, "tooth": 26},
-            {"code": "ENDO-UNI", "qty": 1, "tooth": 21},
-        ],
-        "global_discount": {"type": "percentage", "value": 5},
-        "notes": {"es": "Pendiente de aceptación", "en": "Pending acceptance"},
-    },
-    # Budget 2: Accepted budget for patient 6 (Javier/Daniel - diabetic)
-    {
-        "patient_idx": 6,
-        "status": "accepted",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "REST-CRO", "qty": 2, "tooth": 36},
-            {"code": "ENDO-MULTI", "qty": 1, "tooth": 36},
-        ],
-        "global_discount": None,
-        "notes": {
-            "es": "Paciente diabético - control especial",
-            "en": "Diabetic patient - special care",
-        },
-        "signature": True,
-    },
-    # Budget 3: Accepted budget for patient 8 (Francisco/Alexander - allergic)
-    {
-        "patient_idx": 8,
-        "status": "accepted",
-        "items": [
-            {"code": "PERIO-RAD", "qty": 4, "tooth": None},
-            {"code": "REST-COMP", "qty": 2, "tooth": 17},
-            {"code": "REST-COMP", "qty": 1, "tooth": 26},
-        ],
-        "global_discount": {"type": "absolute", "value": 50},
-        "notes": {"es": "Alérgico a penicilina", "en": "Allergic to penicillin"},
-        "signature": True,
-    },
-    # Budget 4: Completed budget for patient 10 (Antonio/Robert)
-    {
-        "patient_idx": 10,
-        "status": "completed",
-        "items": [
-            {"code": "PROT-PARC", "qty": 1, "tooth": None},
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-        ],
-        "global_discount": None,
-        "notes": {"es": "Prótesis parcial entregada", "en": "Partial denture delivered"},
-        "signature": True,
-    },
-    # Budget 5: Rejected budget for patient 7 (Isabel/Mia)
-    {
-        "patient_idx": 7,
-        "status": "rejected",
-        "items": [
-            {"code": "EST-BLANQ-C", "qty": 1, "tooth": None},
-            {"code": "REST-VEN", "qty": 4, "tooth": 11},
-        ],
-        "global_discount": None,
-        "notes": {"es": "Rechazado por precio", "en": "Rejected due to price"},
-    },
-    # Budget 6: Accepted for patient 9 (Rosa/Charlotte - hypertensive)
-    {
-        "patient_idx": 9,
-        "status": "accepted",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "REST-CRO", "qty": 1, "tooth": 46},
-            {"code": "REST-CRO", "qty": 1, "tooth": 36},
-            {"code": "ENDO-MULTI", "qty": 1, "tooth": 36},
-        ],
-        "global_discount": {"type": "percentage", "value": 10},
-        "notes": {"es": "Tratamiento en curso", "en": "Treatment in progress"},
-        "signature": True,
-    },
-]
-
-
-def generate_budgets_data(catalog_items_map: dict[str, dict]) -> dict:
-    """Generate budget seed data.
-
-    Args:
-        catalog_items_map: Dictionary mapping internal_code to catalog item data
-                          (must include id, default_price, vat_type_id, vat_rate)
-
-    Returns:
-        Dictionary with:
-        - budgets: List of Budget data
-        - items: List of BudgetItem data
-        - signatures: List of BudgetSignature data
-    """
-    from decimal import Decimal
-
-    budgets = []
-    items = []
-    signatures = []
-    patients_data = get_patients_data()
-
-    budget_idx = 0
-    item_idx = 0
-    signature_idx = 0
-
-    for scenario_idx, scenario in enumerate(BUDGET_SCENARIOS):
-        patient = patients_data[scenario["patient_idx"]]
-        budget_id = BUDGET_IDS[budget_idx]
-        budget_idx += 1
-
-        # Calculate budget number
-        budget_number = f"PRES-2024-{scenario_idx + 1:04d}"
-
-        # Dates
-        valid_from = date.today() - timedelta(days=30 - scenario_idx * 5)
-        valid_until = valid_from + timedelta(days=60)
-
-        # Create budget items and calculate totals
-        budget_items = []
-        subtotal = Decimal("0.00")
-
-        for item_data in scenario["items"]:
-            catalog_item = catalog_items_map.get(item_data["code"])
-            if not catalog_item:
-                continue  # Skip if catalog item not found
-
-            item_id = BUDGET_ITEM_IDS[item_idx]
-            item_idx += 1
-
-            unit_price = catalog_item["default_price"]
-            quantity = item_data["qty"]
-            vat_rate = catalog_item.get("vat_rate", 0.0) or 0.0
-
-            line_subtotal = unit_price * quantity
-            line_tax = line_subtotal * Decimal(str(vat_rate)) / 100
-            line_total = line_subtotal + line_tax
-
-            subtotal += line_subtotal
-
-            budget_item = {
-                "id": item_id,
-                "clinic_id": CLINIC_ID,
-                "budget_id": budget_id,
-                "catalog_item_id": catalog_item["id"],
-                "unit_price": unit_price,
-                "quantity": quantity,
-                "discount_type": None,
-                "discount_value": None,
-                "vat_type_id": catalog_item.get("vat_type_id"),
-                "vat_rate": vat_rate,
-                "line_subtotal": line_subtotal,
-                "line_discount": Decimal("0.00"),
-                "line_tax": line_tax,
-                "line_total": line_total,
-                "tooth_number": item_data.get("tooth"),
-                "surfaces": None,
-                "treatment_id": None,
-                "invoiced_quantity": 0,
-                "display_order": len(budget_items) + 1,
-                "notes": None,
-            }
-            budget_items.append(budget_item)
-            items.append(budget_item)
-
-        # Calculate totals
-        total_discount = Decimal("0.00")
-        global_discount_type = None
-        global_discount_value = None
-
-        if scenario.get("global_discount"):
-            global_discount_type = scenario["global_discount"]["type"]
-            global_discount_value = Decimal(str(scenario["global_discount"]["value"]))
-            if global_discount_type == "percentage":
-                total_discount = subtotal * global_discount_value / 100
-            else:
-                total_discount = global_discount_value
-
-        # Calculate total tax
-        total_tax = sum(Decimal(str(item["line_tax"])) for item in budget_items)
-        total = subtotal - total_discount + total_tax
-
-        budget = {
-            "id": budget_id,
-            "clinic_id": CLINIC_ID,
-            "patient_id": patient["id"],
-            "budget_number": budget_number,
-            "version": 1,
-            "parent_budget_id": None,
-            "status": scenario["status"],
-            "valid_from": valid_from,
-            "valid_until": valid_until,
-            "created_by": USER_DENTIST_ID,
-            "assigned_professional_id": USER_DENTIST_ID,
-            "global_discount_type": global_discount_type,
-            "global_discount_value": global_discount_value,
-            "subtotal": subtotal,
-            "total_discount": total_discount,
-            "total_tax": total_tax,
-            "total": total,
-            "currency": t({"es": "EUR", "en": "USD"}),
-            "internal_notes": t(scenario["notes"]) if scenario.get("notes") else None,
-            "patient_notes": None,
-            "insurance_estimate": None,
-            "deleted_at": None,
-        }
-        budgets.append(budget)
-
-        # Create signature if needed (for accepted budgets)
-        if scenario.get("signature") and scenario["status"] not in ["draft", "rejected"]:
-            signature_id = BUDGET_SIGNATURE_IDS[signature_idx]
-            signature_idx += 1
-
-            # All items are signed together when budget is accepted
-            signed_items = [str(item["id"]) for item in budget_items]
-
-            signature = {
-                "id": signature_id,
-                "clinic_id": CLINIC_ID,
-                "budget_id": budget_id,
-                "signature_type": "full_acceptance",
-                "signed_items": signed_items,
-                "signed_by_name": f"{patient['first_name']} {patient['last_name']}",
-                "signed_by_email": patient.get("email"),
-                "relationship_to_patient": "patient",
-                "signature_method": "click_accept",
-                "signature_data": {"accepted_terms": True, "timestamp": datetime.now().isoformat()},
-                "ip_address": "192.168.1.100",
-                "user_agent": "Mozilla/5.0 (Demo Browser)",
-                "signed_at": datetime.now() - timedelta(days=15),
-                "external_signature_id": None,
-                "external_provider": None,
-                "document_hash": None,
-            }
-            signatures.append(signature)
-
-    return {
-        "budgets": budgets,
-        "items": items,
-        "signatures": signatures,
-    }
-
-
-# =============================================================================
-# Invoice Seed Data
-# =============================================================================
-
-# Fixed UUIDs for invoice series
-INVOICE_SERIES_IDS = [UUID(f"fa00bc99-9c0b-4ef8-bb6d-6bb9bd380e{i:02x}") for i in range(5)]
-
-# Fixed UUIDs for invoices
-INVOICE_IDS = [UUID(f"fb00bc99-9c0b-4ef8-bb6d-6bb9bd380f{i:02x}") for i in range(20)]
-
-# Fixed UUIDs for invoice items
-INVOICE_ITEM_IDS = [UUID(f"fc00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(100)]
-
-# Fixed UUIDs for payments
-PAYMENT_IDS = [UUID(f"fd00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(30)]
-
-# Invoice scenarios for different patients
-INVOICE_SCENARIOS = [
-    # Invoice 0: Draft invoice for patient 2 (Miguel/James)
-    {
-        "patient_idx": 2,
-        "status": "draft",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "PREV-LIMP", "qty": 1, "tooth": None},
-        ],
-        "payments": [],
-        "notes": {"es": "Borrador - pendiente de emitir", "en": "Draft - pending issuance"},
-    },
-    # Invoice 1: Issued invoice for patient 3 (Carmen/Emma) - no payments yet
-    {
-        "patient_idx": 3,
-        "status": "issued",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "REST-COMP", "qty": 2, "tooth": 16},
-        ],
-        "payments": [],
-        "notes": {"es": "Emitida - pendiente de pago", "en": "Issued - pending payment"},
-    },
-    # Invoice 2: Partially paid invoice for patient 5 (Elena/Sophia)
-    {
-        "patient_idx": 5,
-        "status": "partial",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "DX-RXPAN", "qty": 1, "tooth": None},
-            {"code": "REST-COMP", "qty": 3, "tooth": 26},
-        ],
-        "payments": [
-            {"method": "card", "percent": 50},  # 50% of total
-        ],
-        "notes": {"es": "Pago parcial recibido", "en": "Partial payment received"},
-    },
-    # Invoice 3: Fully paid invoice for patient 6 (Javier/Daniel)
-    {
-        "patient_idx": 6,
-        "status": "paid",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "REST-CRO", "qty": 2, "tooth": 36},
-        ],
-        "payments": [
-            {"method": "bank_transfer", "percent": 100},
-        ],
-        "notes": {"es": "Pagado por transferencia", "en": "Paid by bank transfer"},
-    },
-    # Invoice 4: Paid invoice for patient 8 (Francisco/Alexander) - multiple payments
-    {
-        "patient_idx": 8,
-        "status": "paid",
-        "items": [
-            {"code": "PERIO-RAD", "qty": 4, "tooth": None},
-            {"code": "REST-COMP", "qty": 2, "tooth": 17},
-        ],
-        "payments": [
-            {"method": "cash", "percent": 40},
-            {"method": "card", "percent": 60},
-        ],
-        "notes": {"es": "Pagado en dos plazos", "en": "Paid in two installments"},
-    },
-    # Invoice 5: Paid invoice for patient 10 (Antonio/Robert)
-    {
-        "patient_idx": 10,
-        "status": "paid",
-        "items": [
-            {"code": "PROT-PARC", "qty": 1, "tooth": None},
-        ],
-        "payments": [
-            {"method": "direct_debit", "percent": 100},
-        ],
-        "notes": None,
-    },
-    # Invoice 6: Overdue issued invoice for patient 12 (José Luis/Richard)
-    {
-        "patient_idx": 12,
-        "status": "issued",
-        "overdue": True,
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "ENDO-MULTI", "qty": 1, "tooth": 46},
-        ],
-        "payments": [],
-        "notes": {"es": "Factura vencida", "en": "Overdue invoice"},
-    },
-    # Invoice 7: Paid invoice from last month for patient 9 (Rosa/Charlotte)
-    {
-        "patient_idx": 9,
-        "status": "paid",
-        "items": [
-            {"code": "DX-VISIT", "qty": 1, "tooth": None},
-            {"code": "REST-CRO", "qty": 1, "tooth": 46},
-        ],
-        "payments": [
-            {"method": "card", "percent": 100},
-        ],
-        "notes": None,
-    },
-]
-
-
-def generate_invoice_series_data() -> list[dict]:
-    """Generate invoice series seed data.
-
-    Returns:
-        List of InvoiceSeries data dictionaries.
-    """
-    current_year = date.today().year
-
-    series_definitions = [
-        {
-            "id": INVOICE_SERIES_IDS[0],
-            "prefix": "FAC",
-            "series_type": "invoice",
-            "description": t({"es": "Serie principal de facturas", "en": "Main invoice series"}),
-            "current_number": len(INVOICE_SCENARIOS) + 1,
-            "is_default": True,
-        },
-        {
-            "id": INVOICE_SERIES_IDS[1],
-            "prefix": "RECT",
-            "series_type": "credit_note",
-            "description": t({"es": "Notas de crédito", "en": "Credit notes"}),
-            "current_number": 1,
-            "is_default": True,
-        },
-    ]
-
-    series = []
-    for s in series_definitions:
-        series.append(
-            {
-                "id": s["id"],
-                "clinic_id": CLINIC_ID,
-                "prefix": s["prefix"],
-                "series_type": s["series_type"],
-                "description": s["description"],
-                "current_number": s["current_number"],
-                "reset_yearly": True,
-                "last_reset_year": current_year,
-                "is_default": s["is_default"],
-                "is_active": True,
-            }
-        )
-
-    return series
-
-
-def generate_invoices_data(catalog_items_map: dict[str, dict]) -> dict:
-    """Generate invoice seed data.
-
-    Args:
-        catalog_items_map: Dictionary mapping internal_code to catalog item data
-                          (must include id, default_price, vat_type_id, vat_rate)
-
-    Returns:
-        Dictionary with:
-        - series: List of InvoiceSeries data (for backwards compatibility)
-        - invoices: List of Invoice data
-        - items: List of InvoiceItem data
-        - payments: List of Payment data
-    """
-    from decimal import Decimal
-
-    invoices = []
-    items = []
-    payments = []
-    patients_data = get_patients_data()
-
-    current_year = date.today().year
-
-    # Series is now created separately via generate_invoice_series_data()
-    series = generate_invoice_series_data()
-
-    invoice_idx = 0
-    item_idx = 0
-    payment_idx = 0
-
-    for scenario_idx, scenario in enumerate(INVOICE_SCENARIOS):
-        patient = patients_data[scenario["patient_idx"]]
-        invoice_id = INVOICE_IDS[invoice_idx]
-        invoice_idx += 1
-
-        # Calculate invoice number
-        invoice_number = f"FAC-{current_year}-{scenario_idx + 1:04d}"
-        sequential_number = scenario_idx + 1
-
-        # Dates based on status
-        is_overdue = scenario.get("overdue", False)
-        if scenario["status"] == "draft":
-            issue_date = None
-            due_date = None
-            days_ago = 5
-        elif is_overdue:
-            issue_date = date.today() - timedelta(days=45)
-            due_date = date.today() - timedelta(days=15)  # 15 days overdue
-            days_ago = 45
-        else:
-            days_ago = (7 - scenario_idx) * 3 + 5  # Spread out over time
-            issue_date = date.today() - timedelta(days=days_ago)
-            due_date = issue_date + timedelta(days=30)
-
-        # Create invoice items and calculate totals
-        invoice_items = []
-        subtotal = Decimal("0.00")
-        total_tax = Decimal("0.00")
-
-        for item_data in scenario["items"]:
-            catalog_item = catalog_items_map.get(item_data["code"])
-            if not catalog_item:
-                continue  # Skip if catalog item not found
-
-            item_id = INVOICE_ITEM_IDS[item_idx]
-            item_idx += 1
-
-            unit_price = catalog_item["default_price"]
-            quantity = item_data["qty"]
-            vat_rate = catalog_item.get("vat_rate", 0.0) or 0.0
-
-            line_subtotal = unit_price * quantity
-            line_tax = line_subtotal * Decimal(str(vat_rate)) / 100
-            line_total = line_subtotal + line_tax
-
-            subtotal += line_subtotal
-            total_tax += line_tax
-
-            invoice_item = {
-                "id": item_id,
-                "clinic_id": CLINIC_ID,
-                "invoice_id": invoice_id,
-                "budget_item_id": None,
-                "catalog_item_id": catalog_item["id"],
-                "description": t(
-                    {
-                        "es": f"Tratamiento {item_data['code']}",
-                        "en": f"Treatment {item_data['code']}",
-                    }
-                ),
-                "internal_code": item_data["code"],
-                "unit_price": unit_price,
-                "quantity": quantity,
-                "discount_type": None,
-                "discount_value": None,
-                "vat_type_id": catalog_item.get("vat_type_id"),
-                "vat_rate": vat_rate,
-                "vat_exempt_reason": None,
-                "line_subtotal": line_subtotal,
-                "line_discount": Decimal("0.00"),
-                "line_tax": line_tax,
-                "line_total": line_total,
-                "tooth_number": item_data.get("tooth"),
-                "surfaces": None,
-                "display_order": len(invoice_items) + 1,
-            }
-            invoice_items.append(invoice_item)
-            items.append(invoice_item)
-
-        total = subtotal + total_tax
-
-        # Calculate payments and balance
-        total_paid = Decimal("0.00")
-        invoice_payments = []
-
-        for payment_data in scenario.get("payments", []):
-            payment_id = PAYMENT_IDS[payment_idx]
-            payment_idx += 1
-
-            payment_amount = (total * payment_data["percent"]) / 100
-            total_paid += payment_amount
-
-            payment_date = issue_date + timedelta(days=3) if issue_date else date.today()
-
-            payment = {
-                "id": payment_id,
-                "clinic_id": CLINIC_ID,
-                "invoice_id": invoice_id,
-                "amount": payment_amount,
-                "payment_method": payment_data["method"],
-                "payment_date": payment_date,
-                "reference": f"REF-{payment_idx:04d}",
-                "notes": None,
-                "recorded_by": USER_RECEPTIONIST_ID,
-                "is_voided": False,
-                "voided_at": None,
-                "voided_by": None,
-                "void_reason": None,
-            }
-            invoice_payments.append(payment)
-            payments.append(payment)
-
-        balance_due = total - total_paid
-
-        invoice = {
-            "id": invoice_id,
-            "clinic_id": CLINIC_ID,
-            "patient_id": patient["id"],
-            "invoice_number": invoice_number,
-            "series_id": INVOICE_SERIES_IDS[0],
-            "sequential_number": sequential_number,
-            "budget_id": None,
-            "credit_note_for_id": None,
-            "status": scenario["status"],
-            "issue_date": issue_date,
-            "due_date": due_date,
-            "payment_term_days": 30,
-            "billing_name": f"{patient['first_name']} {patient['last_name']}",
-            "billing_tax_id": None,
-            "billing_address": None,
-            "billing_email": patient.get("email"),
-            "subtotal": subtotal,
-            "total_discount": Decimal("0.00"),
-            "total_tax": total_tax,
-            "total": total,
-            "total_paid": total_paid,
-            "balance_due": balance_due,
-            "currency": t({"es": "EUR", "en": "USD"}),
-            "internal_notes": t(scenario["notes"]) if scenario.get("notes") else None,
-            "public_notes": None,
-            "compliance_data": None,
-            "document_hash": None,
-            "created_by": USER_RECEPTIONIST_ID,
-            "issued_by": USER_RECEPTIONIST_ID if scenario["status"] != "draft" else None,
-            "deleted_at": None,
-        }
-        invoices.append(invoice)
-
-    return {
-        "series": series,
-        "invoices": invoices,
-        "items": items,
-        "payments": payments,
-    }
-
-
-# =============================================================================
-# Treatment Plan Seed Data
-# =============================================================================
-
-# Fixed UUIDs for treatment plans (expanded for more coverage)
+# Fixed UUID pools for clinical journey entities.
 TREATMENT_PLAN_IDS = [UUID(f"fe00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(20)]
-
-# Reserved treatment IDs for plan items (separate from odontogram TREATMENT_IDS).
 PLAN_TREATMENT_IDS = [UUID(f"fa00bc99-9c0b-4ef8-bb6d-6bb9bd381{i:03x}") for i in range(200)]
-
-# Fixed UUIDs for planned treatment items (expanded for appointments)
 PLANNED_ITEM_IDS = [UUID(f"ff00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(200)]
 
-# Treatment plan scenarios
-# Links to existing budgets where applicable
-TREATMENT_PLAN_SCENARIOS = [
-    # Plan 0: Draft plan for patient 3 (Carmen/Emma) - links to budget 0
-    {
-        "patient_idx": 3,
-        "status": "draft",
-        "budget_idx": 0,  # Links to BUDGET_IDS[0]
-        "title": {"es": "Plan de tratamiento inicial", "en": "Initial treatment plan"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "DX-RXPAN", "is_global": True},
-            {"catalog_code": "REST-COMP", "tooth": 16, "is_global": False},
-        ],
-        "diagnosis_notes": {
-            "es": "Paciente con sensibilidad dental. Requiere empastes en molares.",
-            "en": "Patient with dental sensitivity. Requires fillings on molars.",
+BUDGET_IDS = [UUID(f"aa00bc99-9c0b-4ef8-bb6d-6bb9bd380b{i:02x}") for i in range(10)]
+BUDGET_ITEM_IDS = [UUID(f"bb00bc99-9c0b-4ef8-bb6d-6bb9bd380c{i:02x}") for i in range(50)]
+BUDGET_SIGNATURE_IDS = [UUID(f"cc00bc99-9c0b-4ef8-bb6d-6bb9bd380d{i:02x}") for i in range(10)]
+
+INVOICE_SERIES_IDS = [UUID(f"fa00bc99-9c0b-4ef8-bb6d-6bb9bd380e{i:02x}") for i in range(5)]
+INVOICE_IDS = [UUID(f"fb00bc99-9c0b-4ef8-bb6d-6bb9bd380f{i:02x}") for i in range(20)]
+INVOICE_ITEM_IDS = [UUID(f"fc00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(100)]
+PAYMENT_IDS = [UUID(f"fd00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(30)]
+
+
+# Appointment visuals + duration by catalog_code prefix. Ordered most-specific first.
+_APPT_LOOK_BY_PREFIX: list[tuple[str, dict]] = [
+    ("DX-VISIT", {"name": {"es": "Revisión", "en": "Checkup"}, "duration": 30, "color": "#3B82F6"}),
+    ("DX-RX", {"name": {"es": "Radiografía", "en": "X-ray"}, "duration": 30, "color": "#60A5FA"}),
+    ("DX", {"name": {"es": "Diagnóstico", "en": "Diagnosis"}, "duration": 30, "color": "#3B82F6"}),
+    (
+        "PREV",
+        {
+            "name": {"es": "Limpieza dental", "en": "Dental cleaning"},
+            "duration": 45,
+            "color": "#10B981",
         },
-    },
-    # Plan 1: Active plan for patient 6 (Javier/Daniel - diabetic) - links to budget 2
-    {
-        "patient_idx": 6,
-        "status": "active",
-        "budget_idx": 2,  # Links to BUDGET_IDS[2] (accepted)
-        "title": {"es": "Coronas y endodoncia", "en": "Crowns and root canal"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
-            {"catalog_code": "REST-CRO", "tooth": 36, "is_global": False},
-            {"catalog_code": "ENDO-MULTI", "tooth": 36, "is_global": False},
-        ],
-        "diagnosis_notes": {
-            "es": "Paciente diabético. Control especial de cicatrización.",
-            "en": "Diabetic patient. Special healing monitoring.",
+    ),
+    ("REST-CROWN", {"name": {"es": "Corona", "en": "Crown"}, "duration": 60, "color": "#A855F7"}),
+    ("REST-VEN", {"name": {"es": "Carilla", "en": "Veneer"}, "duration": 60, "color": "#F472B6"}),
+    ("REST-COMP", {"name": {"es": "Empaste", "en": "Filling"}, "duration": 45, "color": "#F59E0B"}),
+    (
+        "REST",
+        {"name": {"es": "Restauración", "en": "Restoration"}, "duration": 45, "color": "#F59E0B"},
+    ),
+    (
+        "SURG-EXT",
+        {"name": {"es": "Extracción", "en": "Extraction"}, "duration": 60, "color": "#EF4444"},
+    ),
+    ("SURG", {"name": {"es": "Cirugía", "en": "Surgery"}, "duration": 60, "color": "#DC2626"}),
+    (
+        "ENDO-MULTI",
+        {
+            "name": {"es": "Endodoncia multirradicular", "en": "Multi-root canal"},
+            "duration": 90,
+            "color": "#8B5CF6",
         },
-    },
-    # Plan 2: Active plan for patient 8 (Francisco/Alexander - allergic) - links to budget 3
-    {
-        "patient_idx": 8,
-        "status": "active",
-        "budget_idx": 3,  # Links to BUDGET_IDS[3] (accepted)
-        "title": {"es": "Tratamiento periodontal", "en": "Periodontal treatment"},
-        "items": [
-            {"catalog_code": "PERIO-RAD", "is_global": True, "completed": True},
-            {"catalog_code": "REST-COMP", "tooth": 17, "is_global": False},
-            {"catalog_code": "REST-COMP", "tooth": 26, "is_global": False},
-        ],
-        "diagnosis_notes": {
-            "es": "ALÉRGICO A PENICILINA. Usar alternativas.",
-            "en": "ALLERGIC TO PENICILLIN. Use alternatives.",
-        },
-    },
-    # Plan 3: Completed plan for patient 10 (Antonio/Robert) - links to budget 4
-    {
-        "patient_idx": 10,
-        "status": "completed",
-        "budget_idx": 4,  # Links to BUDGET_IDS[4] (completed)
-        "title": {"es": "Prótesis parcial", "en": "Partial denture"},
-        "items": [
-            {"catalog_code": "PROT-PARC", "is_global": True, "completed": True},
-            {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
-        ],
-        "diagnosis_notes": {
-            "es": "Prótesis parcial superior entregada y ajustada.",
-            "en": "Upper partial denture delivered and adjusted.",
-        },
-    },
-    # Plan 4: Active plan for patient 9 (Rosa/Charlotte - hypertensive) - links to budget 6
-    {
-        "patient_idx": 9,
-        "status": "active",
-        "budget_idx": 6,  # Links to BUDGET_IDS[6] (accepted)
-        "title": {"es": "Rehabilitación oral", "en": "Oral rehabilitation"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
-            {"catalog_code": "REST-CRO", "tooth": 46, "is_global": False, "completed": True},
-            {"catalog_code": "REST-CRO", "tooth": 36, "is_global": False},
-            {"catalog_code": "ENDO-MULTI", "tooth": 36, "is_global": False},
-        ],
-        "diagnosis_notes": {
-            "es": "Hipertensa - verificar presión antes de procedimientos.",
-            "en": "Hypertensive - check blood pressure before procedures.",
-        },
-    },
-    # Plan 5: Draft plan for patient 2 (Miguel/James) - no budget linked
-    {
-        "patient_idx": 2,
-        "status": "draft",
-        "budget_idx": None,
-        "title": {"es": "Revisión y limpieza", "en": "Checkup and cleaning"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "PREV-LIMP", "is_global": True},
-        ],
-        "diagnosis_notes": {
-            "es": "Paciente joven, buen estado general.",
-            "en": "Young patient, good general condition.",
-        },
-    },
-    # Plan 6: Active plan for patient 0 (María/John)
+    ),
+    (
+        "ENDO",
+        {"name": {"es": "Endodoncia", "en": "Root canal"}, "duration": 75, "color": "#8B5CF6"},
+    ),
+    (
+        "PERIO",
+        {"name": {"es": "Periodoncia", "en": "Periodontics"}, "duration": 60, "color": "#14B8A6"},
+    ),
+    (
+        "EST-BLAN",
+        {"name": {"es": "Blanqueamiento", "en": "Whitening"}, "duration": 60, "color": "#06B6D4"},
+    ),
+    ("EST", {"name": {"es": "Estética", "en": "Aesthetics"}, "duration": 45, "color": "#06B6D4"}),
+    ("PROT", {"name": {"es": "Prótesis", "en": "Prosthesis"}, "duration": 90, "color": "#84CC16"}),
+]
+
+
+def _appt_look_for(code: str) -> dict:
+    """Map a catalog internal_code to its display (name/duration/color) for appointments."""
+    for prefix, meta in _APPT_LOOK_BY_PREFIX:
+        if code.startswith(prefix):
+            return meta
+    return {"name": {"es": "Tratamiento", "en": "Treatment"}, "duration": 45, "color": "#64748B"}
+
+
+# PATIENT_JOURNEYS: one entry per patient captures the full clinical narrative.
+#
+#   plan.items       : the items the patient needs. Both the budget and the appointments
+#                      draw from this list (by index). Mark "completed": True for items
+#                      already performed — this flips the backing Treatment to performed
+#                      and the PlannedTreatmentItem to completed.
+#   budget (opt.)    : financial materialization of the plan. items are 1-to-1 with
+#                      plan.items and snap each item's unit_price / vat from catalog.
+#   appointments     : 2-3 per patient. `covers` holds plan.items indexes this visit
+#                      performs. `week` is past/current/future relative to "today".
+#   invoice (opt.)   : bills a subset of budget items. `covers` lists the budget-item
+#                      indexes (= plan-item indexes) this invoice invoices.
+PATIENT_JOURNEYS = [
+    # Patient 0 — Pablo / Ethan (pediatric, first visit)
     {
         "patient_idx": 0,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Plan preventivo", "en": "Preventive plan"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "PREV-LIMP", "is_global": True},
-            {"catalog_code": "DX-RXPAN", "is_global": True},
-            {"catalog_code": "REST-COMP", "tooth": 26, "is_global": False},
-        ],
-        "diagnosis_notes": {
-            "es": "Control preventivo anual.",
-            "en": "Annual preventive checkup.",
+        "plan": {
+            "id_idx": 0,
+            "status": "active",
+            "title": {"es": "Plan preventivo infantil", "en": "Pediatric preventive plan"},
+            "diagnosis_notes": {
+                "es": "Primera visita. Revisión pediátrica.",
+                "en": "First visit. Pediatric checkup.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True},
+                {"catalog_code": "PREV-CLEAN", "is_global": True},
+                {"catalog_code": "REST-COMP", "tooth": 54, "is_global": False},
+            ],
         },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "current", "covers": [1], "status": "confirmed"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
+        ],
     },
-    # Plan 7: Active plan for patient 1 (Carlos/Sarah)
+    # Patient 1 — Lucía / Olivia (ortho + caries in deciduous molars)
     {
         "patient_idx": 1,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Tratamiento conservador", "en": "Conservative treatment"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "REST-COMP", "tooth": 36, "is_global": False},
-            {"catalog_code": "REST-COMP", "tooth": 46, "is_global": False},
-            {"catalog_code": "ENDO-UNI", "tooth": 46, "is_global": False},
+        "plan": {
+            "id_idx": 1,
+            "status": "active",
+            "title": {"es": "Tratamiento conservador", "en": "Conservative treatment"},
+            "diagnosis_notes": {
+                "es": "Caries en molares inferiores deciduos.",
+                "en": "Caries on lower deciduous molars.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True},
+                {"catalog_code": "REST-COMP", "tooth": 74, "is_global": False},
+                {"catalog_code": "REST-COMP", "tooth": 84, "is_global": False},
+            ],
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "current", "covers": [1], "status": "confirmed"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
         ],
-        "diagnosis_notes": {
-            "es": "Caries en molares inferiores.",
-            "en": "Caries on lower molars.",
+    },
+    # Patient 2 — Miguel / James (young adult; draft plan + draft budget + draft invoice)
+    {
+        "patient_idx": 2,
+        "plan": {
+            "id_idx": 2,
+            "status": "draft",
+            "title": {"es": "Revisión y limpieza", "en": "Checkup and cleaning"},
+            "diagnosis_notes": {
+                "es": "Paciente joven, buen estado general.",
+                "en": "Young patient, good general condition.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True},
+                {"catalog_code": "PREV-CLEAN", "is_global": True},
+            ],
+        },
+        "budget": {
+            "id_idx": 0,
+            "status": "draft",
+            "global_discount": None,
+            "signature": False,
+            "notes": {"es": "Borrador pendiente de revisión", "en": "Draft pending review"},
+        },
+        "appointments": [
+            {"week": "future", "covers": [0], "status": "scheduled"},
+            {"week": "future", "covers": [1], "status": "scheduled"},
+        ],
+        "invoice": {
+            "id_idx": 0,
+            "status": "draft",
+            "payments": [],
+            "covers": [0, 1],
+            "notes": {"es": "Borrador - pendiente de emitir", "en": "Draft - pending issuance"},
         },
     },
-    # Plan 8: Active plan for patient 4 (Ana/Michael)
+    # Patient 3 — Carmen / Emma (sensitivity; draft budget + issued invoice for done items)
+    {
+        "patient_idx": 3,
+        "plan": {
+            "id_idx": 3,
+            "status": "draft",
+            "title": {"es": "Plan de tratamiento inicial", "en": "Initial treatment plan"},
+            "diagnosis_notes": {
+                "es": "Paciente con sensibilidad dental. Requiere empaste en molar.",
+                "en": "Patient with dental sensitivity. Requires filling on molar.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "DX-RXPAN", "is_global": True, "completed": True},
+                {"catalog_code": "REST-COMP", "tooth": 16, "is_global": False},
+            ],
+        },
+        "budget": {
+            "id_idx": 1,
+            "status": "draft",
+            "global_discount": None,
+            "signature": False,
+            "notes": {
+                "es": "Presupuesto pendiente de aceptación",
+                "en": "Budget pending acceptance",
+            },
+        },
+        "appointments": [
+            {"week": "past", "covers": [0, 1], "status": "completed"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
+        ],
+        "invoice": {
+            "id_idx": 1,
+            "status": "issued",
+            "payments": [],
+            "covers": [0, 1],
+            "notes": {"es": "Emitida - pendiente de pago", "en": "Issued - pending payment"},
+        },
+    },
+    # Patient 4 — David / William (aesthetic; draft budget, no invoice yet)
     {
         "patient_idx": 4,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Plan estético", "en": "Aesthetic plan"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "EST-BLANQ-C", "is_global": True},
-            {"catalog_code": "PREV-LIMP", "is_global": True},
-        ],
-        "diagnosis_notes": {
-            "es": "Paciente interesada en blanqueamiento.",
-            "en": "Patient interested in whitening.",
+        "plan": {
+            "id_idx": 4,
+            "status": "active",
+            "title": {"es": "Plan estético", "en": "Aesthetic plan"},
+            "diagnosis_notes": {
+                "es": "Paciente interesado en blanqueamiento.",
+                "en": "Patient interested in whitening.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "PREV-CLEAN", "is_global": True},
+                {"catalog_code": "EST-BLAN-CLIN", "is_global": True},
+            ],
         },
+        "budget": {
+            "id_idx": 2,
+            "status": "draft",
+            "global_discount": {"type": "percentage", "value": 5},
+            "signature": False,
+            "notes": {"es": "Pendiente de aceptación", "en": "Pending acceptance"},
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "future", "covers": [1], "status": "scheduled"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
+        ],
     },
-    # Plan 9: Active plan for patient 5 (Luis/Jennifer)
+    # Patient 5 — Elena / Sophia (pregnant; accepted budget with signature, partial invoice)
     {
         "patient_idx": 5,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Extracciones y prótesis", "en": "Extractions and prosthetics"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "CIR-EXT-S", "tooth": 48, "is_global": False},
-            {"catalog_code": "CIR-EXT-S", "tooth": 38, "is_global": False},
-            {"catalog_code": "DX-RXPAN", "is_global": True},
+        "plan": {
+            "id_idx": 5,
+            "status": "active",
+            "title": {"es": "Diagnóstico y restauración", "en": "Diagnosis and restoration"},
+            "diagnosis_notes": {
+                "es": "Embarazada. Evitar radiografías no esenciales.",
+                "en": "Pregnant. Avoid non-essential x-rays.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "DX-RXPAN", "is_global": True, "completed": True},
+                {"catalog_code": "REST-COMP", "tooth": 26, "is_global": False},
+            ],
+        },
+        "budget": {
+            "id_idx": 3,
+            "status": "accepted",
+            "global_discount": None,
+            "signature": True,
+            "notes": {
+                "es": "Paciente embarazada - tratamiento en curso",
+                "en": "Pregnant patient - treatment in progress",
+            },
+        },
+        "appointments": [
+            {"week": "past", "covers": [0, 1], "status": "completed"},
+            {"week": "current", "covers": [2], "status": "confirmed"},
         ],
-        "diagnosis_notes": {
-            "es": "Cordales impactados.",
-            "en": "Impacted wisdom teeth.",
+        "invoice": {
+            "id_idx": 2,
+            "status": "partial",
+            "payments": [{"method": "card", "percent": 50}],
+            "covers": [0, 1, 2],
+            "notes": {"es": "Pago parcial recibido", "en": "Partial payment received"},
         },
     },
-    # Plan 10: Active plan for patient 7 (Laura/Sophie)
+    # Patient 6 — Javier / Daniel (diabetic; accepted+signed budget, paid invoice)
+    {
+        "patient_idx": 6,
+        "plan": {
+            "id_idx": 6,
+            "status": "active",
+            "title": {"es": "Endodoncia y corona", "en": "Root canal and crown"},
+            "diagnosis_notes": {
+                "es": "Paciente diabético. Control especial de cicatrización.",
+                "en": "Diabetic patient. Special healing monitoring.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "ENDO-MULTI", "tooth": 36, "is_global": False, "completed": True},
+                {"catalog_code": "REST-CROWN-MC", "tooth": 36, "is_global": False},
+            ],
+        },
+        "budget": {
+            "id_idx": 4,
+            "status": "accepted",
+            "global_discount": None,
+            "signature": True,
+            "notes": {
+                "es": "Paciente diabético - control especial",
+                "en": "Diabetic patient - special care",
+            },
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "past", "covers": [1], "status": "completed"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
+        ],
+        "invoice": {
+            "id_idx": 3,
+            "status": "paid",
+            "payments": [{"method": "bank_transfer", "percent": 100}],
+            "covers": [0, 1],
+            "notes": {"es": "Pagado por transferencia", "en": "Paid by bank transfer"},
+        },
+    },
+    # Patient 7 — Isabel / Mia (rejected budget, no invoice)
     {
         "patient_idx": 7,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Revisión periódica", "en": "Periodic checkup"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "PREV-LIMP", "is_global": True},
-            {"catalog_code": "REST-COMP", "tooth": 17, "is_global": False},
+        "plan": {
+            "id_idx": 7,
+            "status": "active",
+            "title": {"es": "Revisión periódica", "en": "Periodic checkup"},
+            "diagnosis_notes": {
+                "es": "Control semestral. Paciente rechazó carillas estéticas.",
+                "en": "Bi-annual checkup. Patient rejected aesthetic veneers.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "PREV-CLEAN", "is_global": True},
+                {"catalog_code": "REST-VEN-COMP", "tooth": 11, "is_global": False},
+            ],
+        },
+        "budget": {
+            "id_idx": 5,
+            "status": "rejected",
+            "global_discount": None,
+            "signature": False,
+            "notes": {
+                "es": "Rechazado por precio de carillas",
+                "en": "Rejected due to veneer pricing",
+            },
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "current", "covers": [1], "status": "confirmed"},
         ],
-        "diagnosis_notes": {
-            "es": "Control semestral.",
-            "en": "Bi-annual checkup.",
+    },
+    # Patient 8 — Francisco / Alexander (penicillin allergic; accepted, paid split)
+    {
+        "patient_idx": 8,
+        "plan": {
+            "id_idx": 8,
+            "status": "active",
+            "title": {"es": "Tratamiento periodontal", "en": "Periodontal treatment"},
+            "diagnosis_notes": {
+                "es": "ALÉRGICO A PENICILINA. Usar alternativas.",
+                "en": "ALLERGIC TO PENICILLIN. Use alternatives.",
+            },
+            "items": [
+                {"catalog_code": "PERIO-RAR", "is_global": True, "completed": True},
+                {"catalog_code": "REST-COMP", "tooth": 17, "is_global": False, "completed": True},
+                {"catalog_code": "REST-COMP", "tooth": 26, "is_global": False},
+            ],
+        },
+        "budget": {
+            "id_idx": 6,
+            "status": "accepted",
+            "global_discount": {"type": "absolute", "value": 50},
+            "signature": True,
+            "notes": {"es": "Alérgico a penicilina", "en": "Allergic to penicillin"},
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "past", "covers": [1], "status": "completed"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
+        ],
+        "invoice": {
+            "id_idx": 4,
+            "status": "paid",
+            "payments": [
+                {"method": "cash", "percent": 40},
+                {"method": "card", "percent": 60},
+            ],
+            "covers": [0, 1],
+            "notes": {"es": "Pagado en dos plazos", "en": "Paid in two installments"},
         },
     },
-    # Plan 11: Active plan for patient 11 (Isabel/William)
+    # Patient 9 — Rosa / Charlotte (hypertensive; accepted+signed, paid invoice)
+    {
+        "patient_idx": 9,
+        "plan": {
+            "id_idx": 9,
+            "status": "active",
+            "title": {"es": "Rehabilitación oral", "en": "Oral rehabilitation"},
+            "diagnosis_notes": {
+                "es": "Hipertensa - verificar presión antes de procedimientos.",
+                "en": "Hypertensive - check blood pressure before procedures.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {
+                    "catalog_code": "REST-CROWN-MC",
+                    "tooth": 46,
+                    "is_global": False,
+                    "completed": True,
+                },
+                {"catalog_code": "ENDO-MULTI", "tooth": 36, "is_global": False},
+                {"catalog_code": "REST-CROWN-MC", "tooth": 36, "is_global": False},
+            ],
+        },
+        "budget": {
+            "id_idx": 7,
+            "status": "accepted",
+            "global_discount": {"type": "percentage", "value": 10},
+            "signature": True,
+            "notes": {"es": "Tratamiento en curso", "en": "Treatment in progress"},
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "past", "covers": [1], "status": "completed"},
+            {"week": "future", "covers": [2, 3], "status": "scheduled"},
+        ],
+        "invoice": {
+            "id_idx": 5,
+            "status": "paid",
+            "payments": [{"method": "card", "percent": 100}],
+            "covers": [0, 1],
+            "notes": {"es": "Primera fase facturada", "en": "First phase billed"},
+        },
+    },
+    # Patient 10 — Antonio / Robert (completed prosthetic workflow)
+    {
+        "patient_idx": 10,
+        "plan": {
+            "id_idx": 10,
+            "status": "completed",
+            "title": {"es": "Prótesis parcial superior", "en": "Upper partial denture"},
+            "diagnosis_notes": {
+                "es": "Prótesis parcial superior entregada y ajustada.",
+                "en": "Upper partial denture delivered and adjusted.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "PROT-PART-METAL", "is_global": True, "completed": True},
+            ],
+        },
+        "budget": {
+            "id_idx": 8,
+            "status": "completed",
+            "global_discount": None,
+            "signature": True,
+            "notes": {"es": "Prótesis parcial entregada", "en": "Partial denture delivered"},
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "past", "covers": [1], "status": "completed"},
+        ],
+        "invoice": {
+            "id_idx": 6,
+            "status": "paid",
+            "payments": [{"method": "direct_debit", "percent": 100}],
+            "covers": [0, 1],
+            "notes": None,
+        },
+    },
+    # Patient 11 — María Teresa / Patricia (pulpitis; no budget)
     {
         "patient_idx": 11,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Tratamiento integral", "en": "Comprehensive treatment"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "ENDO-UNI", "tooth": 36, "is_global": False},
-            {"catalog_code": "REST-COMP", "tooth": 36, "is_global": False},
-            {"catalog_code": "PREV-LIMP", "is_global": True},
-        ],
-        "diagnosis_notes": {
-            "es": "Tratamiento de pulpitis.",
-            "en": "Pulpitis treatment.",
+        "plan": {
+            "id_idx": 11,
+            "status": "active",
+            "title": {"es": "Tratamiento de pulpitis", "en": "Pulpitis treatment"},
+            "diagnosis_notes": {
+                "es": "Tratamiento de pulpitis con corona posterior.",
+                "en": "Pulpitis treatment with follow-up crown.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True},
+                {"catalog_code": "ENDO-UNI", "tooth": 36, "is_global": False},
+                {"catalog_code": "REST-COMP", "tooth": 36, "is_global": False},
+            ],
         },
+        "appointments": [
+            {"week": "current", "covers": [0], "status": "confirmed"},
+            {"week": "future", "covers": [1], "status": "scheduled"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
+        ],
     },
-    # Plan 12: Active plan for patient 12 (Pedro/Olivia)
+    # Patient 12 — José Luis / Richard (anticoagulated; overdue invoice)
     {
         "patient_idx": 12,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Urgencia dental", "en": "Dental emergency"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "CIR-EXT-S", "tooth": 46, "is_global": False},
+        "plan": {
+            "id_idx": 12,
+            "status": "active",
+            "title": {"es": "Endodoncia urgente", "en": "Urgent root canal"},
+            "diagnosis_notes": {
+                "es": "Endodoncia urgente por absceso. Paciente anticoagulado.",
+                "en": "Urgent root canal due to abscess. Anticoagulated patient.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "ENDO-MULTI", "tooth": 46, "is_global": False, "completed": True},
+            ],
+        },
+        "budget": {
+            "id_idx": 9,
+            "status": "accepted",
+            "global_discount": None,
+            "signature": True,
+            "notes": {
+                "es": "Anticoagulado - cuidado post-operatorio",
+                "en": "Anticoagulated - post-op care",
+            },
+        },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "past", "covers": [1], "status": "completed"},
         ],
-        "diagnosis_notes": {
-            "es": "Extracción urgente por absceso.",
-            "en": "Urgent extraction due to abscess.",
+        "invoice": {
+            "id_idx": 7,
+            "status": "issued",
+            "overdue": True,
+            "payments": [],
+            "covers": [0, 1],
+            "notes": {"es": "Factura vencida", "en": "Overdue invoice"},
         },
     },
-    # Plan 13: Active plan for patient 13 (Teresa/Liam)
+    # Patient 13 — Dolores / Barbara (evaluation; no budget)
     {
         "patient_idx": 13,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Implantes", "en": "Implants"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "DX-RXPAN", "is_global": True},
-            {"catalog_code": "PREV-LIMP", "is_global": True},
-        ],
-        "diagnosis_notes": {
-            "es": "Evaluación para implantes.",
-            "en": "Implant evaluation.",
+        "plan": {
+            "id_idx": 13,
+            "status": "active",
+            "title": {"es": "Evaluación y limpieza", "en": "Evaluation and cleaning"},
+            "diagnosis_notes": {"es": "Evaluación periódica.", "en": "Periodic evaluation."},
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True},
+                {"catalog_code": "DX-RXPAN", "is_global": True},
+                {"catalog_code": "PREV-CLEAN", "is_global": True},
+            ],
         },
+        "appointments": [
+            {"week": "current", "covers": [0, 1], "status": "confirmed"},
+            {"week": "future", "covers": [2], "status": "scheduled"},
+        ],
     },
-    # Plan 14: Active plan for patient 14 (Ramón/Ava)
+    # Patient 14 — Manuel / Charles (prosthetic maintenance; no budget)
     {
         "patient_idx": 14,
-        "status": "active",
-        "budget_idx": None,
-        "title": {"es": "Mantenimiento", "en": "Maintenance"},
-        "items": [
-            {"catalog_code": "DX-VISIT", "is_global": True},
-            {"catalog_code": "PREV-LIMP", "is_global": True},
-            {"catalog_code": "EST-BLANQ-C", "is_global": True},
-        ],
-        "diagnosis_notes": {
-            "es": "Control y mantenimiento.",
-            "en": "Control and maintenance.",
+        "plan": {
+            "id_idx": 14,
+            "status": "active",
+            "title": {"es": "Mantenimiento protésico", "en": "Prosthetic maintenance"},
+            "diagnosis_notes": {
+                "es": "Ajustes periódicos de prótesis completa.",
+                "en": "Periodic complete denture adjustments.",
+            },
+            "items": [
+                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
+                {"catalog_code": "PREV-CLEAN", "is_global": True},
+            ],
         },
+        "appointments": [
+            {"week": "past", "covers": [0], "status": "completed"},
+            {"week": "future", "covers": [1], "status": "scheduled"},
+        ],
     },
 ]
+
+
+def _calculate_line_totals(
+    unit_price: Decimal, quantity: int, vat_rate: float | None
+) -> tuple[Decimal, Decimal, Decimal]:
+    """Return (line_subtotal, line_tax, line_total). Shared by budgets and invoices."""
+    subtotal = Decimal(str(unit_price)) * quantity
+    tax = subtotal * Decimal(str(vat_rate or 0)) / 100
+    return subtotal, tax, subtotal + tax
+
+
+def _global_discount_amount(subtotal: Decimal, global_discount: dict | None) -> Decimal:
+    """Compute total discount from a {"type": percentage|absolute, "value": N} dict."""
+    if not global_discount:
+        return Decimal("0.00")
+    value = Decimal(str(global_discount["value"]))
+    if global_discount["type"] == "percentage":
+        return subtotal * value / 100
+    return value
+
+
+# =============================================================================
+# Treatment Plan Generator
+# =============================================================================
 
 
 def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
-    """Generate treatment plan seed data.
+    """Build TreatmentPlan + backing Treatment + PlannedTreatmentItem rows per journey.
 
     Args:
-        catalog_items_map: Dictionary mapping internal_code to catalog item data
-                          (must include id, default_price)
+        catalog_items_map: internal_code -> {id, default_price, vat_type_id, vat_rate,
+                           odontogram_treatment_type}.
 
     Returns:
-        Dictionary with:
-        - plans: List of TreatmentPlan data
-        - items: List of PlannedTreatmentItem data
+        dict with:
+          plans: list of TreatmentPlan dicts (budget_id=None; wired by seed_demo.py)
+          plan_treatments: list of backing Treatment dicts
+          items: list of PlannedTreatmentItem dicts
+          plan_details: {plan_id: {
+              "patient_id", "plan_number", "status", "assigned_professional_id",
+              "items": [{"idx", "plan_item_id", "treatment_id", "catalog_code",
+                         "catalog_item_id", "unit_price", "vat_type_id", "vat_rate",
+                         "tooth_number", "is_global", "is_completed"}]}}
     """
-    plans = []
-    items = []
-    plan_treatments: list[dict] = []
     patients_data = get_patients_data()
+    plans = []
+    planned_items = []
+    plan_treatments = []
+    plan_details: dict = {}
 
-    plan_idx = 0
-    item_idx = 0
+    plan_item_idx = 0
 
-    for scenario_idx, scenario in enumerate(TREATMENT_PLAN_SCENARIOS):
-        patient = patients_data[scenario["patient_idx"]]
-        plan_id = TREATMENT_PLAN_IDS[plan_idx]
-        plan_idx += 1
+    for scenario_idx, journey in enumerate(PATIENT_JOURNEYS):
+        plan_scenario = journey["plan"]
+        patient = patients_data[journey["patient_idx"]]
+        plan_id = TREATMENT_PLAN_IDS[plan_scenario["id_idx"]]
 
-        # Calculate plan number
         plan_number = f"PLAN-2024-{scenario_idx + 1:04d}"
+        plans.append(
+            {
+                "id": plan_id,
+                "clinic_id": CLINIC_ID,
+                "patient_id": patient["id"],
+                "plan_number": plan_number,
+                "title": t(plan_scenario["title"]) if plan_scenario.get("title") else None,
+                "status": plan_scenario["status"],
+                "budget_id": None,  # wired by seed_demo after budgets are created
+                "assigned_professional_id": USER_DENTIST_ID,
+                "created_by": USER_DENTIST_ID,
+                "diagnosis_notes": t(plan_scenario["diagnosis_notes"])
+                if plan_scenario.get("diagnosis_notes")
+                else None,
+                "internal_notes": None,
+                "deleted_at": None,
+            }
+        )
 
-        # Get budget_id if linked
-        budget_id = None
-        if scenario.get("budget_idx") is not None:
-            budget_id = BUDGET_IDS[scenario["budget_idx"]]
-
-        plan = {
-            "id": plan_id,
-            "clinic_id": CLINIC_ID,
-            "patient_id": patient["id"],
-            "plan_number": plan_number,
-            "title": t(scenario["title"]) if scenario.get("title") else None,
-            "status": scenario["status"],
-            "budget_id": budget_id,
-            "assigned_professional_id": USER_DENTIST_ID,
-            "created_by": USER_DENTIST_ID,
-            "diagnosis_notes": t(scenario["diagnosis_notes"])
-            if scenario.get("diagnosis_notes")
-            else None,
-            "internal_notes": None,
-            "deleted_at": None,
-        }
-        plans.append(plan)
-
-        # Create planned items: each item creates a Treatment (global, no teeth) backed by
-        # the catalog item, then links a PlannedTreatmentItem via treatment_id.
-        for seq_order, item_data in enumerate(scenario.get("items", []), start=1):
-            catalog_item = catalog_items_map.get(item_data["catalog_code"])
+        details_items = []
+        for seq_order, item_scenario in enumerate(plan_scenario.get("items", []), start=1):
+            catalog_code = item_scenario["catalog_code"]
+            catalog_item = catalog_items_map.get(catalog_code)
             if not catalog_item:
                 continue
 
-            item_id = PLANNED_ITEM_IDS[item_idx]
-            treatment_id = PLAN_TREATMENT_IDS[item_idx]
-            item_idx += 1
+            planned_item_id = PLANNED_ITEM_IDS[plan_item_idx]
+            treatment_id = PLAN_TREATMENT_IDS[plan_item_idx]
+            plan_item_idx += 1
 
-            is_completed = item_data.get("completed", False)
-            status = "performed" if is_completed else "planned"
+            is_completed = item_scenario.get("completed", False)
+            plan_treatment_status = "performed" if is_completed else "planned"
             recorded_at = datetime.now() - timedelta(days=30)
             performed_at = datetime.now() - timedelta(days=10) if is_completed else None
 
@@ -2413,11 +1935,10 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
                     "id": treatment_id,
                     "clinic_id": CLINIC_ID,
                     "patient_id": patient["id"],
-                    "clinical_type": catalog_item.get(
-                        "odontogram_treatment_type", "filling_composite"
-                    ),
+                    "clinical_type": catalog_item.get("odontogram_treatment_type")
+                    or "filling_composite",
                     "catalog_item_id": catalog_item["id"],
-                    "status": status,
+                    "status": plan_treatment_status,
                     "recorded_at": recorded_at,
                     "performed_at": performed_at,
                     "performed_by": USER_DENTIST_ID if is_completed else None,
@@ -2432,22 +1953,588 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
                 }
             )
 
-            planned_item = {
-                "id": item_id,
-                "clinic_id": CLINIC_ID,
-                "treatment_plan_id": plan_id,
-                "treatment_id": treatment_id,
-                "sequence_order": seq_order,
-                "status": "completed" if is_completed else "pending",
-                "completed_without_appointment": is_completed,
-                "completed_at": datetime.now() - timedelta(days=10) if is_completed else None,
-                "completed_by": USER_DENTIST_ID if is_completed else None,
-                "notes": None,
-            }
-            items.append(planned_item)
+            planned_items.append(
+                {
+                    "id": planned_item_id,
+                    "clinic_id": CLINIC_ID,
+                    "treatment_plan_id": plan_id,
+                    "treatment_id": treatment_id,
+                    "sequence_order": seq_order,
+                    "status": "completed" if is_completed else "pending",
+                    "completed_without_appointment": is_completed,
+                    "completed_at": datetime.now() - timedelta(days=10) if is_completed else None,
+                    "completed_by": USER_DENTIST_ID if is_completed else None,
+                    "notes": None,
+                }
+            )
+
+            details_items.append(
+                {
+                    "idx": len(details_items),
+                    "plan_item_id": planned_item_id,
+                    "treatment_id": treatment_id,
+                    "catalog_code": catalog_code,
+                    "catalog_item_id": catalog_item["id"],
+                    "unit_price": catalog_item["default_price"],
+                    "vat_type_id": catalog_item.get("vat_type_id"),
+                    "vat_rate": catalog_item.get("vat_rate", 0.0) or 0.0,
+                    "tooth_number": item_scenario.get("tooth"),
+                    "is_global": item_scenario.get("is_global", True),
+                    "is_completed": is_completed,
+                }
+            )
+
+        plan_details[plan_id] = {
+            "patient_id": patient["id"],
+            "plan_number": plan_number,
+            "status": plan_scenario["status"],
+            "assigned_professional_id": USER_DENTIST_ID,
+            "items": details_items,
+            "journey_idx": scenario_idx,
+        }
 
     return {
         "plans": plans,
-        "items": items,
         "plan_treatments": plan_treatments,
+        "items": planned_items,
+        "plan_details": plan_details,
+    }
+
+
+# =============================================================================
+# Budget Generator
+# =============================================================================
+
+
+def generate_budgets_data(catalog_items_map: dict[str, dict], plans_result: dict) -> dict:
+    """Build Budget + BudgetItem + BudgetSignature rows derived from plans.
+
+    Each budget is 1-to-1 with the journey's plan: items mirror plan.items (same
+    catalog, same tooth_number) and each BudgetItem.treatment_id points to the
+    plan's backing Treatment row.
+
+    Returns dict with:
+      budgets, items, signatures
+      plan_to_budget: {plan_id: budget_id} — consumed by seed_demo.py to wire
+                      TreatmentPlan.budget_id after budgets are committed.
+      budget_item_details: {budget_id: [{"idx", "budget_item_id", "quantity",
+                           "unit_price", "vat_type_id", "vat_rate", "catalog_code",
+                           "catalog_item_id", "tooth_number"}]}
+                           — consumed by the invoice generator.
+    """
+    budgets = []
+    items = []
+    signatures = []
+    plan_to_budget: dict = {}
+    budget_item_details: dict = {}
+
+    item_idx = 0
+    signature_idx = 0
+
+    patients_data = get_patients_data()
+
+    for journey_idx, journey in enumerate(PATIENT_JOURNEYS):
+        budget_scenario = journey.get("budget")
+        if not budget_scenario:
+            continue
+
+        patient = patients_data[journey["patient_idx"]]
+        plan_id = TREATMENT_PLAN_IDS[journey["plan"]["id_idx"]]
+        plan_detail = plans_result["plan_details"][plan_id]
+        budget_id = BUDGET_IDS[budget_scenario["id_idx"]]
+
+        plan_to_budget[plan_id] = budget_id
+
+        budget_number = f"PRES-2024-{journey_idx + 1:04d}"
+        valid_from = date.today() - timedelta(days=max(5, 30 - journey_idx * 5))
+        valid_until = valid_from + timedelta(days=60)
+
+        budget_items_local = []
+        subtotal = Decimal("0.00")
+
+        for plan_item in plan_detail["items"]:
+            quantity = 1
+            catalog_item = catalog_items_map.get(plan_item["catalog_code"])
+            if not catalog_item:
+                continue
+
+            item_id = BUDGET_ITEM_IDS[item_idx]
+            item_idx += 1
+
+            unit_price = catalog_item["default_price"]
+            vat_rate = catalog_item.get("vat_rate", 0.0) or 0.0
+            line_subtotal, line_tax, line_total = _calculate_line_totals(
+                unit_price, quantity, vat_rate
+            )
+            subtotal += line_subtotal
+
+            budget_items_local.append(
+                {
+                    "id": item_id,
+                    "clinic_id": CLINIC_ID,
+                    "budget_id": budget_id,
+                    "catalog_item_id": catalog_item["id"],
+                    "unit_price": unit_price,
+                    "quantity": quantity,
+                    "discount_type": None,
+                    "discount_value": None,
+                    "vat_type_id": catalog_item.get("vat_type_id"),
+                    "vat_rate": vat_rate,
+                    "line_subtotal": line_subtotal,
+                    "line_discount": Decimal("0.00"),
+                    "line_tax": line_tax,
+                    "line_total": line_total,
+                    "tooth_number": plan_item["tooth_number"],
+                    "surfaces": None,
+                    "treatment_id": plan_item["treatment_id"],
+                    "invoiced_quantity": 0,
+                    "display_order": len(budget_items_local) + 1,
+                    "notes": None,
+                }
+            )
+
+        items.extend(budget_items_local)
+
+        global_discount_type = None
+        global_discount_value = None
+        gd = budget_scenario.get("global_discount")
+        if gd:
+            global_discount_type = gd["type"]
+            global_discount_value = Decimal(str(gd["value"]))
+        total_discount = _global_discount_amount(subtotal, gd)
+        total_tax = sum((bi["line_tax"] for bi in budget_items_local), Decimal("0.00"))
+        total = subtotal - total_discount + total_tax
+
+        budgets.append(
+            {
+                "id": budget_id,
+                "clinic_id": CLINIC_ID,
+                "patient_id": patient["id"],
+                "budget_number": budget_number,
+                "version": 1,
+                "parent_budget_id": None,
+                "status": budget_scenario["status"],
+                "valid_from": valid_from,
+                "valid_until": valid_until,
+                "created_by": USER_DENTIST_ID,
+                "assigned_professional_id": USER_DENTIST_ID,
+                "global_discount_type": global_discount_type,
+                "global_discount_value": global_discount_value,
+                "subtotal": subtotal,
+                "total_discount": total_discount,
+                "total_tax": total_tax,
+                "total": total,
+                "currency": t({"es": "EUR", "en": "USD"}),
+                "internal_notes": t(budget_scenario["notes"])
+                if budget_scenario.get("notes")
+                else None,
+                "patient_notes": None,
+                "insurance_estimate": None,
+                "deleted_at": None,
+            }
+        )
+
+        if budget_scenario.get("signature") and budget_scenario["status"] not in (
+            "draft",
+            "rejected",
+        ):
+            signature_id = BUDGET_SIGNATURE_IDS[signature_idx]
+            signature_idx += 1
+            signatures.append(
+                {
+                    "id": signature_id,
+                    "clinic_id": CLINIC_ID,
+                    "budget_id": budget_id,
+                    "signature_type": "full_acceptance",
+                    "signed_items": [str(bi["id"]) for bi in budget_items_local],
+                    "signed_by_name": f"{patient['first_name']} {patient['last_name']}",
+                    "signed_by_email": patient.get("email"),
+                    "relationship_to_patient": "patient",
+                    "signature_method": "click_accept",
+                    "signature_data": {
+                        "accepted_terms": True,
+                        "timestamp": datetime.now().isoformat(),
+                    },
+                    "ip_address": "192.168.1.100",
+                    "user_agent": "Mozilla/5.0 (Demo Browser)",
+                    "signed_at": datetime.now() - timedelta(days=15),
+                    "external_signature_id": None,
+                    "external_provider": None,
+                    "document_hash": None,
+                }
+            )
+
+        budget_item_details[budget_id] = [
+            {
+                "idx": local_idx,
+                "budget_item_id": bi["id"],
+                "quantity": bi["quantity"],
+                "unit_price": bi["unit_price"],
+                "vat_type_id": bi["vat_type_id"],
+                "vat_rate": bi["vat_rate"],
+                "catalog_code": plan_detail["items"][local_idx]["catalog_code"],
+                "catalog_item_id": bi["catalog_item_id"],
+                "tooth_number": bi["tooth_number"],
+            }
+            for local_idx, bi in enumerate(budget_items_local)
+        ]
+
+    return {
+        "budgets": budgets,
+        "items": items,
+        "signatures": signatures,
+        "plan_to_budget": plan_to_budget,
+        "budget_item_details": budget_item_details,
+    }
+
+
+# =============================================================================
+# Appointment Generator
+# =============================================================================
+
+
+def generate_appointments_data(plans_result: dict, reference_date: date | None = None) -> dict:
+    """Build Appointment + AppointmentTreatment rows anchored to plan items.
+
+    Each journey declares its appointments with a `covers` list of plan-item indexes
+    the visit performs. The generator:
+      - places each appointment in an available slot (past/current/future week)
+      - sets patient/professional from the plan
+      - derives duration/color/treatment_type from the first covered item's
+        catalog code
+      - emits one AppointmentTreatment row per covered item, linking to the
+        corresponding PlannedTreatmentItem and catalog_item.
+
+    Returns:
+        dict with:
+          appointments: list of Appointment dicts
+          appointment_treatments: list of AppointmentTreatment dicts
+    """
+    from uuid import uuid4
+
+    if reference_date is None:
+        reference_date = date.today()
+
+    current_monday = reference_date - timedelta(days=reference_date.weekday())
+    week_starts = {
+        "past": current_monday - timedelta(days=7),
+        "current": current_monday,
+        "future": current_monday + timedelta(days=7),
+    }
+
+    clinic_data = get_clinic_data()
+    cabinets = [c["name"] for c in clinic_data["cabinets"]]
+
+    appointments: list[dict] = []
+    appointment_treatments: list[dict] = []
+    used_slots: set[tuple[str, str, datetime]] = set()
+
+    # Spread visits across days/slots deterministically: counter drives day/slot pick.
+    pick_counter = 0
+
+    for journey in PATIENT_JOURNEYS:
+        plan_id = TREATMENT_PLAN_IDS[journey["plan"]["id_idx"]]
+        plan_detail = plans_result["plan_details"][plan_id]
+        patient_id = plan_detail["patient_id"]
+        professional_id = plan_detail["assigned_professional_id"]
+
+        for appt_scenario in journey.get("appointments", []):
+            covers = appt_scenario.get("covers", [])
+            if not covers:
+                continue
+
+            covered_items = [plan_detail["items"][idx] for idx in covers]
+            first_code = covered_items[0]["catalog_code"]
+            look = _appt_look_for(first_code)
+            total_duration = sum(
+                _appt_look_for(ci["catalog_code"])["duration"] for ci in covered_items
+            )
+            # round up to the next 30-minute slot
+            total_duration = ((total_duration + 29) // 30) * 30
+
+            week_start = week_starts[appt_scenario["week"]]
+
+            # Find a free slot (avoid conflicts on cabinet + professional + datetime).
+            start_time = None
+            for attempt in range(80):
+                day_offset = (pick_counter + attempt) % 5  # Mon-Fri
+                slot_pool = MORNING_SLOTS if (pick_counter + attempt) % 3 != 0 else AFTERNOON_SLOTS
+                time_str = slot_pool[(pick_counter + attempt) % len(slot_pool)]
+                hour, minute = map(int, time_str.split(":"))
+                candidate = datetime(
+                    week_start.year,
+                    week_start.month,
+                    week_start.day,
+                    hour,
+                    minute,
+                    0,
+                ) + timedelta(days=day_offset)
+                cabinet_pick = cabinets[(pick_counter + attempt) % len(cabinets)]
+                slot_key = (cabinet_pick, str(professional_id), candidate)
+                if slot_key in used_slots:
+                    continue
+                used_slots.add(slot_key)
+                start_time = candidate
+                cabinet = cabinet_pick
+                break
+            if start_time is None:
+                continue
+            pick_counter += 1
+
+            end_time = start_time + timedelta(minutes=total_duration)
+            appointment_id = uuid4()
+
+            appointments.append(
+                {
+                    "id": appointment_id,
+                    "clinic_id": CLINIC_ID,
+                    "patient_id": patient_id,
+                    "professional_id": professional_id,
+                    "cabinet": cabinet,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "treatment_type": t(look["name"]),
+                    "status": appt_scenario["status"],
+                    "notes": None,
+                    "color": look["color"],
+                }
+            )
+
+            for display_order, ci in enumerate(covered_items):
+                appointment_treatments.append(
+                    {
+                        "appointment_id": appointment_id,
+                        "planned_treatment_item_id": ci["plan_item_id"],
+                        "catalog_item_id": ci["catalog_item_id"],
+                        "display_order": display_order,
+                    }
+                )
+
+    return {
+        "appointments": appointments,
+        "appointment_treatments": appointment_treatments,
+    }
+
+
+# =============================================================================
+# Invoice Generator
+# =============================================================================
+
+
+def generate_invoice_series_data() -> list[dict]:
+    """Generate invoice series seed data."""
+    current_year = date.today().year
+    num_invoices = sum(1 for j in PATIENT_JOURNEYS if j.get("invoice"))
+    definitions = [
+        {
+            "id": INVOICE_SERIES_IDS[0],
+            "prefix": "FAC",
+            "series_type": "invoice",
+            "description": t({"es": "Serie principal de facturas", "en": "Main invoice series"}),
+            "current_number": num_invoices + 1,
+            "is_default": True,
+        },
+        {
+            "id": INVOICE_SERIES_IDS[1],
+            "prefix": "RECT",
+            "series_type": "credit_note",
+            "description": t({"es": "Notas de crédito", "en": "Credit notes"}),
+            "current_number": 1,
+            "is_default": True,
+        },
+    ]
+    return [
+        {
+            "id": s["id"],
+            "clinic_id": CLINIC_ID,
+            "prefix": s["prefix"],
+            "series_type": s["series_type"],
+            "description": s["description"],
+            "current_number": s["current_number"],
+            "reset_yearly": True,
+            "last_reset_year": current_year,
+            "is_default": s["is_default"],
+            "is_active": True,
+        }
+        for s in definitions
+    ]
+
+
+def generate_invoices_data(catalog_items_map: dict[str, dict], budgets_result: dict) -> dict:
+    """Build Invoice + InvoiceItem + Payment rows anchored to budgets.
+
+    Every invoice references its journey's budget, and every InvoiceItem links back
+    to the BudgetItem it invoices (budget_item_id). The generator also returns the
+    aggregate invoiced quantity per BudgetItem so callers can update
+    BudgetItem.invoiced_quantity in the database.
+
+    Returns dict with:
+      series, invoices, items, payments
+      invoiced_quantity_by_budget_item: {budget_item_id: total_qty}
+    """
+    patients_data = get_patients_data()
+    invoices: list[dict] = []
+    items: list[dict] = []
+    payments: list[dict] = []
+    invoiced_quantity: dict = {}
+
+    invoice_idx = 0
+    item_idx = 0
+    payment_idx = 0
+    sequential_number = 0
+    current_year = date.today().year
+    series = generate_invoice_series_data()
+
+    for journey_idx, journey in enumerate(PATIENT_JOURNEYS):
+        invoice_scenario = journey.get("invoice")
+        if not invoice_scenario:
+            continue
+        budget_scenario = journey.get("budget")
+        if not budget_scenario:
+            continue  # cannot invoice without a budget
+
+        patient = patients_data[journey["patient_idx"]]
+        budget_id = BUDGET_IDS[budget_scenario["id_idx"]]
+        budget_items = budgets_result["budget_item_details"][budget_id]
+
+        invoice_id = INVOICE_IDS[invoice_scenario["id_idx"]]
+        invoice_idx += 1
+        sequential_number += 1
+        invoice_number = f"FAC-{current_year}-{sequential_number:04d}"
+
+        is_overdue = invoice_scenario.get("overdue", False)
+        if invoice_scenario["status"] == "draft":
+            issue_date = None
+            due_date = None
+        elif is_overdue:
+            issue_date = date.today() - timedelta(days=45)
+            due_date = date.today() - timedelta(days=15)
+        else:
+            days_ago = max(5, (7 - journey_idx) * 3 + 5)
+            issue_date = date.today() - timedelta(days=days_ago)
+            due_date = issue_date + timedelta(days=30)
+
+        invoice_items_local: list[dict] = []
+        subtotal = Decimal("0.00")
+        total_tax = Decimal("0.00")
+
+        for budget_item in [budget_items[i] for i in invoice_scenario["covers"]]:
+            item_id = INVOICE_ITEM_IDS[item_idx]
+            item_idx += 1
+
+            unit_price = budget_item["unit_price"]
+            quantity = budget_item["quantity"]
+            vat_rate = budget_item["vat_rate"]
+            line_subtotal, line_tax, line_total = _calculate_line_totals(
+                unit_price, quantity, vat_rate
+            )
+            subtotal += line_subtotal
+            total_tax += line_tax
+
+            invoice_items_local.append(
+                {
+                    "id": item_id,
+                    "clinic_id": CLINIC_ID,
+                    "invoice_id": invoice_id,
+                    "budget_item_id": budget_item["budget_item_id"],
+                    "catalog_item_id": budget_item["catalog_item_id"],
+                    "description": t(
+                        {
+                            "es": f"Tratamiento {budget_item['catalog_code']}",
+                            "en": f"Treatment {budget_item['catalog_code']}",
+                        }
+                    ),
+                    "internal_code": budget_item["catalog_code"],
+                    "unit_price": unit_price,
+                    "quantity": quantity,
+                    "discount_type": None,
+                    "discount_value": None,
+                    "vat_type_id": budget_item["vat_type_id"],
+                    "vat_rate": vat_rate,
+                    "vat_exempt_reason": None,
+                    "line_subtotal": line_subtotal,
+                    "line_discount": Decimal("0.00"),
+                    "line_tax": line_tax,
+                    "line_total": line_total,
+                    "tooth_number": budget_item["tooth_number"],
+                    "surfaces": None,
+                    "display_order": len(invoice_items_local) + 1,
+                }
+            )
+            invoiced_quantity[budget_item["budget_item_id"]] = (
+                invoiced_quantity.get(budget_item["budget_item_id"], 0) + quantity
+            )
+
+        items.extend(invoice_items_local)
+        total = subtotal + total_tax
+
+        total_paid = Decimal("0.00")
+        for payment_data in invoice_scenario.get("payments", []):
+            payment_id = PAYMENT_IDS[payment_idx]
+            payment_idx += 1
+            amount = (total * Decimal(str(payment_data["percent"]))) / 100
+            total_paid += amount
+            payments.append(
+                {
+                    "id": payment_id,
+                    "clinic_id": CLINIC_ID,
+                    "invoice_id": invoice_id,
+                    "amount": amount,
+                    "payment_method": payment_data["method"],
+                    "payment_date": issue_date + timedelta(days=3) if issue_date else date.today(),
+                    "reference": f"REF-{payment_idx:04d}",
+                    "notes": None,
+                    "recorded_by": USER_RECEPTIONIST_ID,
+                    "is_voided": False,
+                    "voided_at": None,
+                    "voided_by": None,
+                    "void_reason": None,
+                }
+            )
+
+        invoices.append(
+            {
+                "id": invoice_id,
+                "clinic_id": CLINIC_ID,
+                "patient_id": patient["id"],
+                "invoice_number": invoice_number,
+                "series_id": INVOICE_SERIES_IDS[0],
+                "sequential_number": sequential_number,
+                "budget_id": budget_id,
+                "credit_note_for_id": None,
+                "status": invoice_scenario["status"],
+                "issue_date": issue_date,
+                "due_date": due_date,
+                "payment_term_days": 30,
+                "billing_name": f"{patient['first_name']} {patient['last_name']}",
+                "billing_tax_id": None,
+                "billing_address": None,
+                "billing_email": patient.get("email"),
+                "subtotal": subtotal,
+                "total_discount": Decimal("0.00"),
+                "total_tax": total_tax,
+                "total": total,
+                "total_paid": total_paid,
+                "balance_due": total - total_paid,
+                "currency": t({"es": "EUR", "en": "USD"}),
+                "internal_notes": t(invoice_scenario["notes"])
+                if invoice_scenario.get("notes")
+                else None,
+                "public_notes": None,
+                "compliance_data": None,
+                "document_hash": None,
+                "created_by": USER_RECEPTIONIST_ID,
+                "issued_by": USER_RECEPTIONIST_ID
+                if invoice_scenario["status"] != "draft"
+                else None,
+                "deleted_at": None,
+            }
+        )
+
+    return {
+        "series": series,
+        "invoices": invoices,
+        "items": items,
+        "payments": payments,
+        "invoiced_quantity_by_budget_item": invoiced_quantity,
     }

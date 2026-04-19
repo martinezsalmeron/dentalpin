@@ -121,7 +121,7 @@ function getPatientName(budget: BudgetListItem): string {
         <UButton
           v-if="can('budget.write')"
           color="primary"
-          variant="solid"
+          variant="soft"
           icon="i-lucide-plus"
           @click="createBudget"
         >
@@ -171,7 +171,7 @@ function getPatientName(budget: BudgetListItem): string {
         >
           <UButton
             color="primary"
-            variant="solid"
+            variant="soft"
             icon="i-lucide-plus"
             @click="createBudget"
           >

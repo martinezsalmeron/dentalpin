@@ -107,7 +107,7 @@ async function createPatient() {
       <template #actions>
         <UButton
           color="primary"
-          variant="solid"
+          variant="soft"
           icon="i-lucide-plus"
           @click="isCreateModalOpen = true"
         >
@@ -149,7 +149,7 @@ async function createPatient() {
         >
           <UButton
             color="primary"
-            variant="solid"
+            variant="soft"
             icon="i-lucide-plus"
             @click="isCreateModalOpen = true"
           >

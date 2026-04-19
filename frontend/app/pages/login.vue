@@ -119,7 +119,7 @@ async function onSubmit() {
         <UButton
           type="submit"
           color="primary"
-          variant="solid"
+          variant="soft"
           block
           :loading="isLoading"
           :disabled="isLoading"

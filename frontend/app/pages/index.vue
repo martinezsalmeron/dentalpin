@@ -70,7 +70,7 @@ const isEmpty = computed(() =>
           <UButton
             to="/patients"
             color="primary"
-            variant="solid"
+            variant="soft"
             icon="i-lucide-plus"
           >
             {{ t('patients.emptyAction') }}

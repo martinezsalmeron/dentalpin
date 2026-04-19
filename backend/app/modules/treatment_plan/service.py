@@ -75,7 +75,7 @@ class TreatmentPlanService:
         page: int = 1,
         page_size: int = 20,
         patient_id: UUID | None = None,
-        status: str | None = None,
+        status: str | list[str] | None = None,
     ) -> tuple[list[TreatmentPlan], int]:
         """List treatment plans with pagination and filters."""
         page_size = min(max(page_size, 1), 100)
@@ -92,7 +92,11 @@ class TreatmentPlanService:
             base_where.append(TreatmentPlan.patient_id == patient_id)
 
         if status:
-            base_where.append(TreatmentPlan.status == status)
+            statuses = [status] if isinstance(status, str) else list(status)
+            if len(statuses) == 1:
+                base_where.append(TreatmentPlan.status == statuses[0])
+            else:
+                base_where.append(TreatmentPlan.status.in_(statuses))
 
         # Count
         count_result = await db.execute(select(func.count(TreatmentPlan.id)).where(*base_where))

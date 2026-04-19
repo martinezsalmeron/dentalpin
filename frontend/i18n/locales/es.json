@@ -557,7 +557,8 @@
       "cancelPlan": "Cancelar plan",
       "locked": {
         "title": "Plan bloqueado",
-        "subtitle": "Presupuesto {number} emitido. Para modificar el plan, debes cancelar el presupuesto actual."
+        "subtitle": "Presupuesto {number} emitido. Para modificar el plan, debes cancelar el presupuesto actual.",
+        "viewBudget": "Ver presupuesto"
       }
     },
     "tooth": "Diente"
@@ -728,6 +729,8 @@
     "removed": "Eliminado",
     "page": "Página {current} de {total}",
     "noData": "Sin datos",
+    "noResults": "Sin resultados",
+    "search": "Buscar...",
     "selectAll": "Todos",
     "deselectAll": "Ninguno",
     "all": "Todos",

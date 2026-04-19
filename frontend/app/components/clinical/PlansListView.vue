@@ -79,7 +79,7 @@ const hasPlans = computed(() => props.plans.length > 0)
         <template #actions>
           <UButton
             color="primary"
-            variant="solid"
+            variant="soft"
             icon="i-lucide-plus"
             @click="emit('create-plan')"
           >

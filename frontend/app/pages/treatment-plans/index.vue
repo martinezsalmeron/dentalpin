@@ -111,7 +111,7 @@ function getItemCount(plan: TreatmentPlan): number {
         <UButton
           v-if="can('treatment_plan.plans.write')"
           color="primary"
-          variant="solid"
+          variant="soft"
           icon="i-lucide-plus"
           @click="createPlan"
         >
@@ -160,7 +160,7 @@ function getItemCount(plan: TreatmentPlan): number {
         >
           <UButton
             color="primary"
-            variant="solid"
+            variant="soft"
             icon="i-lucide-plus"
             @click="createPlan"
           >

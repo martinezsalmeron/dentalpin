@@ -16,9 +16,17 @@ const props = defineProps<{
   items: PlannedTreatmentItem[]
   highlightedItems?: string[]
   readonly?: boolean
+  /**
+   * When true, the "mark complete" action stays available even if `readonly` is true.
+   * Use for plans locked by an active budget — structural edits are blocked but
+   * completing items is still a valid clinical action.
+   */
+  allowComplete?: boolean
   /** Plan status — drives empty-state guidance copy (draft shows 3-step onboarding). */
   planStatus?: string
 }>()
+
+const completeEnabled = computed(() => !props.readonly || props.allowComplete)
 
 const emit = defineEmits<{
   'item-hover': [itemId: string | null]
@@ -277,24 +285,24 @@ function formatCurrency(amount: number | undefined): string {
             >
               {{ formatCurrency(getItemPrice(item)) }}
             </span>
-            <template v-if="!readonly">
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="success"
-                icon="i-lucide-check"
-                :title="t('clinical.plans.markComplete')"
-                @click.stop="openConfirmModal(item)"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="error"
-                icon="i-lucide-trash-2"
-                :title="t('clinical.plans.removeItem')"
-                @click.stop="emit('item-remove', item.id)"
-              />
-            </template>
+            <UButton
+              v-if="completeEnabled"
+              size="xs"
+              variant="ghost"
+              color="success"
+              icon="i-lucide-check"
+              :title="t('clinical.plans.markComplete')"
+              @click.stop="openConfirmModal(item)"
+            />
+            <UButton
+              v-if="!readonly"
+              size="xs"
+              variant="ghost"
+              color="error"
+              icon="i-lucide-trash-2"
+              :title="t('clinical.plans.removeItem')"
+              @click.stop="emit('item-remove', item.id)"
+            />
           </div>
         </div>
       </div>
