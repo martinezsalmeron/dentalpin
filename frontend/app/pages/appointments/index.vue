@@ -553,7 +553,7 @@ onMounted(async () => {
     </PageHeader>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4 shrink-0">
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-[var(--density-gap,0.75rem)] mb-[var(--density-gap,1rem)] shrink-0">
       <div
         v-if="cabinetFilterOptions.length > 0"
         class="flex items-center gap-2 flex-wrap"

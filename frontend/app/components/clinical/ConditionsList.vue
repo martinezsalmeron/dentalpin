@@ -80,7 +80,7 @@ function isHighlighted(toothNumber: number): boolean {
       <li
         v-for="group in groupedByTooth"
         :key="group.toothNumber"
-        class="flex items-center gap-3 py-2 px-2 rounded-token-md transition-colors cursor-default"
+        class="flex items-center gap-[var(--density-gap,0.75rem)] px-2 rounded-token-md transition-colors cursor-default min-h-[var(--density-row-height,44px)]"
         :class="{
           'alert-surface-warning': isHighlighted(group.toothNumber),
           'hover:bg-surface-muted/60': !isHighlighted(group.toothNumber)

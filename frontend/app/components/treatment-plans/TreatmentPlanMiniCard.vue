@@ -171,7 +171,7 @@ function formatCurrency(amount: number, currency = 'EUR') {
 
 <style scoped>
 .plan-mini-card {
-  padding: 1rem;
+  padding: var(--density-card-padding-y, 16px) var(--density-card-padding-x, 20px);
   border-radius: 0.5rem;
   border: 1px solid #E5E7EB;
   background-color: white;

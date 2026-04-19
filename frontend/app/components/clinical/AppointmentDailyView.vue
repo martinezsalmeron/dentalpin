@@ -47,7 +47,11 @@ const START_HOUR = 8
 const END_HOUR = 21
 const SLOT_MINUTES = 15
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES
-const SLOT_HEIGHT = 24
+
+const { density: _calendarDensity } = useDensity()
+function getSlotHeight() {
+  return _calendarDensity.value === 'compact' ? 18 : 28
+}
 
 // Drag state
 const dragState = ref<{
@@ -147,7 +151,7 @@ function getAppointmentStyle(appointment: Appointment): Record<string, string> {
     return {
       top: `${dragState.value.currentTop}px`,
       height: `${dragState.value.currentHeight}px`,
-      minHeight: '24px',
+      minHeight: `${getSlotHeight()}px`,
       opacity: '0.8',
       zIndex: '50'
     }
@@ -160,13 +164,13 @@ function getAppointmentStyle(appointment: Appointment): Record<string, string> {
   const endSlot = getSlotIndex(endTime)
   const spanSlots = Math.max(1, endSlot - startSlot)
 
-  const height = spanSlots * SLOT_HEIGHT
-  const topOffset = startSlot * SLOT_HEIGHT
+  const height = spanSlots * getSlotHeight()
+  const topOffset = startSlot * getSlotHeight()
 
   return {
     top: `${topOffset}px`,
     height: `${height}px`,
-    minHeight: '24px'
+    minHeight: `${getSlotHeight()}px`
   }
 }
 
@@ -262,12 +266,12 @@ function startDrag(appointment: Appointment, event: MouseEvent, type: 'move' | '
     appointmentId: appointment.id,
     startY: event.clientY,
     startX: event.clientX,
-    originalTop: startSlot * SLOT_HEIGHT,
-    originalHeight: Math.max(1, endSlot - startSlot) * SLOT_HEIGHT,
+    originalTop: startSlot * getSlotHeight(),
+    originalHeight: Math.max(1, endSlot - startSlot) * getSlotHeight(),
     originalProfessionalIndex: professionalIndex,
     currentProfessionalIndex: professionalIndex,
-    currentTop: startSlot * SLOT_HEIGHT,
-    currentHeight: Math.max(1, endSlot - startSlot) * SLOT_HEIGHT
+    currentTop: startSlot * getSlotHeight(),
+    currentHeight: Math.max(1, endSlot - startSlot) * getSlotHeight()
   }
 
   document.addEventListener('mousemove', handleDragMove)
@@ -277,7 +281,7 @@ function startDrag(appointment: Appointment, event: MouseEvent, type: 'move' | '
 function handleDragMove(event: MouseEvent) {
   if (createDragState.value) {
     const deltaY = event.clientY - createDragState.value.startY
-    const slotDelta = Math.floor(deltaY / SLOT_HEIGHT)
+    const slotDelta = Math.floor(deltaY / getSlotHeight())
     const maxSlot = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - 1
     createDragState.value.currentSlot = Math.max(
       createDragState.value.startSlot,
@@ -296,14 +300,14 @@ function handleDragMove(event: MouseEvent) {
   }
 
   if (dragState.value.type === 'resize') {
-    const newHeight = Math.max(SLOT_HEIGHT, dragState.value.originalHeight + deltaY)
-    const slots = Math.round(newHeight / SLOT_HEIGHT)
-    dragState.value.currentHeight = slots * SLOT_HEIGHT
+    const newHeight = Math.max(getSlotHeight(), dragState.value.originalHeight + deltaY)
+    const slots = Math.round(newHeight / getSlotHeight())
+    dragState.value.currentHeight = slots * getSlotHeight()
   } else if (dragState.value.type === 'move') {
     const newTop = Math.max(0, dragState.value.originalTop + deltaY)
-    const slots = Math.round(newTop / SLOT_HEIGHT)
-    const maxSlots = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - Math.round(dragState.value.currentHeight / SLOT_HEIGHT)
-    dragState.value.currentTop = Math.min(slots, maxSlots) * SLOT_HEIGHT
+    const slots = Math.round(newTop / getSlotHeight())
+    const maxSlots = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - Math.round(dragState.value.currentHeight / getSlotHeight())
+    dragState.value.currentTop = Math.min(slots, maxSlots) * getSlotHeight()
 
     // Calculate professional change
     if (calendarRef.value && props.professionals.length > 1) {
@@ -354,7 +358,7 @@ function handleDragEnd() {
   if (dragState.value.type === 'resize') {
     const startTime = appointment.start_time.split('T')[1]?.substring(0, 5) ?? '08:00'
     const startSlot = getSlotIndex(startTime)
-    const newEndSlot = startSlot + Math.round(dragState.value.currentHeight / SLOT_HEIGHT)
+    const newEndSlot = startSlot + Math.round(dragState.value.currentHeight / getSlotHeight())
     const newEndTime = slotIndexToTime(newEndSlot)
 
     const oldEndTime = appointment.end_time.split('T')[1]?.substring(0, 5) ?? ''
@@ -362,8 +366,8 @@ function handleDragEnd() {
       emit('appointment-resize', dragState.value.appointmentId, newEndTime)
     }
   } else if (dragState.value.type === 'move') {
-    const newStartSlot = Math.round(dragState.value.currentTop / SLOT_HEIGHT)
-    const durationSlots = Math.round(dragState.value.currentHeight / SLOT_HEIGHT)
+    const newStartSlot = Math.round(dragState.value.currentTop / getSlotHeight())
+    const durationSlots = Math.round(dragState.value.currentHeight / getSlotHeight())
     const newEndSlot = newStartSlot + durationSlots
 
     const newStartTime = slotIndexToTime(newStartSlot)
@@ -600,11 +604,11 @@ const allAppointmentsWithProfIndex = computed(() => {
           <div
             v-for="(slot, slotIndex) in timeSlots"
             :key="slot"
-            class="grid border-b border-[var(--color-border-subtle)]"
+            class="grid border-b border-[var(--color-border-subtle)] h-[var(--density-slot-height,28px)]"
             :class="{ 'border-[var(--color-border)]': slotIndex % SLOTS_PER_HOUR === 0 }"
             :style="{ gridTemplateColumns: `80px repeat(${professionals.length}, 1fr)` }"
           >
-            <div class="p-1 text-right border-r border-subtle h-6 flex items-center justify-end pr-2">
+            <div class="p-1 text-right border-r border-subtle flex items-center justify-end pr-2">
               <span
                 v-if="slotIndex % SLOTS_PER_HOUR === 0"
                 class="text-caption text-subtle tnum"
@@ -615,7 +619,7 @@ const allAppointmentsWithProfIndex = computed(() => {
             <div
               v-for="(prof, profIdx) in professionals"
               :key="`${prof.id}-${slot}`"
-              class="h-6 border-r border-[var(--color-border-subtle)] last:border-r-0 cursor-cell hover:bg-[var(--color-primary-soft)]/50 transition-colors relative"
+              class="border-r border-[var(--color-border-subtle)] last:border-r-0 cursor-cell hover:bg-[var(--color-primary-soft)]/50 transition-colors relative"
               :class="{ 'border-[var(--color-border)]': slotIndex % SLOTS_PER_HOUR === 0 }"
               @mousedown="startCreateDrag(prof.id, slot, profIdx, $event)"
             />
@@ -640,9 +644,9 @@ const allAppointmentsWithProfIndex = computed(() => {
                   v-if="createDragState && createDragState.professionalIndex === profIndex"
                   class="absolute left-1 right-1 rounded border-2 border-dashed border-[var(--color-primary)] bg-[var(--color-primary-soft)] pointer-events-none z-40 flex items-start p-1"
                   :style="{
-                    top: `${createDragState.startSlot * SLOT_HEIGHT}px`,
-                    height: `${Math.max(1, createDragState.currentSlot - createDragState.startSlot + 1) * SLOT_HEIGHT}px`,
-                    minHeight: `${SLOT_HEIGHT}px`
+                    top: `${createDragState.startSlot * getSlotHeight()}px`,
+                    height: `${Math.max(1, createDragState.currentSlot - createDragState.startSlot + 1) * getSlotHeight()}px`,
+                    minHeight: `${getSlotHeight()}px`
                   }"
                 >
                   <span

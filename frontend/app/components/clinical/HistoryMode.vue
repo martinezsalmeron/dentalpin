@@ -134,25 +134,25 @@ async function onHistoryExpanded(expanded: boolean) {
         <!-- Timeline Slider -->
         <UCard>
           <template #header>
-            <div class="flex items-center justify-between">
-              <h3 class="font-medium flex items-center gap-2">
-                <UIcon
-                  name="i-lucide-history"
-                  class="w-5 h-5"
-                />
-                {{ t('odontogram.timeline.title') }}
-              </h3>
-              <UButton
+            <SectionHeader
+              icon="i-lucide-history"
+              :title="t('odontogram.timeline.title')"
+            >
+              <template
                 v-if="isViewingHistory"
-                variant="ghost"
-                size="xs"
-                icon="i-lucide-arrow-right"
-                trailing
-                @click="handleDateChange(null)"
+                #action
               >
-                {{ t('odontogram.timeline.returnToNow') }}
-              </UButton>
-            </div>
+                <UButton
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-arrow-right"
+                  trailing
+                  @click="handleDateChange(null)"
+                >
+                  {{ t('odontogram.timeline.returnToNow') }}
+                </UButton>
+              </template>
+            </SectionHeader>
           </template>
 
           <TimelineSlider
@@ -189,13 +189,10 @@ async function onHistoryExpanded(expanded: boolean) {
         <!-- Changes on this date -->
         <UCard v-if="viewingDate">
           <template #header>
-            <h3 class="font-medium flex items-center gap-2">
-              <UIcon
-                name="i-lucide-file-diff"
-                class="w-5 h-5"
-              />
-              {{ t('clinical.history.changesOnDate') }}
-            </h3>
+            <SectionHeader
+              icon="i-lucide-file-diff"
+              :title="t('clinical.history.changesOnDate')"
+            />
           </template>
 
           <ChangesList :changes="changesAtDate" />

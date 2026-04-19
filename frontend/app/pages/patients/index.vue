@@ -117,7 +117,7 @@ async function createPatient() {
     </PageHeader>
 
     <!-- Search -->
-    <div class="mb-4">
+    <div class="mb-[var(--density-gap,1rem)]">
       <SearchBar
         v-model="searchQuery"
         :placeholder="t('patients.searchPlaceholder')"

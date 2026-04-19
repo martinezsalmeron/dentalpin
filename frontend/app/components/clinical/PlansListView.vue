@@ -41,25 +41,22 @@ const hasPlans = computed(() => props.plans.length > 0)
 </script>
 
 <template>
-  <div class="space-y-4">
-    <!-- Header with create button -->
-    <div class="flex items-center justify-between">
-      <h3 class="font-medium flex items-center gap-2">
-        <UIcon
-          name="i-lucide-clipboard-list"
-          class="w-5 h-5"
-        />
-        {{ t('clinical.plans.title') }}
-      </h3>
-      <UButton
-        color="primary"
-        size="sm"
-        icon="i-lucide-plus"
-        @click="emit('create-plan')"
-      >
-        {{ t('clinical.plans.create') }}
-      </UButton>
-    </div>
+  <div class="space-y-[var(--density-gap,1rem)]">
+    <SectionHeader
+      icon="i-lucide-clipboard-list"
+      :title="t('clinical.plans.title')"
+    >
+      <template #action>
+        <UButton
+          color="primary"
+          size="sm"
+          icon="i-lucide-plus"
+          @click="emit('create-plan')"
+        >
+          {{ t('clinical.plans.create') }}
+        </UButton>
+      </template>
+    </SectionHeader>
 
     <!-- Loading state -->
     <div
@@ -97,7 +94,7 @@ const hasPlans = computed(() => props.plans.length > 0)
       <!-- Active plans -->
       <div
         v-if="activePlans.length > 0"
-        class="space-y-3"
+        class="space-y-[var(--density-gap,0.75rem)]"
       >
         <h4 class="text-caption text-muted uppercase tracking-wide flex items-center gap-2">
           <UIcon
@@ -106,7 +103,7 @@ const hasPlans = computed(() => props.plans.length > 0)
           />
           {{ t('clinical.plans.active') }}
         </h4>
-        <div class="grid gap-3">
+        <div class="grid gap-[var(--density-gap,0.75rem)]">
           <TreatmentPlanMiniCard
             v-for="plan in activePlans"
             :key="plan.id"
@@ -123,7 +120,7 @@ const hasPlans = computed(() => props.plans.length > 0)
       <!-- Draft plans -->
       <div
         v-if="draftPlans.length > 0"
-        class="space-y-3"
+        class="space-y-[var(--density-gap,0.75rem)]"
       >
         <h4 class="text-caption text-muted uppercase tracking-wide flex items-center gap-2">
           <UIcon
@@ -132,7 +129,7 @@ const hasPlans = computed(() => props.plans.length > 0)
           />
           {{ t('clinical.plans.drafts') }}
         </h4>
-        <div class="grid gap-3">
+        <div class="grid gap-[var(--density-gap,0.75rem)]">
           <TreatmentPlanMiniCard
             v-for="plan in draftPlans"
             :key="plan.id"
@@ -154,7 +151,7 @@ const hasPlans = computed(() => props.plans.length > 0)
         class="mt-4"
       >
         <template #completed>
-          <div class="grid gap-3 pt-2">
+          <div class="grid gap-[var(--density-gap,0.75rem)] pt-2">
             <TreatmentPlanMiniCard
               v-for="plan in completedPlans"
               :key="plan.id"

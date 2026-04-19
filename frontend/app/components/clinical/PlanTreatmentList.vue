@@ -169,7 +169,7 @@ function formatCurrency(amount: number | undefined): string {
 </script>
 
 <template>
-  <div class="space-y-2">
+  <div class="space-y-[var(--density-gap,0.5rem)]">
     <!-- Empty state: guided 3-step onboarding for draft plans; plain text otherwise. -->
     <div
       v-if="items.length === 0 && planStatus === 'draft'"
@@ -224,14 +224,14 @@ function formatCurrency(amount: number | undefined): string {
       :animation="180"
       ghost-class="plan-item-ghost"
       drag-class="plan-item-drag"
-      class="space-y-2"
+      class="space-y-[var(--density-gap,0.5rem)]"
       @end="emitReorder"
     >
       <div
         v-for="(item, index) in localPending"
         :key="item.id"
         tabindex="0"
-        class="plan-item p-3 rounded-token-md border transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+        class="plan-item p-[var(--density-card-padding-y,0.75rem)_var(--density-card-padding-x,0.75rem)] rounded-token-md border transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
         :class="{
           'alert-surface-warning border-transparent': isHighlighted(item.id),
           'bg-surface border-default': !isHighlighted(item.id)

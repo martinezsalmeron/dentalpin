@@ -63,10 +63,6 @@ watch([currentPage, debouncedSearch, selectedStatuses], () => {
 const totalPages = computed(() => Math.ceil(total.value / pageSize))
 
 // Actions
-function goToPlan(plan: TreatmentPlan) {
-  router.push(`/treatment-plans/${plan.id}`)
-}
-
 function createPlan() {
   router.push('/treatment-plans/new')
 }
@@ -124,7 +120,7 @@ function getItemCount(plan: TreatmentPlan): number {
       </template>
     </PageHeader>
 
-    <div class="flex flex-wrap gap-3 mb-4">
+    <div class="flex flex-wrap gap-[var(--density-gap,0.75rem)] mb-[var(--density-gap,1rem)]">
       <UInput
         v-model="searchQuery"
         :placeholder="t('treatmentPlans.searchPlaceholder')"
@@ -177,38 +173,34 @@ function getItemCount(plan: TreatmentPlan): number {
         v-else
         class="divide-y divide-[var(--color-border-subtle)]"
       >
-        <div
+        <ListRow
           v-for="plan in plans"
           :key="plan.id"
-          class="flex items-center gap-3 py-3 px-2 -mx-2 cursor-pointer hover:bg-surface-muted rounded-token-md transition-colors"
-          @click="goToPlan(plan)"
+          :to="`/treatment-plans/${plan.id}`"
         >
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-3 flex-wrap">
-              <span class="text-ui text-default tnum">
-                {{ plan.plan_number }}
-              </span>
-              <TreatmentPlanStatusBadge :status="plan.status" />
-            </div>
-            <div class="text-body text-default truncate mt-0.5">
+          <template #title>
+            <span class="tnum">{{ plan.plan_number }}</span>
+            <TreatmentPlanStatusBadge :status="plan.status" />
+            <span class="text-default truncate">
               {{ plan.title || t('treatmentPlans.untitled') }}
-            </div>
-            <div class="text-caption text-subtle truncate">
-              {{ getPatientName(plan) }}
-            </div>
-          </div>
-
-          <div class="hidden sm:block text-caption text-subtle tnum w-32 text-center">
-            {{ t('treatmentPlans.itemCount', { count: getItemCount(plan) }, getItemCount(plan)) }}
-          </div>
-
-          <div class="hidden sm:block text-caption text-subtle tnum w-28 text-right">
-            {{ formatDate(plan.created_at) }}
-          </div>
-
-          <div class="flex items-center gap-1">
+            </span>
+          </template>
+          <template #subtitle>
+            {{ getPatientName(plan) }}
+          </template>
+          <template #meta>
+            <span class="hidden sm:inline text-caption text-subtle tnum">
+              {{ t('treatmentPlans.itemCount', { count: getItemCount(plan) }, getItemCount(plan)) }}
+            </span>
+            <span class="hidden sm:inline text-caption text-subtle tnum">
+              {{ formatDate(plan.created_at) }}
+            </span>
+          </template>
+          <template
+            v-if="can('treatment_plan.plans.write') && plan.status === 'draft'"
+            #actions
+          >
             <UButton
-              v-if="can('treatment_plan.plans.write') && plan.status === 'draft'"
               variant="ghost"
               color="error"
               icon="i-lucide-trash-2"
@@ -217,12 +209,8 @@ function getItemCount(plan: TreatmentPlan): number {
               :title="t('treatmentPlans.delete')"
               @click="handleDelete(plan, $event)"
             />
-            <UIcon
-              name="i-lucide-chevron-right"
-              class="w-4 h-4 text-subtle"
-            />
-          </div>
-        </div>
+          </template>
+        </ListRow>
       </div>
 
       <PaginationBar

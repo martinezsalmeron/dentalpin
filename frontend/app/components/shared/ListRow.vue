@@ -34,7 +34,7 @@ function handleClick(e: MouseEvent) {
 }
 
 const rowClass = computed(() => [
-  'flex items-center gap-3 px-2 py-2 -mx-2 rounded-token-md transition-colors',
+  'flex items-center gap-[var(--density-gap,0.75rem)] px-2 py-1 -mx-2 rounded-token-md transition-colors min-h-[var(--density-row-height,44px)]',
   isInteractive.value
     ? 'cursor-pointer hover:bg-surface-muted focus:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]'
     : ''
@@ -54,18 +54,18 @@ const rowClass = computed(() => [
       <slot name="leading" />
     </div>
     <div class="flex-1 min-w-0">
-      <p
+      <div
         v-if="$slots.title"
-        class="text-ui text-default truncate"
+        class="text-ui text-default truncate flex items-center gap-2 flex-wrap"
       >
         <slot name="title" />
-      </p>
-      <p
+      </div>
+      <div
         v-if="$slots.subtitle"
         class="text-caption text-subtle truncate"
       >
         <slot name="subtitle" />
-      </p>
+      </div>
     </div>
     <div
       v-if="$slots.meta"
@@ -81,7 +81,7 @@ const rowClass = computed(() => [
     </div>
     <UIcon
       name="i-lucide-chevron-right"
-      class="w-4 h-4 text-subtle shrink-0"
+      class="icon-density text-subtle shrink-0"
     />
   </NuxtLink>
 
@@ -101,18 +101,18 @@ const rowClass = computed(() => [
       <slot name="leading" />
     </div>
     <div class="flex-1 min-w-0">
-      <p
+      <div
         v-if="$slots.title"
-        class="text-ui text-default truncate"
+        class="text-ui text-default truncate flex items-center gap-2 flex-wrap"
       >
         <slot name="title" />
-      </p>
-      <p
+      </div>
+      <div
         v-if="$slots.subtitle"
         class="text-caption text-subtle truncate"
       >
         <slot name="subtitle" />
-      </p>
+      </div>
     </div>
     <div
       v-if="$slots.meta"

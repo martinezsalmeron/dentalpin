@@ -69,33 +69,33 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
 
     <!-- Budgets Mode -->
     <div v-if="currentMode === 'budgets' && can(PERMISSIONS.budget.read)">
-      <!-- Header with create button -->
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-medium flex items-center gap-2">
-          <UIcon
-            name="i-lucide-file-text"
-            class="w-5 h-5"
-          />
-          {{ t('patientDetail.tabs.budgets') }}
-          <UBadge
-            v-if="budgets.length > 0"
-            color="neutral"
-            size="xs"
-            variant="subtle"
-          >
-            {{ budgets.length }}
-          </UBadge>
-        </h3>
-        <UButton
-          v-if="can(PERMISSIONS.budget.write)"
-          size="sm"
-          icon="i-lucide-plus"
-          color="primary"
-          :to="`/budgets/new?patient_id=${patientId}&from=patient`"
+      <SectionHeader
+        icon="i-lucide-file-text"
+        class="mb-4"
+      >
+        <span class="truncate">{{ t('patientDetail.tabs.budgets') }}</span>
+        <UBadge
+          v-if="budgets.length > 0"
+          color="neutral"
+          size="xs"
+          variant="subtle"
         >
-          {{ t('patientDetail.createBudget') }}
-        </UButton>
-      </div>
+          {{ budgets.length }}
+        </UBadge>
+        <template
+          v-if="can(PERMISSIONS.budget.write)"
+          #action
+        >
+          <UButton
+            size="sm"
+            icon="i-lucide-plus"
+            color="primary"
+            :to="`/budgets/new?patient_id=${patientId}&from=patient`"
+          >
+            {{ t('patientDetail.createBudget') }}
+          </UButton>
+        </template>
+      </SectionHeader>
 
       <!-- Loading -->
       <div

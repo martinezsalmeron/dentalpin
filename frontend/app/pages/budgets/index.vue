@@ -65,10 +65,6 @@ watch([currentPage, debouncedSearch, selectedStatuses], () => {
 const totalPages = computed(() => Math.ceil(total.value / pageSize))
 
 // Actions
-function goToBudget(budget: BudgetListItem) {
-  router.push(`/budgets/${budget.id}`)
-}
-
 function createBudget() {
   router.push('/budgets/new')
 }
@@ -135,7 +131,7 @@ function getPatientName(budget: BudgetListItem): string {
     </PageHeader>
 
     <!-- Filters -->
-    <div class="flex flex-wrap gap-3 mb-4">
+    <div class="flex flex-wrap gap-[var(--density-gap,0.75rem)] mb-[var(--density-gap,1rem)]">
       <UInput
         v-model="searchQuery"
         :placeholder="t('budget.searchPlaceholder')"
@@ -188,40 +184,30 @@ function getPatientName(budget: BudgetListItem): string {
         v-else
         class="divide-y divide-[var(--color-border-subtle)]"
       >
-        <div
+        <ListRow
           v-for="budget in budgets"
           :key="budget.id"
-          class="flex items-center gap-3 py-3 px-2 -mx-2 cursor-pointer hover:bg-surface-muted rounded-token-md transition-colors"
-          @click="goToBudget(budget)"
+          :to="`/budgets/${budget.id}`"
         >
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-3">
-              <span class="text-ui text-default tnum">
-                {{ budget.budget_number }}
-              </span>
-              <span class="text-caption text-subtle tnum">
-                v{{ budget.version }}
-              </span>
-              <BudgetStatusBadge :status="budget.status" />
-            </div>
-            <div class="text-caption text-muted mt-1 truncate">
-              {{ getPatientName(budget) }}
-            </div>
-          </div>
-
-          <div class="hidden sm:block text-caption text-subtle tnum w-32 text-right">
-            {{ formatDate(budget.created_at) }}
-          </div>
-
-          <div class="w-28 text-right">
+          <template #title>
+            <span class="tnum">{{ budget.budget_number }}</span>
+            <span class="text-caption text-subtle tnum">v{{ budget.version }}</span>
+            <BudgetStatusBadge :status="budget.status" />
+          </template>
+          <template #subtitle>
+            {{ getPatientName(budget) }}
+          </template>
+          <template #meta>
+            <span class="hidden sm:inline text-caption text-subtle tnum">
+              {{ formatDate(budget.created_at) }}
+            </span>
             <Money
               :value="budget.total"
               :currency="budget.currency"
               strong
             />
-          </div>
-
-          <div class="flex items-center gap-1">
+          </template>
+          <template #actions>
             <UButton
               variant="ghost"
               color="neutral"
@@ -241,12 +227,8 @@ function getPatientName(budget: BudgetListItem): string {
               :title="t('budget.delete')"
               @click="handleDelete(budget, $event)"
             />
-            <UIcon
-              name="i-lucide-chevron-right"
-              class="w-4 h-4 text-subtle"
-            />
-          </div>
-        </div>
+          </template>
+        </ListRow>
       </div>
 
       <PaginationBar

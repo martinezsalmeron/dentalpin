@@ -82,10 +82,6 @@ watch([currentPage, debouncedSearch, selectedStatuses, showOverdue], () => {
 const totalPages = computed(() => Math.ceil(total.value / pageSize))
 
 // Actions
-function goToInvoice(invoice: InvoiceListItem) {
-  router.push(`/invoices/${invoice.id}`)
-}
-
 function createInvoice() {
   router.push('/invoices/new')
 }
@@ -155,7 +151,7 @@ function isOverdue(invoice: InvoiceListItem): boolean {
     </PageHeader>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-3 mb-4">
+    <div class="flex flex-wrap items-center gap-[var(--density-gap,0.75rem)] mb-[var(--density-gap,1rem)]">
       <UInput
         v-model="searchQuery"
         :placeholder="t('invoice.searchPlaceholder')"
@@ -212,65 +208,60 @@ function isOverdue(invoice: InvoiceListItem): boolean {
         v-else
         class="divide-y divide-[var(--color-border-subtle)]"
       >
-        <div
+        <ListRow
           v-for="invoice in invoices"
           :key="invoice.id"
-          class="flex items-center gap-3 py-3 px-2 -mx-2 cursor-pointer hover:bg-surface-muted rounded-token-md transition-colors"
-          @click="goToInvoice(invoice)"
+          :to="`/invoices/${invoice.id}`"
         >
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-3 flex-wrap">
-              <span class="text-ui text-default tnum">
-                {{ invoice.invoice_number || t('invoice.draftNoNumber') }}
-              </span>
-              <UBadge
-                :color="getStatusBadgeColor(invoice.status)"
-                variant="subtle"
-                size="xs"
-              >
-                {{ t(`invoice.status.${invoice.status}`) }}
-              </UBadge>
-              <StatusBadge
-                v-if="isOverdue(invoice)"
-                role="danger"
-                :label="t('invoice.overdue')"
-                size="xs"
-                dot
-              />
-            </div>
-            <div class="text-caption text-muted mt-1 truncate">
-              {{ getPatientName(invoice) }}
-            </div>
-          </div>
-
-          <div class="hidden sm:block text-caption text-subtle tnum w-28 text-right">
-            {{ formatDate(invoice.issue_date) }}
-          </div>
-
-          <div
-            class="hidden md:block text-caption tnum w-28 text-right"
-            :class="isOverdue(invoice) ? 'text-danger font-medium' : 'text-subtle'"
-          >
-            {{ formatDate(invoice.due_date) }}
-          </div>
-
-          <div class="text-right w-32">
-            <Money
-              :value="invoice.total"
-              :currency="invoice.currency"
-              strong
-            />
-            <div
-              v-if="invoice.balance_due > 0 && invoice.status !== 'draft'"
-              class="text-caption text-warning tnum"
+          <template #title>
+            <span class="tnum">{{ invoice.invoice_number || t('invoice.draftNoNumber') }}</span>
+            <UBadge
+              :color="getStatusBadgeColor(invoice.status)"
+              variant="subtle"
+              size="xs"
             >
-              {{ t('invoice.balance') }}: {{ formatCurrency(invoice.balance_due, invoice.currency) }}
+              {{ t(`invoice.status.${invoice.status}`) }}
+            </UBadge>
+            <StatusBadge
+              v-if="isOverdue(invoice)"
+              role="danger"
+              :label="t('invoice.overdue')"
+              size="xs"
+              dot
+            />
+          </template>
+          <template #subtitle>
+            {{ getPatientName(invoice) }}
+          </template>
+          <template #meta>
+            <span class="hidden sm:inline text-caption text-subtle tnum">
+              {{ formatDate(invoice.issue_date) }}
+            </span>
+            <span
+              class="hidden md:inline text-caption tnum"
+              :class="isOverdue(invoice) ? 'text-danger font-medium' : 'text-subtle'"
+            >
+              {{ formatDate(invoice.due_date) }}
+            </span>
+            <div class="text-right">
+              <Money
+                :value="invoice.total"
+                :currency="invoice.currency"
+                strong
+              />
+              <div
+                v-if="invoice.balance_due > 0 && invoice.status !== 'draft'"
+                class="text-caption text-warning tnum"
+              >
+                {{ t('invoice.balance') }}: {{ formatCurrency(invoice.balance_due, invoice.currency) }}
+              </div>
             </div>
-          </div>
-
-          <div class="flex items-center gap-1">
+          </template>
+          <template
+            v-if="invoice.status === 'draft' && can('billing.admin')"
+            #actions
+          >
             <UButton
-              v-if="invoice.status === 'draft' && can('billing.admin')"
               variant="ghost"
               color="error"
               icon="i-lucide-trash-2"
@@ -279,12 +270,8 @@ function isOverdue(invoice: InvoiceListItem): boolean {
               :title="t('invoice.delete')"
               @click="handleDelete(invoice, $event)"
             />
-            <UIcon
-              name="i-lucide-chevron-right"
-              class="w-4 h-4 text-subtle"
-            />
-          </div>
-        </div>
+          </template>
+        </ListRow>
       </div>
 
       <div
