@@ -1762,7 +1762,7 @@ PATIENT_JOURNEYS = [
         "patient_idx": 12,
         "plan": {
             "id_idx": 12,
-            "status": "active",
+            "status": "completed",
             "title": {"es": "Endodoncia urgente", "en": "Urgent root canal"},
             "diagnosis_notes": {
                 "es": "Endodoncia urgente por absceso. Paciente anticoagulado.",
