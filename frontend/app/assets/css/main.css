@@ -142,12 +142,16 @@ body {
    ============================================================================ */
 
 html.density-comfortable {
-  --density-card-padding-y: 16px;
-  --density-card-padding-x: 20px;
-  --density-row-height: 44px;
-  --density-btn-padding-y: 8px;
-  --density-btn-padding-x: 14px;
+  --density-card-padding-y: 20px;
+  --density-card-padding-x: 24px;
+  --density-row-height: 56px;
+  --density-btn-padding-y: 10px;
+  --density-btn-padding-x: 16px;
   --density-body-size: 14px;
+  --density-gap: 16px;
+  --density-header-height: 60px;
+  --density-icon-size: 20px;
+  --density-slot-height: 28px;
 }
 
 html.density-compact {
@@ -157,6 +161,14 @@ html.density-compact {
   --density-btn-padding-y: 6px;
   --density-btn-padding-x: 10px;
   --density-body-size: 13px;
+  --density-gap: 6px;
+  --density-header-height: 40px;
+  --density-icon-size: 14px;
+  --density-slot-height: 18px;
+}
+
+body {
+  font-size: var(--density-body-size, 14px);
 }
 
 /* ============================================================================
@@ -185,6 +197,11 @@ html.density-compact {
   .shadow-token-sm { box-shadow: var(--shadow-sm); }
   .shadow-token-md { box-shadow: var(--shadow-md); }
   .shadow-token-lg { box-shadow: var(--shadow-lg); }
+
+  .icon-density {
+    width: var(--density-icon-size, 18px);
+    height: var(--density-icon-size, 18px);
+  }
 
   .rounded-token-xs { border-radius: var(--radius-xs); }
   .rounded-token-sm { border-radius: var(--radius-sm); }
