@@ -7,7 +7,6 @@ const { t } = useI18n()
 const auth = useAuth()
 const toast = useToast()
 
-// Form state
 const isLoading = ref(false)
 const formState = reactive({
   email: '',
@@ -31,7 +30,6 @@ async function onSubmit() {
       color: 'success'
     })
 
-    // Navigate to home - user data is already loaded by login()
     await navigateTo('/')
   } catch (error: unknown) {
     console.error('Login error:', error)
@@ -40,7 +38,6 @@ async function onSubmit() {
     if (fetchError.statusCode === 401) {
       errorMessage.value = t('auth.invalidCredentials')
     } else {
-      // Show actual error message for debugging
       errorMessage.value = fetchError.data?.message || fetchError.message || t('auth.networkError')
     }
   } finally {
@@ -50,39 +47,43 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="w-full max-w-sm p-8">
-    <!-- Logo -->
-    <div class="text-center mb-8">
-      <div class="flex items-center justify-center gap-2 mb-2">
-        <UIcon
-          name="i-lucide-smile"
-          class="w-10 h-10 text-primary-500"
-        />
-      </div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+  <div class="w-full max-w-[400px] p-6">
+    <!-- Brand -->
+    <div class="text-center mb-6">
+      <UIcon
+        name="i-lucide-smile"
+        class="w-10 h-10 mx-auto mb-2"
+        :style="{ color: 'var(--color-primary)' }"
+      />
+      <h1 class="text-h1 text-default">
         DentalPin
       </h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+      <p class="text-caption text-muted mt-1">
         {{ t('app.tagline') }}
       </p>
     </div>
 
-    <!-- Login form -->
     <UCard>
       <form
         class="space-y-4"
         @submit.prevent="onSubmit"
       >
-        <!-- Error message -->
-        <UAlert
+        <!-- Error message — pastel danger (DESIGN §2.4) -->
+        <div
           v-if="errorMessage"
-          color="error"
-          variant="subtle"
-          :title="errorMessage"
-          icon="i-lucide-alert-circle"
-        />
+          class="alert-surface-danger rounded-token-md px-3 py-2 flex items-start gap-2"
+          role="alert"
+        >
+          <UIcon
+            name="i-lucide-alert-circle"
+            class="w-4 h-4 mt-0.5 shrink-0"
+            :style="{ color: 'var(--color-danger-accent)' }"
+          />
+          <span class="text-body">
+            {{ errorMessage }}
+          </span>
+        </div>
 
-        <!-- Email -->
         <UFormField
           :label="t('auth.email')"
           name="email"
@@ -99,7 +100,6 @@ async function onSubmit() {
           />
         </UFormField>
 
-        <!-- Password -->
         <UFormField
           :label="t('auth.password')"
           name="password"
@@ -116,9 +116,10 @@ async function onSubmit() {
           />
         </UFormField>
 
-        <!-- Submit -->
         <UButton
           type="submit"
+          color="primary"
+          variant="solid"
           block
           :loading="isLoading"
           :disabled="isLoading"
@@ -128,8 +129,7 @@ async function onSubmit() {
       </form>
     </UCard>
 
-    <!-- Footer -->
-    <p class="text-center text-xs text-gray-500 dark:text-gray-400 mt-6">
+    <p class="text-center text-caption text-subtle mt-6">
       &copy; {{ new Date().getFullYear() }} DentalPin
     </p>
   </div>

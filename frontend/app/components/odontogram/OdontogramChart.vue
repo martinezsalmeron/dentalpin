@@ -651,7 +651,7 @@ defineExpose({
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
-        <h3 class="text-lg font-semibold">
+        <h3 class="text-h1 text-default">
           {{ t('odontogram.title') }}
         </h3>
         <UBadge
@@ -677,24 +677,14 @@ defineExpose({
       </div>
 
       <!-- Dentition toggle -->
-      <UButtonGroup>
-        <UButton
-          :color="dentitionMode === 'permanent' ? 'primary' : 'neutral'"
-          :variant="dentitionMode === 'permanent' ? 'solid' : 'outline'"
-          size="sm"
-          @click="dentitionMode = 'permanent'"
-        >
-          {{ t('odontogram.dentition.permanent') }}
-        </UButton>
-        <UButton
-          :color="dentitionMode === 'deciduous' ? 'primary' : 'neutral'"
-          :variant="dentitionMode === 'deciduous' ? 'solid' : 'outline'"
-          size="sm"
-          @click="dentitionMode = 'deciduous'"
-        >
-          {{ t('odontogram.dentition.deciduous') }}
-        </UButton>
-      </UButtonGroup>
+      <SegmentedControl
+        :model-value="dentitionMode"
+        :options="[
+          { value: 'permanent', label: t('odontogram.dentition.permanent') },
+          { value: 'deciduous', label: t('odontogram.dentition.deciduous') }
+        ]"
+        @update:model-value="(v) => (dentitionMode = v as 'permanent' | 'deciduous')"
+      />
     </div>
 
     <!-- Timeline Slider (only in standalone 'full' mode; HistoryMode renders its own) -->
@@ -714,7 +704,7 @@ defineExpose({
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-gray-400"
+        class="w-8 h-8 animate-spin text-subtle"
       />
     </div>
 
@@ -725,7 +715,7 @@ defineExpose({
     >
       <div class="odontogram-wrapper">
         <div
-          class="odontogram-grid bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+          class="odontogram-grid bg-surface rounded-lg border border-default p-4"
           :class="{ 'cursor-crosshair': isClickToApplyMode }"
         >
           <!-- Upper arch -->
@@ -733,7 +723,7 @@ defineExpose({
             class="mb-6 arch-container"
             :class="{ 'arch-halo': hoveredArch === 'upper' }"
           >
-            <div class="text-xs text-gray-500 text-center mb-2">
+            <div class="text-caption text-subtle text-center mb-2">
               {{ t('odontogram.quadrants.upper') }}
             </div>
             <div class="flex justify-center gap-1 relative">
@@ -763,7 +753,7 @@ defineExpose({
                 @edit-treatment="handleEditTreatment"
               />
 
-              <div class="w-px bg-gray-300 dark:bg-gray-600 mx-2" />
+              <div class="w-px bg-surface-sunken  mx-2" />
 
               <ToothQuadrant
                 :teeth="teethLayout.upperLeft"
@@ -788,7 +778,7 @@ defineExpose({
             </div>
           </div>
 
-          <div class="h-px bg-gray-200 dark:bg-gray-700 my-4" />
+          <div class="h-px bg-surface-sunken my-4" />
 
           <!-- Lower arch -->
           <div
@@ -822,7 +812,7 @@ defineExpose({
                 @edit-treatment="handleEditTreatment"
               />
 
-              <div class="w-px bg-gray-300 dark:bg-gray-600 mx-2" />
+              <div class="w-px bg-surface-sunken  mx-2" />
 
               <ToothQuadrant
                 :teeth="teethLayout.lowerLeft"
@@ -845,7 +835,7 @@ defineExpose({
                 @edit-treatment="handleEditTreatment"
               />
             </div>
-            <div class="text-xs text-gray-500 text-center mt-2">
+            <div class="text-caption text-subtle text-center mt-2">
               {{ t('odontogram.quadrants.lower') }}
             </div>
           </div>
@@ -931,7 +921,7 @@ defineExpose({
     <!-- Free-mode selection summary bar (prompts user to confirm) -->
     <div
       v-if="multiToothConfig && multiToothConfig.selectionMode === 'free' && multiToothSelection.teeth.length > 0 && !showMultiToothConfirm"
-      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg px-4 py-2"
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-lg border border-default bg-surface shadow-lg px-4 py-2"
     >
       <UIcon
         name="i-lucide-link"

@@ -158,11 +158,11 @@ watch(patients, () => {
     <!-- Results dropdown -->
     <div
       v-if="isOpen && (patients.length > 0 || isLoading)"
-      class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
+      class="absolute z-50 w-full mt-1 bg-surface border border-default rounded-lg shadow-lg max-h-60 overflow-auto"
     >
       <div
         v-if="isLoading"
-        class="p-3 text-center text-gray-500"
+        class="p-3 text-center text-subtle"
       >
         <UIcon
           name="i-lucide-loader-2"
@@ -172,7 +172,7 @@ watch(patients, () => {
 
       <div
         v-else-if="patients.length === 0 && searchQuery.length >= 2"
-        class="p-3 text-center text-gray-500 text-sm"
+        class="p-3 text-center text-subtle text-sm"
       >
         {{ t('patients.noResults') }}
       </div>
@@ -182,8 +182,8 @@ watch(patients, () => {
         :key="patient.id"
         class="flex items-center gap-3 p-3 cursor-pointer transition-colors"
         :class="index === highlightedIndex
-          ? 'bg-primary-50 dark:bg-primary-900/20'
-          : 'hover:bg-gray-50 dark:hover:bg-gray-800'"
+          ? 'bg-[var(--color-primary-soft)]'
+          : 'hover:bg-surface-muted'"
         @mousedown.prevent="selectPatient(patient)"
         @mouseenter="highlightedIndex = index"
       >
@@ -192,10 +192,10 @@ watch(patients, () => {
           size="sm"
         />
         <div class="min-w-0 flex-1">
-          <p class="font-medium text-gray-900 dark:text-white truncate">
+          <p class="font-medium text-default truncate">
             {{ patient.last_name }}, {{ patient.first_name }}
           </p>
-          <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
+          <p class="text-sm text-muted truncate">
             {{ patient.phone || patient.email || '-' }}
           </p>
         </div>

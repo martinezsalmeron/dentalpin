@@ -119,14 +119,14 @@ const totalDuration = computed(() => {
       <div
         v-for="item in selectedItems"
         :key="item.id"
-        class="flex items-center justify-between p-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
+        class="flex items-center justify-between p-2 bg-[var(--color-primary-soft)] rounded-lg"
       >
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <p class="text-sm font-medium text-default truncate">
             {{ getItemName(item) }}
           </p>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-500">{{ item.internal_code }}</span>
+            <span class="text-caption text-subtle">{{ item.internal_code }}</span>
             <UBadge
               v-if="getCategoryName(item)"
               size="xs"
@@ -140,11 +140,11 @@ const totalDuration = computed(() => {
         <div class="flex items-center gap-2">
           <span
             v-if="item.default_duration_minutes"
-            class="text-xs text-gray-500"
+            class="text-caption text-subtle"
           >
             {{ item.default_duration_minutes }} min
           </span>
-          <span class="text-sm font-semibold text-primary-600">
+          <span class="text-sm font-semibold text-primary-accent">
             {{ formatPrice(item.default_price, currency || 'EUR') }}
           </span>
           <UButton
@@ -160,7 +160,7 @@ const totalDuration = computed(() => {
       <!-- Summary -->
       <div
         v-if="totalDuration > 0"
-        class="text-xs text-gray-500 text-right"
+        class="text-caption text-subtle text-right"
       >
         {{ t('appointments.estimatedDuration') }}: {{ totalDuration }} min
       </div>
@@ -183,10 +183,10 @@ const totalDuration = computed(() => {
     <!-- Visual selector when adding -->
     <div
       v-else
-      class="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+      class="border border-default rounded-lg p-3"
     >
       <div class="flex items-center justify-between mb-3">
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <span class="text-sm font-medium text-muted">
           {{ t('appointments.selectTreatment') }}
         </span>
         <UButton
@@ -212,12 +212,12 @@ const totalDuration = computed(() => {
       >
         <template #item="{ item }">
           <div class="space-y-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+            <p class="text-sm font-medium text-default line-clamp-1">
               {{ getItemName(item) }}
             </p>
             <div class="flex items-center justify-between">
-              <span class="text-xs text-gray-500">{{ item.internal_code }}</span>
-              <span class="text-sm font-semibold text-primary-600">
+              <span class="text-caption text-subtle">{{ item.internal_code }}</span>
+              <span class="text-sm font-semibold text-primary-accent">
                 {{ formatPrice(item.default_price, currency || 'EUR') }}
               </span>
             </div>

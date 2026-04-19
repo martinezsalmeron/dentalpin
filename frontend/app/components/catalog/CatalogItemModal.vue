@@ -272,14 +272,14 @@ function handleClose() {
 <template>
   <UModal v-model:open="open">
     <template #content>
-      <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div class="bg-surface rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <!-- Header -->
-        <div class="flex items-center gap-2 p-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+        <div class="flex items-center gap-2 p-4 border-b border-default  shrink-0">
           <UIcon
             :name="isCreateMode ? 'i-lucide-plus' : 'i-lucide-edit'"
-            class="w-5 h-5 text-primary-500"
+            class="w-5 h-5 text-primary-accent"
           />
-          <h3 class="font-semibold text-gray-900 dark:text-white">
+          <h3 class="font-semibold text-default dark:text-white">
             {{ isCreateMode ? t('catalog.newItem') : t('catalog.editItem') }}
           </h3>
         </div>
@@ -322,8 +322,8 @@ function handleClose() {
             </UFormField>
 
             <!-- Pricing -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <h4 class="font-medium text-gray-900 dark:text-white mb-4">
+            <div class="border-t border-default  pt-4">
+              <h4 class="font-medium text-default dark:text-white mb-4">
                 {{ t('catalog.pricing') }}
               </h4>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -373,18 +373,18 @@ function handleClose() {
               <!-- Surface price tiers (per_surface strategy) -->
               <div
                 v-if="showSurfacePrices"
-                class="mt-4 rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 p-4"
+                class="mt-4 rounded-token-md alert-surface-info p-4"
               >
                 <div class="flex items-center gap-2 mb-3">
                   <UIcon
                     name="i-lucide-layers"
-                    class="w-4 h-4 text-blue-600 dark:text-blue-400"
+                    class="w-4 h-4 text-info-accent"
                   />
-                  <h5 class="font-medium text-sm text-gray-900 dark:text-white">
+                  <h5 class="font-medium text-sm text-default dark:text-white">
                     {{ t('catalog.surfacePrices.title') }}
                   </h5>
                 </div>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                <p class="text-xs text-muted mb-3">
                   {{ t('catalog.surfacePrices.help') }}
                 </p>
                 <div class="grid grid-cols-5 gap-2">
@@ -419,8 +419,8 @@ function handleClose() {
             </UFormField>
 
             <!-- Scheduling -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <h4 class="font-medium text-gray-900 dark:text-white mb-4">
+            <div class="border-t border-default  pt-4">
+              <h4 class="font-medium text-default dark:text-white mb-4">
                 {{ t('catalog.scheduling') }}
               </h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -439,7 +439,7 @@ function handleClose() {
 
                 <div class="flex items-center gap-3 pt-6">
                   <USwitch v-model="formData.requires_appointment" />
-                  <span class="text-sm text-gray-700 dark:text-gray-300">
+                  <span class="text-sm text-muted">
                     {{ t('catalog.requiresAppointment') }}
                   </span>
                 </div>
@@ -447,8 +447,8 @@ function handleClose() {
             </div>
 
             <!-- Treatment characteristics -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <h4 class="font-medium text-gray-900 dark:text-white mb-4">
+            <div class="border-t border-default  pt-4">
+              <h4 class="font-medium text-default dark:text-white mb-4">
                 {{ t('catalog.characteristics') }}
               </h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -469,7 +469,7 @@ function handleClose() {
                       v-model="formData.is_diagnostic"
                       :disabled="!isCreateMode && item?.is_system"
                     />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
+                    <span class="text-sm text-muted">
                       {{ t('catalog.isDiagnostic') }}
                     </span>
                   </div>
@@ -479,7 +479,7 @@ function handleClose() {
                       v-model="formData.requires_surfaces"
                       :disabled="!isCreateMode && item?.is_system"
                     />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
+                    <span class="text-sm text-muted">
                       {{ t('catalog.requiresSurfaces') }}
                     </span>
                   </div>
@@ -488,11 +488,11 @@ function handleClose() {
             </div>
 
             <!-- Odontogram mapping -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <h4 class="font-medium text-gray-900 dark:text-white mb-4">
+            <div class="border-t border-default  pt-4">
+              <h4 class="font-medium text-default dark:text-white mb-4">
                 {{ t('catalog.odontogramMapping') }}
               </h4>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p class="text-caption text-subtle  mb-4">
                 {{ t('catalog.odontogramMappingDescription') }}
               </p>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -519,7 +519,7 @@ function handleClose() {
               </div>
               <p
                 v-if="odontogramType"
-                class="text-xs text-gray-500 dark:text-gray-400 mt-2"
+                class="text-caption text-subtle  mt-2"
               >
                 {{ t('catalog.odontogramMappingHint') }}
               </p>
@@ -535,12 +535,12 @@ function handleClose() {
             </UFormField>
 
             <!-- Status -->
-            <div class="flex items-center gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div class="flex items-center gap-3 border-t border-default  pt-4">
               <USwitch
                 v-model="formData.is_active"
                 :disabled="!isCreateMode && item?.is_system"
               />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('catalog.active') }}
               </span>
             </div>
@@ -548,7 +548,7 @@ function handleClose() {
         </div>
 
         <!-- Footer -->
-        <div class="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+        <div class="flex justify-end gap-2 p-4 border-t border-default  shrink-0">
           <UButton
             variant="ghost"
             @click="handleClose"

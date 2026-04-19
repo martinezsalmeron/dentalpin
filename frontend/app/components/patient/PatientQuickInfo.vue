@@ -87,7 +87,7 @@ const emergencyContactExpanded = ref(false)
         class="mb-2"
       />
 
-      <h2 class="text-lg font-semibold text-center">
+      <h2 class="text-h1 text-default text-center text-pretty">
         {{ patient.first_name }} {{ patient.last_name }}
       </h2>
 
@@ -102,19 +102,23 @@ const emergencyContactExpanded = ref(false)
       </div>
     </div>
 
-    <!-- Clinical Alerts Section -->
+    <!-- Clinical Alerts Section — alert-surface pattern (DESIGN §7.1) -->
     <div
       v-if="patient.active_alerts?.length > 0"
-      class="mb-4 p-3 rounded-lg border-l-3 bg-gray-50 dark:bg-gray-800/50"
-      :class="hasCriticalAlerts ? 'border-l-red-400 dark:border-l-red-500' : 'border-l-amber-400 dark:border-l-amber-500'"
+      :class="[
+        hasCriticalAlerts ? 'alert-surface-danger' : 'alert-surface-warning',
+        'mb-4 rounded-token-md px-3 py-2'
+      ]"
+      role="alert"
     >
       <!-- Section header -->
       <div class="flex items-center gap-2 mb-2">
         <UIcon
           :name="hasCriticalAlerts ? 'i-lucide-alert-triangle' : 'i-lucide-info'"
-          class="w-4 h-4 text-gray-500 dark:text-gray-400"
+          class="w-4 h-4"
+          :style="{ color: hasCriticalAlerts ? 'var(--color-danger-accent)' : 'var(--color-warning-accent)' }"
         />
-        <span class="font-medium text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <span class="text-caption uppercase tracking-wide">
           {{ t('patients.alerts.label') }}
         </span>
       </div>
@@ -184,7 +188,7 @@ const emergencyContactExpanded = ref(false)
       >
         <UIcon
           name="i-lucide-cake"
-          class="w-4 h-4 text-gray-400"
+          class="w-4 h-4 text-subtle"
         />
         <span>{{ age }} {{ t('patients.years') }}</span>
       </div>
@@ -196,11 +200,11 @@ const emergencyContactExpanded = ref(false)
       >
         <UIcon
           name="i-lucide-phone"
-          class="w-4 h-4 text-gray-400"
+          class="w-4 h-4 text-subtle"
         />
         <a
           :href="`tel:${patient.phone}`"
-          class="text-primary-500 hover:underline"
+          class="text-primary-accent hover:underline"
         >
           {{ patient.phone }}
         </a>
@@ -213,11 +217,11 @@ const emergencyContactExpanded = ref(false)
       >
         <UIcon
           name="i-lucide-mail"
-          class="w-4 h-4 text-gray-400"
+          class="w-4 h-4 text-subtle"
         />
         <a
           :href="`mailto:${patient.email}`"
-          class="text-primary-500 hover:underline truncate"
+          class="text-primary-accent hover:underline truncate"
         >
           {{ patient.email }}
         </a>
@@ -230,7 +234,7 @@ const emergencyContactExpanded = ref(false)
       >
         <UIcon
           name="i-lucide-id-card"
-          class="w-4 h-4 text-gray-400"
+          class="w-4 h-4 text-subtle"
         />
         <span>{{ patient.national_id_type?.toUpperCase() }}: {{ patient.national_id }}</span>
       </div>
@@ -238,11 +242,11 @@ const emergencyContactExpanded = ref(false)
       <!-- Emergency Contact (Collapsible) -->
       <div
         v-if="patient.emergency_contact"
-        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+        class="mt-4 pt-4 border-t border-default"
       >
         <button
           type="button"
-          class="flex items-center justify-between w-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          class="flex items-center justify-between w-full text-subtle hover:text-muted transition-colors"
           @click="emergencyContactExpanded = !emergencyContactExpanded"
         >
           <div class="flex items-center gap-2">
@@ -250,7 +254,7 @@ const emergencyContactExpanded = ref(false)
               name="i-lucide-phone-call"
               class="w-4 h-4"
             />
-            <span class="font-medium text-sm">{{ t('patients.emergencyContact.title') }}</span>
+            <span class="text-ui">{{ t('patients.emergencyContact.title') }}</span>
           </div>
           <UIcon
             :name="emergencyContactExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -269,18 +273,18 @@ const emergencyContactExpanded = ref(false)
             v-show="emergencyContactExpanded"
             class="pl-6 space-y-1 mt-2 overflow-hidden"
           >
-            <p class="font-medium">
+            <p class="text-ui text-default">
               {{ patient.emergency_contact.name }}
             </p>
             <p
               v-if="patient.emergency_contact.relationship"
-              class="text-gray-500"
+              class="text-caption text-subtle"
             >
               {{ patient.emergency_contact.relationship }}
             </p>
             <a
               :href="`tel:${patient.emergency_contact.phone}`"
-              class="text-primary-500 hover:underline"
+              class="text-primary-accent hover:underline"
             >
               {{ patient.emergency_contact.phone }}
             </a>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui'
 import type { BudgetItem, SignatureCreate } from '~/types'
 
 const route = useRoute()
@@ -332,6 +333,36 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(locale.value)
 }
 
+const moreMenuItems = computed<DropdownMenuItem[][]>(() => {
+  if (!currentBudget.value) return []
+  const primary: DropdownMenuItem[] = [
+    {
+      label: t('budget.actions.downloadPdf'),
+      icon: 'i-lucide-download',
+      onSelect: handleDownloadPDF
+    }
+  ]
+  if (can('budget.write')) {
+    primary.push({
+      label: t('budget.actions.duplicate'),
+      icon: 'i-lucide-copy',
+      onSelect: handleDuplicate
+    })
+  }
+  const groups: DropdownMenuItem[][] = [primary]
+  if (canCancel(currentBudget.value) && can('budget.write')) {
+    groups.push([
+      {
+        label: t('budget.actions.cancel'),
+        icon: 'i-lucide-ban',
+        color: 'error',
+        onSelect: handleCancel
+      }
+    ])
+  }
+  return groups
+})
+
 function getItemName(item: BudgetItem): string {
   if (!item.catalog_item) return '-'
   return item.catalog_item.names[locale.value] || item.catalog_item.names.es || item.catalog_item.internal_code
@@ -351,111 +382,101 @@ function getItemName(item: BudgetItem): string {
 
     <template v-else-if="currentBudget">
       <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <UButton
-            variant="ghost"
-            color="neutral"
-            icon="i-lucide-arrow-left"
-            @click="comesFromPatient ? router.push(`/patients/${route.query.patientId}`) : router.push('/budgets')"
-          >
-            {{ backLabel }}
-          </UButton>
-          <div>
-            <div class="flex items-center gap-3">
-              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <UButton
+          variant="ghost"
+          color="neutral"
+          icon="i-lucide-arrow-left"
+          size="sm"
+          class="-ml-2 mb-3"
+          @click="comesFromPatient ? router.push(`/patients/${route.query.patientId}`) : router.push('/budgets')"
+        >
+          {{ backLabel }}
+        </UButton>
+
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-3 flex-wrap">
+              <h1 class="text-display text-default">
                 {{ currentBudget.budget_number }}
               </h1>
-              <span class="text-gray-500">v{{ currentBudget.version }}</span>
+              <span class="text-subtle">v{{ currentBudget.version }}</span>
               <BudgetStatusBadge :status="currentBudget.status" />
             </div>
             <NuxtLink
               v-if="currentBudget.patient"
               :to="`/patients/${currentBudget.patient.id}`"
-              class="text-lg font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
+              class="mt-1 inline-block text-body text-primary-accent hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
             >
               {{ currentBudget.patient.first_name }} {{ currentBudget.patient.last_name }}
             </NuxtLink>
           </div>
-        </div>
 
-        <!-- Actions -->
-        <div class="flex items-center gap-2">
-          <UButton
-            variant="outline"
-            color="neutral"
-            icon="i-lucide-download"
-            @click="handleDownloadPDF"
-          >
-            {{ t('budget.actions.downloadPdf') }}
-          </UButton>
+          <!-- Actions -->
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Primary contextual actions -->
+            <UButton
+              v-if="canSend(currentBudget) && can('budget.write')"
+              color="primary"
+              icon="i-lucide-send"
+              size="sm"
+              @click="isSendModalOpen = true"
+            >
+              {{ t('budget.actions.send') }}
+            </UButton>
 
-          <UButton
-            v-if="can('budget.write')"
-            variant="outline"
-            color="neutral"
-            icon="i-lucide-copy"
-            @click="handleDuplicate"
-          >
-            {{ t('budget.actions.duplicate') }}
-          </UButton>
+            <template v-if="canAccept(currentBudget) && can('budget.write')">
+              <UButton
+                color="error"
+                variant="ghost"
+                icon="i-lucide-x"
+                size="sm"
+                @click="openSignatureModal('reject')"
+              >
+                {{ t('budget.actions.reject') }}
+              </UButton>
+              <UButton
+                color="success"
+                icon="i-lucide-check"
+                size="sm"
+                @click="openSignatureModal('accept')"
+              >
+                {{ t('budget.actions.accept') }}
+              </UButton>
+            </template>
 
-          <UButton
-            v-if="canSend(currentBudget) && can('budget.write')"
-            color="primary"
-            icon="i-lucide-send"
-            @click="isSendModalOpen = true"
-          >
-            {{ t('budget.actions.send') }}
-          </UButton>
+            <UButton
+              v-if="canInvoice() && can('billing.write')"
+              color="primary"
+              icon="i-lucide-receipt"
+              size="sm"
+              @click="goToCreateInvoice"
+            >
+              {{ t('invoice.fromBudget') }}
+            </UButton>
 
-          <UButton
-            v-if="canAccept(currentBudget) && can('budget.write')"
-            color="success"
-            icon="i-lucide-check"
-            @click="openSignatureModal('accept')"
-          >
-            {{ t('budget.actions.accept') }}
-          </UButton>
+            <UButton
+              v-if="canComplete(currentBudget) && can('budget.write')"
+              color="success"
+              variant="outline"
+              icon="i-lucide-check-circle"
+              size="sm"
+              @click="handleComplete"
+            >
+              {{ t('budget.actions.complete') }}
+            </UButton>
 
-          <UButton
-            v-if="canAccept(currentBudget) && can('budget.write')"
-            color="error"
-            variant="outline"
-            icon="i-lucide-x"
-            @click="openSignatureModal('reject')"
-          >
-            {{ t('budget.actions.reject') }}
-          </UButton>
-
-          <UButton
-            v-if="canInvoice() && can('billing.write')"
-            color="primary"
-            variant="outline"
-            icon="i-lucide-receipt"
-            @click="goToCreateInvoice"
-          >
-            {{ t('invoice.fromBudget') }}
-          </UButton>
-
-          <UButton
-            v-if="canComplete(currentBudget) && can('budget.write')"
-            color="success"
-            icon="i-lucide-check-circle"
-            @click="handleComplete"
-          >
-            {{ t('budget.actions.complete') }}
-          </UButton>
-
-          <UButton
-            v-if="canCancel(currentBudget) && can('budget.write')"
-            color="error"
-            variant="ghost"
-            icon="i-lucide-ban"
-            @click="handleCancel"
-          >
-            {{ t('budget.actions.cancel') }}
-          </UButton>
+            <!-- Secondary actions in dropdown -->
+            <UDropdownMenu :items="moreMenuItems">
+              <UButton
+                variant="ghost"
+                color="neutral"
+                icon="i-lucide-more-horizontal"
+                size="sm"
+                :aria-label="t('common.actions')"
+              />
+            </UDropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -466,7 +487,7 @@ function getItemName(item: BudgetItem): string {
           <UCard>
             <template #header>
               <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold">
+                <h2 class="text-h1 text-default">
                   {{ t('budget.view') }}
                 </h2>
                 <UButton
@@ -488,19 +509,19 @@ function getItemName(item: BudgetItem): string {
               class="grid grid-cols-2 gap-4"
             >
               <div>
-                <span class="text-sm text-gray-500">{{ t('budget.validFrom') }}</span>
+                <span class="text-caption text-subtle">{{ t('budget.validFrom') }}</span>
                 <p class="font-medium">
                   {{ formatDate(currentBudget.valid_from) }}
                 </p>
               </div>
               <div>
-                <span class="text-sm text-gray-500">{{ t('budget.validUntil') }}</span>
+                <span class="text-caption text-subtle">{{ t('budget.validUntil') }}</span>
                 <p class="font-medium">
                   {{ currentBudget.valid_until ? formatDate(currentBudget.valid_until) : t('budget.noExpiry') }}
                 </p>
               </div>
               <div v-if="currentBudget.global_discount_value">
-                <span class="text-sm text-gray-500">{{ t('budget.globalDiscount') }}</span>
+                <span class="text-caption text-subtle">{{ t('budget.globalDiscount') }}</span>
                 <p class="font-medium">
                   {{ currentBudget.global_discount_type === 'percentage'
                     ? `${currentBudget.global_discount_value}%`
@@ -508,7 +529,7 @@ function getItemName(item: BudgetItem): string {
                 </p>
               </div>
               <div v-if="currentBudget.patient_notes">
-                <span class="text-sm text-gray-500">{{ t('budget.patientNotes') }}</span>
+                <span class="text-caption text-subtle">{{ t('budget.patientNotes') }}</span>
                 <p class="mt-1">
                   {{ currentBudget.patient_notes }}
                 </p>
@@ -595,7 +616,7 @@ function getItemName(item: BudgetItem): string {
           <UCard>
             <template #header>
               <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold">
+                <h2 class="text-h1 text-default">
                   {{ t('budget.items.title') }}
                 </h2>
                 <UButton
@@ -611,14 +632,14 @@ function getItemName(item: BudgetItem): string {
 
             <div
               v-if="currentBudget.items.length === 0"
-              class="text-center py-8 text-gray-500"
+              class="text-center py-8 text-subtle"
             >
               {{ t('budget.items.empty') }}
             </div>
 
             <div
               v-else
-              class="divide-y divide-gray-200 dark:divide-gray-800"
+              class="divide-y divide-[var(--color-border-subtle)]"
             >
               <div
                 v-for="item in currentBudget.items"
@@ -630,24 +651,24 @@ function getItemName(item: BudgetItem): string {
                     <span class="font-medium">{{ getItemName(item) }}</span>
                     <span
                       v-if="item.tooth_number"
-                      class="text-sm text-gray-500"
+                      class="text-caption text-subtle"
                     >
                       #{{ item.tooth_number }}
                       <span v-if="item.surfaces?.length">({{ item.surfaces.join(', ') }})</span>
                     </span>
                   </div>
-                  <div class="text-sm text-gray-500 mt-1">
+                  <div class="text-caption text-subtle mt-1">
                     {{ item.quantity }} x {{ formatCurrency(item.unit_price, currentBudget.currency) }}
                     <span
                       v-if="item.line_discount > 0"
-                      class="text-green-600"
+                      class="text-success-accent"
                     >
                       -{{ formatCurrency(item.line_discount, currentBudget.currency) }}
                     </span>
                   </div>
                   <p
                     v-if="item.notes"
-                    class="text-sm text-gray-500 mt-1"
+                    class="text-caption text-subtle mt-1"
                   >
                     {{ item.notes }}
                   </p>
@@ -675,19 +696,19 @@ function getItemName(item: BudgetItem): string {
           <!-- Totals -->
           <UCard>
             <template #header>
-              <h2 class="text-lg font-semibold">
+              <h2 class="text-h1 text-default">
                 {{ t('budget.total') }}
               </h2>
             </template>
 
             <div class="space-y-3">
               <div class="flex justify-between">
-                <span class="text-gray-500">{{ t('budget.subtotal') }}</span>
+                <span class="text-subtle">{{ t('budget.subtotal') }}</span>
                 <span>{{ formatCurrency(currentBudget.subtotal, currentBudget.currency) }}</span>
               </div>
               <div
                 v-if="currentBudget.total_discount > 0"
-                class="flex justify-between text-green-600"
+                class="flex justify-between text-success-accent"
               >
                 <span>{{ t('budget.totalDiscount') }}</span>
                 <span>-{{ formatCurrency(currentBudget.total_discount, currentBudget.currency) }}</span>
@@ -696,7 +717,7 @@ function getItemName(item: BudgetItem): string {
                 v-if="currentBudget.total_tax > 0"
                 class="flex justify-between"
               >
-                <span class="text-gray-500">{{ t('budget.totalTax') }}</span>
+                <span class="text-subtle">{{ t('budget.totalTax') }}</span>
                 <span>{{ formatCurrency(currentBudget.total_tax, currentBudget.currency) }}</span>
               </div>
               <div class="border-t pt-3 flex justify-between font-bold text-lg">
@@ -710,39 +731,39 @@ function getItemName(item: BudgetItem): string {
           <UCard>
             <div class="space-y-3 text-sm">
               <div>
-                <span class="text-gray-500">{{ t('budget.budgetNumber') }}</span>
+                <span class="text-subtle">{{ t('budget.budgetNumber') }}</span>
                 <p class="font-medium">
                   {{ currentBudget.budget_number }}
                 </p>
               </div>
               <div>
-                <span class="text-gray-500">{{ t('budget.version') }}</span>
+                <span class="text-subtle">{{ t('budget.version') }}</span>
                 <p class="font-medium">
                   v{{ currentBudget.version }}
                 </p>
               </div>
               <div v-if="currentBudget.creator">
-                <span class="text-gray-500">{{ t('common.createdBy') }}</span>
+                <span class="text-subtle">{{ t('common.createdBy') }}</span>
                 <p class="font-medium">
                   {{ currentBudget.creator.first_name }} {{ currentBudget.creator.last_name }}
                 </p>
               </div>
               <div>
-                <span class="text-gray-500">{{ t('common.date') }}</span>
+                <span class="text-subtle">{{ t('common.date') }}</span>
                 <p class="font-medium">
                   {{ formatDate(currentBudget.created_at) }}
                 </p>
               </div>
               <div v-if="currentBudget.treatment_plan">
-                <span class="text-gray-500">{{ t('budget.treatmentPlan') }}</span>
+                <span class="text-subtle">{{ t('budget.treatmentPlan') }}</span>
                 <NuxtLink
                   :to="`/treatment-plans/${currentBudget.treatment_plan.id}`"
-                  class="block font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
+                  class="block font-medium text-primary-accent hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
                 >
                   {{ currentBudget.treatment_plan.plan_number }}
                   <span
                     v-if="currentBudget.treatment_plan.title"
-                    class="text-gray-500 font-normal"
+                    class="text-subtle font-normal"
                   >
                     - {{ currentBudget.treatment_plan.title }}
                   </span>
@@ -768,7 +789,7 @@ function getItemName(item: BudgetItem): string {
         <UCard>
           <template #header>
             <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold">
+              <h2 class="text-h1 text-default">
                 {{ t('budget.actions.send') }}
               </h2>
               <UButton
@@ -781,7 +802,7 @@ function getItemName(item: BudgetItem): string {
           </template>
 
           <div class="space-y-4">
-            <p class="text-gray-600 dark:text-gray-400">
+            <p class="text-muted dark:text-subtle">
               {{ t('budget.send.description') }}
             </p>
 
@@ -798,13 +819,13 @@ function getItemName(item: BudgetItem): string {
             >
               <p
                 v-if="currentBudget?.patient?.email"
-                class="text-sm text-gray-500"
+                class="text-caption text-subtle"
               >
                 {{ t('budget.send.willSendTo') }}: <strong>{{ currentBudget.patient.email }}</strong>
               </p>
               <p
                 v-else
-                class="text-sm text-amber-600"
+                class="text-sm text-warning-accent"
               >
                 {{ t('budget.send.noPatientEmail') }}
               </p>
@@ -820,7 +841,7 @@ function getItemName(item: BudgetItem): string {
 
             <p
               v-if="!sendForm.send_email"
-              class="text-sm text-gray-500"
+              class="text-caption text-subtle"
             >
               {{ t('budget.send.manualNote') }}
             </p>
@@ -854,7 +875,7 @@ function getItemName(item: BudgetItem): string {
         <UCard>
           <template #header>
             <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold">
+              <h2 class="text-h1 text-default">
                 {{ signatureAction === 'accept' ? t('budget.actions.accept') : t('budget.actions.reject') }}
               </h2>
               <UButton

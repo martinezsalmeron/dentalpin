@@ -87,7 +87,7 @@ onUnmounted(() => {
               <h3 class="font-semibold truncate">
                 {{ document?.title }}
               </h3>
-              <p class="text-xs text-gray-500 truncate">
+              <p class="text-caption text-subtle truncate">
                 {{ document?.original_filename }}
               </p>
             </div>
@@ -119,9 +119,9 @@ onUnmounted(() => {
             <div class="text-center">
               <UIcon
                 name="i-lucide-loader-2"
-                class="w-8 h-8 animate-spin text-primary-500"
+                class="w-8 h-8 animate-spin text-primary-accent"
               />
-              <p class="mt-2 text-sm text-gray-500">
+              <p class="mt-2 text-caption text-subtle">
                 {{ t('documents.viewer.loading', 'Loading document...') }}
               </p>
             </div>
@@ -135,9 +135,9 @@ onUnmounted(() => {
             <div class="text-center">
               <UIcon
                 name="i-lucide-file-x"
-                class="w-12 h-12 text-gray-400 mx-auto"
+                class="w-12 h-12 text-subtle mx-auto"
               />
-              <p class="mt-2 text-sm text-gray-500">
+              <p class="mt-2 text-caption text-subtle">
                 {{ t('documents.viewer.error', 'Could not load document') }}
               </p>
               <UButton
@@ -171,9 +171,9 @@ onUnmounted(() => {
             <div class="text-center">
               <UIcon
                 name="i-lucide-file"
-                class="w-12 h-12 text-gray-400 mx-auto"
+                class="w-12 h-12 text-subtle mx-auto"
               />
-              <p class="mt-2 text-sm text-gray-500">
+              <p class="mt-2 text-caption text-subtle">
                 {{ t('documents.viewer.unsupported', 'Preview not available for this file type') }}
               </p>
               <UButton

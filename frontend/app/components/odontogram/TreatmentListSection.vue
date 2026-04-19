@@ -58,18 +58,18 @@ function getStatusBadgeColor(status: string): 'success' | 'warning' | 'neutral' 
 </script>
 
 <template>
-  <div class="treatment-list-section border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+  <div class="treatment-list-section border border-default rounded-lg overflow-hidden">
     <!-- Header (clickable to collapse/expand) -->
     <button
-      class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+      class="w-full flex items-center justify-between px-4 py-3 bg-surface-muted hover:bg-surface-muted transition-colors"
       @click="isExpanded = !isExpanded"
     >
       <div class="flex items-center gap-2">
         <UIcon
           name="i-lucide-list"
-          class="w-5 h-5 text-gray-500"
+          class="w-5 h-5 text-subtle"
         />
-        <span class="font-medium text-gray-700 dark:text-gray-300">
+        <span class="font-medium text-muted">
           {{ t('odontogram.treatmentList.title') }}
         </span>
         <UBadge
@@ -82,18 +82,18 @@ function getStatusBadgeColor(status: string): 'success' | 'warning' | 'neutral' 
       </div>
       <UIcon
         :name="isExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-        class="w-5 h-5 text-gray-400 transition-transform"
+        class="w-5 h-5 text-subtle transition-transform"
       />
     </button>
 
     <!-- Content -->
     <div
       v-if="isExpanded"
-      class="p-4 bg-white dark:bg-gray-900"
+      class="p-4 bg-surface"
     >
       <div
         v-if="sortedTreatments.length === 0"
-        class="text-center py-4 text-gray-500"
+        class="text-center py-4 text-subtle"
       >
         {{ t('odontogram.treatmentList.noTreatments') }}
       </div>
@@ -105,31 +105,31 @@ function getStatusBadgeColor(status: string): 'success' | 'warning' | 'neutral' 
         <li
           v-for="treatment in sortedTreatments"
           :key="treatment.id"
-          class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-muted transition-colors"
         >
           <!-- Color indicator -->
           <span
-            class="w-3 h-3 rounded-full flex-shrink-0 border border-gray-200 dark:border-gray-600"
+            class="w-3 h-3 rounded-full flex-shrink-0 border border-default"
             :style="{ backgroundColor: getTreatmentColor(treatment.treatment_type) }"
           />
 
           <!-- Treatment info -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <span class="font-medium text-gray-900 dark:text-gray-100">
+              <span class="font-medium text-default">
                 {{ treatment.tooth_number }}
               </span>
-              <span class="text-gray-600 dark:text-gray-400 truncate">
+              <span class="text-muted truncate">
                 {{ getToothFullName(treatment.tooth_number) }}
               </span>
             </div>
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-gray-700 dark:text-gray-300">
+              <span class="text-muted">
                 {{ getTreatmentDisplayName(treatment, locale, t) }}
               </span>
               <span
                 v-if="treatment.surfaces && treatment.surfaces.length > 0"
-                class="text-gray-500"
+                class="text-subtle"
               >
                 ({{ treatment.surfaces.join(', ') }})
               </span>
@@ -144,7 +144,7 @@ function getStatusBadgeColor(status: string): 'success' | 'warning' | 'neutral' 
               :color="getStatusBadgeColor(treatment.status)"
               variant="subtle"
             />
-            <span class="text-xs text-gray-400">
+            <span class="text-caption text-subtle">
               {{ formatDate(treatment.performed_at || treatment.recorded_at) }}
             </span>
           </div>

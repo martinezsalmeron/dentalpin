@@ -84,6 +84,7 @@ const hasActiveFilters = computed(() => {
       <USelectMenu
         v-model="localFilters.statuses"
         :items="statusOptions"
+        value-key="value"
         multiple
         :placeholder="t('budget.filters.allStatuses')"
         class="w-64"
@@ -116,7 +117,7 @@ const hasActiveFilters = computed(() => {
     <!-- Advanced filters -->
     <div
       v-if="showAdvanced"
-      class="flex flex-wrap items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+      class="flex flex-wrap items-center gap-4 p-4 bg-surface-muted rounded-lg"
     >
       <UFormField :label="t('budget.filters.dateFrom')">
         <UInput

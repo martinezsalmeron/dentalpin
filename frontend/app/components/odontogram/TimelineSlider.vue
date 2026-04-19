@@ -33,7 +33,7 @@ const isDragging = ref(false)
 // Computed Properties
 // ============================================================================
 
-/** Whether last date in array is today (merges with "Now" position) */
+/** Whether last date in array is today (merges with"Now" position) */
 const lastDateIsToday = computed(() => {
   if (props.dates.length === 0) return false
   const lastDate = props.dates[props.dates.length - 1].date
@@ -75,7 +75,7 @@ const thumbLabel = computed(() => {
 // Helper Functions
 // ============================================================================
 
-/** Format date for display (e.g., "15 ene" or "Jan 15") */
+/** Format date for display (e.g.,"15 ene" or"Jan 15") */
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + 'T00:00:00')
   return date.toLocaleDateString(locale.value, {
@@ -115,13 +115,13 @@ function getMarkerLabel(index: number): string {
 function selectIndex(index: number | null) {
   if (props.disabled) return
 
-  // Out of bounds or null → go to "now"
+  // Out of bounds or null → go to"now"
   if (index === null || index < 0 || index >= props.dates.length) {
     emit('update:currentDate', null)
     return
   }
 
-  // Last date is today → treat as "now"
+  // Last date is today → treat as"now"
   if (lastDateIsToday.value && index === props.dates.length - 1) {
     emit('update:currentDate', null)
     return
@@ -135,7 +135,7 @@ function goToPrevious() {
   if (props.disabled) return
 
   if (currentIndex.value === null) {
-    // At "now" → go to last historical date
+    // At"now" → go to last historical date
     const lastHistorical = lastDateIsToday.value
       ? props.dates.length - 2
       : props.dates.length - 1
@@ -156,7 +156,7 @@ function goToNext() {
   if (currentIndex.value < lastHistorical) {
     selectIndex(currentIndex.value + 1)
   } else {
-    selectIndex(null) // Go to "now"
+    selectIndex(null) // Go to"now"
   }
 }
 
@@ -236,12 +236,12 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="w-full p-2 bg-gray-50 dark:bg-gray-800 rounded-lg"
+    class="w-full p-2 bg-surface-muted rounded-lg"
     :class="{ 'opacity-50 pointer-events-none': disabled }"
   >
     <!-- Header -->
     <div class="flex items-center justify-between h-6">
-      <span class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+      <span class="flex items-center text-sm font-medium text-muted">
         <UIcon
           name="i-lucide-history"
           class="w-4 h-4 mr-1"
@@ -276,7 +276,7 @@ onUnmounted(() => {
       @keydown="handleKeydown"
     >
       <!-- Background line -->
-      <div class="absolute top-4 left-0 right-0 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+      <div class="absolute top-4 left-0 right-0 h-1 bg-surface-sunken  rounded-full" />
 
       <!-- Date markers -->
       <div
@@ -289,13 +289,13 @@ onUnmounted(() => {
       >
         <!-- Marker dot -->
         <div
-          class="w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 -translate-y-1/2 transition-all duration-150"
+          class="w-3 h-3 rounded-full border-2 border-white  -translate-y-1/2 transition-all duration-150"
           :class="{
-            'bg-green-500 scale-125': getMarkerState(index) === 'now',
-            'bg-primary-600 scale-125': getMarkerState(index) === 'selected',
-            'bg-gray-300 dark:bg-gray-500': getMarkerState(index) === 'past',
-            'bg-gray-400 dark:bg-gray-500': getMarkerState(index) === 'future',
-            'group-hover:scale-150 group-hover:bg-primary-500': getMarkerState(index) !== 'now'
+            'bg-[var(--color-success-accent)] scale-125': getMarkerState(index) === 'now',
+            'bg-[var(--color-primary)] scale-125': getMarkerState(index) === 'selected',
+            'bg-surface-sunken': getMarkerState(index) === 'past',
+            'bg-[var(--color-text-subtle)]': getMarkerState(index) === 'future',
+            'group-hover:scale-150 group-hover:bg-[var(--color-primary)]': getMarkerState(index) !== 'now'
           }"
         />
 
@@ -303,9 +303,9 @@ onUnmounted(() => {
         <span
           class="absolute top-3 left-1/2 -translate-x-1/2 text-xs whitespace-nowrap font-medium transition-colors duration-150"
           :class="{
-            'text-green-600 dark:text-green-400': getMarkerState(index) === 'now',
-            'text-primary-600 dark:text-primary-400': getMarkerState(index) === 'selected',
-            'text-gray-500 dark:text-gray-400': getMarkerState(index) === 'past' || getMarkerState(index) === 'future'
+            'text-success-accent': getMarkerState(index) === 'now',
+            'text-primary-accent': getMarkerState(index) === 'selected',
+            'text-muted': getMarkerState(index) === 'past' || getMarkerState(index) === 'future'
           }"
         >
           {{ getMarkerLabel(index) }}
@@ -320,7 +320,7 @@ onUnmounted(() => {
         @click.stop="goToNow"
       >
         <div
-          class="w-3 h-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-800 -translate-y-1/2 transition-all duration-150"
+          class="w-3 h-3 rounded-full bg-[var(--color-success-accent)] border-2 border-[var(--color-surface)]  -translate-y-1/2 transition-all duration-150"
           :class="{
             'scale-125': currentIndex === null,
             'group-hover:scale-150': currentIndex !== null
@@ -328,7 +328,7 @@ onUnmounted(() => {
         />
         <span
           class="absolute top-3 left-1/2 -translate-x-1/2 text-xs whitespace-nowrap font-medium transition-colors duration-150"
-          :class="currentIndex === null ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'"
+          :class="currentIndex === null ? 'text-success-accent' : 'text-muted'"
         >
           {{ t('common.now') }}
         </span>
@@ -353,7 +353,7 @@ onUnmounted(() => {
 
         <!-- Thumb circle -->
         <div
-          class="w-5 h-5 -translate-y-1/2 bg-primary-600 rounded-full shadow-lg cursor-grab border-2 border-white dark:border-gray-800 transition-transform duration-100 hover:scale-110 active:cursor-grabbing active:scale-125"
+          class="w-5 h-5 -translate-y-1/2 bg-[var(--color-primary)] rounded-full shadow-lg cursor-grab border-2 border-white  transition-transform duration-100 hover:scale-110 active:cursor-grabbing active:scale-125"
           @mousedown="handleDragStart"
           @touchstart.prevent="handleDragStart"
         />

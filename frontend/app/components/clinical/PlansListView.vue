@@ -68,31 +68,28 @@ const hasPlans = computed(() => props.plans.length > 0)
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-primary-500"
+        class="w-8 h-8 animate-spin text-primary-accent"
       />
     </div>
 
     <!-- Empty state -->
     <UCard v-else-if="!hasPlans">
-      <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-        <UIcon
-          name="i-lucide-clipboard"
-          class="w-12 h-12 mx-auto mb-3 opacity-50"
-        />
-        <p class="text-lg font-medium mb-1">
-          {{ t('clinical.plans.empty') }}
-        </p>
-        <p class="text-sm mb-4">
-          {{ t('clinical.plans.emptyDescription') }}
-        </p>
-        <UButton
-          color="primary"
-          icon="i-lucide-plus"
-          @click="emit('create-plan')"
-        >
-          {{ t('clinical.plans.createFirst') }}
-        </UButton>
-      </div>
+      <EmptyState
+        icon="i-lucide-clipboard"
+        :title="t('clinical.plans.empty')"
+        :description="t('clinical.plans.emptyDescription')"
+      >
+        <template #actions>
+          <UButton
+            color="primary"
+            variant="solid"
+            icon="i-lucide-plus"
+            @click="emit('create-plan')"
+          >
+            {{ t('clinical.plans.createFirst') }}
+          </UButton>
+        </template>
+      </EmptyState>
     </UCard>
 
     <!-- Plans list -->
@@ -102,10 +99,10 @@ const hasPlans = computed(() => props.plans.length > 0)
         v-if="activePlans.length > 0"
         class="space-y-3"
       >
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+        <h4 class="text-caption text-muted uppercase tracking-wide flex items-center gap-2">
           <UIcon
             name="i-lucide-play-circle"
-            class="w-4 h-4 text-green-500"
+            class="w-4 h-4 text-success-accent"
           />
           {{ t('clinical.plans.active') }}
         </h4>
@@ -128,10 +125,10 @@ const hasPlans = computed(() => props.plans.length > 0)
         v-if="draftPlans.length > 0"
         class="space-y-3"
       >
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+        <h4 class="text-caption text-muted uppercase tracking-wide flex items-center gap-2">
           <UIcon
             name="i-lucide-pencil"
-            class="w-4 h-4 text-amber-500"
+            class="w-4 h-4 text-warning-accent"
           />
           {{ t('clinical.plans.drafts') }}
         </h4>

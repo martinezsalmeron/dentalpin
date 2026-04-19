@@ -58,7 +58,7 @@ function isHighlighted(toothNumber: number): boolean {
     <!-- No conditions -->
     <div
       v-if="conditions.length === 0"
-      class="text-center py-6 text-gray-500 dark:text-gray-400"
+      class="text-center py-6 text-muted"
     >
       <UIcon
         name="i-lucide-clipboard-check"
@@ -75,25 +75,25 @@ function isHighlighted(toothNumber: number): boolean {
     <!-- Conditions by tooth: one compact row per tooth -->
     <ul
       v-else
-      class="divide-y divide-gray-100 dark:divide-gray-800"
+      class="divide-y divide-[var(--color-border-subtle)]"
     >
       <li
         v-for="group in groupedByTooth"
         :key="group.toothNumber"
-        class="flex items-center gap-3 py-2 px-2 rounded-md transition-colors cursor-default"
+        class="flex items-center gap-3 py-2 px-2 rounded-token-md transition-colors cursor-default"
         :class="{
-          'bg-yellow-50 dark:bg-yellow-900/20': isHighlighted(group.toothNumber),
-          'hover:bg-gray-50 dark:hover:bg-gray-800/60': !isHighlighted(group.toothNumber)
+          'alert-surface-warning': isHighlighted(group.toothNumber),
+          'hover:bg-surface-muted/60': !isHighlighted(group.toothNumber)
         }"
         @mouseenter="emit('tooth-hover', group.toothNumber)"
         @mouseleave="emit('tooth-hover', null)"
       >
         <span
-          class="inline-flex items-center justify-center min-w-[2.25rem] h-7 px-2 rounded text-xs font-semibold tabular-nums bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+          class="inline-flex items-center justify-center min-w-[2.25rem] h-7 px-2 rounded-token-sm text-caption font-semibold tnum bg-surface-muted text-default"
         >
           {{ group.toothNumber }}
         </span>
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm flex-1 min-w-0">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-body flex-1 min-w-0">
           <template
             v-for="(condition, idx) in group.treatments"
             :key="condition.id"
@@ -102,14 +102,14 @@ function isHighlighted(toothNumber: number): boolean {
               <span>{{ getTreatmentLabel(condition) }}</span>
               <span
                 v-if="condition.surfaces?.length"
-                class="text-xs text-gray-500 dark:text-gray-400 tabular-nums"
+                class="text-caption text-muted tnum"
               >
                 {{ formatSurfaces(condition.surfaces) }}
               </span>
             </span>
             <span
               v-if="idx < group.treatments.length - 1"
-              class="text-gray-300 dark:text-gray-600"
+              class="text-subtle"
             >·</span>
           </template>
         </div>
@@ -119,12 +119,12 @@ function isHighlighted(toothNumber: number): boolean {
     <!-- General conditions (no tooth) -->
     <div
       v-if="generalConditions.length > 0"
-      class="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+      class="mt-3 alert-surface-info rounded-token-lg p-3"
     >
       <div class="flex items-center gap-2 mb-2">
         <UIcon
           name="i-lucide-user"
-          class="w-4 h-4 text-blue-500"
+          class="w-4 h-4 text-info-accent"
         />
         <span class="font-medium">{{ t('clinical.diagnosis.generalConditions') }}</span>
       </div>

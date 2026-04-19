@@ -127,7 +127,7 @@ function handleClose() {
                 class="w-4 h-4 rounded-full flex-shrink-0"
                 :style="{ backgroundColor: treatmentColor }"
               />
-              <span class="font-semibold text-gray-900 dark:text-white">{{ treatmentLabel }}</span>
+              <span class="font-semibold text-default">{{ treatmentLabel }}</span>
               <UBadge
                 v-if="treatment"
                 :color="status === 'planned' ? 'warning' : 'neutral'"
@@ -153,7 +153,7 @@ function handleClose() {
         >
           <!-- Status selection -->
           <div>
-            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+            <label class="block text-sm font-medium mb-2 text-muted">
               {{ t('odontogram.treatments.selectStatus') }}
             </label>
             <div class="flex gap-2">
@@ -172,7 +172,7 @@ function handleClose() {
 
           <!-- Surface selection (only for surface treatments) -->
           <div v-if="isSurfaceType">
-            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+            <label class="block text-sm font-medium mb-2 text-muted">
               {{ t('odontogram.selectSurfaces') }}
             </label>
             <div class="flex gap-2 flex-wrap">
@@ -189,7 +189,7 @@ function handleClose() {
             </div>
             <p
               v-if="selectedSurfaces.length > 0"
-              class="text-xs text-gray-500 mt-2"
+              class="text-caption text-subtle mt-2"
             >
               {{ selectedSurfaces.length }} {{ t('odontogram.surfacesSelected') }}
             </p>
@@ -197,7 +197,7 @@ function handleClose() {
 
           <!-- Notes -->
           <div>
-            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+            <label class="block text-sm font-medium mb-2 text-muted">
               {{ t('patients.notes') }}
             </label>
             <UTextarea
@@ -210,7 +210,7 @@ function handleClose() {
           <!-- Quick action: Mark as performed -->
           <div
             v-if="treatment.status === 'planned'"
-            class="pt-4 border-t border-gray-200 dark:border-gray-700"
+            class="pt-4 border-t border-default"
           >
             <UButton
               color="success"

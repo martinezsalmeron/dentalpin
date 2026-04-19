@@ -80,17 +80,17 @@ watch(() => props.modelValue, (newVal) => {
     <!-- Selected patient display -->
     <div
       v-if="selectedPatient"
-      class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+      class="flex items-center gap-3 p-3 bg-surface-muted rounded-lg"
     >
       <UAvatar
         :alt="selectedPatient.first_name"
         size="sm"
       />
       <div class="min-w-0 flex-1">
-        <p class="font-medium text-gray-900 dark:text-white truncate">
+        <p class="font-medium text-default truncate">
           {{ selectedPatient.last_name }}, {{ selectedPatient.first_name }}
         </p>
-        <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
+        <p class="text-sm text-muted truncate">
           {{ selectedPatient.phone || selectedPatient.email || '-' }}
         </p>
       </div>
@@ -124,10 +124,10 @@ watch(() => props.modelValue, (newVal) => {
             size="xs"
           />
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <p class="text-sm font-medium text-default truncate">
               {{ item.last_name }}, {{ item.first_name }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <p class="text-xs text-muted truncate">
               {{ item.phone || item.email || '-' }}
             </p>
           </div>

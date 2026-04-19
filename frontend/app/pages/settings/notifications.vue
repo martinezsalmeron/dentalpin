@@ -190,11 +190,11 @@ async function handleSmtpSave() {
 
 // Get status color for SMTP
 const smtpStatusColor = computed(() => {
-  if (!smtpSettings.value) return 'bg-gray-400'
-  if (smtpSettings.value.provider === 'disabled') return 'bg-gray-400'
-  if (smtpSettings.value.is_verified) return 'bg-green-500'
-  if (smtpSettings.value.host) return 'bg-yellow-500'
-  return 'bg-gray-400'
+  if (!smtpSettings.value) return 'bg-[var(--color-text-subtle)]'
+  if (smtpSettings.value.provider === 'disabled') return 'bg-[var(--color-text-subtle)]'
+  if (smtpSettings.value.is_verified) return 'bg-[var(--color-success-accent)]'
+  if (smtpSettings.value.host) return 'bg-[var(--color-warning-accent)]'
+  return 'bg-[var(--color-text-subtle)]'
 })
 
 // Get status text for SMTP
@@ -221,18 +221,18 @@ if (!isAdmin.value) {
         <div class="flex items-center gap-2 mb-1">
           <NuxtLink
             to="/settings"
-            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            class="text-subtle hover:text-muted dark:text-subtle dark:hover:text-subtle"
           >
             <UIcon
               name="i-lucide-arrow-left"
               class="w-5 h-5"
             />
           </NuxtLink>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 class="text-display text-default">
             {{ t('notifications.title') }}
           </h1>
         </div>
-        <p class="text-gray-500 dark:text-gray-400">
+        <p class="text-muted">
           {{ t('notifications.pageDescription') }}
         </p>
       </div>
@@ -274,32 +274,32 @@ if (!isAdmin.value) {
           <div class="flex items-center gap-2">
             <UIcon
               name="i-lucide-bell"
-              class="w-5 h-5 text-primary-500"
+              class="w-5 h-5 text-primary-accent"
             />
-            <h2 class="font-semibold text-gray-900 dark:text-white">
+            <h2 class="font-semibold text-default">
               {{ t('notifications.autoVsManual') }}
             </h2>
           </div>
         </template>
 
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        <p class="text-caption text-subtle mb-6">
           {{ t('notifications.autoVsManualDescription') }}
         </p>
 
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="border-b border-gray-200 dark:border-gray-700">
-                <th class="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">
+              <tr class="border-b border-default">
+                <th class="text-left py-3 px-4 font-medium text-muted dark:text-subtle">
                   {{ t('notifications.notificationType') }}
                 </th>
-                <th class="text-center py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-24">
+                <th class="text-center py-3 px-4 font-medium text-muted dark:text-subtle w-24">
                   {{ t('notifications.enabled') }}
                 </th>
-                <th class="text-center py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-32">
+                <th class="text-center py-3 px-4 font-medium text-muted dark:text-subtle w-32">
                   {{ t('notifications.autoSend') }}
                 </th>
-                <th class="text-center py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-32">
+                <th class="text-center py-3 px-4 font-medium text-muted dark:text-subtle w-32">
                   {{ t('notifications.options') }}
                 </th>
               </tr>
@@ -308,14 +308,14 @@ if (!isAdmin.value) {
               <tr
                 v-for="type in notificationTypes"
                 :key="type.key"
-                class="border-b border-gray-100 dark:border-gray-800"
+                class="border-b border-subtle"
               >
                 <td class="py-4 px-4">
                   <div>
-                    <p class="font-medium text-gray-900 dark:text-white">
+                    <p class="font-medium text-default">
                       {{ type.label }}
                     </p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                    <p class="text-caption text-subtle">
                       {{ type.description }}
                     </p>
                   </div>
@@ -347,11 +347,11 @@ if (!isAdmin.value) {
                       :disabled="!getSettingValue(type.key, 'enabled')"
                       @update:model-value="(v: string | number) => updateLocalSetting(type.key, 'hours_before', Number(v))"
                     />
-                    <span class="text-sm text-gray-500">{{ t('notifications.hoursBefore') }}</span>
+                    <span class="text-caption text-subtle">{{ t('notifications.hoursBefore') }}</span>
                   </div>
                   <span
                     v-else
-                    class="text-gray-400"
+                    class="text-subtle"
                   >-</span>
                 </td>
               </tr>
@@ -359,13 +359,13 @@ if (!isAdmin.value) {
           </table>
         </div>
 
-        <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+        <div class="mt-6 p-4 alert-surface-info rounded-lg">
           <div class="flex gap-3">
             <UIcon
               name="i-lucide-info"
-              class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5"
+              class="w-5 h-5 text-info-accent flex-shrink-0 mt-0.5"
             />
-            <div class="text-sm text-blue-700 dark:text-blue-300">
+            <div class="text-sm text-info">
               <p class="font-medium mb-1">
                 {{ t('notifications.infoTitle') }}
               </p>
@@ -386,9 +386,9 @@ if (!isAdmin.value) {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-server"
-                class="w-5 h-5 text-primary-500"
+                class="w-5 h-5 text-primary-accent"
               />
-              <h2 class="font-semibold text-gray-900 dark:text-white">
+              <h2 class="font-semibold text-default">
                 {{ t('notifications.smtp.title') }}
               </h2>
             </div>
@@ -422,7 +422,7 @@ if (!isAdmin.value) {
               class="w-3 h-3 rounded-full"
               :class="smtpStatusColor"
             />
-            <span class="text-gray-700 dark:text-gray-300">
+            <span class="text-muted">
               {{ smtpStatusText }}
             </span>
             <UBadge
@@ -441,27 +441,27 @@ if (!isAdmin.value) {
             class="grid grid-cols-2 gap-4 text-sm"
           >
             <div>
-              <span class="text-gray-500 dark:text-gray-400">{{ t('notifications.smtp.host') }}:</span>
-              <span class="ml-2 text-gray-900 dark:text-white">{{ smtpSettings.host }}:{{ smtpSettings.port }}</span>
+              <span class="text-muted">{{ t('notifications.smtp.host') }}:</span>
+              <span class="ml-2 text-default">{{ smtpSettings.host }}:{{ smtpSettings.port }}</span>
             </div>
             <div>
-              <span class="text-gray-500 dark:text-gray-400">{{ t('notifications.smtp.fromEmail') }}:</span>
-              <span class="ml-2 text-gray-900 dark:text-white">{{ smtpSettings.from_email || '-' }}</span>
+              <span class="text-muted">{{ t('notifications.smtp.fromEmail') }}:</span>
+              <span class="ml-2 text-default">{{ smtpSettings.from_email || '-' }}</span>
             </div>
             <div>
-              <span class="text-gray-500 dark:text-gray-400">{{ t('notifications.smtp.security') }}:</span>
-              <span class="ml-2 text-gray-900 dark:text-white">
+              <span class="text-muted">{{ t('notifications.smtp.security') }}:</span>
+              <span class="ml-2 text-default">
                 {{ smtpSettings.use_ssl ? 'SSL' : smtpSettings.use_tls ? 'TLS' : 'None' }}
               </span>
             </div>
             <div>
-              <span class="text-gray-500 dark:text-gray-400">{{ t('notifications.smtp.username') }}:</span>
-              <span class="ml-2 text-gray-900 dark:text-white">{{ smtpSettings.username || '-' }}</span>
+              <span class="text-muted">{{ t('notifications.smtp.username') }}:</span>
+              <span class="ml-2 text-default">{{ smtpSettings.username || '-' }}</span>
             </div>
           </div>
 
           <!-- Info message -->
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-caption text-subtle">
             {{ t('notifications.smtp.description') }}
           </p>
         </div>
@@ -476,9 +476,9 @@ if (!isAdmin.value) {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-mail-check"
-                class="w-5 h-5 text-primary-500"
+                class="w-5 h-5 text-primary-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('notifications.testEmailTitle') }}
               </h3>
             </div>
@@ -488,7 +488,7 @@ if (!isAdmin.value) {
             class="space-y-4"
             @submit.prevent="handleTestEmail"
           >
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('notifications.testEmailDescription') }}
             </p>
 
@@ -530,9 +530,9 @@ if (!isAdmin.value) {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-server"
-                class="w-5 h-5 text-primary-500"
+                class="w-5 h-5 text-primary-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('notifications.smtp.title') }}
               </h3>
             </div>
@@ -590,7 +590,7 @@ if (!isAdmin.value) {
                   />
                   <p
                     v-if="smtpSettings?.has_password"
-                    class="text-xs text-gray-500 mt-1"
+                    class="text-caption text-subtle mt-1"
                   >
                     {{ t('notifications.smtp.passwordHint') }}
                   </p>
@@ -601,14 +601,14 @@ if (!isAdmin.value) {
                 <UFormField>
                   <div class="flex items-center gap-2">
                     <USwitch v-model="smtpForm.use_tls" />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('notifications.smtp.useTls') }}</span>
+                    <span class="text-sm text-muted">{{ t('notifications.smtp.useTls') }}</span>
                   </div>
                 </UFormField>
 
                 <UFormField>
                   <div class="flex items-center gap-2">
                     <USwitch v-model="smtpForm.use_ssl" />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('notifications.smtp.useSsl') }}</span>
+                    <span class="text-sm text-muted">{{ t('notifications.smtp.useSsl') }}</span>
                   </div>
                 </UFormField>
               </div>
@@ -632,8 +632,8 @@ if (!isAdmin.value) {
               </div>
 
               <!-- Test connection section -->
-              <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
-                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div class="p-4 bg-surface-muted rounded-lg space-y-3">
+                <p class="text-sm font-medium text-muted">
                   {{ t('notifications.smtp.testConnectionTitle') }}
                 </p>
                 <div class="flex gap-3">
@@ -659,9 +659,9 @@ if (!isAdmin.value) {
             <!-- Console mode info -->
             <div
               v-else-if="smtpForm.provider === 'console'"
-              class="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg"
+              class="p-4 alert-surface-info rounded-lg"
             >
-              <p class="text-sm text-blue-700 dark:text-blue-300">
+              <p class="text-sm text-info">
                 {{ t('notifications.smtp.consoleNote') }}
               </p>
             </div>
@@ -669,14 +669,14 @@ if (!isAdmin.value) {
             <!-- Disabled mode info -->
             <div
               v-else-if="smtpForm.provider === 'disabled'"
-              class="p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg"
+              class="p-4 alert-surface-warning rounded-lg"
             >
-              <p class="text-sm text-yellow-700 dark:text-yellow-300">
+              <p class="text-sm text-yellow-700">
                 {{ t('notifications.smtp.disabledNote') }}
               </p>
             </div>
 
-            <div class="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex justify-end gap-2 pt-4 border-t border-default">
               <UButton
                 type="button"
                 variant="ghost"

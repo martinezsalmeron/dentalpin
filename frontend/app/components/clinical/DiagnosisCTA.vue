@@ -3,8 +3,8 @@
  * DiagnosisCTA - Contextual call-to-action for treatment plan creation
  *
  * Shows different CTAs based on draft plans state:
- * - No drafts: "Create Plan" button
- * - 1 draft: "Continue Plan {name}" button
+ * - No drafts:"Create Plan" button
+ * - 1 draft:"Continue Plan {name}" button
  * - N drafts: Dropdown to select which plan to continue
  */
 
@@ -39,12 +39,12 @@ function handleContinue() {
 </script>
 
 <template>
-  <UCard class="bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800">
+  <UCard class="bg-[var(--color-primary-soft)] border-[var(--color-primary)]">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <UIcon
           name="i-lucide-lightbulb"
-          class="w-5 h-5 text-primary-500"
+          class="w-5 h-5 text-primary-accent"
         />
         <span class="font-medium">{{ t('clinical.diagnosis.readyToCreatePlan') }}</span>
       </div>

@@ -154,7 +154,7 @@ function clearContact() {
 
     <div
       v-else
-      class="text-gray-500 italic"
+      class="text-subtle italic"
     >
       {{ t('patients.emergencyContact.noContact') }}
     </div>

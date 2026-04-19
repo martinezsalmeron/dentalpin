@@ -108,17 +108,17 @@ function closeModal() {
         <template #header>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/30">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-primary-soft)]">
                 <UIcon
                   name="i-lucide-clipboard-list"
-                  class="h-5 w-5 text-primary-600 dark:text-primary-400"
+                  class="h-5 w-5 text-primary-accent"
                 />
               </div>
               <div>
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                <h2 class="text-h1 text-default text-default">
                   {{ isEditing ? t('treatmentPlans.edit') : t('treatmentPlans.create') }}
                 </h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
+                <p class="text-sm text-muted">
                   {{ t('treatmentPlans.modal.subtitle') }}
                 </p>
               </div>
@@ -164,10 +164,10 @@ function closeModal() {
             </div>
 
             <!-- Notes section (collapsible) -->
-            <div class="border-t border-gray-200 pt-4 dark:border-gray-700">
+            <div class="border-t border-default pt-4">
               <button
                 type="button"
-                class="flex w-full items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                class="flex w-full items-center justify-between text-sm font-medium text-muted hover:text-default dark:text-subtle dark:hover:text-white"
                 @click="showNotes = !showNotes"
               >
                 <span class="flex items-center gap-2">
@@ -216,13 +216,13 @@ function closeModal() {
           </form>
 
           <!-- Quick info -->
-          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+          <div class="rounded-token-md alert-surface-info px-3 py-2">
             <div class="flex gap-2">
               <UIcon
                 name="i-lucide-lightbulb"
-                class="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400"
+                class="mt-0.5 h-4 w-4 flex-shrink-0 text-info-accent"
               />
-              <p class="text-sm text-blue-700 dark:text-blue-300">
+              <p class="text-sm text-info">
                 {{ t('treatmentPlans.modal.quickTip') }}
               </p>
             </div>

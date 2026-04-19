@@ -95,7 +95,7 @@ function getBudgetStatusColor(status: string): string {
       <div class="flex items-start justify-between">
         <div>
           <div class="flex items-center gap-3">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-h1 text-default text-default">
               {{ plan.title || t('treatmentPlans.untitled') }}
             </h2>
             <TreatmentPlanStatusBadge
@@ -103,13 +103,13 @@ function getBudgetStatusColor(status: string): string {
               size="md"
             />
           </div>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p class="text-sm text-muted mt-1">
             {{ plan.plan_number }} &middot; {{ d(new Date(plan.created_at), 'short') }}
           </p>
           <NuxtLink
             v-if="plan.patient"
             :to="`/patients/${plan.patient_id}`"
-            class="inline-flex items-center gap-1.5 mt-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
+            class="inline-flex items-center gap-1.5 mt-1 text-sm text-primary-accent hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
           >
             <UIcon
               name="i-lucide-user"
@@ -157,16 +157,16 @@ function getBudgetStatusColor(status: string): string {
         class="flex items-center gap-4"
       >
         <div class="flex-1">
-          <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div class="h-2 bg-surface-sunken rounded-full overflow-hidden">
             <div
-              class="h-full bg-primary-500 rounded-full transition-none"
+              class="h-full bg-[var(--color-primary)] rounded-full transition-none"
               :style="{ width: `${progress}%` }"
             />
           </div>
         </div>
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+        <span class="text-sm font-medium text-muted whitespace-nowrap">
           {{ completedItems.length }}/{{ plan.items.length }}
-          <span class="text-gray-500 dark:text-gray-400">({{ progress }}%)</span>
+          <span class="text-muted">({{ progress }}%)</span>
         </span>
       </div>
 
@@ -174,13 +174,13 @@ function getBudgetStatusColor(status: string): string {
       <NuxtLink
         v-if="plan.budget"
         :to="`/budgets/${plan.budget.id}`"
-        class="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        class="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-muted hover:bg-surface-sunken dark:hover:bg-surface-sunken rounded-lg transition-colors"
       >
         <UIcon
           name="i-lucide-file-text"
-          class="w-4 h-4 text-gray-500 dark:text-gray-400"
+          class="w-4 h-4 text-muted"
         />
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <span class="text-sm font-medium text-muted">
           {{ plan.budget.budget_number }}
         </span>
         <UBadge
@@ -189,12 +189,12 @@ function getBudgetStatusColor(status: string): string {
         >
           {{ t(`budget.status.${plan.budget.status}`) }}
         </UBadge>
-        <span class="text-sm font-semibold text-gray-900 dark:text-white">
+        <span class="text-sm font-semibold text-default">
           {{ n(plan.budget.total, 'currency') }}
         </span>
         <UIcon
           name="i-lucide-external-link"
-          class="w-3 h-3 text-gray-400"
+          class="w-3 h-3 text-subtle"
         />
       </NuxtLink>
     </div>
@@ -202,19 +202,19 @@ function getBudgetStatusColor(status: string): string {
     <!-- Diagnosis notes (always visible) -->
     <div
       v-if="plan.diagnosis_notes"
-      class="border border-gray-200 dark:border-gray-700 rounded-lg"
+      class="border border-default rounded-lg"
     >
-      <div class="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-t-lg border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center gap-2 px-4 py-3 bg-surface-muted rounded-t-lg border-b border-default">
         <UIcon
           name="i-lucide-stethoscope"
-          class="w-4 h-4 text-gray-500 dark:text-gray-400"
+          class="w-4 h-4 text-muted"
         />
-        <span class="font-medium text-gray-900 dark:text-white text-sm">
+        <span class="font-medium text-default text-sm">
           {{ t('treatmentPlans.fields.diagnosisNotes') }}
         </span>
       </div>
       <div class="p-4">
-        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+        <p class="text-sm text-muted whitespace-pre-wrap">
           {{ plan.diagnosis_notes }}
         </p>
       </div>
@@ -223,32 +223,32 @@ function getBudgetStatusColor(status: string): string {
     <!-- Internal notes (collapsible) -->
     <div
       v-if="plan.internal_notes"
-      class="border border-gray-200 dark:border-gray-700 rounded-lg"
+      class="border border-default rounded-lg"
     >
       <button
-        class="w-full flex items-center justify-between gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        :class="{ 'rounded-b-none border-b border-gray-200 dark:border-gray-700': showInternalNotes }"
+        class="w-full flex items-center justify-between gap-2 px-4 py-3 bg-surface-muted rounded-lg hover:bg-surface-muted transition-colors"
+        :class="{ 'rounded-b-none border-b border-default': showInternalNotes }"
         @click="showInternalNotes = !showInternalNotes"
       >
         <div class="flex items-center gap-2">
           <UIcon
             name="i-lucide-file-text"
-            class="w-4 h-4 text-gray-500 dark:text-gray-400"
+            class="w-4 h-4 text-muted"
           />
-          <span class="font-medium text-gray-900 dark:text-white text-sm">
+          <span class="font-medium text-default text-sm">
             {{ t('treatmentPlans.fields.internalNotes') }}
           </span>
         </div>
         <UIcon
           :name="showInternalNotes ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-          class="w-4 h-4 text-gray-400"
+          class="w-4 h-4 text-subtle"
         />
       </button>
       <div
         v-show="showInternalNotes"
         class="p-4"
       >
-        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+        <p class="text-sm text-muted whitespace-pre-wrap">
           {{ plan.internal_notes }}
         </p>
       </div>
@@ -259,9 +259,9 @@ function getBudgetStatusColor(status: string): string {
       <!-- Pending items section -->
       <div v-if="pendingItems.length > 0">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="font-medium text-gray-900 dark:text-white">
+          <h3 class="font-medium text-default">
             {{ t('treatmentPlans.pendingTreatments') }}
-            <span class="text-gray-500 dark:text-gray-400 font-normal">({{ pendingItems.length }})</span>
+            <span class="text-muted font-normal">({{ pendingItems.length }})</span>
           </h3>
           <UButton
             v-if="plan.status === 'draft'"
@@ -275,25 +275,25 @@ function getBudgetStatusColor(status: string): string {
           </UButton>
         </div>
 
-        <div class="divide-y divide-gray-100 dark:divide-gray-800">
+        <div class="divide-y divide-[var(--color-border-subtle)]">
           <div
             v-for="item in pendingItems"
             :key="item.id"
             class="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4"
           >
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
+              <div class="w-7 h-7 rounded-full bg-surface-muted flex items-center justify-center flex-shrink-0">
+                <span class="text-xs font-medium text-muted">
                   {{ item.sequence_order }}
                 </span>
               </div>
               <div class="min-w-0">
-                <p class="font-medium text-gray-900 dark:text-white truncate">
+                <p class="font-medium text-default truncate">
                   {{ getItemTitle(item) }}
                 </p>
                 <p
                   v-if="item.treatment?.teeth?.[0]"
-                  class="text-sm text-gray-500 dark:text-gray-400"
+                  class="text-sm text-muted"
                 >
                   {{ t('odontogram.tooth') }} {{ item.treatment?.teeth?.[0].tooth_number }}
                   <span v-if="item.treatment?.teeth?.[0].surfaces?.length">
@@ -306,7 +306,7 @@ function getBudgetStatusColor(status: string): string {
             <div class="flex items-center gap-2 flex-shrink-0">
               <span
                 v-if="getItemPrice(item)"
-                class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                class="text-sm font-medium text-muted"
               >
                 {{ n(getItemPrice(item)!, 'currency') }}
               </span>
@@ -332,7 +332,7 @@ function getBudgetStatusColor(status: string): string {
       <!-- Divider between sections -->
       <div
         v-if="pendingItems.length > 0 && completedItems.length > 0"
-        class="border-t border-gray-200 dark:border-gray-700 my-4"
+        class="border-t border-default my-4"
       />
 
       <!-- Completed items section (collapsible) -->
@@ -341,19 +341,19 @@ function getBudgetStatusColor(status: string): string {
           class="w-full flex items-center justify-between py-2 text-left"
           @click="showCompleted = !showCompleted"
         >
-          <h3 class="font-medium text-green-700 dark:text-green-400">
+          <h3 class="font-medium text-success">
             {{ t('treatmentPlans.completedTreatments') }}
             <span class="font-normal">({{ completedItems.length }})</span>
           </h3>
           <UIcon
             :name="showCompleted ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-            class="w-5 h-5 text-gray-400"
+            class="w-5 h-5 text-subtle"
           />
         </button>
 
         <div
           v-show="showCompleted"
-          class="divide-y divide-gray-100 dark:divide-gray-800 mt-2"
+          class="divide-y divide-[var(--color-border-subtle)]  mt-2"
         >
           <div
             v-for="item in completedItems"
@@ -361,19 +361,19 @@ function getBudgetStatusColor(status: string): string {
             class="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4 opacity-70"
           >
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+              <div class="w-7 h-7 rounded-full bg-[var(--color-success-soft)] flex items-center justify-center flex-shrink-0">
                 <UIcon
                   name="i-lucide-check"
-                  class="w-4 h-4 text-green-600 dark:text-green-400"
+                  class="w-4 h-4 text-success-accent"
                 />
               </div>
               <div class="min-w-0">
-                <p class="font-medium text-gray-700 dark:text-gray-300 line-through truncate">
+                <p class="font-medium text-muted line-through truncate">
                   {{ getItemTitle(item) }}
                 </p>
                 <p
                   v-if="item.completed_at"
-                  class="text-xs text-gray-500 dark:text-gray-400"
+                  class="text-xs text-muted"
                 >
                   {{ d(new Date(item.completed_at), 'short') }}
                 </p>
@@ -382,7 +382,7 @@ function getBudgetStatusColor(status: string): string {
 
             <span
               v-if="getItemPrice(item)"
-              class="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0"
+              class="text-sm text-muted flex-shrink-0"
             >
               {{ n(getItemPrice(item)!, 'currency') }}
             </span>
@@ -396,9 +396,9 @@ function getBudgetStatusColor(status: string): string {
       <div class="text-center py-8">
         <UIcon
           name="i-lucide-list"
-          class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto"
+          class="w-12 h-12 text-subtle mx-auto"
         />
-        <p class="mt-2 text-gray-500 dark:text-gray-400">
+        <p class="mt-2 text-muted">
           {{ t('treatmentPlans.noItems') }}
         </p>
         <UButton
@@ -427,7 +427,7 @@ function getBudgetStatusColor(status: string): string {
                 />
               </div>
               <div>
-                <h3 class="font-semibold text-gray-900 dark:text-white">
+                <h3 class="font-semibold text-default">
                   {{ t('treatmentPlans.confirmations.completeItem') }}
                 </h3>
               </div>
@@ -438,13 +438,13 @@ function getBudgetStatusColor(status: string): string {
             v-if="itemToComplete"
             class="space-y-3"
           >
-            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p class="font-medium text-gray-900 dark:text-white">
+            <div class="p-3 bg-surface-muted rounded-lg">
+              <p class="font-medium text-default">
                 {{ getItemTitle(itemToComplete) }}
               </p>
               <p
                 v-if="itemToComplete.treatment?.teeth?.[0]"
-                class="text-sm text-gray-500 dark:text-gray-400 mt-1"
+                class="text-sm text-muted mt-1"
               >
                 {{ t('odontogram.tooth') }} {{ itemToComplete.treatment?.teeth?.[0].tooth_number }}
                 <span v-if="itemToComplete.treatment?.teeth?.[0].surfaces?.length">
@@ -452,7 +452,7 @@ function getBudgetStatusColor(status: string): string {
                 </span>
               </p>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-sm text-muted">
               {{ t('treatmentPlans.confirmations.completeItemDescription') }}
             </p>
           </div>

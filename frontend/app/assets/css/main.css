@@ -1,56 +1,269 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import "@fontsource-variable/inter";
+@import "./typography.css";
 
 @theme static {
-  --font-sans: 'Public Sans', sans-serif;
-
-  --color-green-50: #EFFDF5;
-  --color-green-100: #D9FBE8;
-  --color-green-200: #B3F5D1;
-  --color-green-300: #75EDAE;
-  --color-green-400: #00DC82;
-  --color-green-500: #00C16A;
-  --color-green-600: #00A155;
-  --color-green-700: #007F45;
-  --color-green-800: #016538;
-  --color-green-900: #0A5331;
-  --color-green-950: #052E16;
+  --font-sans: 'Inter Variable', 'Inter', -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 
-/* Odontogram theming - Light mode */
+/* ============================================================================
+   DentalPin Design Tokens
+   Source of truth: /DESIGN.md
+   ============================================================================ */
+
 :root {
-  --odontogram-outline: #6b668a;
-  --odontogram-outline-light: #8a85a8;
-  --odontogram-fill: #FFFFFF;
-  --odontogram-fill-shade: #F8F8FA;
-  --odontogram-root-fill: #FEFEFD;
-  --odontogram-detail: rgba(107, 102, 138, 0.35);
-  --odontogram-bg: #FAFAFA;
-  --odontogram-gum: #FDA4AF;
-  --odontogram-selected: #3B82F6;
+  /* Surfaces & text — light */
+  --color-canvas: #FBFAF8;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F4F2EF;
+  --color-surface-sunken: #EFEDE9;
+  --color-border-subtle: rgba(15, 17, 22, 0.06);
+  --color-border: rgba(15, 17, 22, 0.10);
+  --color-border-strong: rgba(15, 17, 22, 0.16);
+  --color-text: rgba(15, 17, 22, 0.92);
+  --color-text-muted: #615D59;
+  --color-text-subtle: #94908A;
+  --color-text-disabled: #BAB6B0;
+
+  /* Primary */
+  --color-primary: #0EA5E9;
+  --color-primary-hover: #0284C7;
+  --color-primary-soft: #E0F2FE;
+  --color-primary-soft-text: #0369A1;
+
+  /* Semantics — accent / soft bg / text */
+  --color-success-accent: #0F9D58;
+  --color-success-soft: #E6F6EC;
+  --color-success-text: #15803D;
+  --color-info-accent: #0284C7;
+  --color-info-soft: #E0F2FE;
+  --color-info-text: #075985;
+  --color-warning-accent: #D97706;
+  --color-warning-soft: #FEF3E2;
+  --color-warning-text: #9A3412;
+  --color-danger-accent: #DC2626;
+  --color-danger-soft: #FEE7E7;
+  --color-danger-text: #991B1B;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
+
+  /* Elevation (light) */
+  --shadow-xs: 0 1px 1px rgba(15, 17, 22, 0.02);
+  --shadow-sm: 0 1px 2px rgba(15, 17, 22, 0.03), 0 1px 1px rgba(15, 17, 22, 0.02);
+  --shadow-md: 0 4px 12px rgba(15, 17, 22, 0.04), 0 1px 3px rgba(15, 17, 22, 0.03);
+  --shadow-lg: 0 14px 28px rgba(15, 17, 22, 0.05), 0 4px 12px rgba(15, 17, 22, 0.03);
+
+  /* Motion */
+  --motion-fast: 100ms;
+  --motion-base: 150ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* Odontogram theming - Dark mode */
 .dark {
-  --odontogram-outline: #9590b3;
-  --odontogram-outline-light: #7a7599;
-  --odontogram-fill: #1E1E24;
-  --odontogram-fill-shade: #2A2A32;
-  --odontogram-root-fill: #252530;
-  --odontogram-detail: rgba(149, 144, 179, 0.3);
-  --odontogram-bg: #0F0F14;
-  --odontogram-gum: #BE6B78;
-  --odontogram-selected: #60A5FA;
+  /* Surfaces & text — dark (warm, elevation by surface colour) */
+  --color-canvas: #161513;
+  --color-surface: #1E1C19;
+  --color-surface-muted: #252320;
+  --color-surface-sunken: #121110;
+  --color-border-subtle: rgba(255, 250, 240, 0.06);
+  --color-border: rgba(255, 250, 240, 0.10);
+  --color-border-strong: rgba(255, 250, 240, 0.18);
+  --color-text: rgba(255, 250, 240, 0.92);
+  --color-text-muted: #A39E97;
+  --color-text-subtle: #787570;
+  --color-text-disabled: #525049;
+
+  /* Primary — sky-400 for better punch on dark */
+  --color-primary: #38BDF8;
+  --color-primary-hover: #7DD3FC;
+  --color-primary-soft: rgba(56, 189, 248, 0.12);
+  --color-primary-soft-text: #7DD3FC;
+
+  /* Semantics — dark */
+  --color-success-accent: #34D399;
+  --color-success-soft: rgba(52, 211, 153, 0.10);
+  --color-success-text: #86EFAC;
+  --color-info-accent: #7DD3FC;
+  --color-info-soft: rgba(125, 211, 252, 0.10);
+  --color-info-text: #BAE6FD;
+  --color-warning-accent: #F59E0B;
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-warning-text: #FCD34D;
+  --color-danger-accent: #F87171;
+  --color-danger-soft: rgba(248, 113, 113, 0.12);
+  --color-danger-text: #FCA5A5;
+
+  /* Shadows disabled in dark — elevation via surface colour */
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
 }
 
-/* NProgress customization */
+/* ============================================================================
+   Base
+   ============================================================================ */
+
+html {
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+  font-feature-settings: "cv11", "ss01", "tnum";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+}
+
+/* Reduced motion — honor system setting */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   Density modes — forced via <html class="density-*">
+   ============================================================================ */
+
+html.density-comfortable {
+  --density-card-padding-y: 16px;
+  --density-card-padding-x: 20px;
+  --density-row-height: 44px;
+  --density-btn-padding-y: 8px;
+  --density-btn-padding-x: 14px;
+  --density-body-size: 14px;
+}
+
+html.density-compact {
+  --density-card-padding-y: 10px;
+  --density-card-padding-x: 14px;
+  --density-row-height: 32px;
+  --density-btn-padding-y: 6px;
+  --density-btn-padding-x: 10px;
+  --density-body-size: 13px;
+}
+
+/* ============================================================================
+   Utilities — token-backed surface & text classes
+   ============================================================================ */
+
+@layer utilities {
+  .bg-canvas { background-color: var(--color-canvas); }
+  .bg-surface { background-color: var(--color-surface); }
+  .bg-surface-muted { background-color: var(--color-surface-muted); }
+  .bg-surface-sunken { background-color: var(--color-surface-sunken); }
+
+  .text-default { color: var(--color-text); }
+  .text-muted { color: var(--color-text-muted); }
+  .text-subtle { color: var(--color-text-subtle); }
+  .text-disabled { color: var(--color-text-disabled); }
+
+  .border-subtle { border-color: var(--color-border-subtle); }
+  .border-default { border-color: var(--color-border); }
+  .border-strong { border-color: var(--color-border-strong); }
+
+  .ring-subtle { --tw-ring-color: var(--color-border-subtle); }
+  .ring-default { --tw-ring-color: var(--color-border); }
+
+  .shadow-token-xs { box-shadow: var(--shadow-xs); }
+  .shadow-token-sm { box-shadow: var(--shadow-sm); }
+  .shadow-token-md { box-shadow: var(--shadow-md); }
+  .shadow-token-lg { box-shadow: var(--shadow-lg); }
+
+  .rounded-token-xs { border-radius: var(--radius-xs); }
+  .rounded-token-sm { border-radius: var(--radius-sm); }
+  .rounded-token-md { border-radius: var(--radius-md); }
+  .rounded-token-lg { border-radius: var(--radius-lg); }
+  .rounded-token-xl { border-radius: var(--radius-xl); }
+  .rounded-token-pill { border-radius: var(--radius-pill); }
+
+  /* Semantic alert surface anatomy (DESIGN §2.4) — soft bg + text */
+  .alert-surface-danger {
+    background-color: var(--color-danger-soft);
+    color: var(--color-danger-text);
+    border-left: 3px solid var(--color-danger-accent);
+  }
+  .alert-surface-warning {
+    background-color: var(--color-warning-soft);
+    color: var(--color-warning-text);
+    border-left: 3px solid var(--color-warning-accent);
+  }
+  .alert-surface-info {
+    background-color: var(--color-info-soft);
+    color: var(--color-info-text);
+    border-left: 3px solid var(--color-info-accent);
+  }
+  .alert-surface-success {
+    background-color: var(--color-success-soft);
+    color: var(--color-success-text);
+    border-left: 3px solid var(--color-success-accent);
+  }
+  .alert-surface-primary {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary-soft-text);
+    border-left: 3px solid var(--color-primary);
+  }
+
+  /* Alert "critical" modifier — 1 px outer border in accent (DESIGN §7.1) */
+  .alert-critical-danger { outline: 1px solid var(--color-danger-accent); }
+  .alert-critical-warning { outline: 1px solid var(--color-warning-accent); }
+}
+
+/* ============================================================================
+   Odontogram — derived from design tokens
+   ============================================================================ */
+
+:root {
+  --odontogram-outline: rgba(15, 17, 22, 0.55);
+  --odontogram-outline-light: rgba(15, 17, 22, 0.35);
+  --odontogram-fill: var(--color-surface);
+  --odontogram-fill-shade: var(--color-surface-sunken);
+  --odontogram-root-fill: #FEFEFD;
+  --odontogram-detail: rgba(15, 17, 22, 0.20);
+  --odontogram-bg: var(--color-surface-muted);
+  --odontogram-gum: #FDA4AF;
+  --odontogram-selected: var(--color-primary);
+}
+
+.dark {
+  --odontogram-outline: rgba(255, 250, 240, 0.55);
+  --odontogram-outline-light: rgba(255, 250, 240, 0.35);
+  --odontogram-fill: var(--color-surface);
+  --odontogram-fill-shade: var(--color-surface-sunken);
+  --odontogram-root-fill: #252320;
+  --odontogram-detail: rgba(255, 250, 240, 0.20);
+  --odontogram-bg: var(--color-surface-muted);
+  --odontogram-gum: #BE6B78;
+  --odontogram-selected: var(--color-primary);
+}
+
+/* ============================================================================
+   NProgress — align with primary token
+   ============================================================================ */
+
 #nprogress .bar {
-  background: #10b981 !important;
+  background: var(--color-primary) !important;
   height: 3px !important;
 }
 
 #nprogress .peg {
-  box-shadow: 0 0 10px #10b981, 0 0 5px #10b981 !important;
+  box-shadow: 0 0 10px var(--color-primary), 0 0 5px var(--color-primary) !important;
 }
 
 /* Ensure select/dropdown content appears above other elements */

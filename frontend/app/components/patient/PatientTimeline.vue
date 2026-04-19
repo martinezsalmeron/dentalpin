@@ -93,7 +93,7 @@ onMounted(() => {
     <!-- Empty State -->
     <div
       v-else-if="entries.length === 0"
-      class="text-center py-12 text-gray-500"
+      class="text-center py-12 text-subtle"
     >
       <UIcon
         name="i-lucide-clock"
@@ -108,7 +108,7 @@ onMounted(() => {
       class="relative"
     >
       <!-- Timeline line -->
-      <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
+      <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-surface-sunken" />
 
       <div class="space-y-4">
         <div
@@ -140,7 +140,7 @@ onMounted(() => {
                 </h4>
                 <p
                   v-if="entry.description"
-                  class="text-sm text-gray-500 mt-1"
+                  class="text-caption text-subtle mt-1"
                 >
                   {{ entry.description }}
                 </p>
@@ -153,7 +153,7 @@ onMounted(() => {
                 {{ entry.event_category }}
               </UBadge>
             </div>
-            <div class="mt-2 text-xs text-gray-400">
+            <div class="mt-2 text-caption text-subtle">
               {{ formatDate(entry.occurred_at) }}
             </div>
           </UCard>
@@ -172,14 +172,14 @@ onMounted(() => {
         >
           <UIcon
             name="i-lucide-loader-2"
-            class="w-6 h-6 animate-spin text-gray-400"
+            class="w-6 h-6 animate-spin text-subtle"
           />
         </div>
 
         <!-- End of Timeline -->
         <div
           v-else-if="!hasMore && entries.length > 0"
-          class="text-center py-4 text-sm text-gray-400"
+          class="text-center py-4 text-caption text-subtle"
         >
           {{ t('patients.timeline.endOfTimeline') }}
         </div>
@@ -189,7 +189,7 @@ onMounted(() => {
     <!-- Total Count -->
     <div
       v-if="total > 0"
-      class="mt-4 text-sm text-gray-500 text-center"
+      class="mt-4 text-caption text-subtle text-center"
     >
       {{ t('patients.timeline.totalEntries', { count: total }) }}
     </div>

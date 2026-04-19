@@ -21,13 +21,13 @@ const itemCount = computed(() => {
 
 <template>
   <UCard
-    class="cursor-pointer hover:border-primary-500 transition-colors"
+    class="cursor-pointer hover:border-[var(--color-primary)] transition-colors"
     @click="emit('click')"
   >
     <div class="flex items-start justify-between">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-mono text-gray-500">
+          <span class="text-sm font-mono text-subtle">
             {{ plan.plan_number }}
           </span>
           <TreatmentPlanStatusBadge
@@ -38,22 +38,22 @@ const itemCount = computed(() => {
 
         <h3
           v-if="plan.title"
-          class="font-medium text-gray-900 truncate"
+          class="font-medium text-default truncate"
         >
           {{ plan.title }}
         </h3>
         <h3
           v-else
-          class="font-medium text-gray-500 italic truncate"
+          class="font-medium text-subtle italic truncate"
         >
           {{ t('treatmentPlans.untitled') }}
         </h3>
 
-        <div class="mt-2 text-sm text-gray-500">
+        <div class="mt-2 text-caption text-subtle">
           {{ t('treatmentPlans.itemCount', { count: itemCount }) }}
         </div>
 
-        <div class="mt-1 text-xs text-gray-400">
+        <div class="mt-1 text-caption text-subtle">
           {{ d(new Date(plan.created_at), 'short') }}
         </div>
       </div>
@@ -74,7 +74,7 @@ const itemCount = computed(() => {
         @click.stop
       >
         <UButton
-          color="gray"
+          color="neutral"
           variant="ghost"
           icon="i-lucide-more-vertical"
           size="sm"

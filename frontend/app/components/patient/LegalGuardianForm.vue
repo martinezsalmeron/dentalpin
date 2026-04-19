@@ -98,7 +98,7 @@ function clearGuardian() {
           required
         >
           <template v-if="readonly">
-            <p class="text-gray-900 dark:text-white">
+            <p class="text-default">
               {{ localGuardian.name || '-' }}
             </p>
           </template>
@@ -112,7 +112,7 @@ function clearGuardian() {
 
         <UFormField :label="t('patients.legalGuardian.relationship')">
           <template v-if="readonly">
-            <p class="text-gray-900 dark:text-white">
+            <p class="text-default">
               {{ getRelationshipLabel(localGuardian.relationship) }}
             </p>
           </template>
@@ -131,7 +131,7 @@ function clearGuardian() {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <UFormField :label="t('patients.legalGuardian.dni')">
           <template v-if="readonly">
-            <p class="text-gray-900 dark:text-white">
+            <p class="text-default">
               {{ localGuardian.dni || '-' }}
             </p>
           </template>
@@ -148,7 +148,7 @@ function clearGuardian() {
           required
         >
           <template v-if="readonly">
-            <p class="text-gray-900 dark:text-white">
+            <p class="text-default">
               {{ localGuardian.phone || '-' }}
             </p>
           </template>
@@ -165,7 +165,7 @@ function clearGuardian() {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <UFormField :label="t('patients.legalGuardian.email')">
           <template v-if="readonly">
-            <p class="text-gray-900 dark:text-white">
+            <p class="text-default">
               {{ localGuardian.email || '-' }}
             </p>
           </template>
@@ -180,7 +180,7 @@ function clearGuardian() {
 
         <UFormField :label="t('patients.legalGuardian.address')">
           <template v-if="readonly">
-            <p class="text-gray-900 dark:text-white">
+            <p class="text-default">
               {{ localGuardian.address || '-' }}
             </p>
           </template>
@@ -195,7 +195,7 @@ function clearGuardian() {
 
       <UFormField :label="t('patients.legalGuardian.notes')">
         <template v-if="readonly">
-          <p class="text-gray-900 dark:text-white whitespace-pre-wrap">
+          <p class="text-default whitespace-pre-wrap">
             {{ localGuardian.notes || '-' }}
           </p>
         </template>
@@ -222,7 +222,7 @@ function clearGuardian() {
 
     <div
       v-else
-      class="text-gray-500 italic"
+      class="text-subtle italic"
     >
       {{ t('patients.legalGuardian.noGuardian') }}
     </div>

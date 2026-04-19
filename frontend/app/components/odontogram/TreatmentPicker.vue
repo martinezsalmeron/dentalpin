@@ -144,7 +144,7 @@ function handleClose() {
       <div class="flex items-center gap-2">
         <UIcon
           name="i-lucide-plus-circle"
-          class="w-5 h-5 text-primary-500"
+          class="w-5 h-5 text-primary-accent"
         />
         <span>{{ t('odontogram.treatments.addTreatment') }}</span>
         <UBadge
@@ -168,7 +168,7 @@ function handleClose() {
               v-for="category in treatmentCategories"
               :key="category.key"
             >
-              <div class="text-xs text-gray-500 mb-1.5">
+              <div class="text-caption text-subtle mb-1.5">
                 {{ category.label }}
               </div>
               <div class="flex flex-wrap gap-1.5">
@@ -231,7 +231,7 @@ function handleClose() {
               {{ surface }}
             </button>
           </div>
-          <p class="text-xs text-gray-500 mt-1">
+          <p class="text-caption text-subtle mt-1">
             {{ t(`odontogram.surfaces.${selectedSurfaces[0]}`, '') }}
             <span v-if="selectedSurfaces.length > 1">
               + {{ selectedSurfaces.length - 1 }}

@@ -1,5 +1,20 @@
 <script setup lang="ts">
 import type { InvoiceListItem, InvoiceStatus } from '~/types'
+import { roleToUiColor, type SemanticRole } from '~/config/severity'
+
+// Invoice status → semantic role (local mapping; `voided` is invoice-specific)
+const INVOICE_STATUS_ROLE: Record<InvoiceStatus, SemanticRole> = {
+  draft: 'neutral',
+  issued: 'info',
+  partial: 'warning',
+  paid: 'success',
+  cancelled: 'danger',
+  voided: 'neutral'
+}
+
+function getStatusBadgeColor(status: InvoiceStatus) {
+  return roleToUiColor(INVOICE_STATUS_ROLE[status] || 'neutral')
+}
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -121,63 +136,47 @@ function isOverdue(invoice: InvoiceListItem): boolean {
   if (!['issued', 'partial'].includes(invoice.status)) return false
   return new Date(invoice.due_date) < new Date()
 }
-
-// Get status badge color
-function getStatusBadgeColor(status: InvoiceStatus): string {
-  const colors: Record<InvoiceStatus, string> = {
-    draft: 'gray',
-    issued: 'blue',
-    partial: 'amber',
-    paid: 'green',
-    cancelled: 'red',
-    voided: 'neutral'
-  }
-  return colors[status] || 'gray'
-}
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Page header -->
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-        {{ t('invoice.title') }}
-      </h1>
-      <UButton
-        v-if="can('billing.write')"
-        icon="i-lucide-plus"
-        @click="createInvoice"
-      >
-        {{ t('invoice.new') }}
-      </UButton>
-    </div>
+  <div>
+    <PageHeader :title="t('invoice.title')">
+      <template #actions>
+        <UButton
+          v-if="can('billing.write')"
+          color="primary"
+          variant="solid"
+          icon="i-lucide-plus"
+          @click="createInvoice"
+        >
+          {{ t('invoice.new') }}
+        </UButton>
+      </template>
+    </PageHeader>
 
     <!-- Filters -->
-    <div class="flex flex-wrap gap-4">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
       <UInput
         v-model="searchQuery"
         :placeholder="t('invoice.searchPlaceholder')"
         icon="i-lucide-search"
         class="max-w-sm"
       />
-
       <USelectMenu
         v-model="selectedStatuses"
         :items="statusOptions"
+        value-key="value"
         multiple
         :placeholder="t('invoice.filters.allStatuses')"
         class="w-64"
       />
-
       <UCheckbox
         v-model="showOverdue"
         :label="t('invoice.filters.overdueOnly')"
       />
     </div>
 
-    <!-- Invoice list -->
     <UCard>
-      <!-- Loading state -->
       <div
         v-if="isLoading"
         class="space-y-3"
@@ -189,42 +188,39 @@ function getStatusBadgeColor(status: InvoiceStatus): string {
         />
       </div>
 
-      <!-- Empty state -->
-      <div
+      <EmptyState
         v-else-if="invoices.length === 0"
-        class="text-center py-12"
+        icon="i-lucide-receipt"
+        :title="debouncedSearch || selectedStatuses.length > 0 || showOverdue ? t('invoice.noItems') : t('invoice.empty')"
       >
-        <UIcon
-          name="i-lucide-receipt"
-          class="w-12 h-12 text-gray-400 mx-auto mb-4"
-        />
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-          {{ debouncedSearch || selectedStatuses.length > 0 || showOverdue ? t('invoice.noItems') : t('invoice.empty') }}
-        </h3>
-        <UButton
+        <template
           v-if="!debouncedSearch && selectedStatuses.length === 0 && !showOverdue && can('billing.write')"
-          icon="i-lucide-plus"
-          @click="createInvoice"
+          #actions
         >
-          {{ t('invoice.emptyAction') }}
-        </UButton>
-      </div>
+          <UButton
+            color="primary"
+            variant="solid"
+            icon="i-lucide-plus"
+            @click="createInvoice"
+          >
+            {{ t('invoice.emptyAction') }}
+          </UButton>
+        </template>
+      </EmptyState>
 
-      <!-- Invoice table -->
       <div
         v-else
-        class="divide-y divide-gray-200 dark:divide-gray-800"
+        class="divide-y divide-[var(--color-border-subtle)]"
       >
         <div
           v-for="invoice in invoices"
           :key="invoice.id"
-          class="flex items-center py-4 px-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-lg -mx-2"
+          class="flex items-center gap-3 py-3 px-2 -mx-2 cursor-pointer hover:bg-surface-muted rounded-token-md transition-colors"
           @click="goToInvoice(invoice)"
         >
-          <!-- Invoice info -->
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-3">
-              <span class="font-medium text-gray-900 dark:text-white">
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="text-ui text-default tnum">
                 {{ invoice.invoice_number || t('invoice.draftNoNumber') }}
               </span>
               <UBadge
@@ -234,71 +230,68 @@ function getStatusBadgeColor(status: InvoiceStatus): string {
               >
                 {{ t(`invoice.status.${invoice.status}`) }}
               </UBadge>
-              <UBadge
+              <StatusBadge
                 v-if="isOverdue(invoice)"
-                color="red"
-                variant="solid"
+                role="danger"
+                :label="t('invoice.overdue')"
                 size="xs"
-              >
-                {{ t('invoice.overdue') }}
-              </UBadge>
+                dot
+              />
             </div>
-            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <div class="text-caption text-muted mt-1 truncate">
               {{ getPatientName(invoice) }}
             </div>
           </div>
 
-          <!-- Issue date -->
-          <div class="hidden sm:block text-sm text-gray-500 dark:text-gray-400 w-28 text-right">
+          <div class="hidden sm:block text-caption text-subtle tnum w-28 text-right">
             {{ formatDate(invoice.issue_date) }}
           </div>
 
-          <!-- Due date -->
           <div
-            class="hidden md:block text-sm w-28 text-right"
-            :class="isOverdue(invoice) ? 'text-red-600 font-medium' : 'text-gray-500 dark:text-gray-400'"
+            class="hidden md:block text-caption tnum w-28 text-right"
+            :class="isOverdue(invoice) ? 'text-danger font-medium' : 'text-subtle'"
           >
             {{ formatDate(invoice.due_date) }}
           </div>
 
-          <!-- Total / Balance -->
           <div class="text-right w-32">
-            <div class="font-semibold text-gray-900 dark:text-white">
-              {{ formatCurrency(invoice.total, invoice.currency) }}
-            </div>
+            <Money
+              :value="invoice.total"
+              :currency="invoice.currency"
+              strong
+            />
             <div
               v-if="invoice.balance_due > 0 && invoice.status !== 'draft'"
-              class="text-xs text-amber-600"
+              class="text-caption text-warning tnum"
             >
               {{ t('invoice.balance') }}: {{ formatCurrency(invoice.balance_due, invoice.currency) }}
             </div>
           </div>
 
-          <!-- Actions -->
-          <div class="flex items-center gap-2 ml-4">
+          <div class="flex items-center gap-1">
             <UButton
               v-if="invoice.status === 'draft' && can('billing.admin')"
               variant="ghost"
               color="error"
               icon="i-lucide-trash-2"
-              size="sm"
+              size="xs"
+              :aria-label="t('invoice.delete')"
               :title="t('invoice.delete')"
               @click="handleDelete(invoice, $event)"
             />
             <UIcon
               name="i-lucide-chevron-right"
-              class="w-5 h-5 text-gray-400"
+              class="w-4 h-4 text-subtle"
             />
           </div>
         </div>
       </div>
 
-      <!-- Pagination -->
       <div
         v-if="totalPages > 1"
-        class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800"
+        class="flex items-center justify-between pt-4 mt-4 border-t border-subtle"
       >
-        <span class="text-sm text-gray-500 dark:text-gray-400">
+        <span class="text-caption text-subtle tnum">
           {{ t('common.page', { current: currentPage, total: totalPages }) }}
         </span>
         <div class="flex gap-2">

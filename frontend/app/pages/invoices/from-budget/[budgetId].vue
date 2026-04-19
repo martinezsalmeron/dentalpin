@@ -227,12 +227,12 @@ function goBack() {
         @click="goBack"
       />
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 class="text-display text-default">
           {{ t('invoice.fromBudget') }}
         </h1>
         <p
           v-if="budget"
-          class="text-sm text-gray-500"
+          class="text-caption text-subtle"
         >
           {{ budget.budget_number }} - {{ budget.patient?.last_name }}, {{ budget.patient?.first_name }}
         </p>
@@ -259,7 +259,7 @@ function goBack() {
         <UCard>
           <template #header>
             <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.selectItems') }}
               </h3>
               <div class="flex gap-2">
@@ -281,11 +281,11 @@ function goBack() {
             </div>
           </template>
 
-          <p class="text-sm text-gray-500 mb-4">
+          <p class="text-caption text-subtle mb-4">
             {{ t('invoice.selectItemsHint') }}
           </p>
 
-          <div class="divide-y divide-gray-200 dark:divide-gray-800">
+          <div class="divide-y divide-[var(--color-border-subtle)]">
             <div
               v-for="item in budget.items"
               :key="item.id"
@@ -307,20 +307,20 @@ function goBack() {
                 <!-- Item info -->
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
-                    <span class="font-medium text-gray-900 dark:text-white">
+                    <span class="font-medium text-default">
                       {{ item.catalog_item?.name || 'Tratamiento' }}
                     </span>
                     <UBadge
                       v-if="item.tooth_number"
                       variant="subtle"
-                      color="gray"
+                      color="neutral"
                       size="xs"
                     >
                       {{ t('odontogram.tooth') }} {{ item.tooth_number }}
                     </UBadge>
                   </div>
 
-                  <div class="mt-1 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                  <div class="mt-1 flex flex-wrap items-center gap-4 text-caption text-subtle">
                     <span>{{ formatCurrency(item.unit_price) }} x {{ item.quantity }}</span>
                     <span v-if="item.discount_value">
                       {{ t('invoice.discount') }}: {{ item.discount_type === 'percentage' ? `${item.discount_value}%` : formatCurrency(item.discount_value) }}
@@ -332,13 +332,13 @@ function goBack() {
                   <div class="mt-2 flex items-center gap-4 text-xs">
                     <span
                       v-if="item.invoiced_quantity > 0"
-                      class="text-amber-600"
+                      class="text-warning-accent"
                     >
                       {{ t('invoice.alreadyInvoiced') }}: {{ item.invoiced_quantity }} / {{ item.quantity }}
                     </span>
                     <span
                       v-if="!isInvoiceable(item)"
-                      class="text-red-500"
+                      class="text-danger-accent"
                     >
                       {{ t('invoice.availableQuantity') }}: 0
                     </span>
@@ -350,7 +350,7 @@ function goBack() {
                   v-if="selectedItems.has(item.id)"
                   class="flex items-center gap-2"
                 >
-                  <span class="text-sm text-gray-500">{{ t('invoice.quantityToInvoice') }}:</span>
+                  <span class="text-caption text-subtle">{{ t('invoice.quantityToInvoice') }}:</span>
                   <UInput
                     :model-value="selectedItems.get(item.id)"
                     type="number"
@@ -359,7 +359,7 @@ function goBack() {
                     class="w-20"
                     @update:model-value="(val: string | number) => updateQuantity(item.id, Number(val))"
                   />
-                  <span class="text-sm text-gray-400">
+                  <span class="text-sm text-subtle">
                     / {{ getAvailableQuantity(item) }}
                   </span>
                 </div>
@@ -368,13 +368,13 @@ function goBack() {
                 <div class="text-right">
                   <span
                     v-if="selectedItems.has(item.id)"
-                    class="font-semibold text-gray-900 dark:text-white"
+                    class="font-semibold text-default"
                   >
                     {{ formatCurrency(calculateItemTotal(item, selectedItems.get(item.id) || 0)) }}
                   </span>
                   <span
                     v-else
-                    class="text-gray-400"
+                    class="text-subtle"
                   >
                     {{ formatCurrency(item.line_total) }}
                   </span>
@@ -388,7 +388,7 @@ function goBack() {
         <UCard v-if="budget?.patient">
           <template #header>
             <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.billingData') }}
               </h3>
               <UBadge
@@ -402,41 +402,41 @@ function goBack() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p class="text-sm text-gray-500">
+              <p class="text-caption text-subtle">
                 {{ t('invoice.billingName') }}
               </p>
-              <p class="font-medium text-gray-900 dark:text-white">
+              <p class="font-medium text-default">
                 {{ budget.patient.billing_name || `${budget.patient.first_name} ${budget.patient.last_name}` }}
               </p>
             </div>
             <div>
-              <p class="text-sm text-gray-500">
+              <p class="text-caption text-subtle">
                 {{ t('invoice.taxId') }}
               </p>
-              <p class="font-medium text-gray-900 dark:text-white">
+              <p class="font-medium text-default">
                 {{ budget.patient.billing_tax_id || '-' }}
               </p>
             </div>
             <div>
-              <p class="text-sm text-gray-500">
+              <p class="text-caption text-subtle">
                 {{ t('invoice.billingEmail') }}
               </p>
-              <p class="font-medium text-gray-900 dark:text-white">
+              <p class="font-medium text-default">
                 {{ budget.patient.billing_email || budget.patient.email || '-' }}
               </p>
             </div>
             <div v-if="budget.patient.billing_address">
-              <p class="text-sm text-gray-500">
+              <p class="text-caption text-subtle">
                 {{ t('invoice.billingAddress') }}
               </p>
-              <p class="font-medium text-gray-900 dark:text-white">
+              <p class="font-medium text-default">
                 {{ budget.patient.billing_address.street }},
                 {{ budget.patient.billing_address.postal_code }} {{ budget.patient.billing_address.city }}
               </p>
             </div>
           </div>
 
-          <p class="mt-4 text-xs text-gray-500 italic">
+          <p class="mt-4 text-caption text-subtle italic">
             {{ t('invoice.billingFromPatientHint') }}
           </p>
         </UCard>
@@ -444,7 +444,7 @@ function goBack() {
         <!-- Payment terms -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('invoice.paymentTerms') }}
             </h3>
           </template>
@@ -470,7 +470,7 @@ function goBack() {
         <!-- Notes -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('invoice.notes') }}
             </h3>
           </template>
@@ -499,19 +499,19 @@ function goBack() {
       <div class="space-y-6">
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('invoice.summary') }}
             </h3>
           </template>
 
           <div class="space-y-3">
             <div class="flex justify-between text-sm">
-              <span class="text-gray-500">{{ t('invoice.items') }}:</span>
+              <span class="text-subtle">{{ t('invoice.items') }}:</span>
               <span class="font-medium">{{ selectedItems.size }}</span>
             </div>
 
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('invoice.subtotal') }}</span>
+              <span class="text-subtle">{{ t('invoice.subtotal') }}</span>
               <span class="font-medium">{{ formatCurrency(totals.subtotal) }}</span>
             </div>
 
@@ -519,18 +519,18 @@ function goBack() {
               v-if="totals.totalDiscount > 0"
               class="flex justify-between"
             >
-              <span class="text-gray-500">{{ t('invoice.discount') }}</span>
-              <span class="font-medium text-green-600">-{{ formatCurrency(totals.totalDiscount) }}</span>
+              <span class="text-subtle">{{ t('invoice.discount') }}</span>
+              <span class="font-medium text-success-accent">-{{ formatCurrency(totals.totalDiscount) }}</span>
             </div>
 
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('invoice.tax') }}</span>
+              <span class="text-subtle">{{ t('invoice.tax') }}</span>
               <span class="font-medium">{{ formatCurrency(totals.totalTax) }}</span>
             </div>
 
-            <div class="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-              <span class="font-semibold text-gray-900 dark:text-white">{{ t('invoice.total') }}</span>
-              <span class="font-bold text-lg text-gray-900 dark:text-white">
+            <div class="flex justify-between pt-3 border-t border-default">
+              <span class="font-semibold text-default">{{ t('invoice.total') }}</span>
+              <span class="font-bold text-lg text-default">
                 {{ formatCurrency(totals.total) }}
               </span>
             </div>
@@ -560,18 +560,18 @@ function goBack() {
         <!-- Budget info -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('budget.title') }}
             </h3>
           </template>
 
           <div class="space-y-2 text-sm">
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('budget.budgetNumber') }}</span>
+              <span class="text-subtle">{{ t('budget.budgetNumber') }}</span>
               <span class="font-medium">{{ budget.budget_number }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('budget.status.title') }}</span>
+              <span class="text-subtle">{{ t('budget.status.title') }}</span>
               <UBadge
                 variant="subtle"
                 size="xs"
@@ -580,7 +580,7 @@ function goBack() {
               </UBadge>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('budget.total') }}</span>
+              <span class="text-subtle">{{ t('budget.total') }}</span>
               <span class="font-medium">{{ formatCurrency(budget.total) }}</span>
             </div>
           </div>

@@ -158,10 +158,10 @@ function canEdit(_vatType: VatType): boolean {
           />
         </NuxtLink>
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 class="text-display text-default">
             {{ t('vatTypes.title') }}
           </h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-caption text-subtle">
             {{ t('vatTypes.description') }}
           </p>
         </div>
@@ -171,7 +171,7 @@ function canEdit(_vatType: VatType): boolean {
         <!-- Show inactive toggle -->
         <div class="flex items-center gap-2">
           <USwitch v-model="showInactive" />
-          <span class="text-sm text-gray-600 dark:text-gray-400">
+          <span class="text-sm text-muted dark:text-subtle">
             {{ t('vatTypes.showInactive') }}
           </span>
         </div>
@@ -200,14 +200,14 @@ function canEdit(_vatType: VatType): boolean {
 
       <div
         v-else-if="displayVatTypes.length === 0"
-        class="text-center py-8 text-gray-500 dark:text-gray-400"
+        class="text-center py-8 text-muted"
       >
         {{ t('vatTypes.noItems') }}
       </div>
 
       <div
         v-else
-        class="divide-y divide-gray-200 dark:divide-gray-700"
+        class="divide-y divide-[var(--color-border-subtle)]"
       >
         <div
           v-for="vatType in displayVatTypes"
@@ -216,10 +216,10 @@ function canEdit(_vatType: VatType): boolean {
         >
           <div class="flex items-center gap-4">
             <div>
-              <p class="font-medium text-gray-900 dark:text-white">
+              <p class="font-medium text-default">
                 {{ getVatTypeName(vatType) }}
               </p>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
+              <p class="text-caption text-subtle">
                 {{ vatType.rate }}%
               </p>
             </div>
@@ -229,21 +229,21 @@ function canEdit(_vatType: VatType): boolean {
             <!-- Badges -->
             <UBadge
               v-if="vatType.is_default"
-              color="blue"
+              color="info"
               variant="subtle"
             >
               {{ t('vatTypes.default') }}
             </UBadge>
             <UBadge
               v-if="vatType.is_system"
-              color="gray"
+              color="neutral"
               variant="subtle"
             >
               {{ t('vatTypes.system') }}
             </UBadge>
             <UBadge
               v-if="!vatType.is_active"
-              color="red"
+              color="error"
               variant="subtle"
             >
               {{ t('common.inactive') }}
@@ -279,9 +279,9 @@ function canEdit(_vatType: VatType): boolean {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-plus"
-                class="w-5 h-5 text-primary-500"
+                class="w-5 h-5 text-primary-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('vatTypes.new') }}
               </h3>
             </div>
@@ -316,7 +316,7 @@ function canEdit(_vatType: VatType): boolean {
 
             <div class="flex items-center gap-3">
               <USwitch v-model="newVatType.is_default" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('vatTypes.setAsDefault') }}
               </span>
             </div>
@@ -348,9 +348,9 @@ function canEdit(_vatType: VatType): boolean {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-pencil"
-                class="w-5 h-5 text-primary-500"
+                class="w-5 h-5 text-primary-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('vatTypes.edit') }}
               </h3>
             </div>
@@ -387,7 +387,7 @@ function canEdit(_vatType: VatType): boolean {
 
             <div class="flex items-center gap-3">
               <USwitch v-model="editData.is_default" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('vatTypes.setAsDefault') }}
               </span>
             </div>
@@ -397,14 +397,14 @@ function canEdit(_vatType: VatType): boolean {
               class="flex items-center gap-3"
             >
               <USwitch v-model="editData.is_active" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('vatTypes.active') }}
               </span>
             </div>
 
             <p
               v-if="editingVatType?.is_system"
-              class="text-xs text-gray-500 dark:text-gray-400"
+              class="text-caption text-subtle"
             >
               {{ t('vatTypes.systemNote') }}
             </p>
@@ -436,21 +436,21 @@ function canEdit(_vatType: VatType): boolean {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-alert-triangle"
-                class="w-5 h-5 text-red-500"
+                class="w-5 h-5 text-danger-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('vatTypes.delete') }}
               </h3>
             </div>
           </template>
 
-          <p class="text-gray-600 dark:text-gray-400">
+          <p class="text-muted dark:text-subtle">
             {{ t('vatTypes.deleteConfirm') }}
-            <strong class="text-gray-900 dark:text-white">
+            <strong class="text-default">
               {{ getVatTypeLabel(vatTypeToDelete!) }}
             </strong>?
           </p>
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p class="mt-2 text-caption text-subtle">
             {{ t('vatTypes.deleteNote') }}
           </p>
 

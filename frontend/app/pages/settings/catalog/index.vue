@@ -203,10 +203,10 @@ const categoryOptions = computed(() => [
     <!-- Page header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 class="text-display text-default">
           {{ t('catalog.title') }}
         </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p class="text-caption text-subtle mt-1">
           {{ t('catalog.description') }}
         </p>
       </div>
@@ -259,7 +259,7 @@ const categoryOptions = computed(() => [
       <!-- Header with expand/collapse buttons -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <h2 class="font-semibold text-gray-900 dark:text-white">
+          <h2 class="font-semibold text-default">
             {{ t('catalog.items') }}
           </h2>
           <UBadge
@@ -315,14 +315,14 @@ const categoryOptions = computed(() => [
               <div class="flex items-center gap-3">
                 <UIcon
                   :name="isCategoryExpanded(group.category.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
-                  class="w-5 h-5 text-gray-400 transition-transform"
+                  class="w-5 h-5 text-subtle transition-transform"
                 />
                 <UIcon
                   v-if="group.category.icon"
                   :name="group.category.icon"
-                  class="w-5 h-5 text-primary-500"
+                  class="w-5 h-5 text-primary-accent"
                 />
-                <span class="font-semibold text-gray-900 dark:text-white">
+                <span class="font-semibold text-default">
                   {{ catalog.getCategoryName(group.category) }}
                 </span>
                 <UBadge
@@ -343,44 +343,44 @@ const categoryOptions = computed(() => [
           >
             <table class="w-full">
               <thead>
-                <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                  <th class="text-left py-2 px-4 font-medium text-gray-500 dark:text-gray-400 text-sm">
+                <tr class="border-b border-default bg-surface-muted/50">
+                  <th class="text-left py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.code') }}
                   </th>
-                  <th class="text-left py-2 px-4 font-medium text-gray-500 dark:text-gray-400 text-sm">
+                  <th class="text-left py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.name') }}
                   </th>
-                  <th class="text-right py-2 px-4 font-medium text-gray-500 dark:text-gray-400 text-sm">
+                  <th class="text-right py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.price') }}
                   </th>
-                  <th class="text-center py-2 px-4 font-medium text-gray-500 dark:text-gray-400 text-sm">
+                  <th class="text-center py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.vatType') }}
                   </th>
-                  <th class="text-center py-2 px-4 font-medium text-gray-500 dark:text-gray-400 text-sm">
+                  <th class="text-center py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.duration') }}
                   </th>
-                  <th class="text-right py-2 px-4 font-medium text-gray-500 dark:text-gray-400 text-sm" />
+                  <th class="text-right py-2 px-4 font-medium text-muted text-sm" />
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody class="divide-y divide-[var(--color-border-subtle)]">
                 <tr
                   v-for="item in group.items"
                   :key="item.id"
-                  class="hover:bg-gray-50 dark:hover:bg-gray-800"
+                  class="hover:bg-surface-muted"
                 >
                   <td class="py-2.5 px-4">
-                    <span class="font-mono text-sm text-gray-600 dark:text-gray-400">
+                    <span class="font-mono text-sm text-muted dark:text-subtle">
                       {{ item.internal_code }}
                     </span>
                   </td>
                   <td class="py-2.5 px-4">
-                    <span class="font-medium text-gray-900 dark:text-white">
+                    <span class="font-medium text-default">
                       {{ getItemName(item) }}
                     </span>
                     <UBadge
                       v-if="item.is_system"
                       variant="subtle"
-                      color="blue"
+                      color="info"
                       class="ml-2"
                       size="xs"
                     >
@@ -389,7 +389,7 @@ const categoryOptions = computed(() => [
                     <UBadge
                       v-if="!item.is_active"
                       variant="subtle"
-                      color="red"
+                      color="error"
                       class="ml-2"
                       size="xs"
                     >
@@ -408,7 +408,7 @@ const categoryOptions = computed(() => [
                       {{ getVatTypeLabel(item.vat_type) }}
                     </UBadge>
                   </td>
-                  <td class="py-2.5 px-4 text-center text-gray-600 dark:text-gray-400">
+                  <td class="py-2.5 px-4 text-center text-muted dark:text-subtle">
                     {{ item.default_duration_minutes ? `${item.default_duration_minutes} min` : '-' }}
                   </td>
                   <td class="py-2.5 px-4 text-right">
@@ -448,9 +448,9 @@ const categoryOptions = computed(() => [
           <div class="flex items-center gap-2">
             <UIcon
               name="i-lucide-list"
-              class="w-5 h-5 text-primary-500"
+              class="w-5 h-5 text-primary-accent"
             />
-            <h2 class="font-semibold text-gray-900 dark:text-white">
+            <h2 class="font-semibold text-default">
               {{ t('catalog.items') }}
             </h2>
             <UBadge
@@ -476,7 +476,7 @@ const categoryOptions = computed(() => [
       <!-- Empty state -->
       <div
         v-else-if="catalog.items.value.length === 0"
-        class="text-center py-12 text-gray-500 dark:text-gray-400"
+        class="text-center py-12 text-muted"
       >
         <UIcon
           name="i-lucide-package"
@@ -492,47 +492,47 @@ const categoryOptions = computed(() => [
       >
         <table class="w-full">
           <thead>
-            <tr class="border-b border-gray-200 dark:border-gray-700">
-              <th class="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+            <tr class="border-b border-default">
+              <th class="text-left py-3 px-4 font-medium text-muted">
                 {{ t('catalog.code') }}
               </th>
-              <th class="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+              <th class="text-left py-3 px-4 font-medium text-muted">
                 {{ t('catalog.name') }}
               </th>
-              <th class="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+              <th class="text-left py-3 px-4 font-medium text-muted">
                 {{ t('catalog.category') }}
               </th>
-              <th class="text-right py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+              <th class="text-right py-3 px-4 font-medium text-muted">
                 {{ t('catalog.price') }}
               </th>
-              <th class="text-center py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+              <th class="text-center py-3 px-4 font-medium text-muted">
                 {{ t('catalog.vatType') }}
               </th>
-              <th class="text-center py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+              <th class="text-center py-3 px-4 font-medium text-muted">
                 {{ t('catalog.duration') }}
               </th>
-              <th class="text-right py-3 px-4 font-medium text-gray-500 dark:text-gray-400" />
+              <th class="text-right py-3 px-4 font-medium text-muted" />
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody class="divide-y divide-[var(--color-border-subtle)]">
             <tr
               v-for="item in catalog.items.value"
               :key="item.id"
-              class="hover:bg-gray-50 dark:hover:bg-gray-800"
+              class="hover:bg-surface-muted"
             >
               <td class="py-3 px-4">
-                <span class="font-mono text-sm text-gray-600 dark:text-gray-400">
+                <span class="font-mono text-sm text-muted dark:text-subtle">
                   {{ item.internal_code }}
                 </span>
               </td>
               <td class="py-3 px-4">
-                <span class="font-medium text-gray-900 dark:text-white">
+                <span class="font-medium text-default">
                   {{ getItemName(item) }}
                 </span>
                 <UBadge
                   v-if="item.is_system"
                   variant="subtle"
-                  color="blue"
+                  color="info"
                   class="ml-2"
                   size="xs"
                 >
@@ -541,14 +541,14 @@ const categoryOptions = computed(() => [
                 <UBadge
                   v-if="!item.is_active"
                   variant="subtle"
-                  color="red"
+                  color="error"
                   class="ml-2"
                   size="xs"
                 >
                   {{ t('common.inactive') }}
                 </UBadge>
               </td>
-              <td class="py-3 px-4 text-gray-600 dark:text-gray-400">
+              <td class="py-3 px-4 text-muted dark:text-subtle">
                 {{ getCategoryName(item.category_id) }}
               </td>
               <td class="py-3 px-4 text-right font-medium">
@@ -563,7 +563,7 @@ const categoryOptions = computed(() => [
                   {{ getVatTypeLabel(item.vat_type) }}
                 </UBadge>
               </td>
-              <td class="py-3 px-4 text-center text-gray-600 dark:text-gray-400">
+              <td class="py-3 px-4 text-center text-muted dark:text-subtle">
                 {{ item.default_duration_minutes ? `${item.default_duration_minutes} min` : '-' }}
               </td>
               <td class="py-3 px-4 text-right">
@@ -596,7 +596,7 @@ const categoryOptions = computed(() => [
       <!-- Pagination -->
       <div
         v-if="catalog.totalPages.value > 1"
-        class="flex justify-center pt-4 border-t border-gray-200 dark:border-gray-700 mt-4"
+        class="flex justify-center pt-4 border-t border-default mt-4"
       >
         <UPagination
           :model-value="catalog.currentPage.value"
@@ -620,22 +620,22 @@ const categoryOptions = computed(() => [
     <!-- Delete Confirmation Modal -->
     <UModal v-model:open="showDeleteConfirm">
       <template #content>
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-md">
+        <div class="bg-surface rounded-lg shadow-xl p-6 max-w-md">
           <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--color-danger-soft)] flex items-center justify-center">
               <UIcon
                 name="i-lucide-trash-2"
-                class="w-5 h-5 text-red-600 dark:text-red-400"
+                class="w-5 h-5 text-danger-accent"
               />
             </div>
             <div class="flex-1">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 class="text-h1 text-default">
                 {{ t('catalog.deleteItem') }}
               </h3>
-              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <p class="mt-2 text-caption text-subtle">
                 {{ t('catalog.deleteItemConfirm', { name: itemToDelete ? getItemName(itemToDelete) : '' }) }}
               </p>
-              <p class="mt-1 text-sm text-gray-400 dark:text-gray-500">
+              <p class="mt-1 text-sm text-subtle">
                 {{ t('catalog.deleteItemNote') }}
               </p>
             </div>

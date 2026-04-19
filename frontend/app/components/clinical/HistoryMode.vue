@@ -116,25 +116,18 @@ async function onHistoryExpanded(expanded: boolean) {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-primary-500"
+        class="w-8 h-8 animate-spin text-primary-accent"
       />
     </div>
 
     <template v-else>
       <!-- No history available -->
       <UCard v-if="timelineDates.length === 0">
-        <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-          <UIcon
-            name="i-lucide-history"
-            class="w-12 h-12 mx-auto mb-3 opacity-50"
-          />
-          <p class="text-lg font-medium mb-1">
-            {{ t('odontogram.timeline.noHistory') }}
-          </p>
-          <p class="text-sm">
-            {{ t('clinical.history.noChanges') }}
-          </p>
-        </div>
+        <EmptyState
+          icon="i-lucide-history"
+          :title="t('odontogram.timeline.noHistory')"
+          :description="t('clinical.history.noChanges')"
+        />
       </UCard>
 
       <template v-else>
@@ -175,7 +168,7 @@ async function onHistoryExpanded(expanded: boolean) {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-calendar"
-                class="w-5 h-5 text-gray-500"
+                class="w-5 h-5 text-subtle"
               />
               <span>{{ t('clinical.history.stateAt') }}</span>
               <UBadge

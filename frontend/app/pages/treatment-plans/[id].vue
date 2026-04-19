@@ -84,9 +84,9 @@ function handleCancelled() {
     >
       <UIcon
         name="i-lucide-file-x"
-        class="w-12 h-12 text-gray-400 mx-auto mb-4"
+        class="w-12 h-12 text-subtle mx-auto mb-4"
       />
-      <p class="text-gray-500">
+      <p class="text-subtle">
         {{ t('common.notFound') }}
       </p>
       <UButton

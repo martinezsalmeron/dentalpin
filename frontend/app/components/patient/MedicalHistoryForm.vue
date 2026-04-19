@@ -151,7 +151,7 @@ function handleSave() {
           <div
             v-for="(allergy, index) in localData.allergies"
             :key="index"
-            class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded"
+            class="flex items-center gap-2 p-2 bg-surface-muted rounded"
           >
             <UBadge
               :color="allergy.severity === 'critical' ? 'error' : allergy.severity === 'high' ? 'warning' : 'info'"
@@ -162,7 +162,7 @@ function handleSave() {
             <span class="flex-1 font-medium">{{ allergy.name }}</span>
             <span
               v-if="allergy.type"
-              class="text-sm text-gray-500"
+              class="text-caption text-subtle"
             >{{ allergy.type }}</span>
             <UButton
               v-if="!readonly"
@@ -217,16 +217,16 @@ function handleSave() {
           <div
             v-for="(med, index) in localData.medications"
             :key="index"
-            class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded"
+            class="flex items-center gap-2 p-2 bg-surface-muted rounded"
           >
             <span class="flex-1 font-medium">{{ med.name }}</span>
             <span
               v-if="med.dosage"
-              class="text-sm text-gray-500"
+              class="text-caption text-subtle"
             >{{ med.dosage }}</span>
             <span
               v-if="med.frequency"
-              class="text-sm text-gray-500"
+              class="text-caption text-subtle"
             >{{ med.frequency }}</span>
             <UButton
               v-if="!readonly"
@@ -275,7 +275,7 @@ function handleSave() {
           <div
             v-for="(disease, index) in localData.systemic_diseases"
             :key="index"
-            class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded"
+            class="flex items-center gap-2 p-2 bg-surface-muted rounded"
           >
             <UBadge
               v-if="disease.is_critical"
@@ -470,12 +470,12 @@ function handleSave() {
           <div
             v-for="(surgery, index) in localData.surgical_history"
             :key="index"
-            class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded"
+            class="flex items-center gap-2 p-2 bg-surface-muted rounded"
           >
             <span class="flex-1 font-medium">{{ surgery.procedure }}</span>
             <span
               v-if="surgery.surgery_date"
-              class="text-sm text-gray-500"
+              class="text-caption text-subtle"
             >{{ surgery.surgery_date }}</span>
             <UButton
               v-if="!readonly"

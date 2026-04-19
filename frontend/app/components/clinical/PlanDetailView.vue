@@ -9,6 +9,7 @@
  * - Two-column layout on larger screens
  */
 
+import type { DropdownMenuItem } from '@nuxt/ui'
 import type { TreatmentPlanDetail } from '~/types'
 
 const props = withDefaults(defineProps<{
@@ -218,7 +219,7 @@ interface Step {
 
 const steps = computed<Step[]>(() => {
   const status = props.plan.status
-  // Completed / archived / cancelled collapse to "all done" for this chart.
+  // Completed / archived / cancelled collapse to"all done" for this chart.
   const allDone = status === 'completed'
   const isDraft = status === 'draft'
   const isActive = status === 'active'
@@ -289,6 +290,19 @@ function cancelActivate() {
 function handleGenerateBudget() {
   emit('generate-budget')
 }
+
+const moreMenuItems = computed<DropdownMenuItem[]>(() => {
+  const items: DropdownMenuItem[] = []
+  if (canCancelPlan.value) {
+    items.push({
+      label: t('clinical.plans.cancelPlan'),
+      icon: 'i-lucide-ban',
+      color: 'error',
+      onSelect: openCancelModal
+    })
+  }
+  return items
+})
 </script>
 
 <template>
@@ -296,13 +310,13 @@ function handleGenerateBudget() {
     <!-- Header: title + stepper + actions -->
     <div class="plan-header">
       <div class="plan-header-title">
-        <h2 class="text-lg font-semibold">
+        <h2 class="text-h1 text-default">
           {{ plan.title || plan.plan_number }}
         </h2>
         <NuxtLink
           v-if="standalone && plan.patient"
           :to="`/patients/${patientId}`"
-          class="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:underline mt-0.5"
+          class="inline-flex items-center gap-1 text-caption text-primary-accent hover:underline mt-0.5"
         >
           <UIcon
             name="i-lucide-user"
@@ -353,17 +367,6 @@ function handleGenerateBudget() {
           {{ t('clinical.plans.modifyPlan') }}
         </UButton>
         <UButton
-          v-if="canCancelPlan"
-          variant="ghost"
-          size="sm"
-          color="error"
-          icon="i-lucide-ban"
-          :loading="loading"
-          @click="openCancelModal"
-        >
-          {{ t('clinical.plans.cancelPlan') }}
-        </UButton>
-        <UButton
           v-if="canGenerateBudget"
           variant="soft"
           size="sm"
@@ -405,6 +408,19 @@ function handleGenerateBudget() {
         >
           {{ t('treatmentPlans.scheduleAppointment') }}
         </UButton>
+
+        <UDropdownMenu
+          v-if="moreMenuItems.length > 0"
+          :items="moreMenuItems"
+        >
+          <UButton
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-more-horizontal"
+            size="sm"
+            :aria-label="t('common.actions')"
+          />
+        </UDropdownMenu>
       </div>
     </div>
 
@@ -435,9 +451,9 @@ function handleGenerateBudget() {
           <div class="flex items-center gap-2">
             <UIcon
               name="i-lucide-scan"
-              class="w-5 h-5 text-primary-500"
+              class="w-5 h-5 text-primary-accent"
             />
-            <span class="font-medium">{{ t('clinical.plans.odontogram') }}</span>
+            <span class="text-ui text-default">{{ t('clinical.plans.odontogram') }}</span>
           </div>
         </template>
 
@@ -537,19 +553,19 @@ function handleGenerateBudget() {
         <UCard>
           <template #header>
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <div class="w-10 h-10 rounded-full bg-[var(--color-danger-soft)] flex items-center justify-center">
                 <UIcon
                   name="i-lucide-ban"
-                  class="w-5 h-5 text-red-600 dark:text-red-400"
+                  class="w-5 h-5 text-danger-accent"
                 />
               </div>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="text-h2 text-default">
                 {{ t('treatmentPlans.confirmations.cancelTitle') }}
               </h3>
             </div>
           </template>
 
-          <p class="text-sm text-gray-700 dark:text-gray-300">
+          <p class="text-body text-muted">
             {{ t('treatmentPlans.confirmations.cancelDescription') }}
           </p>
 
@@ -582,48 +598,48 @@ function handleGenerateBudget() {
         <UCard>
           <template #header>
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <div class="w-10 h-10 rounded-full bg-[var(--color-warning-soft)] flex items-center justify-center">
                 <UIcon
                   name="i-lucide-alert-triangle"
-                  class="w-5 h-5 text-amber-600 dark:text-amber-400"
+                  class="w-5 h-5 text-warning-accent"
                 />
               </div>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="text-h2 text-default">
                 {{ t('treatmentPlans.confirmations.unlockTitle') }}
               </h3>
             </div>
           </template>
 
           <div class="space-y-3">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
+            <p class="text-body text-muted">
               {{ t('treatmentPlans.confirmations.unlockIntro', { number: plan.budget?.budget_number || '' }) }}
             </p>
             <ul class="unlock-consequences">
               <li>
                 <UIcon
                   name="i-lucide-x-circle"
-                  class="w-4 h-4 text-red-500 shrink-0"
+                  class="w-4 h-4 text-danger-accent shrink-0"
                 />
                 <span>{{ t('treatmentPlans.confirmations.unlockConsequence1') }}</span>
               </li>
               <li>
                 <UIcon
                   name="i-lucide-edit-3"
-                  class="w-4 h-4 text-amber-500 shrink-0"
+                  class="w-4 h-4 text-warning-accent shrink-0"
                 />
                 <span>{{ t('treatmentPlans.confirmations.unlockConsequence2') }}</span>
               </li>
               <li>
                 <UIcon
                   name="i-lucide-file-plus"
-                  class="w-4 h-4 text-blue-500 shrink-0"
+                  class="w-4 h-4 text-info-accent shrink-0"
                 />
                 <span>{{ t('treatmentPlans.confirmations.unlockConsequence3') }}</span>
               </li>
               <li>
                 <UIcon
                   name="i-lucide-history"
-                  class="w-4 h-4 text-gray-500 shrink-0"
+                  class="w-4 h-4 text-subtle shrink-0"
                 />
                 <span>{{ t('treatmentPlans.confirmations.unlockConsequence4') }}</span>
               </li>
@@ -659,19 +675,19 @@ function handleGenerateBudget() {
         <UCard>
           <template #header>
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+              <div class="w-10 h-10 rounded-full bg-[var(--color-primary-soft)] flex items-center justify-center">
                 <UIcon
                   name="i-lucide-check-circle-2"
-                  class="w-5 h-5 text-primary-600 dark:text-primary-400"
+                  class="w-5 h-5 text-primary-accent"
                 />
               </div>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="text-h2 text-default">
                 {{ t('treatmentPlans.confirmations.activateTitle') }}
               </h3>
             </div>
           </template>
 
-          <p class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="text-body text-muted">
             {{ t('treatmentPlans.confirmations.activateDescription') }}
           </p>
 

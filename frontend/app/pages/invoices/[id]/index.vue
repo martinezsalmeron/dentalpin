@@ -377,9 +377,9 @@ function goToCreditNoteFor() {
     >
       <UIcon
         name="i-lucide-file-x"
-        class="w-12 h-12 text-gray-400 mx-auto mb-4"
+        class="w-12 h-12 text-subtle mx-auto mb-4"
       />
-      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+      <h3 class="text-h2 text-default mb-2">
         {{ t('invoice.notFound') }}
       </h3>
       <UButton @click="goBack">
@@ -401,7 +401,7 @@ function goToCreditNoteFor() {
             {{ backLabel }}
           </UButton>
           <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 class="text-display text-default flex items-center gap-3">
               {{ currentInvoice.invoice_number || t('invoice.draftNoNumber') }}
               <UBadge
                 :color="getStatusBadgeColor(currentInvoice.status)"
@@ -411,7 +411,7 @@ function goToCreditNoteFor() {
               </UBadge>
               <UBadge
                 v-if="isOverdue()"
-                color="red"
+                color="error"
                 variant="solid"
               >
                 {{ t('invoice.overdue') }}
@@ -419,11 +419,11 @@ function goToCreditNoteFor() {
             </h1>
             <p
               v-if="currentInvoice.patient"
-              class="text-sm text-gray-500 dark:text-gray-400 mt-1"
+              class="text-caption text-subtle mt-1"
             >
               <NuxtLink
                 :to="`/patients/${currentInvoice.patient.id}`"
-                class="hover:text-primary-600 dark:hover:text-primary-400 hover:underline"
+                class="hover:text-primary-accent dark:hover:text-primary-400 hover:underline"
               >
                 {{ currentInvoice.patient.first_name }} {{ currentInvoice.patient.last_name }}
               </NuxtLink>
@@ -504,27 +504,27 @@ function goToCreditNoteFor() {
           <!-- Invoice info card -->
           <UCard>
             <template #header>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.details') }}
               </h3>
             </template>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                <dt class="text-caption text-subtle">
                   {{ t('invoice.issueDate') }}
                 </dt>
-                <dd class="font-medium text-gray-900 dark:text-white">
+                <dd class="font-medium text-default">
                   {{ formatDate(currentInvoice.issue_date) }}
                 </dd>
               </div>
               <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                <dt class="text-caption text-subtle">
                   {{ t('invoice.dueDate') }}
                 </dt>
                 <dd
                   class="font-medium"
-                  :class="isOverdue() ? 'text-red-600' : 'text-gray-900 dark:text-white'"
+                  :class="isOverdue() ? 'text-danger-accent' : 'text-default'"
                 >
                   {{ formatDate(currentInvoice.due_date) }}
                 </dd>
@@ -532,7 +532,7 @@ function goToCreditNoteFor() {
               <!-- Billing data incomplete warning -->
               <div
                 v-if="hasBillingDataIncomplete"
-                class="col-span-2 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-800 dark:text-amber-200"
+                class="col-span-2 flex items-center gap-2 px-3 py-2 alert-surface-warning rounded-token-md"
               >
                 <UIcon
                   name="i-lucide-alert-triangle"
@@ -542,14 +542,14 @@ function goToCreditNoteFor() {
                   <p class="font-medium">
                     {{ t('invoice.billingDataIncomplete') }}
                   </p>
-                  <p class="text-sm text-amber-600 dark:text-amber-300">
+                  <p class="text-sm text-warning-accent">
                     {{ t('invoice.billingDataIncompleteHint') }}
                   </p>
                 </div>
                 <UButton
                   size="sm"
                   variant="outline"
-                  color="amber"
+                  color="warning"
                   @click="router.push(`/patients/${currentInvoice.patient?.id}`)"
                 >
                   {{ t('invoice.editPatientBilling') }}
@@ -557,23 +557,23 @@ function goToCreditNoteFor() {
               </div>
 
               <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                <dt class="text-caption text-subtle">
                   {{ t('invoice.billingName') }}
                 </dt>
-                <dd class="font-medium text-gray-900 dark:text-white">
+                <dd class="font-medium text-default">
                   {{ currentInvoice.billing_name || '-' }}
                 </dd>
               </div>
               <div v-if="currentInvoice.billing_tax_id">
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                <dt class="text-caption text-subtle">
                   {{ t('invoice.taxId') }}
                 </dt>
-                <dd class="font-medium text-gray-900 dark:text-white">
+                <dd class="font-medium text-default">
                   {{ currentInvoice.billing_tax_id }}
                 </dd>
               </div>
               <div v-if="currentInvoice.budget">
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                <dt class="text-caption text-subtle">
                   {{ t('invoice.linkedBudget') }}
                 </dt>
                 <dd>
@@ -588,7 +588,7 @@ function goToCreditNoteFor() {
                 </dd>
               </div>
               <div v-if="currentInvoice.credit_note_for">
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                <dt class="text-caption text-subtle">
                   {{ t('invoice.creditNoteFor') }}
                 </dt>
                 <dd>
@@ -608,12 +608,12 @@ function goToCreditNoteFor() {
           <!-- Items card -->
           <UCard>
             <template #header>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.items') }}
               </h3>
             </template>
 
-            <div class="divide-y divide-gray-200 dark:divide-gray-800">
+            <div class="divide-y divide-[var(--color-border-subtle)]">
               <div
                 v-for="item in currentInvoice.items"
                 :key="item.id"
@@ -621,18 +621,18 @@ function goToCreditNoteFor() {
               >
                 <div class="flex justify-between items-start">
                   <div class="flex-1">
-                    <p class="font-medium text-gray-900 dark:text-white">
+                    <p class="font-medium text-default">
                       {{ item.description }}
                     </p>
                     <p
                       v-if="item.internal_code"
-                      class="text-sm text-gray-500"
+                      class="text-caption text-subtle"
                     >
                       {{ item.internal_code }}
                     </p>
                     <p
                       v-if="item.tooth_number"
-                      class="text-sm text-gray-500"
+                      class="text-caption text-subtle"
                     >
                       {{ t('invoice.tooth') }} {{ item.tooth_number }}
                       <span v-if="item.surfaces?.length">
@@ -641,19 +641,19 @@ function goToCreditNoteFor() {
                     </p>
                   </div>
                   <div class="text-right">
-                    <p class="text-sm text-gray-500">
+                    <p class="text-caption text-subtle">
                       {{ item.quantity }} x {{ formatCurrency(item.unit_price, currentInvoice.currency) }}
                     </p>
                     <p
                       v-if="item.line_discount > 0"
-                      class="text-sm text-green-600"
+                      class="text-sm text-success-accent"
                     >
                       -{{ formatCurrency(item.line_discount, currentInvoice.currency) }}
                     </p>
-                    <p class="font-semibold text-gray-900 dark:text-white">
+                    <p class="font-semibold text-default">
                       {{ formatCurrency(item.line_total, currentInvoice.currency) }}
                     </p>
-                    <p class="text-xs text-gray-400">
+                    <p class="text-xs text-subtle">
                       {{ t('invoice.vat') }} {{ item.vat_rate }}%
                     </p>
                   </div>
@@ -665,12 +665,12 @@ function goToCreditNoteFor() {
           <!-- Payments card -->
           <UCard v-if="currentInvoice.payments && currentInvoice.payments.length > 0">
             <template #header>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.payments.title') }}
               </h3>
             </template>
 
-            <div class="divide-y divide-gray-200 dark:divide-gray-800">
+            <div class="divide-y divide-[var(--color-border-subtle)]">
               <div
                 v-for="payment in currentInvoice.payments"
                 :key="payment.id"
@@ -678,21 +678,21 @@ function goToCreditNoteFor() {
                 :class="{ 'opacity-50 line-through': payment.is_voided }"
               >
                 <div>
-                  <p class="font-medium text-gray-900 dark:text-white">
+                  <p class="font-medium text-default">
                     {{ formatCurrency(payment.amount, currentInvoice.currency) }}
                   </p>
-                  <p class="text-sm text-gray-500">
+                  <p class="text-caption text-subtle">
                     {{ getPaymentMethodLabel(payment.payment_method) }} - {{ formatDate(payment.payment_date) }}
                   </p>
                   <p
                     v-if="payment.reference"
-                    class="text-xs text-gray-400"
+                    class="text-xs text-subtle"
                   >
                     {{ payment.reference }}
                   </p>
                   <p
                     v-if="payment.is_voided"
-                    class="text-xs text-red-600"
+                    class="text-xs text-danger-accent"
                   >
                     {{ t('invoice.paymentVoided') }}: {{ payment.void_reason }}
                   </p>
@@ -716,30 +716,30 @@ function goToCreditNoteFor() {
           <!-- Totals card -->
           <UCard>
             <template #header>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.summary') }}
               </h3>
             </template>
 
             <div class="space-y-3">
               <div class="flex justify-between">
-                <span class="text-gray-500">{{ t('invoice.subtotal') }}</span>
+                <span class="text-subtle">{{ t('invoice.subtotal') }}</span>
                 <span class="font-medium">{{ formatCurrency(currentInvoice.subtotal, currentInvoice.currency) }}</span>
               </div>
               <div
                 v-if="currentInvoice.total_discount > 0"
-                class="flex justify-between text-green-600"
+                class="flex justify-between text-success-accent"
               >
                 <span>{{ t('invoice.discount') }}</span>
                 <span>-{{ formatCurrency(currentInvoice.total_discount, currentInvoice.currency) }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-gray-500">{{ t('invoice.tax') }}</span>
+                <span class="text-subtle">{{ t('invoice.tax') }}</span>
                 <span class="font-medium">{{ formatCurrency(currentInvoice.total_tax, currentInvoice.currency) }}</span>
               </div>
-              <div class="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-                <span class="font-semibold text-gray-900 dark:text-white">{{ t('invoice.total') }}</span>
-                <span class="font-bold text-lg text-gray-900 dark:text-white">
+              <div class="flex justify-between pt-3 border-t border-default">
+                <span class="font-semibold text-default">{{ t('invoice.total') }}</span>
+                <span class="font-bold text-lg text-default">
                   {{ formatCurrency(currentInvoice.total, currentInvoice.currency) }}
                 </span>
               </div>
@@ -747,17 +747,17 @@ function goToCreditNoteFor() {
                 v-if="currentInvoice.status !== 'draft'"
                 class="flex justify-between"
               >
-                <span class="text-gray-500">{{ t('invoice.paid') }}</span>
-                <span class="font-medium text-green-600">
+                <span class="text-subtle">{{ t('invoice.paid') }}</span>
+                <span class="font-medium text-success-accent">
                   {{ formatCurrency(currentInvoice.total_paid, currentInvoice.currency) }}
                 </span>
               </div>
               <div
                 v-if="currentInvoice.status !== 'draft' && currentInvoice.balance_due > 0"
-                class="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700"
+                class="flex justify-between pt-2 border-t border-default"
               >
-                <span class="font-semibold text-amber-600">{{ t('invoice.balanceDue') }}</span>
-                <span class="font-bold text-amber-600">
+                <span class="font-semibold text-warning-accent">{{ t('invoice.balanceDue') }}</span>
+                <span class="font-bold text-warning-accent">
                   {{ formatCurrency(currentInvoice.balance_due, currentInvoice.currency) }}
                 </span>
               </div>
@@ -767,25 +767,25 @@ function goToCreditNoteFor() {
           <!-- Notes card -->
           <UCard v-if="currentInvoice.public_notes || currentInvoice.internal_notes">
             <template #header>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.notes') }}
               </h3>
             </template>
 
             <div class="space-y-4">
               <div v-if="currentInvoice.public_notes">
-                <dt class="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                <dt class="text-caption text-subtle mb-1">
                   {{ t('invoice.publicNotes') }}
                 </dt>
-                <dd class="text-gray-900 dark:text-white whitespace-pre-wrap">
+                <dd class="text-default whitespace-pre-wrap">
                   {{ currentInvoice.public_notes }}
                 </dd>
               </div>
               <div v-if="currentInvoice.internal_notes">
-                <dt class="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                <dt class="text-caption text-subtle mb-1">
                   {{ t('invoice.internalNotes') }}
                 </dt>
-                <dd class="text-gray-900 dark:text-white whitespace-pre-wrap">
+                <dd class="text-default whitespace-pre-wrap">
                   {{ currentInvoice.internal_notes }}
                 </dd>
               </div>
@@ -876,7 +876,7 @@ function goToCreditNoteFor() {
             />
           </UFormField>
 
-          <p class="text-sm text-gray-500">
+          <p class="text-caption text-subtle">
             {{ t('invoice.creditNoteInfo') }}
           </p>
         </div>
@@ -908,7 +908,7 @@ function goToCreditNoteFor() {
     >
       <template #body>
         <div class="space-y-4 p-4">
-          <p class="text-gray-600 dark:text-gray-400">
+          <p class="text-muted dark:text-subtle">
             {{ t('invoice.send.description') }}
           </p>
 
@@ -925,13 +925,13 @@ function goToCreditNoteFor() {
           >
             <p
               v-if="currentInvoice?.patient?.email"
-              class="text-sm text-gray-500"
+              class="text-caption text-subtle"
             >
               {{ t('invoice.send.willSendTo') }}: <strong>{{ currentInvoice.patient.email }}</strong>
             </p>
             <p
               v-else
-              class="text-sm text-amber-600"
+              class="text-sm text-warning-accent"
             >
               {{ t('invoice.send.noPatientEmail') }}
             </p>
@@ -947,7 +947,7 @@ function goToCreditNoteFor() {
 
           <p
             v-if="!sendForm.send_email"
-            class="text-sm text-gray-500"
+            class="text-caption text-subtle"
           >
             {{ t('invoice.send.manualNote') }}
           </p>

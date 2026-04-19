@@ -176,7 +176,7 @@ function handleEditClick(event: Event, treatment: Treatment) {
       v-else
       class="empty-state"
     >
-      <span class="text-gray-400 text-xs">{{ t('odontogram.treatments.noTreatments') }}</span>
+      <span class="text-subtle text-xs">{{ t('odontogram.treatments.noTreatments') }}</span>
     </div>
 
     <!-- Click hint -->

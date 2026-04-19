@@ -177,7 +177,7 @@ watch(() => props.open, (isOpen) => {
           <h3 class="text-base font-semibold">
             {{ t('odontogram.selectSurfaces') }}
           </h3>
-          <p class="text-sm text-gray-500">
+          <p class="text-caption text-subtle">
             {{ t(`odontogram.treatments.types.${treatmentType}`) }} - {{ t('odontogram.tooth') }} {{ toothNumber }}
           </p>
         </div>
@@ -408,7 +408,7 @@ watch(() => props.open, (isOpen) => {
 
     <template #footer>
       <div class="flex justify-between items-center w-full">
-        <span class="text-sm text-gray-500">
+        <span class="text-caption text-subtle">
           {{ selectedSurfaces.length }} {{ t('odontogram.surfacesSelected') }}
         </span>
         <div class="flex gap-2">

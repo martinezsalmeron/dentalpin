@@ -149,10 +149,10 @@ function goBack() {
           @click="goBack"
         />
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 class="text-display text-default">
             {{ t('reports.scheduling.title') }}
           </h1>
-          <p class="text-sm text-gray-500">
+          <p class="text-caption text-subtle">
             {{ t('reports.scheduling.description') }}
           </p>
         </div>
@@ -201,7 +201,7 @@ function goBack() {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="h-8 w-8 animate-spin text-primary-500"
+        class="h-8 w-8 animate-spin text-primary-accent"
       />
     </div>
 
@@ -213,10 +213,10 @@ function goBack() {
       >
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.totalAppointments') }}
             </p>
-            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+            <p class="text-display text-default">
               {{ summary.total_appointments }}
             </p>
           </div>
@@ -224,13 +224,13 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.completionRate') }}
             </p>
-            <p class="text-2xl font-bold text-green-600">
+            <p class="text-display text-default text-success-accent">
               {{ formatPercent(summary.completion_rate) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ summary.completed }} {{ t('reports.scheduling.labels.completed') }}
             </p>
           </div>
@@ -238,16 +238,16 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.cancellationRate') }}
             </p>
             <p
-              class="text-2xl font-bold"
-              :class="summary.cancellation_rate > 20 ? 'text-red-600' : 'text-amber-600'"
+              class="text-display text-default"
+              :class="summary.cancellation_rate > 20 ? 'text-danger-accent' : 'text-warning-accent'"
             >
               {{ formatPercent(summary.cancellation_rate) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ summary.cancelled }} {{ t('reports.scheduling.labels.cancelled') }}
             </p>
           </div>
@@ -255,16 +255,16 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.noShowRate') }}
             </p>
             <p
-              class="text-2xl font-bold"
-              :class="summary.no_show_rate > 10 ? 'text-red-600' : 'text-amber-600'"
+              class="text-display text-default"
+              :class="summary.no_show_rate > 10 ? 'text-danger-accent' : 'text-warning-accent'"
             >
               {{ formatPercent(summary.no_show_rate) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ summary.no_show }} {{ t('reports.scheduling.labels.noShows') }}
             </p>
           </div>
@@ -278,13 +278,13 @@ function goBack() {
       >
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.features.firstVisits') }}
             </p>
-            <p class="text-2xl font-bold text-purple-600">
+            <p class="text-display text-default text-purple-600">
               {{ firstVisits.new_patients }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.newPatients') }}
             </p>
           </div>
@@ -292,13 +292,13 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.firstVisitRate') }}
             </p>
-            <p class="text-2xl font-bold text-blue-600">
+            <p class="text-display text-default text-info-accent">
               {{ formatPercent(firstVisits.first_visit_rate) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.ofTotalAppointments') }}
             </p>
           </div>
@@ -306,13 +306,13 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.appointmentsInPeriod') }}
             </p>
-            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+            <p class="text-display text-default">
               {{ firstVisits.total_appointments }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('reports.scheduling.labels.excludingCancelled') }}
             </p>
           </div>
@@ -323,7 +323,7 @@ function goBack() {
         <!-- Hours by Professional -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.scheduling.features.hoursWorked') }}
             </h3>
           </template>
@@ -343,29 +343,29 @@ function goBack() {
                   size="sm"
                 />
                 <div>
-                  <p class="text-gray-700 dark:text-gray-300">
+                  <p class="text-muted">
                     {{ prof.professional_name }}
                   </p>
-                  <p class="text-xs text-gray-500">
+                  <p class="text-caption text-subtle">
                     {{ prof.appointment_count }} {{ t('reports.scheduling.labels.appointments') }}
                   </p>
                 </div>
               </div>
               <div class="text-right">
-                <p class="font-semibold text-gray-900 dark:text-white">
+                <p class="font-semibold text-default">
                   {{ formatHours(prof.total_minutes) }}
                 </p>
-                <div class="flex items-center gap-2 text-xs text-gray-500">
-                  <span class="text-green-600">{{ prof.completed_count }} ✓</span>
-                  <span class="text-red-600">{{ prof.cancelled_count }} ✗</span>
-                  <span class="text-amber-600">{{ prof.no_show_count }} ⊘</span>
+                <div class="flex items-center gap-2 text-caption text-subtle">
+                  <span class="text-success-accent">{{ prof.completed_count }} ✓</span>
+                  <span class="text-danger-accent">{{ prof.cancelled_count }} ✗</span>
+                  <span class="text-warning-accent">{{ prof.no_show_count }} ⊘</span>
                 </div>
               </div>
             </div>
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -374,7 +374,7 @@ function goBack() {
         <!-- Cabinet Utilization -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.scheduling.features.cabinetUtilization') }}
             </h3>
           </template>
@@ -394,19 +394,19 @@ function goBack() {
                   class="h-5 w-5 text-purple-500"
                 />
                 <div>
-                  <p class="text-gray-700 dark:text-gray-300">
+                  <p class="text-muted">
                     {{ cabinet.cabinet }}
                   </p>
-                  <p class="text-xs text-gray-500">
+                  <p class="text-caption text-subtle">
                     {{ cabinet.appointment_count }} {{ t('reports.scheduling.labels.appointments') }}
                   </p>
                 </div>
               </div>
               <div class="text-right">
-                <p class="font-semibold text-gray-900 dark:text-white">
+                <p class="font-semibold text-default">
                   {{ formatHours(cabinet.total_minutes) }}
                 </p>
-                <p class="text-xs text-gray-500">
+                <p class="text-caption text-subtle">
                   {{ cabinet.completed_count }} {{ t('reports.scheduling.labels.completed') }}
                 </p>
               </div>
@@ -414,7 +414,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -424,22 +424,22 @@ function goBack() {
         <UCard class="lg:col-span-2">
           <template #header>
             <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('reports.scheduling.labels.byDayOfWeek') }}
               </h3>
               <!-- Legend -->
               <div class="flex items-center gap-4 text-xs">
                 <div class="flex items-center gap-1">
-                  <div class="w-3 h-3 rounded bg-green-500" />
-                  <span class="text-gray-600 dark:text-gray-400">{{ t('reports.scheduling.labels.completed') }}</span>
+                  <div class="w-3 h-3 rounded bg-[var(--color-success-accent)]" />
+                  <span class="text-muted dark:text-subtle">{{ t('reports.scheduling.labels.completed') }}</span>
                 </div>
                 <div class="flex items-center gap-1">
-                  <div class="w-3 h-3 rounded bg-red-500" />
-                  <span class="text-gray-600 dark:text-gray-400">{{ t('reports.scheduling.labels.cancelled') }}</span>
+                  <div class="w-3 h-3 rounded bg-[var(--color-danger-accent)]" />
+                  <span class="text-muted dark:text-subtle">{{ t('reports.scheduling.labels.cancelled') }}</span>
                 </div>
                 <div class="flex items-center gap-1">
-                  <div class="w-3 h-3 rounded bg-amber-500" />
-                  <span class="text-gray-600 dark:text-gray-400">{{ t('reports.scheduling.labels.noShows') }}</span>
+                  <div class="w-3 h-3 rounded bg-[var(--color-warning-accent)]" />
+                  <span class="text-muted dark:text-subtle">{{ t('reports.scheduling.labels.noShows') }}</span>
                 </div>
               </div>
             </div>
@@ -454,14 +454,14 @@ function goBack() {
               :key="day.day_of_week"
               class="flex items-center gap-4"
             >
-              <div class="w-24 text-sm text-gray-700 dark:text-gray-300">
+              <div class="w-24 text-sm text-muted">
                 {{ getDayOfWeekLabel(day.day_name) }}
               </div>
               <div class="flex-1">
                 <div class="flex items-center gap-2">
                   <!-- Stacked bar container -->
                   <div
-                    class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden"
+                    class="flex-1 bg-surface-sunken rounded-full h-4 overflow-hidden"
                   >
                     <div
                       class="flex h-4"
@@ -470,34 +470,34 @@ function goBack() {
                       <!-- Completed (green) -->
                       <div
                         v-if="day.completed_count > 0"
-                        class="bg-green-500 h-4 transition-all"
+                        class="bg-[var(--color-success-accent)] h-4 transition-all"
                         :style="{ width: `${(day.completed_count / day.appointment_count) * 100}%` }"
                         :title="`${day.completed_count} ${t('reports.scheduling.labels.completed')}`"
                       />
                       <!-- Cancelled (red) -->
                       <div
                         v-if="day.cancelled_count > 0"
-                        class="bg-red-500 h-4 transition-all"
+                        class="bg-[var(--color-danger-accent)] h-4 transition-all"
                         :style="{ width: `${(day.cancelled_count / day.appointment_count) * 100}%` }"
                         :title="`${day.cancelled_count} ${t('reports.scheduling.labels.cancelled')}`"
                       />
                       <!-- No-show (amber) -->
                       <div
                         v-if="day.no_show_count > 0"
-                        class="bg-amber-500 h-4 transition-all"
+                        class="bg-[var(--color-warning-accent)] h-4 transition-all"
                         :style="{ width: `${(day.no_show_count / day.appointment_count) * 100}%` }"
                         :title="`${day.no_show_count} ${t('reports.scheduling.labels.noShows')}`"
                       />
                       <!-- Other statuses (gray) -->
                       <div
                         v-if="day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count > 0"
-                        class="bg-gray-400 h-4 transition-all"
+                        class="bg-[var(--color-text-subtle)] h-4 transition-all"
                         :style="{ width: `${((day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count) / day.appointment_count) * 100}%` }"
                         :title="`${day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count} ${t('reports.scheduling.labels.pending')}`"
                       />
                     </div>
                   </div>
-                  <span class="text-sm font-medium w-12 text-right text-gray-900 dark:text-white">
+                  <span class="text-sm font-medium w-12 text-right text-default">
                     {{ day.appointment_count }}
                   </span>
                 </div>
@@ -506,7 +506,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -516,86 +516,86 @@ function goBack() {
       <!-- Status Breakdown (Additional Info) -->
       <UCard v-if="summary">
         <template #header>
-          <h3 class="font-semibold text-gray-900 dark:text-white">
+          <h3 class="font-semibold text-default">
             {{ t('reports.scheduling.labels.statusBreakdown') }}
           </h3>
         </template>
 
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="text-center p-3 bg-surface-muted rounded-lg">
             <UIcon
               name="i-lucide-calendar"
-              class="h-6 w-6 mx-auto text-gray-500 mb-1"
+              class="h-6 w-6 mx-auto text-subtle mb-1"
             />
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+            <p class="text-h1 text-default">
               {{ summary.scheduled }}
             </p>
-            <p class="text-xs text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('appointments.scheduled') }}
             </p>
           </div>
 
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="text-center p-3 bg-surface-muted rounded-lg">
             <UIcon
               name="i-lucide-calendar-check"
-              class="h-6 w-6 mx-auto text-blue-500 mb-1"
+              class="h-6 w-6 mx-auto text-info-accent mb-1"
             />
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+            <p class="text-h1 text-default">
               {{ summary.confirmed }}
             </p>
-            <p class="text-xs text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('appointments.confirmed') }}
             </p>
           </div>
 
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="text-center p-3 bg-surface-muted rounded-lg">
             <UIcon
               name="i-lucide-play-circle"
-              class="h-6 w-6 mx-auto text-amber-500 mb-1"
+              class="h-6 w-6 mx-auto text-warning-accent mb-1"
             />
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+            <p class="text-h1 text-default">
               {{ summary.in_progress }}
             </p>
-            <p class="text-xs text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('appointments.inProgress') }}
             </p>
           </div>
 
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="text-center p-3 bg-surface-muted rounded-lg">
             <UIcon
               name="i-lucide-check-circle"
-              class="h-6 w-6 mx-auto text-green-500 mb-1"
+              class="h-6 w-6 mx-auto text-success-accent mb-1"
             />
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+            <p class="text-h1 text-default">
               {{ summary.completed }}
             </p>
-            <p class="text-xs text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('appointments.completed') }}
             </p>
           </div>
 
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="text-center p-3 bg-surface-muted rounded-lg">
             <UIcon
               name="i-lucide-x-circle"
-              class="h-6 w-6 mx-auto text-red-500 mb-1"
+              class="h-6 w-6 mx-auto text-danger-accent mb-1"
             />
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+            <p class="text-h1 text-default">
               {{ summary.cancelled }}
             </p>
-            <p class="text-xs text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('appointments.cancelled') }}
             </p>
           </div>
 
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="text-center p-3 bg-surface-muted rounded-lg">
             <UIcon
               name="i-lucide-user-x"
-              class="h-6 w-6 mx-auto text-orange-500 mb-1"
+              class="h-6 w-6 mx-auto text-warning-accent mb-1"
             />
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+            <p class="text-h1 text-default">
               {{ summary.no_show }}
             </p>
-            <p class="text-xs text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('appointments.noShow') }}
             </p>
           </div>

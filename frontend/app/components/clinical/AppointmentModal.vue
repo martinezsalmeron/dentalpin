@@ -494,7 +494,7 @@ function closeModal() {
       <UCard>
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-h1 text-default text-default">
               {{ modalTitle }}
             </h2>
             <UButton
@@ -656,7 +656,7 @@ function closeModal() {
                   v-model="sendConfirmationEmail"
                   :disabled="autoSendEnabled"
                 />
-                <span class="text-sm text-gray-600 dark:text-gray-400">
+                <span class="text-sm text-muted">
                   {{ t('appointments.sendConfirmationEmail') }}
                   <span
                     v-if="autoSendEnabled"

@@ -116,9 +116,9 @@ function goToAppointment(appointment: Appointment) {
     >
       <UIcon
         name="i-lucide-calendar"
-        class="w-12 h-12 text-gray-400 mx-auto mb-3"
+        class="w-12 h-12 text-subtle mx-auto mb-3"
       />
-      <p class="text-gray-500 dark:text-gray-400 mb-4">
+      <p class="text-muted mb-4">
         {{ t('patientDetail.noAppointments') }}
       </p>
       <UButton
@@ -131,18 +131,18 @@ function goToAppointment(appointment: Appointment) {
 
     <!-- Appointments list -->
     <UCard v-else>
-      <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+      <ul class="divide-y divide-[var(--color-border-subtle)]">
         <li
           v-for="appointment in appointments"
           :key="appointment.id"
-          class="py-3 first:pt-0 last:pb-0 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 px-4 transition-colors"
+          class="py-3 first:pt-0 last:pb-0 flex items-center justify-between cursor-pointer hover:bg-surface-muted -mx-4 px-4 transition-colors"
           @click="goToAppointment(appointment)"
         >
           <div>
-            <p class="font-medium text-gray-900 dark:text-white">
+            <p class="font-medium text-default">
               {{ formatDateTime(appointment.start_time) }}
             </p>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-sm text-muted">
               {{ appointment.treatment_type || '-' }}
             </p>
           </div>

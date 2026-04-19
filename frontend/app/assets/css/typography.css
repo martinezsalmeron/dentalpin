@@ -1,0 +1,94 @@
+/* ============================================================================
+   DentalPin Typography Scale
+   Source of truth: /DESIGN.md §3
+   ============================================================================ */
+
+@layer utilities {
+  .text-display {
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.4px;
+    font-weight: 700;
+  }
+
+  .text-h1 {
+    font-size: 22px;
+    line-height: 1.25;
+    letter-spacing: -0.25px;
+    font-weight: 700;
+  }
+
+  .text-h2 {
+    font-size: 18px;
+    line-height: 1.30;
+    letter-spacing: -0.15px;
+    font-weight: 600;
+  }
+
+  .text-h3 {
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+
+  .text-body {
+    font-size: 14px;
+    line-height: 1.50;
+    font-weight: 400;
+  }
+
+  .text-body-prose {
+    font-size: 15px;
+    line-height: 1.55;
+    font-weight: 400;
+  }
+
+  .text-ui {
+    font-size: 14px;
+    line-height: 1.30;
+    font-weight: 500;
+  }
+
+  .text-button {
+    font-size: 14px;
+    line-height: 1.20;
+    font-weight: 600;
+  }
+
+  .text-caption {
+    font-size: 12px;
+    line-height: 1.40;
+    letter-spacing: 0.1px;
+    font-weight: 500;
+  }
+
+  .text-micro {
+    font-size: 11px;
+    line-height: 1.30;
+    letter-spacing: 0.2px;
+    font-weight: 600;
+  }
+
+  /* tnum opt-in: tables of amounts, doses, times, FDI tooth numbers */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Heading pretty wrap */
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Semantic accent text colours */
+  .text-primary-accent { color: var(--color-primary); }
+  .text-primary-soft-text { color: var(--color-primary-soft-text); }
+  .text-success-accent { color: var(--color-success-accent); }
+  .text-success { color: var(--color-success-text); }
+  .text-info-accent { color: var(--color-info-accent); }
+  .text-info { color: var(--color-info-text); }
+  .text-warning-accent { color: var(--color-warning-accent); }
+  .text-warning { color: var(--color-warning-text); }
+  .text-danger-accent { color: var(--color-danger-accent); }
+  .text-danger { color: var(--color-danger-text); }
+}

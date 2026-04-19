@@ -86,7 +86,7 @@ function handleEdit() {
       <div class="flex-shrink-0">
         <div
           v-if="isImage && thumbnailUrl"
-          class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800"
+          class="w-12 h-12 rounded-lg overflow-hidden bg-surface-muted"
         >
           <img
             :src="thumbnailUrl"
@@ -96,17 +96,17 @@ function handleEdit() {
         </div>
         <div
           v-else-if="isImage && thumbnailLoading"
-          class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+          class="w-12 h-12 rounded-lg bg-surface-muted flex items-center justify-center"
         >
           <USkeleton class="w-full h-full" />
         </div>
         <div
           v-else
-          class="w-12 h-12 rounded-lg bg-primary-100 dark:bg-primary-900/20 flex items-center justify-center"
+          class="w-12 h-12 rounded-lg bg-[var(--color-primary-soft)] flex items-center justify-center"
         >
           <UIcon
             :name="getMimeTypeIcon(document.mime_type)"
-            class="w-6 h-6 text-primary-600 dark:text-primary-400"
+            class="w-6 h-6 text-primary-accent"
           />
         </div>
       </div>
@@ -120,13 +120,13 @@ function handleEdit() {
             </h4>
             <div class="flex items-center gap-2 mt-1">
               <UBadge
-                color="gray"
+                color="neutral"
                 variant="subtle"
                 size="xs"
               >
                 {{ getDocumentTypeLabel(document.document_type as any) }}
               </UBadge>
-              <span class="text-xs text-gray-500">{{ formatFileSize(document.file_size) }}</span>
+              <span class="text-caption text-subtle">{{ formatFileSize(document.file_size) }}</span>
             </div>
           </div>
 
@@ -135,7 +135,7 @@ function handleEdit() {
             <UButton
               v-if="canView"
               icon="i-lucide-eye"
-              color="gray"
+              color="neutral"
               variant="ghost"
               size="xs"
               :title="t('common.view')"
@@ -143,7 +143,7 @@ function handleEdit() {
             />
             <UButton
               icon="i-lucide-download"
-              color="gray"
+              color="neutral"
               variant="ghost"
               size="xs"
               :title="t('common.download')"
@@ -152,7 +152,7 @@ function handleEdit() {
             <UButton
               v-if="canWrite"
               icon="i-lucide-pencil"
-              color="gray"
+              color="neutral"
               variant="ghost"
               size="xs"
               :title="t('common.edit')"
@@ -161,7 +161,7 @@ function handleEdit() {
             <UButton
               v-if="canWrite"
               icon="i-lucide-trash-2"
-              color="red"
+              color="error"
               variant="ghost"
               size="xs"
               :title="t('common.delete')"
@@ -173,13 +173,13 @@ function handleEdit() {
         <!-- Description -->
         <p
           v-if="document.description"
-          class="text-xs text-gray-500 mt-2 line-clamp-2"
+          class="text-caption text-subtle mt-2 line-clamp-2"
         >
           {{ document.description }}
         </p>
 
         <!-- Meta -->
-        <div class="flex items-center gap-2 mt-2 text-xs text-gray-400">
+        <div class="flex items-center gap-2 mt-2 text-caption text-subtle">
           <span>{{ formattedDate }}</span>
           <span v-if="uploaderName">{{ uploaderName }}</span>
         </div>

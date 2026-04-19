@@ -181,14 +181,14 @@ defineExpose({
         v-if="isOpen && !modelValue"
         :style="inModal ? {} : dropdownStyle"
         :class="[
-          'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden',
+          'bg-surface border border-default rounded-lg shadow-lg overflow-hidden',
           inModal ? 'absolute left-0 right-0 top-full mt-1 z-50' : ''
         ]"
       >
         <!-- Loading state -->
         <div
           v-if="isSearching"
-          class="p-4 text-center text-gray-500"
+          class="p-4 text-center text-subtle"
         >
           <UIcon
             name="i-lucide-loader-2"
@@ -199,7 +199,7 @@ defineExpose({
         <!-- Empty state -->
         <div
           v-else-if="displayItems.length === 0"
-          class="p-4 text-center text-gray-500 text-sm"
+          class="p-4 text-center text-subtle text-sm"
         >
           {{ emptyLabel || t('common.noData') }}
         </div>
@@ -215,8 +215,8 @@ defineExpose({
               :key="item.id"
               class="p-2 rounded-lg cursor-pointer transition-colors border"
               :class="index === highlightedIndex
-                ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-700'
-                : 'hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent'"
+                ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)]'
+                : 'hover:bg-surface-muted border-transparent'"
               @mousedown.prevent.stop
               @click.stop="selectItem(item)"
               @mouseenter="highlightedIndex = index"

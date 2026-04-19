@@ -299,9 +299,10 @@ const infoAccordionItems = computed(() => {
       <!-- Return to invoice banner -->
       <div
         v-if="returnTo"
-        class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center justify-between"
+        class="alert-surface-info rounded-token-md px-3 py-2 flex items-center justify-between gap-3"
+        role="status"
       >
-        <span class="text-blue-800 dark:text-blue-200 text-sm">
+        <span class="text-body">
           {{ t('patients.editingBillingForInvoice') }}
         </span>
         <UButton
@@ -316,18 +317,17 @@ const infoAccordionItems = computed(() => {
       </div>
 
       <!-- Page header -->
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3 mb-6">
         <UButton
           variant="ghost"
           color="neutral"
           icon="i-lucide-arrow-left"
           :to="returnTo || '/patients'"
+          :aria-label="t('common.back', 'Volver')"
         />
-        <div class="flex-1">
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-            {{ patient.first_name }} {{ patient.last_name }}
-          </h1>
-        </div>
+        <h1 class="text-display text-default text-pretty">
+          {{ patient.first_name }} {{ patient.last_name }}
+        </h1>
       </div>
 
       <!-- Main layout: Sidebar + Content -->
@@ -384,65 +384,49 @@ const infoAccordionItems = computed(() => {
                             {{ t('common.edit') }}
                           </UButton>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.firstName') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.first_name }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.lastName') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.last_name }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.phone') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.phone || '-' }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.email') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.email || '-' }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.dateOfBirth') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.date_of_birth ? formatDate(patient.date_of_birth) : '-' }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.gender.label') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.gender ? t(`patients.gender.${patient.gender}`) : '-' }}
-                            </p>
-                          </div>
-                          <div v-if="patient.national_id">
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.nationalId') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.national_id_type?.toUpperCase() }}: {{ patient.national_id }}
-                            </p>
-                          </div>
-                          <div v-if="patient.profession">
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.profession') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.profession }}
-                            </p>
-                          </div>
-                        </div>
-                        <div
+                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <DataField
+                            :label="t('patients.firstName')"
+                            :value="patient.first_name"
+                          />
+                          <DataField
+                            :label="t('patients.lastName')"
+                            :value="patient.last_name"
+                          />
+                          <DataField
+                            :label="t('patients.phone')"
+                            :value="patient.phone"
+                          />
+                          <DataField
+                            :label="t('patients.email')"
+                            :value="patient.email"
+                          />
+                          <DataField
+                            :label="t('patients.dateOfBirth')"
+                            :value="patient.date_of_birth ? formatDate(patient.date_of_birth) : null"
+                          />
+                          <DataField
+                            :label="t('patients.gender.label')"
+                            :value="patient.gender ? t(`patients.gender.${patient.gender}`) : null"
+                          />
+                          <DataField
+                            v-if="patient.national_id"
+                            :label="t('patients.nationalId')"
+                            :value="`${patient.national_id_type?.toUpperCase() || ''}: ${patient.national_id}`"
+                          />
+                          <DataField
+                            v-if="patient.profession"
+                            :label="t('patients.profession')"
+                            :value="patient.profession"
+                          />
+                        </dl>
+                        <DataField
                           v-if="patient.notes"
                           class="mt-4"
-                        >
-                          <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.notes') }}</label>
-                          <p class="text-gray-900 dark:text-white whitespace-pre-wrap">
-                            {{ patient.notes }}
-                          </p>
-                        </div>
+                          :label="t('patients.notes')"
+                          :value="patient.notes"
+                          multiline
+                        />
                       </div>
                     </template>
 
@@ -551,31 +535,21 @@ const infoAccordionItems = computed(() => {
                             {{ t('common.edit') }}
                           </UButton>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingName') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.billing_name || '-' }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingTaxId') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.billing_tax_id || '-' }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingEmail') }}</label>
-                            <p class="text-gray-900 dark:text-white">
-                              {{ patient.billing_email || '-' }}
-                            </p>
-                          </div>
-                          <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('patients.billingAddress') }}</label>
-                            <p
-                              v-if="patient.billing_address"
-                              class="text-gray-900 dark:text-white"
-                            >
+                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <DataField
+                            :label="t('patients.billingName')"
+                            :value="patient.billing_name"
+                          />
+                          <DataField
+                            :label="t('patients.billingTaxId')"
+                            :value="patient.billing_tax_id"
+                          />
+                          <DataField
+                            :label="t('patients.billingEmail')"
+                            :value="patient.billing_email"
+                          />
+                          <DataField :label="t('patients.billingAddress')">
+                            <template v-if="patient.billing_address">
                               {{ patient.billing_address.street || '' }}
                               <template v-if="patient.billing_address.city || patient.billing_address.postal_code">
                                 <br>{{ patient.billing_address.postal_code }} {{ patient.billing_address.city }}
@@ -583,42 +557,37 @@ const infoAccordionItems = computed(() => {
                               <template v-if="patient.billing_address.province">
                                 <br>{{ patient.billing_address.province }}
                               </template>
-                            </p>
-                            <p
-                              v-else
-                              class="text-gray-900 dark:text-white"
-                            >
-                              -
-                            </p>
-                          </div>
-                        </div>
+                            </template>
+                            <template v-else>
+                              —
+                            </template>
+                          </DataField>
+                        </dl>
                       </div>
                     </template>
                   </UAccordion>
                 </UCard>
 
-                <!-- Danger zone: archive moved here to prevent accidental clicks -->
-                <UCard>
-                  <div class="flex items-center justify-between gap-4">
-                    <div>
-                      <div class="text-sm font-semibold text-red-700 dark:text-red-300">
-                        {{ t('patients.dangerZone.title') }}
-                      </div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        {{ t('patients.dangerZone.archiveHelp') }}
-                      </div>
+                <!-- Danger zone -->
+                <div class="alert-surface-danger rounded-token-lg px-4 py-3 flex items-center justify-between gap-4">
+                  <div class="min-w-0">
+                    <div class="text-ui">
+                      {{ t('patients.dangerZone.title') }}
                     </div>
-                    <UButton
-                      variant="outline"
-                      color="error"
-                      icon="i-lucide-archive"
-                      size="sm"
-                      @click="isArchiveModalOpen = true"
-                    >
-                      {{ t('patients.archive') }}
-                    </UButton>
+                    <div class="text-caption">
+                      {{ t('patients.dangerZone.archiveHelp') }}
+                    </div>
                   </div>
-                </UCard>
+                  <UButton
+                    variant="outline"
+                    color="error"
+                    icon="i-lucide-archive"
+                    size="sm"
+                    @click="isArchiveModalOpen = true"
+                  >
+                    {{ t('patients.archive') }}
+                  </UButton>
+                </div>
               </div>
             </template>
 
@@ -672,11 +641,11 @@ const infoAccordionItems = computed(() => {
       <template #content>
         <UCard>
           <template #header>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-h1 text-default">
               {{ t('patients.archiveConfirm', { name: `${patient?.first_name} ${patient?.last_name}` }) }}
             </h2>
           </template>
-          <p class="text-gray-500 dark:text-gray-400">
+          <p class="text-body text-muted">
             {{ t('patients.archiveDescription') }}
           </p>
           <template #footer>

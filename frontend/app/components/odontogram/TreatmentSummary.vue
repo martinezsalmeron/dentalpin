@@ -104,10 +104,10 @@ function getTreatmentLabel(type: string): string {
   <div class="treatment-summary">
     <!-- Header -->
     <div class="summary-header">
-      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+      <h4 class="text-sm font-semibold text-muted">
         {{ t('odontogram.treatments.title') }}
       </h4>
-      <span class="text-xs text-gray-500">
+      <span class="text-caption text-subtle">
         {{ totalTreatments }} total
       </span>
     </div>
@@ -167,9 +167,9 @@ function getTreatmentLabel(type: string): string {
       >
         <UIcon
           name="i-lucide-clipboard-list"
-          class="w-8 h-8 text-gray-300"
+          class="w-8 h-8 text-subtle"
         />
-        <span class="text-sm text-gray-400">{{ t('odontogram.treatments.noTreatments') }}</span>
+        <span class="text-caption text-subtle">{{ t('odontogram.treatments.noTreatments') }}</span>
       </div>
     </div>
 

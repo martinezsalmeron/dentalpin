@@ -3,18 +3,20 @@ const { t } = useI18n()
 const auth = useAuth()
 const clinic = useClinic()
 const { navigationItems } = useModules()
+const { init: initDensity } = useDensity()
 const route = useRoute()
 
 // Sidebar state
 const isSidebarCollapsed = useState('sidebar:collapsed', () => false)
 
-// Persist sidebar state
-if (import.meta.client) {
+// Persist sidebar + init density on client
+onMounted(() => {
   const savedState = localStorage.getItem('sidebar:collapsed')
   if (savedState !== null) {
     isSidebarCollapsed.value = savedState === 'true'
   }
-}
+  initDensity()
+})
 
 function toggleSidebar() {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
@@ -32,13 +34,10 @@ function isActive(to: string): boolean {
   if (to === '/') {
     return route.path === '/'
   }
-  // Exact match
   if (route.path === to) {
     return true
   }
-  // Check if route starts with this path (potential child route)
   if (route.path.startsWith(to + '/')) {
-    // But not if there's a more specific nav item that matches
     const moreSpecificNavItem = navigationItems.value.find(item =>
       item.to !== to
       && item.to.length > to.length
@@ -51,25 +50,26 @@ function isActive(to: string): boolean {
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-gray-50 dark:bg-gray-950">
-    <!-- Sidebar -->
+  <div class="min-h-screen flex bg-canvas">
+    <!-- Sidebar: warm muted surface, no right border (separation by colour) -->
     <aside
-      class="fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-200 ease-out"
+      class="fixed inset-y-0 left-0 z-50 flex flex-col bg-surface-muted transition-[width] duration-150 ease-out"
       :class="isSidebarCollapsed ? 'w-16' : 'w-60'"
     >
       <!-- Logo -->
-      <div class="flex items-center h-16 px-4 border-b border-gray-200 dark:border-gray-800">
+      <div class="flex items-center h-14 px-4">
         <NuxtLink
           to="/"
           class="flex items-center gap-2 overflow-hidden"
         >
           <UIcon
             name="i-lucide-smile"
-            class="w-8 h-8 text-primary-500 shrink-0"
+            class="w-7 h-7 shrink-0"
+            :style="{ color: 'var(--color-primary)' }"
           />
           <span
             v-if="!isSidebarCollapsed"
-            class="font-semibold text-lg text-gray-900 dark:text-white truncate"
+            class="text-h2 text-default truncate"
           >
             DentalPin
           </span>
@@ -77,21 +77,21 @@ function isActive(to: string): boolean {
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+      <nav class="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
         <NuxtLink
           v-for="item in navigationItems"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors"
+          class="group flex items-center gap-3 px-3 py-2 rounded-token-md text-ui transition-colors"
           :class="[
             isActive(item.to)
-              ? 'bg-primary-50 dark:bg-primary-950 text-primary-600 dark:text-primary-400'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-soft-text)]'
+              : 'text-muted hover:bg-surface hover:text-default'
           ]"
         >
           <UIcon
             :name="item.icon"
-            class="w-5 h-5 shrink-0"
+            class="w-[18px] h-[18px] shrink-0"
           />
           <span
             v-if="!isSidebarCollapsed"
@@ -103,7 +103,7 @@ function isActive(to: string): boolean {
       </nav>
 
       <!-- User section -->
-      <div class="border-t border-gray-200 dark:border-gray-800 p-4">
+      <div class="px-3 py-3 border-t border-subtle">
         <div
           v-if="auth.user.value"
           class="flex items-center gap-3"
@@ -117,10 +117,10 @@ function isActive(to: string): boolean {
             v-if="!isSidebarCollapsed"
             class="flex-1 min-w-0"
           >
-            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <p class="text-ui text-default truncate">
               {{ auth.user.value.first_name }} {{ auth.user.value.last_name }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <p class="text-caption text-subtle truncate">
               {{ auth.user.value.email }}
             </p>
           </div>
@@ -128,19 +128,19 @@ function isActive(to: string): boolean {
       </div>
     </aside>
 
-    <!-- Main content -->
+    <!-- Main column -->
     <div
-      class="flex-1 flex flex-col transition-all duration-200 ease-out"
+      class="flex-1 flex flex-col transition-[margin] duration-150 ease-out"
       :class="isSidebarCollapsed ? 'ml-16' : 'ml-60'"
     >
       <!-- Header -->
-      <header class="sticky top-0 z-40 flex items-center h-16 px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <!-- Toggle sidebar -->
+      <header class="sticky top-0 z-40 flex items-center h-14 px-4 bg-surface border-b border-subtle">
         <UButton
           variant="ghost"
           color="neutral"
           size="sm"
           :icon="isSidebarCollapsed ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'"
+          :aria-label="t('nav.toggleSidebar', 'Alternar barra lateral')"
           @click="toggleSidebar"
         />
 
@@ -148,24 +148,25 @@ function isActive(to: string): boolean {
         <div class="ml-4 flex items-center gap-2">
           <UIcon
             name="i-lucide-building-2"
-            class="w-4 h-4 text-gray-500"
+            class="w-4 h-4 text-subtle"
           />
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span class="text-ui text-muted">
             {{ clinic.clinicName.value || 'Clínica' }}
           </span>
         </div>
 
         <div class="flex-1" />
 
-        <!-- Right side actions -->
-        <div class="flex items-center gap-2">
+        <!-- Right actions -->
+        <div class="flex items-center gap-1">
+          <DensityToggle />
           <UColorModeButton />
-
           <UButton
             variant="ghost"
             color="neutral"
             size="sm"
             icon="i-lucide-log-out"
+            :aria-label="t('auth.logout')"
             @click="handleLogout"
           >
             <span class="hidden sm:inline">{{ t('auth.logout') }}</span>

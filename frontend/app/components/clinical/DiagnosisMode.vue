@@ -91,7 +91,7 @@ async function handleTreatmentsChanged() {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-primary-500"
+        class="w-8 h-8 animate-spin text-primary-accent"
       />
     </div>
 
@@ -102,7 +102,7 @@ async function handleTreatmentsChanged() {
           <div class="flex items-center gap-2">
             <UIcon
               name="i-lucide-stethoscope"
-              class="w-5 h-5 text-primary-500"
+              class="w-5 h-5 text-primary-accent"
             />
             <span class="font-medium">{{ t('clinical.diagnosis.registerConditions') }}</span>
           </div>
@@ -129,7 +129,7 @@ async function handleTreatmentsChanged() {
             <div class="flex items-center gap-2">
               <UIcon
                 :name="conditionsCollapsed ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
-                class="w-4 h-4 text-gray-500 transition-transform"
+                class="w-4 h-4 text-subtle transition-transform"
               />
               <UIcon
                 name="i-lucide-clipboard-list"
@@ -139,7 +139,7 @@ async function handleTreatmentsChanged() {
             </div>
             <UBadge
               v-if="conditions.length > 0"
-              color="gray"
+              color="neutral"
               variant="subtle"
             >
               {{ conditions.length }}

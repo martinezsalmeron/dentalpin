@@ -41,7 +41,7 @@ function handleWheel(event: WheelEvent) {
 <template>
   <div class="flex flex-col h-full">
     <!-- Zoom controls -->
-    <div class="flex items-center justify-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+    <div class="flex items-center justify-center gap-2 py-2 border-b border-default bg-surface-muted">
       <UButton
         icon="i-lucide-minus"
         variant="ghost"
@@ -73,7 +73,7 @@ function handleWheel(event: WheelEvent) {
 
     <!-- Image container -->
     <div
-      class="flex-1 overflow-auto flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4"
+      class="flex-1 overflow-auto flex items-center justify-center bg-surface-muted p-4"
       @wheel="handleWheel"
     >
       <img
@@ -84,7 +84,7 @@ function handleWheel(event: WheelEvent) {
       >
     </div>
 
-    <p class="text-xs text-gray-500 text-center py-1">
+    <p class="text-caption text-subtle text-center py-1">
       {{ t('documents.viewer.zoomHint', 'Ctrl + scroll to zoom') }}
     </p>
   </div>

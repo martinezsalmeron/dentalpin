@@ -29,7 +29,7 @@ interface TimelineEntry {
   treatment?: ToothTreatmentView
 }
 
-// Filter out "created" history entries that just show initial "healthy" state
+// Filter out"created" history entries that just show initial"healthy" state
 // These are auto-generated when a tooth record is created and aren't meaningful changes
 function isInitialToothCreation(entry: OdontogramHistoryEntry): boolean {
   return entry.change_type === 'created'
@@ -43,7 +43,7 @@ const unifiedTimeline = computed<TimelineEntry[]>(() => {
 
   // Add history entries (filtering out initial tooth creations)
   for (const entry of props.history) {
-    // Skip entries that are just the initial tooth record creation with "healthy"
+    // Skip entries that are just the initial tooth record creation with"healthy"
     if (isInitialToothCreation(entry)) {
       continue
     }
@@ -111,9 +111,9 @@ function getChangeTypeLabel(changeType: string): string {
 function getTreatmentStatusColor(status: string): string {
   switch (status) {
     case 'planned':
-      return 'text-amber-600 dark:text-amber-400'
+      return 'text-warning-accent'
     default:
-      return 'text-gray-600 dark:text-gray-400'
+      return 'text-muted'
   }
 }
 
@@ -129,18 +129,18 @@ function formatDateTime(dateStr: string | Date): string {
 </script>
 
 <template>
-  <div class="change-history-section border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+  <div class="change-history-section border border-default rounded-lg overflow-hidden">
     <!-- Header (clickable to collapse/expand) -->
     <button
-      class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+      class="w-full flex items-center justify-between px-4 py-3 bg-surface-muted hover:bg-surface-muted transition-colors"
       @click="toggleExpanded"
     >
       <div class="flex items-center gap-2">
         <UIcon
           name="i-lucide-history"
-          class="w-5 h-5 text-gray-500"
+          class="w-5 h-5 text-subtle"
         />
-        <span class="font-medium text-gray-700 dark:text-gray-300">
+        <span class="font-medium text-muted">
           {{ t('odontogram.changeHistory.title') }}
         </span>
         <UBadge
@@ -153,14 +153,14 @@ function formatDateTime(dateStr: string | Date): string {
       </div>
       <UIcon
         :name="isExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-        class="w-5 h-5 text-gray-400 transition-transform"
+        class="w-5 h-5 text-subtle transition-transform"
       />
     </button>
 
     <!-- Content -->
     <div
       v-if="isExpanded"
-      class="p-4 bg-white dark:bg-gray-900"
+      class="p-4 bg-surface"
     >
       <!-- Loading state -->
       <div
@@ -169,14 +169,14 @@ function formatDateTime(dateStr: string | Date): string {
       >
         <UIcon
           name="i-lucide-loader-2"
-          class="w-6 h-6 animate-spin text-gray-400"
+          class="w-6 h-6 animate-spin text-subtle"
         />
       </div>
 
       <!-- Empty state -->
       <div
         v-else-if="totalEntries === 0"
-        class="text-center py-4 text-gray-500"
+        class="text-center py-4 text-subtle"
       >
         {{ t('odontogram.changeHistory.noChanges') }}
       </div>
@@ -189,15 +189,15 @@ function formatDateTime(dateStr: string | Date): string {
         <div
           v-for="entry in unifiedTimeline"
           :key="entry.id"
-          class="flex gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+          class="flex gap-3 p-3 bg-surface-muted rounded-lg"
         >
           <!-- Timeline indicator -->
           <div class="flex flex-col items-center">
             <div
               class="w-2 h-2 rounded-full"
-              :class="entry.type === 'treatment' ? 'bg-green-500' : 'bg-primary-500'"
+              :class="entry.type === 'treatment' ? 'bg-[var(--color-success-accent)]' : 'bg-[var(--color-primary)]'"
             />
-            <div class="w-0.5 flex-1 bg-gray-200 dark:bg-gray-700 mt-1" />
+            <div class="w-0.5 flex-1 bg-surface-sunken mt-1" />
           </div>
 
           <!-- Content for TREATMENT entries -->
@@ -207,15 +207,15 @@ function formatDateTime(dateStr: string | Date): string {
           >
             <!-- Tooth info -->
             <div class="flex items-center gap-2 text-sm flex-wrap">
-              <span class="font-medium text-gray-900 dark:text-gray-100">
+              <span class="font-medium text-default">
                 {{ entry.toothNumber }}
               </span>
-              <span class="text-gray-600 dark:text-gray-400">
+              <span class="text-muted">
                 {{ getToothFullName(entry.toothNumber) }}
               </span>
               <span
                 v-if="entry.treatment.surfaces && entry.treatment.surfaces.length > 0"
-                class="text-gray-500"
+                class="text-subtle"
               >
                 ({{ entry.treatment.surfaces.join(', ') }})
               </span>
@@ -230,10 +230,10 @@ function formatDateTime(dateStr: string | Date): string {
             <!-- Treatment info -->
             <div class="flex items-center gap-2 mt-1 text-sm">
               <span
-                class="w-3 h-3 rounded border border-gray-300"
+                class="w-3 h-3 rounded border border-default"
                 :style="{ backgroundColor: getConditionColor(entry.treatment.treatment_type) }"
               />
-              <span class="text-gray-700 dark:text-gray-300 font-medium">
+              <span class="text-muted font-medium">
                 {{ t(`odontogram.treatments.types.${entry.treatment.treatment_type}`) }}
               </span>
               <span :class="getTreatmentStatusColor(entry.treatment.status)">
@@ -244,13 +244,13 @@ function formatDateTime(dateStr: string | Date): string {
             <!-- Notes -->
             <p
               v-if="entry.treatment.notes"
-              class="text-sm text-gray-600 dark:text-gray-400 mt-1"
+              class="text-sm text-muted mt-1"
             >
               {{ entry.treatment.notes }}
             </p>
 
             <!-- Timestamp -->
-            <div class="flex items-center gap-2 mt-2 text-xs text-gray-400">
+            <div class="flex items-center gap-2 mt-2 text-caption text-subtle">
               <UIcon
                 name="i-lucide-calendar"
                 class="w-3 h-3"
@@ -277,15 +277,15 @@ function formatDateTime(dateStr: string | Date): string {
           >
             <!-- Tooth info and change type -->
             <div class="flex items-center gap-2 text-sm flex-wrap">
-              <span class="font-medium text-gray-900 dark:text-gray-100">
+              <span class="font-medium text-default">
                 {{ entry.toothNumber }}
               </span>
-              <span class="text-gray-600 dark:text-gray-400">
+              <span class="text-muted">
                 {{ getToothFullName(entry.toothNumber) }}
               </span>
               <span
                 v-if="entry.historyEntry.surface"
-                class="text-gray-500"
+                class="text-subtle"
               >
                 ({{ entry.historyEntry.surface }})
               </span>
@@ -308,17 +308,17 @@ function formatDateTime(dateStr: string | Date): string {
                 class="flex items-center gap-1"
               >
                 <span
-                  class="w-3 h-3 rounded border border-gray-300"
+                  class="w-3 h-3 rounded border border-default"
                   :style="{ backgroundColor: getConditionColor(entry.historyEntry.old_condition) }"
                 />
-                <span class="text-gray-500">{{ getConditionLabel(entry.historyEntry.old_condition) }}</span>
+                <span class="text-subtle">{{ getConditionLabel(entry.historyEntry.old_condition) }}</span>
               </span>
 
               <!-- Arrow -->
               <UIcon
                 v-if="entry.historyEntry.old_condition && entry.historyEntry.new_condition"
                 name="i-lucide-arrow-right"
-                class="w-4 h-4 text-gray-400"
+                class="w-4 h-4 text-subtle"
               />
 
               <!-- New condition -->
@@ -327,23 +327,23 @@ function formatDateTime(dateStr: string | Date): string {
                 class="flex items-center gap-1"
               >
                 <span
-                  class="w-3 h-3 rounded border border-gray-300"
+                  class="w-3 h-3 rounded border border-default"
                   :style="{ backgroundColor: getConditionColor(entry.historyEntry.new_condition) }"
                 />
-                <span class="text-gray-700 dark:text-gray-300">{{ getConditionLabel(entry.historyEntry.new_condition) }}</span>
+                <span class="text-muted">{{ getConditionLabel(entry.historyEntry.new_condition) }}</span>
               </span>
             </div>
 
             <!-- Notes -->
             <p
               v-if="entry.historyEntry.notes"
-              class="text-sm text-gray-600 dark:text-gray-400 mt-1"
+              class="text-sm text-muted mt-1"
             >
               {{ entry.historyEntry.notes }}
             </p>
 
             <!-- User and timestamp -->
-            <div class="flex items-center gap-2 mt-2 text-xs text-gray-400">
+            <div class="flex items-center gap-2 mt-2 text-caption text-subtle">
               <UIcon
                 name="i-lucide-user"
                 class="w-3 h-3"

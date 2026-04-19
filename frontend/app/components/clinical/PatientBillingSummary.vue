@@ -116,76 +116,72 @@ watch(() => props.patientId, loadData)
         class="grid grid-cols-3 gap-4"
       >
         <!-- Row 1: Budget metrics -->
-        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <div class="bg-surface-muted/50 rounded-lg p-4 border border-default">
+          <p class="text-xs font-medium text-muted uppercase tracking-wide">
             {{ t('patientBilling.totalBudgeted') }}
           </p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+          <p class="text-display text-default text-default mt-1">
             {{ formatCurrency(summary.total_budgeted, summary.currency) }}
           </p>
         </div>
 
-        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-          <p class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+        <div class="alert-surface-info rounded-token-lg p-4">
+          <p class="text-caption uppercase tracking-wide">
             {{ t('patientBilling.workInProgress') }}
           </p>
-          <p class="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">
+          <p class="text-display tnum mt-1">
             {{ formatCurrency(summary.work_in_progress, summary.currency) }}
           </p>
         </div>
 
-        <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
-          <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+        <div class="alert-surface-success rounded-token-lg p-4">
+          <p class="text-caption uppercase tracking-wide">
             {{ t('patientBilling.workCompleted') }}
           </p>
-          <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
+          <p class="text-display tnum mt-1">
             {{ formatCurrency(summary.work_completed, summary.currency) }}
           </p>
         </div>
 
         <!-- Row 2: Invoice metrics -->
-        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <div class="bg-surface-muted/50 rounded-token-lg p-4 border border-default">
+          <p class="text-caption text-muted uppercase tracking-wide">
             {{ t('patientBilling.totalInvoiced') }}
           </p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+          <p class="text-display tnum text-default mt-1">
             {{ formatCurrency(summary.total_invoiced, summary.currency) }}
           </p>
         </div>
 
-        <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-800">
-          <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+        <div class="alert-surface-success rounded-token-lg p-4">
+          <p class="text-caption uppercase tracking-wide">
             {{ t('patientBilling.totalPaid') }}
           </p>
-          <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
+          <p class="text-display tnum mt-1">
             {{ formatCurrency(summary.total_paid, summary.currency) }}
           </p>
         </div>
 
         <div
           :class="[
-            'rounded-lg p-4 border',
+            'rounded-token-lg p-4',
             summary.balance_pending > 0
-              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-              : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+              ? 'alert-surface-warning'
+              : 'bg-surface-muted/50 border border-default'
           ]"
         >
           <p
             :class="[
-              'text-xs font-medium uppercase tracking-wide',
-              summary.balance_pending > 0
-                ? 'text-amber-600 dark:text-amber-400'
-                : 'text-gray-500 dark:text-gray-400'
+              'text-caption uppercase tracking-wide',
+              summary.balance_pending > 0 ? '' : 'text-muted'
             ]"
           >
             {{ t('patientBilling.balancePending') }}
           </p>
           <p
             :class="[
-              'text-2xl font-bold mt-1',
-              summary.balance_pending > 0
-                ? 'text-amber-700 dark:text-amber-300'
-                : 'text-gray-900 dark:text-white'
+              'text-display tnum mt-1',
+              summary.balance_pending > 0 ? '' : 'text-default'
             ]"
           >
             {{ formatCurrency(summary.balance_pending, summary.currency) }}
@@ -196,8 +192,8 @@ watch(() => props.patientId, loadData)
       <!-- Invoices section -->
       <div>
         <!-- Header -->
-        <div class="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+        <div class="flex items-center justify-between mb-4 pb-4 border-b border-default">
+          <h3 class="text-base font-semibold text-default">
             {{ t('patientBilling.invoices') }}
           </h3>
           <UButton
@@ -213,13 +209,13 @@ watch(() => props.patientId, loadData)
         <!-- Empty state -->
         <div
           v-if="invoices.length === 0"
-          class="text-center py-12 bg-gray-50 dark:bg-gray-800/30 rounded-lg"
+          class="text-center py-12 bg-surface-muted/30 rounded-lg"
         >
           <UIcon
             name="i-lucide-receipt"
-            class="w-10 h-10 text-gray-400 mx-auto mb-3"
+            class="w-10 h-10 text-subtle mx-auto mb-3"
           />
-          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <p class="text-sm text-muted mb-4">
             {{ t('patientBilling.noInvoices') }}
           </p>
           <UButton
@@ -236,52 +232,52 @@ watch(() => props.patientId, loadData)
         <!-- Invoices table -->
         <div
           v-else
-          class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+          class="border border-default rounded-lg overflow-hidden"
         >
           <table class="w-full">
-            <thead class="bg-gray-50 dark:bg-gray-800/50">
+            <thead class="bg-surface-muted/50">
               <tr>
                 <th class="w-8 px-3 py-2" />
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th class="px-3 py-2 text-left text-xs font-medium text-muted uppercase">
                   {{ t('invoice.invoiceNumber') }}
                 </th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th class="px-3 py-2 text-left text-xs font-medium text-muted uppercase">
                   {{ t('common.date') }}
                 </th>
-                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th class="px-3 py-2 text-left text-xs font-medium text-muted uppercase">
                   {{ t('invoice.status.title') || t('common.status') }}
                 </th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th class="px-3 py-2 text-right text-xs font-medium text-muted uppercase">
                   {{ t('invoice.total') }}
                 </th>
-                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th class="px-3 py-2 text-right text-xs font-medium text-muted uppercase">
                   {{ t('invoice.balance') }}
                 </th>
                 <th class="w-16 px-3 py-2" />
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody class="divide-y divide-[var(--color-border-subtle)]">
               <template
                 v-for="invoice in invoices"
                 :key="invoice.id"
               >
                 <!-- Invoice row -->
                 <tr
-                  class="hover:bg-gray-50 dark:hover:bg-gray-800/30 cursor-pointer transition-colors"
+                  class="hover:bg-surface-muted/30 cursor-pointer transition-colors"
                   @click="toggleInvoice(invoice.id)"
                 >
                   <td class="px-3 py-3">
                     <UIcon
                       :name="expandedInvoices.has(invoice.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
-                      class="w-4 h-4 text-gray-400"
+                      class="w-4 h-4 text-subtle"
                     />
                   </td>
                   <td class="px-3 py-3">
-                    <span class="font-medium text-gray-900 dark:text-white">
+                    <span class="font-medium text-default">
                       {{ invoice.invoice_number || t('invoice.draftNoNumber') }}
                     </span>
                   </td>
-                  <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
+                  <td class="px-3 py-3 text-sm text-muted">
                     {{ formatDate(invoice.issue_date || invoice.created_at) }}
                   </td>
                   <td class="px-3 py-3">
@@ -293,12 +289,12 @@ watch(() => props.patientId, loadData)
                       {{ t(`invoice.status.${invoice.status}`) }}
                     </UBadge>
                   </td>
-                  <td class="px-3 py-3 text-right font-medium text-gray-900 dark:text-white">
+                  <td class="px-3 py-3 text-right font-medium text-default">
                     {{ formatCurrency(invoice.total, invoice.currency) }}
                   </td>
                   <td class="px-3 py-3 text-right">
                     <span
-                      :class="invoice.balance_due > 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-gray-500 dark:text-gray-400'"
+                      :class="invoice.balance_due > 0 ? 'text-warning font-medium' : 'text-muted'"
                     >
                       {{ formatCurrency(invoice.balance_due, invoice.currency) }}
                     </span>
@@ -306,7 +302,7 @@ watch(() => props.patientId, loadData)
                   <td class="px-3 py-3 text-right">
                     <NuxtLink
                       :to="`/invoices/${invoice.id}?from=patient&patientId=${patientId}`"
-                      class="text-primary-600 dark:text-primary-400 hover:underline text-sm"
+                      class="text-primary-accent hover:underline text-sm"
                       @click.stop
                     >
                       {{ t('invoice.view') }}
@@ -318,12 +314,12 @@ watch(() => props.patientId, loadData)
                 <tr v-if="expandedInvoices.has(invoice.id)">
                   <td
                     colspan="7"
-                    class="bg-gray-50 dark:bg-gray-800/30 px-4 py-3"
+                    class="bg-surface-muted/30 px-4 py-3"
                   >
                     <!-- Loading payments -->
                     <div
                       v-if="loadingPayments.has(invoice.id)"
-                      class="flex items-center gap-2 text-sm text-gray-500 pl-6"
+                      class="flex items-center gap-2 text-caption text-subtle pl-6"
                     >
                       <UIcon
                         name="i-lucide-loader-2"
@@ -335,7 +331,7 @@ watch(() => props.patientId, loadData)
                     <!-- No payments -->
                     <div
                       v-else-if="!invoicePayments.get(invoice.id)?.length"
-                      class="text-sm text-gray-500 dark:text-gray-400 pl-6"
+                      class="text-sm text-muted pl-6"
                     >
                       {{ t('invoice.payments.noPayments') }}
                     </div>
@@ -345,7 +341,7 @@ watch(() => props.patientId, loadData)
                       v-else
                       class="pl-6 space-y-2"
                     >
-                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
+                      <p class="text-xs font-medium text-muted uppercase mb-2">
                         {{ t('invoice.payments.title') }}
                       </p>
                       <div
@@ -354,15 +350,15 @@ watch(() => props.patientId, loadData)
                         class="flex items-center gap-4 text-sm"
                         :class="{ 'opacity-50': payment.is_voided }"
                       >
-                        <span class="text-gray-500 dark:text-gray-400 w-20">
+                        <span class="text-muted w-20">
                           {{ formatDate(payment.payment_date) }}
                         </span>
-                        <span class="text-gray-700 dark:text-gray-300 w-28">
+                        <span class="text-muted w-28">
                           {{ getPaymentMethodLabel(payment.payment_method) }}
                         </span>
                         <span
                           class="font-medium"
-                          :class="payment.is_voided ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'"
+                          :class="payment.is_voided ? 'line-through text-subtle' : 'text-default'"
                         >
                           {{ formatCurrency(payment.amount, invoice.currency) }}
                         </span>

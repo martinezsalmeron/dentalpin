@@ -12,7 +12,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { t } = useI18n()
 
-// Get icon for alert type
 function getAlertIcon(type: PatientAlert['type']): string {
   const icons: Record<PatientAlert['type'], string> = {
     allergy: 'i-lucide-alert-triangle',
@@ -25,20 +24,28 @@ function getAlertIcon(type: PatientAlert['type']): string {
   return icons[type] || 'i-lucide-alert-circle'
 }
 
-// Get color for severity
-function getSeverityColor(severity: PatientAlert['severity']): string {
-  const colors: Record<PatientAlert['severity'], string> = {
-    critical: 'error',
-    high: 'warning',
-    medium: 'info',
-    low: 'neutral'
+type AlertRole = 'danger' | 'warning' | 'info'
+
+function getBadgeColor(severity: PatientAlert['severity']) {
+  switch (severity) {
+    case 'critical': return 'error'
+    case 'high': return 'warning'
+    case 'medium': return 'info'
+    case 'low': return 'neutral'
+    default: return 'neutral'
   }
-  return colors[severity] || 'neutral'
 }
 
 const criticalAlerts = computed(() =>
   props.alerts.filter(a => a.severity === 'critical' || a.severity === 'high')
 )
+
+// Banner role — danger if any critical alerts, otherwise warning
+const bannerRole = computed<AlertRole>(() =>
+  criticalAlerts.value.length > 0 ? 'danger' : 'warning'
+)
+
+const hasCritical = computed(() => criticalAlerts.value.length > 0)
 
 const showExpanded = ref(false)
 </script>
@@ -56,7 +63,7 @@ const showExpanded = ref(false)
       <UBadge
         v-for="(alert, index) in alerts"
         :key="index"
-        :color="getSeverityColor(alert.severity)"
+        :color="getBadgeColor(alert.severity)"
         size="xs"
         variant="subtle"
       >
@@ -68,28 +75,34 @@ const showExpanded = ref(false)
       </UBadge>
     </div>
 
-    <!-- Full mode: expandable card -->
-    <UCard
+    <!-- Full mode: alert surface (soft bg + text + accent rail, DESIGN §7.1) -->
+    <div
       v-else
-      class="border-l-4"
-      :class="criticalAlerts.length > 0 ? 'border-l-error-500' : 'border-l-warning-500'"
+      :class="[
+        bannerRole === 'danger' ? 'alert-surface-danger' : 'alert-surface-warning',
+        hasCritical ? (bannerRole === 'danger' ? 'alert-critical-danger' : 'alert-critical-warning') : '',
+        'rounded-token-lg px-4 py-3'
+      ]"
+      role="alert"
     >
-      <div class="flex items-start justify-between">
+      <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-2">
           <UIcon
-            :name="criticalAlerts.length > 0 ? 'i-lucide-alert-octagon' : 'i-lucide-alert-triangle'"
-            :class="criticalAlerts.length > 0 ? 'text-error-500' : 'text-warning-500'"
-            class="w-5 h-5"
+            :name="hasCritical ? 'i-lucide-alert-octagon' : 'i-lucide-alert-triangle'"
+            class="w-5 h-5 shrink-0"
+            :style="{ color: `var(--color-${bannerRole}-accent)` }"
           />
-          <span class="font-medium">
+          <span class="text-ui">
             {{ t('patients.alerts.title', { count: alerts.length }) }}
           </span>
         </div>
         <UButton
           v-if="alerts.length > 2"
           variant="ghost"
+          color="neutral"
           size="xs"
           :icon="showExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          :aria-label="showExpanded ? t('common.collapse', 'Contraer') : t('common.expand', 'Expandir')"
           @click="showExpanded = !showExpanded"
         />
       </div>
@@ -104,38 +117,38 @@ const showExpanded = ref(false)
             :text="alert.details"
           >
             <UBadge
-              :color="getSeverityColor(alert.severity)"
+              :color="getBadgeColor(alert.severity)"
               size="sm"
               variant="subtle"
             >
               <UIcon
                 :name="getAlertIcon(alert.type)"
-                class="w-4 h-4 mr-1"
+                class="w-3.5 h-3.5 mr-1"
               />
               {{ alert.title }}
             </UBadge>
           </UTooltip>
           <UBadge
             v-else
-            :color="getSeverityColor(alert.severity)"
+            :color="getBadgeColor(alert.severity)"
             size="sm"
             variant="subtle"
           >
             <UIcon
               :name="getAlertIcon(alert.type)"
-              class="w-4 h-4 mr-1"
+              class="w-3.5 h-3.5 mr-1"
             />
             {{ alert.title }}
           </UBadge>
         </template>
         <span
           v-if="!showExpanded && alerts.length > 3"
-          class="text-sm text-gray-500"
+          class="text-caption text-muted self-center"
         >
           +{{ alerts.length - 3 }} {{ t('common.more') }}
         </span>
       </div>
-    </UCard>
+    </div>
   </div>
 </template>
 

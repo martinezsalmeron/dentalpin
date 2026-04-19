@@ -198,10 +198,10 @@ function getSeriesTypeLabel(type: string): string {
           />
         </NuxtLink>
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 class="text-display text-default">
             {{ t('invoiceSeries.title') }}
           </h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-caption text-subtle">
             {{ t('invoiceSeries.description') }}
           </p>
         </div>
@@ -211,7 +211,7 @@ function getSeriesTypeLabel(type: string): string {
         <!-- Show inactive toggle -->
         <div class="flex items-center gap-2">
           <USwitch v-model="showInactive" />
-          <span class="text-sm text-gray-600 dark:text-gray-400">
+          <span class="text-sm text-muted dark:text-subtle">
             {{ t('invoiceSeries.showInactive') }}
           </span>
         </div>
@@ -233,7 +233,7 @@ function getSeriesTypeLabel(type: string): string {
       <UCard>
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-h1 text-default">
               {{ t('invoiceSeries.regularInvoices') }}
             </h2>
             <UButton
@@ -249,14 +249,14 @@ function getSeriesTypeLabel(type: string): string {
 
         <div
           v-if="invoiceSeries.length === 0"
-          class="text-center py-6 text-gray-500 dark:text-gray-400"
+          class="text-center py-6 text-muted"
         >
           {{ t('invoiceSeries.noItems') }}
         </div>
 
         <div
           v-else
-          class="divide-y divide-gray-200 dark:divide-gray-700"
+          class="divide-y divide-[var(--color-border-subtle)]"
         >
           <div
             v-for="s in invoiceSeries"
@@ -266,40 +266,40 @@ function getSeriesTypeLabel(type: string): string {
             <div class="flex items-center justify-between">
               <div class="flex-1">
                 <div class="flex items-center gap-3">
-                  <span class="font-mono text-lg font-semibold text-gray-900 dark:text-white">
+                  <span class="font-mono text-h1 text-default">
                     {{ s.prefix }}-
                   </span>
                   <div class="flex items-center gap-2">
                     <UBadge
                       v-if="s.is_default"
-                      color="blue"
+                      color="info"
                       variant="subtle"
                     >
                       {{ t('common.default') }}
                     </UBadge>
                     <UBadge
                       v-if="!s.is_active"
-                      color="red"
+                      color="error"
                       variant="subtle"
                     >
                       {{ t('common.inactive') }}
                     </UBadge>
                     <UBadge
                       v-if="s.reset_yearly"
-                      color="gray"
+                      color="neutral"
                       variant="subtle"
                     >
                       {{ t('invoiceSeries.resetYearly') }}
                     </UBadge>
                   </div>
                 </div>
-                <div class="mt-1 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <div class="mt-1 flex items-center gap-4 text-caption text-subtle">
                   <span>{{ t('invoiceSeries.nextNumber') }}: <strong>{{ s.current_number + 1 }}</strong></span>
-                  <span>{{ t('invoiceSeries.preview') }}: <code class="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">{{ getPreview(s) }}</code></span>
+                  <span>{{ t('invoiceSeries.preview') }}: <code class="font-mono bg-surface-muted px-1 rounded">{{ getPreview(s) }}</code></span>
                 </div>
                 <p
                   v-if="s.description"
-                  class="mt-1 text-xs text-gray-400 dark:text-gray-500"
+                  class="mt-1 text-xs text-subtle"
                 >
                   {{ s.description }}
                 </p>
@@ -336,7 +336,7 @@ function getSeriesTypeLabel(type: string): string {
       <UCard>
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-h1 text-default">
               {{ t('invoiceSeries.creditNotes') }}
             </h2>
             <UButton
@@ -352,14 +352,14 @@ function getSeriesTypeLabel(type: string): string {
 
         <div
           v-if="creditNoteSeries.length === 0"
-          class="text-center py-6 text-gray-500 dark:text-gray-400"
+          class="text-center py-6 text-muted"
         >
           {{ t('invoiceSeries.noItems') }}
         </div>
 
         <div
           v-else
-          class="divide-y divide-gray-200 dark:divide-gray-700"
+          class="divide-y divide-[var(--color-border-subtle)]"
         >
           <div
             v-for="s in creditNoteSeries"
@@ -369,40 +369,40 @@ function getSeriesTypeLabel(type: string): string {
             <div class="flex items-center justify-between">
               <div class="flex-1">
                 <div class="flex items-center gap-3">
-                  <span class="font-mono text-lg font-semibold text-gray-900 dark:text-white">
+                  <span class="font-mono text-h1 text-default">
                     {{ s.prefix }}-
                   </span>
                   <div class="flex items-center gap-2">
                     <UBadge
                       v-if="s.is_default"
-                      color="blue"
+                      color="info"
                       variant="subtle"
                     >
                       {{ t('common.default') }}
                     </UBadge>
                     <UBadge
                       v-if="!s.is_active"
-                      color="red"
+                      color="error"
                       variant="subtle"
                     >
                       {{ t('common.inactive') }}
                     </UBadge>
                     <UBadge
                       v-if="s.reset_yearly"
-                      color="gray"
+                      color="neutral"
                       variant="subtle"
                     >
                       {{ t('invoiceSeries.resetYearly') }}
                     </UBadge>
                   </div>
                 </div>
-                <div class="mt-1 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <div class="mt-1 flex items-center gap-4 text-caption text-subtle">
                   <span>{{ t('invoiceSeries.nextNumber') }}: <strong>{{ s.current_number + 1 }}</strong></span>
-                  <span>{{ t('invoiceSeries.preview') }}: <code class="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">{{ getPreview(s) }}</code></span>
+                  <span>{{ t('invoiceSeries.preview') }}: <code class="font-mono bg-surface-muted px-1 rounded">{{ getPreview(s) }}</code></span>
                 </div>
                 <p
                   v-if="s.description"
-                  class="mt-1 text-xs text-gray-400 dark:text-gray-500"
+                  class="mt-1 text-xs text-subtle"
                 >
                   {{ s.description }}
                 </p>
@@ -444,9 +444,9 @@ function getSeriesTypeLabel(type: string): string {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-plus"
-                class="w-5 h-5 text-primary-500"
+                class="w-5 h-5 text-primary-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoiceSeries.newTitle', { type: getSeriesTypeLabel(newSeries.series_type) }) }}
               </h3>
             </div>
@@ -477,14 +477,14 @@ function getSeriesTypeLabel(type: string): string {
 
             <div class="flex items-center gap-3">
               <USwitch v-model="newSeries.reset_yearly" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('invoiceSeries.resetYearlyLabel') }}
               </span>
             </div>
 
             <div class="flex items-center gap-3">
               <USwitch v-model="newSeries.is_default" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('invoiceSeries.setAsDefault') }}
               </span>
             </div>
@@ -516,9 +516,9 @@ function getSeriesTypeLabel(type: string): string {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-pencil"
-                class="w-5 h-5 text-primary-500"
+                class="w-5 h-5 text-primary-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoiceSeries.editTitle') }}
               </h3>
             </div>
@@ -545,21 +545,21 @@ function getSeriesTypeLabel(type: string): string {
 
             <div class="flex items-center gap-3">
               <USwitch v-model="editData.reset_yearly" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('invoiceSeries.resetYearlyLabel') }}
               </span>
             </div>
 
             <div class="flex items-center gap-3">
               <USwitch v-model="editData.is_default" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('invoiceSeries.setAsDefault') }}
               </span>
             </div>
 
             <div class="flex items-center gap-3">
               <USwitch v-model="editData.is_active" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-muted">
                 {{ t('invoiceSeries.activeLabel') }}
               </span>
             </div>
@@ -591,23 +591,23 @@ function getSeriesTypeLabel(type: string): string {
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-rotate-ccw"
-                class="w-5 h-5 text-amber-500"
+                class="w-5 h-5 text-warning-accent"
               />
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoiceSeries.resetCounter') }}
               </h3>
             </div>
           </template>
 
           <div class="space-y-4">
-            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p class="text-sm text-gray-600 dark:text-gray-400">
+            <div class="p-3 bg-surface-muted rounded-lg">
+              <p class="text-sm text-muted dark:text-subtle">
                 {{ t('invoiceSeries.currentNumber') }}:
-                <strong class="text-gray-900 dark:text-white font-mono">{{ resetSeries?.current_number }}</strong>
+                <strong class="text-default font-mono">{{ resetSeries?.current_number }}</strong>
               </p>
-              <p class="text-sm text-gray-600 dark:text-gray-400">
+              <p class="text-sm text-muted dark:text-subtle">
                 {{ t('invoiceSeries.seriesPrefix') }}:
-                <strong class="text-gray-900 dark:text-white font-mono">{{ resetSeries?.prefix }}</strong>
+                <strong class="text-default font-mono">{{ resetSeries?.prefix }}</strong>
               </p>
             </div>
 
@@ -625,7 +625,7 @@ function getSeriesTypeLabel(type: string): string {
             </UFormField>
 
             <UAlert
-              color="amber"
+              color="warning"
               variant="subtle"
               icon="i-lucide-alert-triangle"
               :title="t('invoiceSeries.resetWarningTitle')"
@@ -640,7 +640,7 @@ function getSeriesTypeLabel(type: string): string {
                 {{ t('common.cancel') }}
               </UButton>
               <UButton
-                color="amber"
+                color="warning"
                 :loading="isResetting"
                 @click="handleReset"
               >

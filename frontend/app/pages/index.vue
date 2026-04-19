@@ -4,14 +4,12 @@ import type { Appointment, Patient, PaginatedResponse } from '~/types'
 const { t } = useI18n()
 const api = useApi()
 
-// Fetch today's appointments
 const { data: appointmentsData, status: appointmentsStatus } = await useAsyncData(
   'dashboard:appointments',
   async () => {
     const today = new Date()
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString()
-
     try {
       return await api.get<PaginatedResponse<Appointment>>(
         `/api/v1/clinical/appointments?start_date=${startOfDay}&end_date=${endOfDay}`
@@ -22,7 +20,6 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
   }
 )
 
-// Fetch recent patients
 const { data: patientsData, status: patientsStatus } = await useAsyncData(
   'dashboard:patients',
   async () => {
@@ -39,7 +36,6 @@ const { data: patientsData, status: patientsStatus } = await useAsyncData(
 const todayAppointments = computed(() => appointmentsData.value?.data || [])
 const recentPatients = computed(() => patientsData.value?.data || [])
 
-// Get next appointment
 const nextAppointment = computed(() => {
   const now = new Date()
   return todayAppointments.value
@@ -47,7 +43,6 @@ const nextAppointment = computed(() => {
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0]
 })
 
-// Format time
 function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('es-ES', {
     hour: '2-digit',
@@ -55,62 +50,45 @@ function formatTime(dateStr: string): string {
   })
 }
 
-// Check if dashboard is empty (no data)
 const isEmpty = computed(() =>
   todayAppointments.value.length === 0 && recentPatients.value.length === 0
 )
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Page header -->
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-        {{ t('dashboard.title') }}
-      </h1>
-    </div>
+  <div>
+    <PageHeader :title="t('dashboard.title')" />
 
     <!-- Empty state for first-time users -->
     <UCard v-if="isEmpty && appointmentsStatus === 'success' && patientsStatus === 'success'">
-      <div class="text-center py-8">
-        <UIcon
-          name="i-lucide-smile"
-          class="w-12 h-12 text-primary-500 mx-auto mb-4"
-        />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          {{ t('dashboard.welcome') }}
-        </h2>
-        <p class="text-gray-500 dark:text-gray-400 mb-6">
-          {{ t('dashboard.welcomeMessage') }}
-        </p>
-        <UButton
-          to="/patients"
-          icon="i-lucide-plus"
-        >
-          {{ t('patients.emptyAction') }}
-        </UButton>
-      </div>
+      <EmptyState
+        icon="i-lucide-smile"
+        :title="t('dashboard.welcome')"
+        :description="t('dashboard.welcomeMessage')"
+      >
+        <template #actions>
+          <UButton
+            to="/patients"
+            color="primary"
+            variant="solid"
+            icon="i-lucide-plus"
+          >
+            {{ t('patients.emptyAction') }}
+          </UButton>
+        </template>
+      </EmptyState>
     </UCard>
 
-    <!-- Dashboard widgets -->
+    <!-- Widgets -->
     <div
       v-else
-      class="grid grid-cols-1 md:grid-cols-2 gap-6"
+      class="grid grid-cols-1 md:grid-cols-2 gap-5"
     >
       <!-- Today's appointments -->
-      <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon
-              name="i-lucide-calendar"
-              class="w-5 h-5 text-primary-500"
-            />
-            <h2 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('dashboard.todayAppointments') }}
-            </h2>
-          </div>
-        </template>
-
+      <SectionCard
+        icon="i-lucide-calendar"
+        :title="t('dashboard.todayAppointments')"
+      >
         <div
           v-if="appointmentsStatus === 'pending'"
           class="space-y-3"
@@ -119,44 +97,35 @@ const isEmpty = computed(() =>
           <USkeleton class="h-12 w-full" />
         </div>
 
-        <div
+        <EmptyState
           v-else-if="todayAppointments.length === 0"
-          class="text-center py-4"
-        >
-          <UIcon
-            name="i-lucide-calendar-x"
-            class="w-8 h-8 text-gray-400 mx-auto mb-2"
-          />
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            {{ t('dashboard.noAppointmentsToday') }}
-          </p>
-        </div>
+          icon="i-lucide-calendar-x"
+          :title="t('dashboard.noAppointmentsToday')"
+        />
 
         <div
           v-else
           class="space-y-4"
         >
-          <!-- Appointment count -->
-          <p class="text-3xl font-bold text-gray-900 dark:text-white">
+          <p class="text-display tnum text-default">
             {{ todayAppointments.length }}
-            <span class="text-base font-normal text-gray-500">
+            <span class="text-body text-muted font-normal">
               {{ t('dashboard.appointmentsCount', todayAppointments.length) }}
             </span>
           </p>
 
-          <!-- Next appointment -->
           <div
             v-if="nextAppointment"
-            class="p-3 rounded-lg bg-primary-50 dark:bg-primary-950"
+            class="alert-surface-primary rounded-token-md px-3 py-2"
           >
-            <p class="text-xs text-primary-600 dark:text-primary-400 mb-1">
+            <p class="text-caption mb-1">
               {{ t('dashboard.nextAppointment') }}
             </p>
             <div class="flex items-center justify-between">
-              <span class="font-medium text-gray-900 dark:text-white">
+              <span class="text-ui tnum">
                 {{ formatTime(nextAppointment.start_time) }}
               </span>
-              <span class="text-sm text-gray-600 dark:text-gray-300">
+              <span class="text-body">
                 {{ nextAppointment.patient?.first_name }} {{ nextAppointment.patient?.last_name }}
               </span>
             </div>
@@ -174,22 +143,13 @@ const isEmpty = computed(() =>
             {{ t('nav.appointments') }}
           </UButton>
         </template>
-      </UCard>
+      </SectionCard>
 
       <!-- Recent patients -->
-      <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon
-              name="i-lucide-users"
-              class="w-5 h-5 text-primary-500"
-            />
-            <h2 class="font-semibold text-gray-900 dark:text-white">
-              {{ t('dashboard.recentPatients') }}
-            </h2>
-          </div>
-        </template>
-
+      <SectionCard
+        icon="i-lucide-users"
+        :title="t('dashboard.recentPatients')"
+      >
         <div
           v-if="patientsStatus === 'pending'"
           class="space-y-3"
@@ -201,49 +161,34 @@ const isEmpty = computed(() =>
           />
         </div>
 
-        <div
+        <EmptyState
           v-else-if="recentPatients.length === 0"
-          class="text-center py-4"
-        >
-          <UIcon
-            name="i-lucide-users"
-            class="w-8 h-8 text-gray-400 mx-auto mb-2"
-          />
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            {{ t('patients.empty') }}
-          </p>
-        </div>
+          icon="i-lucide-users"
+          :title="t('patients.empty')"
+        />
 
         <ul
           v-else
-          class="divide-y divide-gray-200 dark:divide-gray-800"
+          class="divide-y divide-[var(--color-border-subtle)]"
         >
           <li
             v-for="patient in recentPatients"
             :key="patient.id"
-            class="py-2"
           >
-            <NuxtLink
-              :to="`/patients/${patient.id}`"
-              class="flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 py-1 rounded-lg transition-colors"
-            >
-              <UAvatar
-                :alt="patient.first_name"
-                size="sm"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {{ patient.first_name }} {{ patient.last_name }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {{ patient.phone || patient.email || '-' }}
-                </p>
-              </div>
-              <UIcon
-                name="i-lucide-chevron-right"
-                class="w-4 h-4 text-gray-400"
-              />
-            </NuxtLink>
+            <ListRow :to="`/patients/${patient.id}`">
+              <template #leading>
+                <UAvatar
+                  :alt="patient.first_name"
+                  size="sm"
+                />
+              </template>
+              <template #title>
+                {{ patient.first_name }} {{ patient.last_name }}
+              </template>
+              <template #subtitle>
+                {{ patient.phone || patient.email || '—' }}
+              </template>
+            </ListRow>
           </li>
         </ul>
 
@@ -258,7 +203,7 @@ const isEmpty = computed(() =>
             {{ t('nav.patients') }}
           </UButton>
         </template>
-      </UCard>
+      </SectionCard>
     </div>
   </div>
 </template>

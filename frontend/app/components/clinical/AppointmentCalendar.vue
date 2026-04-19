@@ -233,32 +233,39 @@ function getProfessionalFullName(professionalId: string): string {
 }
 
 // Get appointment style with cabinet color
+// Per DESIGN §7.3: fill at alpha 0.12 in cabinet colour, 3 px left border in full colour.
 function getAppointmentColorStyle(appointment: Appointment): Record<string, string> {
   const color = getCabinetColor(appointment.cabinet)
+  // Convert hex to rgba with alpha for fill tint
+  const r = parseInt(color.slice(1, 3), 16)
+  const g = parseInt(color.slice(3, 5), 16)
+  const b = parseInt(color.slice(5, 7), 16)
   return {
     '--cabinet-color': color,
+    'backgroundColor': `rgba(${r}, ${g}, ${b}, 0.12)`,
     'borderLeftColor': color,
-    'borderLeftWidth': '4px'
+    'borderLeftWidth': '3px'
   }
 }
 
 // Get status-based styling
+// Calendar block: fill = professional colour alpha 0.12 (inline), left border 3 px in full
+// professional colour (inline). Status modulates text colour and opacity only.
 function getStatusClass(status: Appointment['status']): string {
-  const baseClass = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700'
+  const baseClass = 'bg-surface ring-1 ring-[var(--color-border)]'
 
   switch (status) {
     case 'scheduled':
-      return `${baseClass} text-gray-800 dark:text-gray-200`
     case 'confirmed':
-      return `${baseClass} text-gray-800 dark:text-gray-200`
+      return `${baseClass} text-default`
     case 'in_progress':
-      return `${baseClass} text-gray-800 dark:text-gray-200 animate-pulse`
+      return `${baseClass} text-default`
     case 'completed':
-      return `${baseClass} text-gray-500 dark:text-gray-400 opacity-60`
+      return `${baseClass} text-muted opacity-70`
     case 'cancelled':
-      return `${baseClass} text-gray-500 dark:text-gray-400 line-through opacity-50`
+      return `${baseClass} text-subtle line-through opacity-50`
     case 'no_show':
-      return `${baseClass} text-gray-500 dark:text-gray-400 opacity-60`
+      return `${baseClass} text-subtle opacity-60`
     default:
       return baseClass
   }
@@ -623,7 +630,7 @@ const allAppointmentsWithDayIndex = computed(() => {
         />
       </div>
 
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+      <h2 class="text-h2 text-default">
         {{ weekRangeText }}
       </h2>
     </div>
@@ -635,7 +642,8 @@ const allAppointmentsWithDayIndex = computed(() => {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-primary-500"
+        class="w-8 h-8 animate-spin"
+        :style="{ color: 'var(--color-primary)' }"
       />
     </div>
 
@@ -643,26 +651,23 @@ const allAppointmentsWithDayIndex = computed(() => {
     <div
       v-else
       ref="calendarRef"
-      class="flex-1 overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg"
+      class="flex-1 overflow-auto ring-1 ring-[var(--color-border)] rounded-token-lg"
     >
       <div class="min-w-[800px]">
         <!-- Day headers -->
-        <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
-          <!-- Time column header -->
-          <div class="p-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-8 border-b border-default bg-surface-muted sticky top-0 z-10">
+          <div class="p-2 text-center text-caption text-subtle border-r border-subtle">
             <!-- Empty -->
           </div>
-
-          <!-- Day headers -->
           <div
             v-for="day in weekDays"
             :key="day.toISOString()"
-            class="p-2 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0"
-            :class="{ 'bg-primary-50 dark:bg-primary-900/20': isToday(day) }"
+            class="p-2 text-center border-r border-subtle last:border-r-0"
+            :class="{ 'bg-[var(--color-primary-soft)]': isToday(day) }"
           >
             <span
-              class="text-sm font-medium"
-              :class="isToday(day) ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'"
+              class="text-ui"
+              :class="isToday(day) ? 'text-[var(--color-primary-soft-text)]' : 'text-default'"
             >
               {{ formatDayHeader(day) }}
             </span>
@@ -671,31 +676,27 @@ const allAppointmentsWithDayIndex = computed(() => {
 
         <!-- Time rows -->
         <div class="relative">
-          <!-- Hour markers and grid -->
           <div
             v-for="(slot, slotIndex) in timeSlots"
             :key="slot"
-            class="grid grid-cols-8 border-b border-gray-100 dark:border-gray-800"
-            :class="{ 'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0 }"
+            class="grid grid-cols-8 border-b border-[var(--color-border-subtle)]"
+            :class="{ 'border-[var(--color-border)]': slotIndex % SLOTS_PER_HOUR === 0 }"
           >
-            <!-- Time label (only show on hour marks) -->
-            <div class="p-1 text-right border-r border-gray-200 dark:border-gray-700 h-6 flex items-center justify-end pr-2">
+            <div class="p-1 text-right border-r border-subtle h-6 flex items-center justify-end pr-2">
               <span
                 v-if="slotIndex % SLOTS_PER_HOUR === 0"
-                class="text-xs text-gray-500 dark:text-gray-400"
+                class="text-caption text-subtle tnum"
               >
                 {{ slot }}
               </span>
             </div>
-
-            <!-- Day columns -->
             <div
               v-for="(day, dayIdx) in weekDays"
               :key="`${day.toISOString()}-${slot}`"
-              class="h-6 border-r border-gray-100 dark:border-gray-800 last:border-r-0 cursor-cell hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative"
+              class="h-6 border-r border-[var(--color-border-subtle)] last:border-r-0 cursor-cell hover:bg-[var(--color-primary-soft)]/50 transition-colors relative"
               :class="{
-                'bg-primary-50/30 dark:bg-primary-900/10': isToday(day),
-                'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0
+                'bg-[var(--color-primary-soft)]/40': isToday(day),
+                'border-[var(--color-border)]': slotIndex % SLOTS_PER_HOUR === 0
               }"
               @mousedown="startCreateDrag(day, slot, dayIdx, $event)"
             />
@@ -705,18 +706,18 @@ const allAppointmentsWithDayIndex = computed(() => {
           <div class="absolute inset-0 pointer-events-none">
             <div class="grid grid-cols-8 h-full">
               <!-- Time column spacer -->
-              <div class="border-r border-gray-200 dark:border-gray-700" />
+              <div class="border-r border-default" />
 
               <!-- Day columns with appointments -->
               <div
                 v-for="(day, dayIndex) in weekDays"
                 :key="`appointments-${day.toISOString()}`"
-                class="relative border-r border-gray-100 dark:border-gray-800 last:border-r-0"
+                class="relative border-r border-subtle last:border-r-0"
               >
                 <!-- Ghost block during drag-to-create -->
                 <div
                   v-if="createDragState && createDragState.dayIndex === dayIndex"
-                  class="absolute left-1 right-1 rounded border-2 border-dashed border-primary-500 bg-primary-100/60 dark:bg-primary-900/30 pointer-events-none z-40 flex items-start p-1"
+                  class="absolute left-1 right-1 rounded border-2 border-dashed border-[var(--color-primary)] bg-[var(--color-primary-soft)] pointer-events-none z-40 flex items-start p-1"
                   :style="{
                     top: `${createDragState.startSlot * SLOT_HEIGHT}px`,
                     height: `${Math.max(1, createDragState.currentSlot - createDragState.startSlot + 1) * SLOT_HEIGHT}px`,

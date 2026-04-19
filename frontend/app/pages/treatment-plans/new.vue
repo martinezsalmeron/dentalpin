@@ -103,7 +103,7 @@ function goBack() {
         icon="i-lucide-arrow-left"
         @click="goBack"
       />
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <h1 class="text-display text-default">
         {{ t('treatmentPlans.create') }}
       </h1>
     </div>
@@ -121,13 +121,13 @@ function goBack() {
           <!-- Selected patient -->
           <div
             v-if="selectedPatient"
-            class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+            class="flex items-center justify-between p-3 bg-surface-muted rounded-lg"
           >
             <div>
               <p class="font-medium">
                 {{ selectedPatient.last_name }}, {{ selectedPatient.first_name }}
               </p>
-              <p class="text-sm text-gray-500">
+              <p class="text-caption text-subtle">
                 {{ selectedPatient.phone }}
               </p>
             </div>
@@ -155,19 +155,19 @@ function goBack() {
             <!-- Search results dropdown -->
             <div
               v-if="patients.length > 0"
-              class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
+              class="absolute z-10 mt-1 w-full bg-surface border border-default rounded-lg shadow-lg max-h-60 overflow-auto"
             >
               <button
                 v-for="patient in patients"
                 :key="patient.id"
                 type="button"
-                class="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
+                class="w-full px-4 py-2 text-left hover:bg-surface-muted"
                 @click="selectPatient(patient)"
               >
                 <p class="font-medium">
                   {{ patient.last_name }}, {{ patient.first_name }}
                 </p>
-                <p class="text-sm text-gray-500">
+                <p class="text-caption text-subtle">
                   {{ patient.phone }}
                 </p>
               </button>

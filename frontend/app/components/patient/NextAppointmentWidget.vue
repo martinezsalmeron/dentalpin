@@ -10,14 +10,12 @@ interface Props {
 const props = defineProps<Props>()
 const { t, locale } = useI18n()
 
-// Navigate to calendar with appointment highlighted
 function goToReschedule() {
   if (!props.appointment) return
   const date = props.appointment.start_time.split('T')[0]
   navigateTo(`/appointments?highlight=${props.appointment.id}&date=${date}`)
 }
 
-// Format appointment date
 const formattedDate = computed(() => {
   if (!props.appointment) return ''
   const date = new Date(props.appointment.start_time)
@@ -37,13 +35,11 @@ const formattedTime = computed(() => {
   })
 })
 
-// Days until appointment
 const daysUntil = computed(() => {
   if (!props.appointment) return null
   const now = new Date()
   const apt = new Date(props.appointment.start_time)
-  const diff = Math.ceil((apt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  return diff
+  return Math.ceil((apt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 })
 
 const isToday = computed(() => daysUntil.value === 0)
@@ -57,9 +53,9 @@ const isTomorrow = computed(() => daysUntil.value === 1)
       <div class="widget-header">
         <UIcon
           name="i-lucide-calendar"
-          class="w-4 h-4 text-gray-400"
+          class="w-4 h-4 text-subtle"
         />
-        <span class="font-medium text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <span class="text-caption text-muted uppercase tracking-wide">
           {{ t('patientDetail.nextAppointment') }}
         </span>
       </div>
@@ -73,53 +69,49 @@ const isTomorrow = computed(() => daysUntil.value === 1)
         <UIcon
           name="i-lucide-calendar"
           class="w-4 h-4"
-          :class="isToday ? 'text-success-500' : 'text-primary-500'"
+          :class="isToday ? 'text-success-accent' : 'text-primary-accent'"
         />
-        <span class="font-medium text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <span class="text-caption text-muted uppercase tracking-wide">
           {{ t('patientDetail.nextAppointment') }}
         </span>
-        <UBadge
+        <StatusBadge
           v-if="isToday"
-          color="success"
+          role="success"
+          :label="t('appointments.today')"
           size="xs"
-          variant="subtle"
-        >
-          {{ t('appointments.today') }}
-        </UBadge>
-        <UBadge
+        />
+        <StatusBadge
           v-else-if="isTomorrow"
-          color="info"
+          role="info"
+          :label="t('appointments.tomorrow')"
           size="xs"
-          variant="subtle"
-        >
-          {{ t('appointments.tomorrow') }}
-        </UBadge>
+        />
       </div>
 
       <div class="flex items-center gap-2 mb-1">
-        <span class="font-semibold text-sm text-gray-900 dark:text-white">
+        <span class="text-ui text-default">
           {{ formattedDate }}
         </span>
-        <span class="text-sm text-gray-500">{{ formattedTime }}</span>
+        <span class="text-caption text-subtle tnum">{{ formattedTime }}</span>
       </div>
 
       <p
         v-if="appointment.treatment_type"
-        class="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-1"
+        class="text-caption text-muted mb-2 line-clamp-1"
       >
         {{ appointment.treatment_type }}
       </p>
 
       <p
         v-if="appointment.professional"
-        class="text-xs text-gray-500 dark:text-gray-400 mb-2"
+        class="text-caption text-muted mb-2"
       >
         {{ appointment.professional.first_name }} {{ appointment.professional.last_name }}
       </p>
 
       <button
         type="button"
-        class="text-xs text-primary-500 hover:text-primary-600 font-medium inline-flex items-center gap-1"
+        class="text-caption text-primary-accent hover:underline inline-flex items-center gap-1"
         @click="goToReschedule"
       >
         {{ t('patientDetail.reschedule') }}
@@ -131,20 +123,20 @@ const isTomorrow = computed(() => daysUntil.value === 1)
       <div class="widget-header">
         <UIcon
           name="i-lucide-calendar"
-          class="w-4 h-4 text-gray-400"
+          class="w-4 h-4 text-subtle"
         />
-        <span class="font-medium text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <span class="text-caption text-muted uppercase tracking-wide">
           {{ t('patientDetail.nextAppointment') }}
         </span>
       </div>
 
-      <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+      <p class="text-body text-muted mb-2">
         {{ t('patientDetail.noUpcomingAppointments') }}
       </p>
 
       <NuxtLink
         to="/appointments"
-        class="text-xs text-primary-500 hover:text-primary-600 font-medium inline-flex items-center gap-1"
+        class="text-caption text-primary-accent hover:underline inline-flex items-center gap-1"
       >
         <UIcon
           name="i-lucide-plus"
@@ -159,14 +151,9 @@ const isTomorrow = computed(() => daysUntil.value === 1)
 <style scoped>
 .next-appointment-widget {
   padding: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid #E5E7EB;
-  background-color: #F9FAFB;
-}
-
-:root.dark .next-appointment-widget {
-  border-color: #374151;
-  background-color: rgba(31, 41, 55, 0.5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-muted);
 }
 
 .widget-header {

@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   /** Mode determines which categories are shown and UI behavior */
   mode?: TreatmentBarMode
-  /** When set (fixed-plan context), shows a "Adding to: {title}" banner instead of the plan selector. */
+  /** When set (fixed-plan context), shows a"Adding to: {title}" banner instead of the plan selector. */
   planContextTitle?: string
 }>(), {
   mode: 'full'
@@ -105,8 +105,8 @@ watch(() => props.mode, () => {
 
 // All status options
 const allStatusOptions: Array<{ value: TreatmentStatus, labelKey: string, color: string }> = [
-  { value: 'existing', labelKey: 'odontogram.status.existing', color: 'gray' },
-  { value: 'planned', labelKey: 'odontogram.status.planned', color: 'red' }
+  { value: 'existing', labelKey: 'odontogram.status.existing', color: 'neutral' },
+  { value: 'planned', labelKey: 'odontogram.status.planned', color: 'error' }
 ]
 
 // Get allowed statuses for a treatment (catalog-aware)
@@ -375,7 +375,7 @@ function selectTreatmentRegular(item: TreatmentBarItem) {
 
   // Atomic multi-tooth (bridge, splint) and regular treatments share the same flow:
   // emit the odontogram type. The wrapper-key swap for crown/veneer happens via
-  // setMultiMode() once the user picks "Multiple teeth" from the toggle.
+  // setMultiMode() once the user picks"Multiple teeth" from the toggle.
   emit('update:selectedCatalogItemId', item.catalogItemId)
   emit('update:selectedTreatment', item.odontogramType)
   emit('treatmentSelect', item.odontogramType)
@@ -417,7 +417,7 @@ function handleCancel() {
   emit('cancel')
 }
 
-// A button is "selected" when it matches the active selection. Catalog items must
+// A button is"selected" when it matches the active selection. Catalog items must
 // match by id (multiple buttons can share the same odontogram type — only the one
 // the user clicked should highlight). Fallback items match by odontogram type.
 function isSelected(item: TreatmentBarItem): boolean {
@@ -448,7 +448,7 @@ function getCategoryLabel(categoryKey: string): string {
   return label
 }
 
-// Plan selector - only visible when status is "planned" and not in diagnosis mode.
+// Plan selector - only visible when status is"planned" and not in diagnosis mode.
 // Hidden when no `treatmentPlans` list is provided — caller is working in a fixed
 // plan context (PlanDetailView) where switching plans makes no sense.
 const showPlanSelector = computed(() => {
@@ -548,7 +548,7 @@ function handleCreatePlan() {
         </button>
       </div>
 
-      <!-- Plan Selector (only when status is "planned") -->
+      <!-- Plan Selector (only when status is"planned") -->
       <Transition
         enter-active-class="transition-all duration-200 ease-out"
         enter-from-class="opacity-0 scale-95"
@@ -589,7 +589,7 @@ function handleCreatePlan() {
                       v-if="option.icon"
                       :name="option.icon"
                       class="w-4 h-4"
-                      :class="option.isActive ? 'text-amber-500' : 'text-gray-400'"
+                      :class="option.isActive ? 'text-warning-accent' : 'text-subtle'"
                     />
                   </template>
                   <span :class="option.isActive ? 'font-medium' : ''">{{ option.label }}</span>
@@ -597,7 +597,7 @@ function handleCreatePlan() {
                     <UIcon
                       v-if="selectedPlanId === option.value"
                       name="i-lucide-check"
-                      class="w-4 h-4 text-primary-500"
+                      class="w-4 h-4 text-primary-accent"
                     />
                   </template>
                 </UDropdownMenuItem>
@@ -607,10 +607,10 @@ function handleCreatePlan() {
                 <template #leading>
                   <UIcon
                     name="i-lucide-plus"
-                    class="w-4 h-4 text-primary-500"
+                    class="w-4 h-4 text-primary-accent"
                   />
                 </template>
-                <span class="text-primary-500">{{ t('odontogram.createNewPlan') }}</span>
+                <span class="text-primary-accent">{{ t('odontogram.createNewPlan') }}</span>
               </UDropdownMenuItem>
             </template>
           </UDropdownMenu>
@@ -1019,35 +1019,33 @@ function handleCreatePlan() {
   background: #3F3F46;
 }
 
-/* Category Tabs */
+/* Category Tabs — calm segmented pattern (DESIGN §6) */
 .category-tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   flex-wrap: wrap;
+  padding: 2px;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
 }
 
 .category-tab {
   padding: 6px 12px;
   font-size: 13px;
   font-weight: 500;
-  color: #71717A;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  color: var(--color-text-muted);
+  border-radius: calc(var(--radius-md) - 2px);
+  transition: background-color 150ms var(--motion-ease), color 150ms var(--motion-ease);
 }
 
-.category-tab:hover {
-  background: #E4E4E7;
-  color: #3F3F46;
-}
-
-:root.dark .category-tab:hover {
-  background: #3F3F46;
-  color: #A1A1AA;
+.category-tab:hover:not(.active) {
+  color: var(--color-text);
 }
 
 .category-tab.active {
-  background: #3B82F6;
-  color: white;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Spacer */
@@ -1066,27 +1064,17 @@ function handleCreatePlan() {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #71717A;
+  color: var(--color-text-muted);
   flex-shrink: 0;
   padding: 6px 12px;
-  background: #F4F4F5;
-  border-radius: 6px;
-}
-
-:root.dark .instructions {
-  background: #27272A;
-  color: #A1A1AA;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
 }
 
 .instructions.multi-tooth-hint {
-  background: #DBEAFE;
-  color: #1D4ED8;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
   font-weight: 500;
-}
-
-:root.dark .instructions.multi-tooth-hint {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60A5FA;
 }
 
 /* Treatment Grid - Second row.

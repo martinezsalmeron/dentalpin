@@ -10,7 +10,7 @@ const reportCategories = computed(() => [
     icon: 'i-lucide-receipt',
     to: '/reports/billing',
     permission: 'reports.billing.read',
-    color: 'text-emerald-600'
+    color: 'text-success-accent'
   },
   {
     key: 'budgets',
@@ -19,7 +19,7 @@ const reportCategories = computed(() => [
     icon: 'i-lucide-file-text',
     to: '/reports/budgets',
     permission: 'reports.budgets.read',
-    color: 'text-blue-600'
+    color: 'text-info-accent'
   },
   {
     key: 'scheduling',
@@ -41,10 +41,10 @@ const visibleCategories = computed(() =>
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <h1 class="text-display text-default">
         {{ t('reports.title') }}
       </h1>
-      <p class="text-gray-500 dark:text-gray-400 mt-1">
+      <p class="text-muted mt-1">
         {{ t('reports.subtitle') }}
       </p>
     </div>
@@ -62,7 +62,7 @@ const visibleCategories = computed(() =>
       >
         <div class="flex flex-col items-center text-center space-y-4 py-4">
           <div
-            class="p-4 rounded-full bg-gray-100 dark:bg-gray-800"
+            class="p-4 rounded-full bg-surface-muted"
           >
             <UIcon
               :name="category.icon"
@@ -71,7 +71,7 @@ const visibleCategories = computed(() =>
           </div>
 
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center justify-center gap-2">
+            <h3 class="text-h1 text-default flex items-center justify-center gap-2">
               {{ category.label }}
               <UBadge
                 v-if="category.comingSoon"
@@ -81,7 +81,7 @@ const visibleCategories = computed(() =>
                 {{ t('common.comingSoon') }}
               </UBadge>
             </h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p class="text-caption text-subtle mt-1">
               {{ category.description }}
             </p>
           </div>
@@ -105,9 +105,9 @@ const visibleCategories = computed(() =>
     >
       <UIcon
         name="i-lucide-lock"
-        class="h-12 w-12 text-gray-400 mx-auto mb-4"
+        class="h-12 w-12 text-subtle mx-auto mb-4"
       />
-      <p class="text-gray-500">
+      <p class="text-subtle">
         {{ t('reports.noAccess') }}
       </p>
     </div>

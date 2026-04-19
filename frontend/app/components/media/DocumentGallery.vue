@@ -185,11 +185,11 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize))
     <!-- Empty state -->
     <div
       v-else-if="documents.length === 0"
-      class="text-center py-8 text-gray-500"
+      class="text-center py-8 text-subtle"
     >
       <UIcon
         name="i-lucide-file-x"
-        class="w-12 h-12 mx-auto mb-3 text-gray-400"
+        class="w-12 h-12 mx-auto mb-3 text-subtle"
       />
       <p>{{ t('documents.empty', 'No documents yet') }}</p>
       <UButton
@@ -253,11 +253,11 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize))
       <template #content>
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-red-600">
+            <h3 class="font-semibold text-danger-accent">
               {{ t('documents.deleteConfirm.title', 'Delete Document') }}
             </h3>
           </template>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
+          <p class="text-sm text-muted">
             {{ t('documents.deleteConfirm.message', 'Are you sure you want to delete this document? This action cannot be undone.') }}
           </p>
           <p
@@ -275,7 +275,7 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize))
                 {{ t('common.cancel') }}
               </UButton>
               <UButton
-                color="red"
+                color="error"
                 @click="confirmDelete"
               >
                 {{ t('common.delete') }}

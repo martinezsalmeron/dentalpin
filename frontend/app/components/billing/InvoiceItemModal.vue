@@ -251,7 +251,7 @@ watch(() => props.open, async (isOpen) => {
       <UCard class="w-full max-w-lg">
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold">
+            <h2 class="text-h1 text-default">
               {{ isEditing ? t('invoice.editItem') : t('invoice.addItem') }}
             </h2>
             <UButton
@@ -373,10 +373,10 @@ watch(() => props.open, async (isOpen) => {
             <!-- Preview total -->
             <div
               v-if="form.unit_price > 0"
-              class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+              class="flex justify-between items-center p-3 bg-surface-muted rounded-lg"
             >
-              <span class="text-gray-600 dark:text-gray-400">{{ t('budget.items.lineTotal') }}</span>
-              <span class="text-xl font-bold text-gray-900 dark:text-white">
+              <span class="text-muted">{{ t('budget.items.lineTotal') }}</span>
+              <span class="text-h1 tnum text-default">
                 {{ formatPrice(previewTotal, currency || 'EUR') }}
               </span>
             </div>

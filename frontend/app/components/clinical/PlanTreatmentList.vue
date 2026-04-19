@@ -178,7 +178,7 @@ function formatCurrency(amount: number | undefined): string {
       <div class="empty-draft-title">
         <UIcon
           name="i-lucide-sparkles"
-          class="w-4 h-4 text-primary-500"
+          class="w-4 h-4 text-primary-accent"
         />
         <span>{{ t('clinical.plans.emptyDraft.title') }}</span>
       </div>
@@ -207,7 +207,7 @@ function formatCurrency(amount: number | undefined): string {
 
     <div
       v-else-if="items.length === 0"
-      class="text-center py-6 text-gray-500 dark:text-gray-400"
+      class="text-center py-6 text-muted"
     >
       <UIcon
         name="i-lucide-list"
@@ -231,10 +231,10 @@ function formatCurrency(amount: number | undefined): string {
         v-for="(item, index) in localPending"
         :key="item.id"
         tabindex="0"
-        class="plan-item p-3 rounded-lg border transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+        class="plan-item p-3 rounded-token-md border transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
         :class="{
-          'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700': isHighlighted(item.id),
-          'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700': !isHighlighted(item.id)
+          'alert-surface-warning border-transparent': isHighlighted(item.id),
+          'bg-surface border-default': !isHighlighted(item.id)
         }"
         :aria-label="t('clinical.plans.reorderHint')"
         @mouseenter="emit('item-hover', item.id)"
@@ -246,7 +246,7 @@ function formatCurrency(amount: number | undefined): string {
             <button
               v-if="!readonly && localPending.length > 1"
               type="button"
-              class="drag-handle shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-grab active:cursor-grabbing"
+              class="drag-handle shrink-0 text-subtle hover:text-default cursor-grab active:cursor-grabbing"
               :title="t('clinical.plans.dragToReorder')"
               :aria-label="t('clinical.plans.dragToReorder')"
             >
@@ -255,7 +255,7 @@ function formatCurrency(amount: number | undefined): string {
                 class="w-4 h-4"
               />
             </button>
-            <span class="text-gray-400 text-sm w-6 text-center shrink-0">
+            <span class="text-subtle text-caption tnum w-6 text-center shrink-0">
               {{ index + 1 }}.
             </span>
             <div class="min-w-0">
@@ -264,7 +264,7 @@ function formatCurrency(amount: number | undefined): string {
               </div>
               <div
                 v-if="hasToothInfo(item)"
-                class="text-sm text-gray-500 dark:text-gray-400"
+                class="text-sm text-muted"
               >
                 {{ formatToothInfo(item) }}
               </div>
@@ -281,16 +281,15 @@ function formatCurrency(amount: number | undefined): string {
               <UButton
                 size="xs"
                 variant="ghost"
-                color="green"
+                color="success"
                 icon="i-lucide-check"
-                class="hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-700 dark:hover:text-green-300"
                 :title="t('clinical.plans.markComplete')"
                 @click.stop="openConfirmModal(item)"
               />
               <UButton
                 size="xs"
                 variant="ghost"
-                color="red"
+                color="error"
                 icon="i-lucide-trash-2"
                 :title="t('clinical.plans.removeItem')"
                 @click.stop="emit('item-remove', item.id)"
@@ -315,14 +314,14 @@ function formatCurrency(amount: number | undefined): string {
           <div
             v-for="item in completedItems"
             :key="item.id"
-            class="p-2 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+            class="p-2 rounded bg-surface-muted text-muted"
             @mouseenter="emit('item-hover', item.id)"
             @mouseleave="emit('item-hover', null)"
           >
             <div class="flex items-center gap-2">
               <UIcon
                 name="i-lucide-check-circle"
-                class="w-4 h-4 text-green-500 shrink-0"
+                class="w-4 h-4 text-success-accent shrink-0"
               />
               <span class="line-through truncate">
                 {{ getItemName(item) }}
@@ -345,13 +344,13 @@ function formatCurrency(amount: number | undefined): string {
         <UCard>
           <template #header>
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <div class="w-10 h-10 rounded-full bg-[var(--color-success-soft)] flex items-center justify-center">
                 <UIcon
                   name="i-lucide-check"
-                  class="w-5 h-5 text-green-600 dark:text-green-400"
+                  class="w-5 h-5 text-success-accent"
                 />
               </div>
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="text-h2 text-default">
                 {{ t('treatmentPlans.confirmations.completeItem') }}
               </h3>
             </div>
@@ -361,18 +360,18 @@ function formatCurrency(amount: number | undefined): string {
             v-if="itemToComplete"
             class="space-y-3"
           >
-            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p class="font-medium text-gray-900 dark:text-white">
+            <div class="p-3 bg-surface-muted rounded-lg">
+              <p class="font-medium text-default">
                 {{ getItemName(itemToComplete) }}
               </p>
               <p
                 v-if="hasToothInfo(itemToComplete)"
-                class="text-sm text-gray-500 dark:text-gray-400 mt-1"
+                class="text-sm text-muted mt-1"
               >
                 {{ formatToothInfo(itemToComplete) }}
               </p>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-sm text-muted">
               {{ t('treatmentPlans.confirmations.completeItemDescription') }}
             </p>
           </div>

@@ -152,10 +152,10 @@ function goBack() {
           @click="goBack"
         />
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 class="text-display text-default">
             {{ t('reports.budgets.title') }}
           </h1>
-          <p class="text-sm text-gray-500">
+          <p class="text-caption text-subtle">
             {{ t('reports.budgets.description') }}
           </p>
         </div>
@@ -204,7 +204,7 @@ function goBack() {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="h-8 w-8 animate-spin text-primary-500"
+        class="h-8 w-8 animate-spin text-primary-accent"
       />
     </div>
 
@@ -216,13 +216,13 @@ function goBack() {
       >
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.budgets.labels.totalCreated') }}
             </p>
-            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+            <p class="text-display text-default">
               {{ summary.total_created }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ formatCurrency(summary.total_amount) }}
             </p>
           </div>
@@ -230,13 +230,13 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.budgets.labels.accepted') }}
             </p>
-            <p class="text-2xl font-bold text-green-600">
+            <p class="text-display text-default text-success-accent">
               {{ summary.accepted_count }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ formatCurrency(summary.accepted_amount) }}
             </p>
           </div>
@@ -244,13 +244,13 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.budgets.labels.acceptanceRate') }}
             </p>
-            <p class="text-2xl font-bold text-blue-600">
+            <p class="text-display text-default text-info-accent">
               {{ formatPercent(summary.acceptance_rate) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ summary.rejected_count }} {{ t('reports.budgets.labels.rejected') }}
             </p>
           </div>
@@ -258,13 +258,13 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.budgets.labels.averageValue') }}
             </p>
-            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+            <p class="text-display text-default">
               {{ formatCurrency(summary.average_value) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ summary.pending_count }} {{ t('reports.budgets.labels.pending') }}
             </p>
           </div>
@@ -278,13 +278,13 @@ function goBack() {
       >
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.budgets.labels.completed') }}
             </p>
-            <p class="text-2xl font-bold text-purple-600">
+            <p class="text-display text-default text-purple-600">
               {{ summary.completed_count }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ formatCurrency(summary.completed_amount) }}
             </p>
           </div>
@@ -295,7 +295,7 @@ function goBack() {
         <!-- By Status -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.budgets.labels.byStatus') }}
             </h3>
           </template>
@@ -318,10 +318,10 @@ function goBack() {
                 </UBadge>
               </div>
               <div class="text-right">
-                <p class="font-semibold text-gray-900 dark:text-white">
+                <p class="font-semibold text-default">
                   {{ item.count }}
                 </p>
-                <p class="text-xs text-gray-500">
+                <p class="text-caption text-subtle">
                   {{ formatCurrency(item.total_amount) }}
                 </p>
               </div>
@@ -329,7 +329,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -338,7 +338,7 @@ function goBack() {
         <!-- By Professional -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.budgets.features.byProfessional') }}
             </h3>
           </template>
@@ -358,19 +358,19 @@ function goBack() {
                   size="sm"
                 />
                 <div>
-                  <p class="text-gray-700 dark:text-gray-300">
+                  <p class="text-muted">
                     {{ prof.professional_name }}
                   </p>
-                  <p class="text-xs text-gray-500">
+                  <p class="text-caption text-subtle">
                     {{ formatPercent(prof.acceptance_rate) }} {{ t('reports.budgets.labels.acceptanceRate').toLowerCase() }}
                   </p>
                 </div>
               </div>
               <div class="text-right">
-                <p class="font-semibold text-gray-900 dark:text-white">
+                <p class="font-semibold text-default">
                   {{ prof.budget_count }}
                 </p>
-                <p class="text-xs text-gray-500">
+                <p class="text-caption text-subtle">
                   {{ formatCurrency(prof.total_amount) }}
                 </p>
               </div>
@@ -378,7 +378,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -387,7 +387,7 @@ function goBack() {
         <!-- By Treatment (Top 10) -->
         <UCard class="lg:col-span-2">
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.budgets.labels.topTreatments') }}
             </h3>
           </template>
@@ -396,38 +396,38 @@ function goBack() {
             v-if="byTreatment.length > 0"
             class="overflow-x-auto"
           >
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table class="min-w-full divide-y divide-[var(--color-border-subtle)]">
               <thead>
                 <tr>
-                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-left text-xs font-medium text-subtle uppercase">
                     {{ t('reports.budgets.labels.treatment') }}
                   </th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-right text-xs font-medium text-subtle uppercase">
                     {{ t('reports.budgets.labels.occurrences') }}
                   </th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-right text-xs font-medium text-subtle uppercase">
                     {{ t('reports.budgets.labels.quantity') }}
                   </th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-right text-xs font-medium text-subtle uppercase">
                     {{ t('invoice.total') }}
                   </th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody class="divide-y divide-[var(--color-border-subtle)]">
                 <tr
                   v-for="treatment in byTreatment"
                   :key="treatment.catalog_item_id || treatment.treatment_name"
                 >
-                  <td class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+                  <td class="px-3 py-2 text-sm text-muted">
                     {{ treatment.treatment_name }}
                   </td>
-                  <td class="px-3 py-2 text-sm text-right text-gray-700 dark:text-gray-300">
+                  <td class="px-3 py-2 text-sm text-right text-muted">
                     {{ treatment.occurrence_count }}
                   </td>
-                  <td class="px-3 py-2 text-sm text-right text-gray-700 dark:text-gray-300">
+                  <td class="px-3 py-2 text-sm text-right text-muted">
                     {{ treatment.total_quantity }}
                   </td>
-                  <td class="px-3 py-2 text-sm text-right font-medium text-gray-900 dark:text-white">
+                  <td class="px-3 py-2 text-sm text-right font-medium text-default">
                     {{ formatCurrency(treatment.total_amount) }}
                   </td>
                 </tr>
@@ -436,7 +436,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>

@@ -140,8 +140,8 @@ function formatFileSize(bytes: number): string {
     <div
       :class="[
         'border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer',
-        isDragging ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10' : 'border-gray-300 dark:border-gray-600',
-        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary-400'
+        isDragging ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]' : 'border-default ',
+        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-[var(--color-primary)]'
       ]"
       @dragenter="handleDragEnter"
       @dragleave="handleDragLeave"
@@ -161,12 +161,12 @@ function formatFileSize(bytes: number): string {
       <template v-if="!selectedFile">
         <UIcon
           name="i-lucide-upload-cloud"
-          class="w-12 h-12 mx-auto text-gray-400 mb-3"
+          class="w-12 h-12 mx-auto text-subtle mb-3"
         />
-        <p class="text-sm text-gray-600 dark:text-gray-400">
+        <p class="text-sm text-muted">
           {{ t('documents.dropzone.hint', 'Drag and drop a file here, or click to select') }}
         </p>
-        <p class="text-xs text-gray-500 mt-1">
+        <p class="text-caption text-subtle mt-1">
           PDF, JPG, PNG (max 10MB)
         </p>
       </template>
@@ -175,19 +175,19 @@ function formatFileSize(bytes: number): string {
         <div class="flex items-center justify-center gap-3">
           <UIcon
             name="i-lucide-file"
-            class="w-8 h-8 text-primary-500"
+            class="w-8 h-8 text-primary-accent"
           />
           <div class="text-left">
             <p class="text-sm font-medium">
               {{ selectedFile.name }}
             </p>
-            <p class="text-xs text-gray-500">
+            <p class="text-caption text-subtle">
               {{ formatFileSize(selectedFile.size) }}
             </p>
           </div>
           <UButton
             icon="i-lucide-x"
-            color="gray"
+            color="neutral"
             variant="ghost"
             size="xs"
             @click.stop="clearFile"
@@ -229,7 +229,7 @@ function formatFileSize(bytes: number): string {
         v-if="uploading && uploadProgress"
         class="space-y-1"
       >
-        <div class="flex justify-between text-xs text-gray-500">
+        <div class="flex justify-between text-caption text-subtle">
           <span>{{ t('documents.uploading', 'Uploading...') }}</span>
           <span>{{ uploadProgress.percentage }}%</span>
         </div>

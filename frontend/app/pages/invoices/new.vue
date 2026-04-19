@@ -210,7 +210,7 @@ function goBack() {
       >
         {{ backLabel }}
       </UButton>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <h1 class="text-display text-default">
         {{ t('invoice.new') }}
       </h1>
     </div>
@@ -221,7 +221,7 @@ function goBack() {
         <!-- Patient selection -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('invoice.patient') }}
             </h3>
           </template>
@@ -263,7 +263,7 @@ function goBack() {
           </div>
           <p
             v-if="selectedPatient && !selectedPatient.has_complete_billing_info"
-            class="text-xs text-amber-600 dark:text-amber-400 mt-1"
+            class="text-xs text-warning-accent mt-1"
           >
             {{ t('invoice.billingDataIncompleteHint') }}
             <NuxtLink
@@ -278,7 +278,7 @@ function goBack() {
         <!-- Billing data -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('invoice.billingData') }}
             </h3>
           </template>
@@ -323,7 +323,7 @@ function goBack() {
         <UCard>
           <template #header>
             <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('invoice.items') }}
               </h3>
               <UButton
@@ -339,11 +339,11 @@ function goBack() {
           <!-- Empty state -->
           <div
             v-if="items.length === 0"
-            class="text-center py-8 text-gray-500"
+            class="text-center py-8 text-subtle"
           >
             <UIcon
               name="i-lucide-file-text"
-              class="w-12 h-12 mx-auto mb-3 text-gray-300"
+              class="w-12 h-12 mx-auto mb-3 text-subtle"
             />
             <p>{{ t('budget.items.empty') }}</p>
             <UButton
@@ -359,7 +359,7 @@ function goBack() {
           <!-- Items list -->
           <div
             v-else
-            class="divide-y divide-gray-200 dark:divide-gray-800"
+            class="divide-y divide-[var(--color-border-subtle)]"
           >
             <div
               v-for="(item, index) in items"
@@ -368,35 +368,35 @@ function goBack() {
             >
               <div class="flex-1">
                 <div class="flex items-center gap-2">
-                  <span class="font-medium text-gray-900 dark:text-white">
+                  <span class="font-medium text-default">
                     {{ item.description }}
                   </span>
                   <span
                     v-if="item.tooth_number"
-                    class="text-sm text-gray-500"
+                    class="text-caption text-subtle"
                   >
                     #{{ item.tooth_number }}
                     <span v-if="item.surfaces?.length">({{ item.surfaces.join(', ') }})</span>
                   </span>
                 </div>
-                <p class="text-sm text-gray-500 mt-1">
+                <p class="text-caption text-subtle mt-1">
                   {{ item.quantity }} x {{ formatCurrency(item.unit_price) }}
                   <span
                     v-if="item.discount_value"
-                    class="text-green-600"
+                    class="text-success-accent"
                   >
                     - {{ item.discount_type === 'percentage' ? `${item.discount_value}%` : formatCurrency(item.discount_value) }}
                   </span>
                 </p>
                 <p
                   v-if="item.internal_code"
-                  class="text-xs text-gray-400 mt-1"
+                  class="text-xs text-subtle mt-1"
                 >
                   {{ item.internal_code }}
                 </p>
               </div>
               <div class="text-right">
-                <p class="font-semibold text-gray-900 dark:text-white">
+                <p class="font-semibold text-default">
                   {{ formatCurrency(getItemTotal(item)) }}
                 </p>
               </div>
@@ -414,7 +414,7 @@ function goBack() {
         <!-- Notes -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('invoice.notes') }}
             </h3>
           </template>
@@ -443,23 +443,23 @@ function goBack() {
       <div class="space-y-6">
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('invoice.summary') }}
             </h3>
           </template>
 
           <div class="space-y-3">
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('invoice.subtotal') }}</span>
+              <span class="text-subtle">{{ t('invoice.subtotal') }}</span>
               <span class="font-medium">{{ formatCurrency(totals.subtotal) }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-500">{{ t('invoice.tax') }}</span>
+              <span class="text-subtle">{{ t('invoice.tax') }}</span>
               <span class="font-medium">{{ formatCurrency(totals.totalTax) }}</span>
             </div>
-            <div class="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-              <span class="font-semibold text-gray-900 dark:text-white">{{ t('invoice.total') }}</span>
-              <span class="font-bold text-lg text-gray-900 dark:text-white">
+            <div class="flex justify-between pt-3 border-t border-default">
+              <span class="font-semibold text-default">{{ t('invoice.total') }}</span>
+              <span class="font-bold text-lg text-default">
                 {{ formatCurrency(totals.total) }}
               </span>
             </div>

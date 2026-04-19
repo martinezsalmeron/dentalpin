@@ -1,29 +1,17 @@
 <script setup lang="ts">
 import type { Patient, PatientCreate, PaginatedResponse, ApiResponse } from '~/types'
+import { PATIENT_STATUS_ROLE, type PatientStatus } from '~/config/severity'
 
 const { t } = useI18n()
 const api = useApi()
 const toast = useToast()
 const router = useRouter()
 
-// Search and pagination state
 const searchQuery = ref('')
+const debouncedSearch = ref('')
 const currentPage = ref(1)
 const pageSize = 20
 
-// Debounced search
-const debouncedSearch = ref('')
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
-
-watch(searchQuery, (val) => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    debouncedSearch.value = val
-    currentPage.value = 1
-  }, 300)
-})
-
-// Fetch patients
 const { data: patientsData, status, refresh } = await useAsyncData(
   'patients:list',
   async () => {
@@ -31,11 +19,7 @@ const { data: patientsData, status, refresh } = await useAsyncData(
       page: String(currentPage.value),
       page_size: String(pageSize)
     })
-
-    if (debouncedSearch.value) {
-      params.append('search', debouncedSearch.value)
-    }
-
+    if (debouncedSearch.value) params.append('search', debouncedSearch.value)
     try {
       return await api.get<PaginatedResponse<Patient>>(
         `/api/v1/clinical/patients?${params.toString()}`
@@ -53,7 +37,12 @@ const patients = computed(() => patientsData.value?.data || [])
 const totalPatients = computed(() => patientsData.value?.total || 0)
 const totalPages = computed(() => Math.ceil(totalPatients.value / pageSize))
 
-// Modal state
+function onSearchDebounced(val: string) {
+  debouncedSearch.value = val
+  currentPage.value = 1
+}
+
+// Create patient modal
 const isCreateModalOpen = ref(false)
 const isSubmitting = ref(false)
 const newPatient = reactive<PatientCreate>({
@@ -66,17 +55,18 @@ const newPatient = reactive<PatientCreate>({
 })
 
 function resetForm() {
-  newPatient.first_name = ''
-  newPatient.last_name = ''
-  newPatient.phone = ''
-  newPatient.email = ''
-  newPatient.date_of_birth = ''
-  newPatient.notes = ''
+  Object.assign(newPatient, {
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    date_of_birth: '',
+    notes: ''
+  })
 }
 
 async function createPatient() {
   isSubmitting.value = true
-
   try {
     const response = await api.post<ApiResponse<Patient>>(
       '/api/v1/clinical/patients',
@@ -89,22 +79,17 @@ async function createPatient() {
         notes: newPatient.notes || null
       }
     )
-
     toast.add({
       title: t('common.success'),
       description: t('patients.created'),
       color: 'success'
     })
-
     isCreateModalOpen.value = false
     resetForm()
     await refresh()
-
-    // Navigate to patient detail
     await router.push(`/patients/${response.data.id}`)
   } catch (error: unknown) {
     const fetchError = error as { statusCode?: number, data?: { message?: string } }
-
     toast.add({
       title: t('common.error'),
       description: fetchError.data?.message || t('common.serverError'),
@@ -114,56 +99,33 @@ async function createPatient() {
     isSubmitting.value = false
   }
 }
-
-function goToPatient(patient: Patient) {
-  router.push(`/patients/${patient.id}`)
-}
-
-// Status badge color
-type BadgeColor = 'success' | 'warning' | 'neutral' | 'error' | 'info' | 'primary' | 'secondary'
-
-function getStatusColor(status: string): BadgeColor {
-  switch (status) {
-    case 'active':
-      return 'success'
-    case 'inactive':
-      return 'warning'
-    case 'archived':
-      return 'neutral'
-    default:
-      return 'neutral'
-  }
-}
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Page header -->
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-        {{ t('patients.title') }}
-      </h1>
-      <UButton
-        icon="i-lucide-plus"
-        @click="isCreateModalOpen = true"
-      >
-        {{ t('patients.create') }}
-      </UButton>
-    </div>
+  <div>
+    <PageHeader :title="t('patients.title')">
+      <template #actions>
+        <UButton
+          color="primary"
+          variant="solid"
+          icon="i-lucide-plus"
+          @click="isCreateModalOpen = true"
+        >
+          {{ t('patients.create') }}
+        </UButton>
+      </template>
+    </PageHeader>
 
     <!-- Search -->
-    <div class="flex gap-4">
-      <UInput
+    <div class="mb-4">
+      <SearchBar
         v-model="searchQuery"
         :placeholder="t('patients.searchPlaceholder')"
-        icon="i-lucide-search"
-        class="max-w-sm"
+        @update:debounced="onSearchDebounced"
       />
     </div>
 
-    <!-- Patients table -->
     <UCard>
-      <!-- Loading state -->
       <div
         v-if="status === 'pending'"
         class="space-y-3"
@@ -175,101 +137,63 @@ function getStatusColor(status: string): BadgeColor {
         />
       </div>
 
-      <!-- Empty state -->
-      <div
+      <EmptyState
         v-else-if="patients.length === 0"
-        class="text-center py-12"
+        icon="i-lucide-users"
+        :title="debouncedSearch ? t('patients.noResults') : t('patients.empty')"
+        :description="!debouncedSearch ? t('dashboard.welcomeMessage') : undefined"
       >
-        <UIcon
-          name="i-lucide-users"
-          class="w-12 h-12 text-gray-400 mx-auto mb-4"
-        />
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-          {{ debouncedSearch ? t('patients.noResults') : t('patients.empty') }}
-        </h3>
-        <p
+        <template
           v-if="!debouncedSearch"
-          class="text-gray-500 dark:text-gray-400 mb-6"
+          #actions
         >
-          {{ t('dashboard.welcomeMessage') }}
-        </p>
-        <UButton
-          v-if="!debouncedSearch"
-          icon="i-lucide-plus"
-          @click="isCreateModalOpen = true"
-        >
-          {{ t('patients.emptyAction') }}
-        </UButton>
-      </div>
+          <UButton
+            color="primary"
+            variant="solid"
+            icon="i-lucide-plus"
+            @click="isCreateModalOpen = true"
+          >
+            {{ t('patients.emptyAction') }}
+          </UButton>
+        </template>
+      </EmptyState>
 
-      <!-- Patient list -->
       <div
         v-else
-        class="divide-y divide-gray-200 dark:divide-gray-800"
+        class="divide-y divide-[var(--color-border-subtle)]"
       >
-        <div
+        <ListRow
           v-for="patient in patients"
           :key="patient.id"
-          class="flex items-center py-4 px-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-lg -mx-2"
-          @click="goToPatient(patient)"
+          :to="`/patients/${patient.id}`"
         >
-          <div class="flex items-center gap-3 flex-1">
+          <template #leading>
             <UAvatar
               :alt="patient.first_name"
               size="sm"
             />
-            <div class="min-w-0 flex-1">
-              <p class="font-medium text-gray-900 dark:text-white truncate">
-                {{ patient.last_name }}, {{ patient.first_name }}
-              </p>
-              <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                {{ patient.phone || patient.email || '-' }}
-              </p>
-            </div>
-          </div>
-          <UBadge
-            :color="getStatusColor(patient.status)"
-            variant="subtle"
-            class="mr-4"
-          >
-            {{ t(`patients.status.${patient.status}`) }}
-          </UBadge>
-          <UIcon
-            name="i-lucide-chevron-right"
-            class="w-5 h-5 text-gray-400"
-          />
-        </div>
+          </template>
+          <template #title>
+            {{ patient.last_name }}, {{ patient.first_name }}
+          </template>
+          <template #subtitle>
+            {{ patient.phone || patient.email || '—' }}
+          </template>
+          <template #meta>
+            <StatusBadge
+              :role="PATIENT_STATUS_ROLE[patient.status as PatientStatus] || 'neutral'"
+              :label="t(`patients.status.${patient.status}`)"
+            />
+          </template>
+        </ListRow>
       </div>
 
-      <!-- Pagination -->
-      <div
-        v-if="totalPages > 1"
-        class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800"
-      >
-        <span class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('common.page', { current: currentPage, total: totalPages }) }}
-        </span>
-        <div class="flex gap-2">
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            :disabled="currentPage <= 1"
-            @click="currentPage--"
-          >
-            {{ t('common.previous') }}
-          </UButton>
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            :disabled="currentPage >= totalPages"
-            @click="currentPage++"
-          >
-            {{ t('common.next') }}
-          </UButton>
-        </div>
-      </div>
+      <PaginationBar
+        v-model:page="currentPage"
+        :total-pages="totalPages"
+        :total="totalPatients"
+        :page-size="pageSize"
+      />
     </UCard>
 
     <!-- Create patient modal -->
@@ -278,13 +202,14 @@ function getStatusColor(status: string): BadgeColor {
         <UCard>
           <template #header>
             <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 class="text-h1 text-default">
                 {{ t('patients.create') }}
               </h2>
               <UButton
                 variant="ghost"
                 color="neutral"
                 icon="i-lucide-x"
+                :aria-label="t('common.close', 'Cerrar')"
                 @click="isCreateModalOpen = false"
               />
             </div>
@@ -305,7 +230,6 @@ function getStatusColor(status: string): BadgeColor {
                   required
                 />
               </UFormField>
-
               <UFormField
                 :label="t('patients.lastName')"
                 required
@@ -326,7 +250,6 @@ function getStatusColor(status: string): BadgeColor {
                   type="tel"
                 />
               </UFormField>
-
               <UFormField :label="t('patients.email')">
                 <UInput
                   v-model="newPatient.email"
@@ -362,6 +285,8 @@ function getStatusColor(status: string): BadgeColor {
                 {{ t('common.cancel') }}
               </UButton>
               <UButton
+                color="primary"
+                variant="solid"
                 :loading="isSubmitting"
                 :disabled="!newPatient.first_name || !newPatient.last_name"
                 @click="createPatient"

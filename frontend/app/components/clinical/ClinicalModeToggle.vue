@@ -1,14 +1,8 @@
 <script setup lang="ts">
 /**
- * ClinicalModeToggle - Toggle between clinical tab modes
- *
- * Four modes ordered chronologically:
- * - history: View past odontogram states (read-only)
- * - diagnosis: Record current conditions
- * - plans: Create and manage treatment plans
- * - appointments: View and manage patient appointments
+ * ClinicalModeToggle — segmented control over clinical tab modes.
+ * Chronological order: history → diagnosis → plans → appointments.
  */
-
 export type ClinicalMode = 'history' | 'diagnosis' | 'plans' | 'appointments'
 
 defineProps<{
@@ -21,30 +15,18 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const modes: Array<{ value: ClinicalMode, labelKey: string, icon: string }> = [
-  { value: 'history', labelKey: 'clinical.modes.history', icon: 'i-lucide-history' },
-  { value: 'diagnosis', labelKey: 'clinical.modes.diagnosis', icon: 'i-lucide-stethoscope' },
-  { value: 'plans', labelKey: 'clinical.modes.plans', icon: 'i-lucide-clipboard-list' },
-  { value: 'appointments', labelKey: 'clinical.modes.appointments', icon: 'i-lucide-calendar' }
-]
-
-function selectMode(mode: ClinicalMode) {
-  emit('update:modelValue', mode)
-}
+const options = computed(() => [
+  { value: 'history', label: t('clinical.modes.history'), icon: 'i-lucide-history' },
+  { value: 'diagnosis', label: t('clinical.modes.diagnosis'), icon: 'i-lucide-stethoscope' },
+  { value: 'plans', label: t('clinical.modes.plans'), icon: 'i-lucide-clipboard-list' },
+  { value: 'appointments', label: t('clinical.modes.appointments'), icon: 'i-lucide-calendar' }
+])
 </script>
 
 <template>
-  <div class="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-    <UButton
-      v-for="mode in modes"
-      :key="mode.value"
-      :variant="modelValue === mode.value ? 'solid' : 'ghost'"
-      :color="modelValue === mode.value ? 'primary' : 'gray'"
-      :icon="mode.icon"
-      size="sm"
-      @click="selectMode(mode.value)"
-    >
-      <span class="hidden sm:inline">{{ t(mode.labelKey) }}</span>
-    </UButton>
-  </div>
+  <SegmentedControl
+    :model-value="modelValue"
+    :options="options"
+    @update:model-value="(v) => emit('update:modelValue', v as ClinicalMode)"
+  />
 </template>

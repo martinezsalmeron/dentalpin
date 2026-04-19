@@ -116,9 +116,9 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
       >
         <UIcon
           name="i-lucide-file-text"
-          class="w-12 h-12 text-gray-400 mx-auto mb-3"
+          class="w-12 h-12 text-subtle mx-auto mb-3"
         />
-        <p class="text-gray-500 dark:text-gray-400 mb-4">
+        <p class="text-muted mb-4">
           {{ t('patientDetail.noBudgets') }}
         </p>
         <UButton
@@ -132,7 +132,7 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
 
       <!-- Budget list -->
       <UCard v-else>
-        <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+        <ul class="divide-y divide-[var(--color-border-subtle)]">
           <li
             v-for="budget in budgets"
             :key="budget.id"
@@ -140,11 +140,11 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
           >
             <NuxtLink
               :to="`/budgets/${budget.id}?from=patient&patientId=${patientId}`"
-              class="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 px-4 py-2 rounded-lg transition-colors"
+              class="flex items-center justify-between hover:bg-surface-muted -mx-4 px-4 py-2 rounded-lg transition-colors"
             >
               <div>
                 <div class="flex items-center gap-3">
-                  <span class="font-medium text-gray-900 dark:text-white">
+                  <span class="font-medium text-default">
                     {{ budget.budget_number }}
                   </span>
                   <UBadge
@@ -157,12 +157,12 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
                   <BudgetStatusBadge :status="budget.status" />
                 </div>
                 <div class="flex items-center gap-2 mt-1">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">
+                  <span class="text-sm text-muted">
                     {{ formatDate(budget.created_at) }}
                   </span>
                   <span
                     v-if="budget.treatment_plan_id"
-                    class="text-xs text-gray-400 flex items-center gap-1"
+                    class="text-caption text-subtle flex items-center gap-1"
                   >
                     <UIcon
                       name="i-lucide-link"
@@ -173,12 +173,12 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
                 </div>
               </div>
               <div class="flex items-center gap-4">
-                <span class="font-semibold text-gray-900 dark:text-white">
+                <span class="font-semibold text-default">
                   {{ formatCurrency(budget.total, budget.currency) }}
                 </span>
                 <UIcon
                   name="i-lucide-chevron-right"
-                  class="w-5 h-5 text-gray-400"
+                  class="w-5 h-5 text-subtle"
                 />
               </div>
             </NuxtLink>
@@ -186,10 +186,10 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
         </ul>
 
         <!-- View all link -->
-        <div class="pt-3 border-t border-gray-200 dark:border-gray-700 mt-3">
+        <div class="pt-3 border-t border-default mt-3">
           <NuxtLink
             :to="`/budgets?patient_id=${patientId}`"
-            class="text-sm text-primary-500 hover:text-primary-600 font-medium inline-flex items-center gap-1"
+            class="text-caption text-primary-accent hover:underline inline-flex items-center gap-1"
           >
             {{ t('patientDetail.viewAllBudgets') }}
             <UIcon

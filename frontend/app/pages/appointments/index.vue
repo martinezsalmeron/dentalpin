@@ -530,70 +530,45 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col space-y-4">
-    <!-- Page header -->
-    <div class="flex items-center justify-between flex-shrink-0">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-        {{ t('appointments.title') }}
-      </h1>
-      <div class="flex items-center gap-3">
-        <!-- View toggle -->
-        <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-          <UButton
-            :variant="viewMode === 'week' ? 'solid' : 'ghost'"
-            :color="viewMode === 'week' ? 'primary' : 'neutral'"
-            size="sm"
-            icon="i-lucide-calendar-days"
-            @click="viewMode = 'week'"
-          >
-            {{ t('appointments.weeklyView') }}
-          </UButton>
-          <UButton
-            :variant="viewMode === 'day' ? 'solid' : 'ghost'"
-            :color="viewMode === 'day' ? 'primary' : 'neutral'"
-            size="sm"
-            icon="i-lucide-calendar"
-            @click="viewMode = 'day'"
-          >
-            {{ t('appointments.dailyView') }}
-          </UButton>
-        </div>
+  <div class="h-full flex flex-col">
+    <PageHeader :title="t('appointments.title')">
+      <template #actions>
+        <SegmentedControl
+          :model-value="viewMode"
+          :options="[
+            { value: 'week', label: t('appointments.weeklyView'), icon: 'i-lucide-calendar-days' },
+            { value: 'day', label: t('appointments.dailyView'), icon: 'i-lucide-calendar' }
+          ]"
+          @update:model-value="(v) => (viewMode = v as 'week' | 'day')"
+        />
         <UButton
+          color="primary"
+          variant="solid"
           icon="i-lucide-plus"
           @click="openCreateModal"
         >
           {{ t('appointments.create') }}
         </UButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-4 flex-shrink-0">
-      <!-- Cabinet filters -->
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4 shrink-0">
       <div
         v-if="cabinetFilterOptions.length > 0"
-        class="flex items-center gap-2"
+        class="flex items-center gap-2 flex-wrap"
       >
-        <span class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('appointments.cabinet') }}:
+        <span class="text-caption text-subtle">
+          {{ t('appointments.cabinet') }}
         </span>
-        <div class="flex items-center gap-2">
-          <button
-            v-for="cabinet in cabinetFilterOptions"
-            :key="cabinet.value"
-            class="flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium transition-all"
-            :class="selectedCabinets.includes(cabinet.value)
-              ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500'
-              : 'opacity-40 hover:opacity-70'"
-            @click="toggleCabinet(cabinet.value)"
-          >
-            <span
-              class="w-3 h-3 rounded-full"
-              :style="{ backgroundColor: cabinet.color }"
-            />
-            {{ cabinet.label }}
-          </button>
-        </div>
+        <FilterChip
+          v-for="cabinet in cabinetFilterOptions"
+          :key="cabinet.value"
+          :label="cabinet.label"
+          :color="cabinet.color"
+          :selected="selectedCabinets.includes(cabinet.value)"
+          @toggle="toggleCabinet(cabinet.value)"
+        />
         <UButton
           v-if="selectedCabinets.length < cabinetFilterOptions.length"
           variant="ghost"
@@ -605,33 +580,22 @@ onMounted(async () => {
         </UButton>
       </div>
 
-      <!-- Professional filters -->
       <div
         v-if="professionalFilterOptions.length > 0"
-        class="flex items-center gap-2"
+        class="flex items-center gap-2 flex-wrap"
       >
-        <span class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('appointments.professional') }}:
+        <span class="text-caption text-subtle">
+          {{ t('appointments.professional') }}
         </span>
-        <div class="flex items-center gap-2">
-          <button
-            v-for="prof in professionalFilterOptions"
-            :key="prof.value"
-            class="flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium transition-all"
-            :class="selectedProfessionals.includes(prof.value)
-              ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500'
-              : 'opacity-40 hover:opacity-70'"
-            @click="toggleProfessional(prof.value)"
-          >
-            <span
-              class="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
-              :style="{ backgroundColor: prof.color }"
-            >
-              {{ prof.label.split(' ').map((n: string) => n.charAt(0)).join('').substring(0, 2).toUpperCase() }}
-            </span>
-            {{ prof.label }}
-          </button>
-        </div>
+        <FilterChip
+          v-for="prof in professionalFilterOptions"
+          :key="prof.value"
+          :label="prof.label"
+          :color="prof.color"
+          :initials="prof.label.split(' ').map((n: string) => n.charAt(0)).join('').substring(0, 2).toUpperCase()"
+          :selected="selectedProfessionals.includes(prof.value)"
+          @toggle="toggleProfessional(prof.value)"
+        />
         <UButton
           v-if="selectedProfessionals.length < professionalFilterOptions.length"
           variant="ghost"

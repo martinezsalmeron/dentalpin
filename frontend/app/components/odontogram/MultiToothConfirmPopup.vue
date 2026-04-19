@@ -97,7 +97,7 @@ function handleConfirm() {
   >
     <template #content>
       <div class="p-6 space-y-4 max-w-md">
-        <h3 class="text-lg font-semibold">
+        <h3 class="text-h1 text-default">
           {{ t(config.labelKey) }}
         </h3>
 

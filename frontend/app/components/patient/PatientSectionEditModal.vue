@@ -230,7 +230,7 @@ const canSave = computed(() => {
       <UCard :ui="{ root: 'w-full max-w-2xl', body: 'overflow-visible' }">
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-h1 text-default">
               {{ modalTitle }}
             </h2>
             <UButton
@@ -238,6 +238,7 @@ const canSave = computed(() => {
               color="neutral"
               icon="i-lucide-x"
               size="sm"
+              :aria-label="t('common.close', 'Cerrar')"
               @click="closeModal"
             />
           </div>
@@ -362,7 +363,7 @@ const canSave = computed(() => {
             </UFormField>
           </div>
           <div class="mt-4">
-            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            <h4 class="text-sm font-medium text-muted mb-3">
               {{ t('patients.billingAddress') }}
             </h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -82,15 +82,15 @@ function getCategoryName(item: TreatmentCatalogItem): string {
     <!-- Selected item display -->
     <div
       v-if="selectedItem"
-      class="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
+      class="p-3 bg-[var(--color-primary-soft)] rounded-lg"
     >
       <div class="flex items-center justify-between">
         <div class="min-w-0 flex-1">
-          <p class="font-medium text-gray-900 dark:text-white">
+          <p class="font-medium text-default">
             {{ getItemName(selectedItem) }}
           </p>
           <div class="flex items-center gap-2 mt-1">
-            <span class="text-xs text-gray-500">{{ selectedItem.internal_code }}</span>
+            <span class="text-caption text-subtle">{{ selectedItem.internal_code }}</span>
             <UBadge
               v-if="getCategoryName(selectedItem)"
               size="xs"
@@ -102,7 +102,7 @@ function getCategoryName(item: TreatmentCatalogItem): string {
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-lg font-semibold text-primary-600">
+          <span class="text-h1 text-default text-primary-accent">
             {{ formatPrice(selectedItem.default_price, currency || 'EUR') }}
           </span>
           <UButton
@@ -131,12 +131,12 @@ function getCategoryName(item: TreatmentCatalogItem): string {
     >
       <template #item="{ item }">
         <div class="space-y-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+          <p class="text-sm font-medium text-default line-clamp-1">
             {{ getItemName(item) }}
           </p>
           <div class="flex items-center justify-between">
-            <span class="text-xs text-gray-500">{{ item.internal_code }}</span>
-            <span class="text-sm font-semibold text-primary-600">
+            <span class="text-caption text-subtle">{{ item.internal_code }}</span>
+            <span class="text-sm font-semibold text-primary-accent">
               {{ formatPrice(item.default_price, currency || 'EUR') }}
             </span>
           </div>

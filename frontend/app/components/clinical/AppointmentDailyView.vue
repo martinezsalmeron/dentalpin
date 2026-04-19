@@ -178,21 +178,33 @@ function getAppointmentProfessionalIndex(appointment: Appointment): number {
   return props.professionals.findIndex(p => p.id === appointment.professional_id)
 }
 
-// Status styling
+// Tint + rail for an appointment block (DESIGN §7.3): fill alpha 0.12, left border 3 px.
+function getProfessionalFill(hex: string): Record<string, string> {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return {
+    backgroundColor: `rgba(${r}, ${g}, ${b}, 0.12)`,
+    borderLeftColor: hex,
+    borderLeftWidth: '3px'
+  }
+}
+
+// Status styling — fill tinted from professional colour (inline), status modulates text/opacity.
 function getStatusClass(status: Appointment['status']): string {
-  const baseClass = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700'
+  const baseClass = 'bg-surface ring-1 ring-[var(--color-border)]'
   switch (status) {
     case 'scheduled':
     case 'confirmed':
-      return `${baseClass} text-gray-800 dark:text-gray-200`
+      return `${baseClass} text-default`
     case 'in_progress':
-      return `${baseClass} text-gray-800 dark:text-gray-200 animate-pulse`
+      return `${baseClass} text-default`
     case 'completed':
-      return `${baseClass} text-gray-500 dark:text-gray-400 opacity-60`
+      return `${baseClass} text-muted opacity-70`
     case 'cancelled':
-      return `${baseClass} text-gray-500 dark:text-gray-400 line-through opacity-50`
+      return `${baseClass} text-subtle line-through opacity-50`
     case 'no_show':
-      return `${baseClass} text-gray-500 dark:text-gray-400 opacity-60`
+      return `${baseClass} text-subtle opacity-60`
     default:
       return baseClass
   }
@@ -521,8 +533,8 @@ const allAppointmentsWithProfIndex = computed(() => {
       </div>
 
       <h2
-        class="text-lg font-semibold capitalize"
-        :class="isToday ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'"
+        class="text-h2 capitalize"
+        :class="isToday ? 'text-[var(--color-primary-soft-text)]' : 'text-default'"
       >
         {{ formattedDate }}
       </h2>
@@ -535,14 +547,15 @@ const allAppointmentsWithProfIndex = computed(() => {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-primary-500"
+        class="w-8 h-8 animate-spin"
+        :style="{ color: 'var(--color-primary)' }"
       />
     </div>
 
     <!-- No professionals message -->
     <div
       v-else-if="professionals.length === 0"
-      class="flex items-center justify-center py-12 text-gray-500"
+      class="flex items-center justify-center py-12 text-muted"
     >
       {{ t('appointments.noProfessionals') }}
     </div>
@@ -551,7 +564,7 @@ const allAppointmentsWithProfIndex = computed(() => {
     <div
       v-else
       ref="calendarRef"
-      class="flex-1 overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg"
+      class="flex-1 overflow-auto ring-1 ring-[var(--color-border)] rounded-token-lg"
     >
       <div
         class="min-w-[600px]"
@@ -559,26 +572,23 @@ const allAppointmentsWithProfIndex = computed(() => {
       >
         <!-- Professional headers -->
         <div
-          class="grid border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 sticky top-0 z-10"
+          class="grid border-b border-default bg-surface-muted sticky top-0 z-10"
           :style="{ gridTemplateColumns: `80px repeat(${professionals.length}, 1fr)` }"
         >
-          <!-- Time column header -->
-          <div class="p-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700" />
-
-          <!-- Professional headers -->
+          <div class="p-2 text-center text-caption text-subtle border-r border-subtle" />
           <div
             v-for="prof in professionals"
             :key="prof.id"
-            class="p-2 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0"
+            class="p-2 text-center border-r border-subtle last:border-r-0"
           >
             <div class="flex items-center justify-center gap-2">
               <span
-                class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                class="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold"
                 :style="{ backgroundColor: prof.color }"
               >
                 {{ prof.first_name.charAt(0) }}{{ prof.last_name.charAt(0) }}
               </span>
-              <span class="text-sm font-medium text-gray-900 dark:text-white">
+              <span class="text-ui text-default">
                 {{ prof.first_name }} {{ prof.last_name }}
               </span>
             </div>
@@ -587,30 +597,26 @@ const allAppointmentsWithProfIndex = computed(() => {
 
         <!-- Time rows -->
         <div class="relative">
-          <!-- Grid -->
           <div
             v-for="(slot, slotIndex) in timeSlots"
             :key="slot"
-            class="grid border-b border-gray-100 dark:border-gray-800"
-            :class="{ 'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0 }"
+            class="grid border-b border-[var(--color-border-subtle)]"
+            :class="{ 'border-[var(--color-border)]': slotIndex % SLOTS_PER_HOUR === 0 }"
             :style="{ gridTemplateColumns: `80px repeat(${professionals.length}, 1fr)` }"
           >
-            <!-- Time label -->
-            <div class="p-1 text-right border-r border-gray-200 dark:border-gray-700 h-6 flex items-center justify-end pr-2">
+            <div class="p-1 text-right border-r border-subtle h-6 flex items-center justify-end pr-2">
               <span
                 v-if="slotIndex % SLOTS_PER_HOUR === 0"
-                class="text-xs text-gray-500 dark:text-gray-400"
+                class="text-caption text-subtle tnum"
               >
                 {{ slot }}
               </span>
             </div>
-
-            <!-- Professional columns -->
             <div
               v-for="(prof, profIdx) in professionals"
               :key="`${prof.id}-${slot}`"
-              class="h-6 border-r border-gray-100 dark:border-gray-800 last:border-r-0 cursor-cell hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative"
-              :class="{ 'border-gray-200 dark:border-gray-700': slotIndex % SLOTS_PER_HOUR === 0 }"
+              class="h-6 border-r border-[var(--color-border-subtle)] last:border-r-0 cursor-cell hover:bg-[var(--color-primary-soft)]/50 transition-colors relative"
+              :class="{ 'border-[var(--color-border)]': slotIndex % SLOTS_PER_HOUR === 0 }"
               @mousedown="startCreateDrag(prof.id, slot, profIdx, $event)"
             />
           </div>
@@ -621,19 +627,18 @@ const allAppointmentsWithProfIndex = computed(() => {
               class="grid h-full"
               :style="{ gridTemplateColumns: `80px repeat(${professionals.length}, 1fr)` }"
             >
-              <!-- Time column spacer -->
-              <div class="border-r border-gray-200 dark:border-gray-700" />
+              <div class="border-r border-subtle" />
 
               <!-- Professional columns -->
               <div
                 v-for="(prof, profIndex) in professionals"
                 :key="`appointments-${prof.id}`"
-                class="relative border-r border-gray-100 dark:border-gray-800 last:border-r-0"
+                class="relative border-r border-subtle last:border-r-0"
               >
                 <!-- Ghost block during drag-to-create -->
                 <div
                   v-if="createDragState && createDragState.professionalIndex === profIndex"
-                  class="absolute left-1 right-1 rounded border-2 border-dashed border-primary-500 bg-primary-100/60 dark:bg-primary-900/30 pointer-events-none z-40 flex items-start p-1"
+                  class="absolute left-1 right-1 rounded border-2 border-dashed border-[var(--color-primary)] bg-[var(--color-primary-soft)] pointer-events-none z-40 flex items-start p-1"
                   :style="{
                     top: `${createDragState.startSlot * SLOT_HEIGHT}px`,
                     height: `${Math.max(1, createDragState.currentSlot - createDragState.startSlot + 1) * SLOT_HEIGHT}px`,
@@ -657,7 +662,11 @@ const allAppointmentsWithProfIndex = computed(() => {
                     dragState?.appointmentId === appointment.id ? 'cursor-grabbing ring-2 ring-primary-500' : 'cursor-grab hover:ring-2 hover:ring-primary-500',
                     highlightedAppointmentId === appointment.id ? 'ring-4 ring-warning-500 animate-pulse z-50' : ''
                   ]"
-                  :style="{ ...getAppointmentStyle(appointment), ...getOverlapStyle(appointment), borderLeftColor: prof.color }"
+                  :style="{
+                    ...getAppointmentStyle(appointment),
+                    ...getOverlapStyle(appointment),
+                    ...getProfessionalFill(prof.color)
+                  }"
                   @click="handleAppointmentClick(appointment, $event)"
                   @mousedown="startDrag(appointment, $event, 'move')"
                 >

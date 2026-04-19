@@ -49,7 +49,7 @@ function formatToothInfo(treatment: ToothTreatmentView): string {
     <!-- No changes -->
     <div
       v-if="changes.length === 0"
-      class="text-center py-4 text-gray-500 dark:text-gray-400"
+      class="text-center py-4 text-muted"
     >
       <UIcon
         name="i-lucide-calendar-x"
@@ -60,10 +60,10 @@ function formatToothInfo(treatment: ToothTreatmentView): string {
 
     <!-- Treatments added -->
     <div v-if="groupedChanges.added.length > 0">
-      <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+      <h4 class="text-caption text-muted mb-2 flex items-center gap-2">
         <UIcon
           name="i-lucide-plus-circle"
-          class="w-4 h-4 text-blue-500"
+          class="w-4 h-4 text-info-accent"
         />
         {{ t('odontogram.changeHistory.treatmentAdded') }}
       </h4>
@@ -71,16 +71,16 @@ function formatToothInfo(treatment: ToothTreatmentView): string {
         <li
           v-for="change in groupedChanges.added"
           :key="change.id"
-          class="flex items-center gap-3 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800"
+          class="alert-surface-info rounded-token-md px-3 py-2 flex items-center gap-3"
         >
           <div class="flex-1">
             <span class="font-medium">{{ getTreatmentLabel(change) }}</span>
-            <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">
+            <span class="text-sm text-muted ml-2">
               {{ formatToothInfo(change) }}
             </span>
           </div>
           <UBadge
-            :color="change.status === 'planned' ? 'red' : 'gray'"
+            :color="change.status === 'planned' ? 'error' : 'neutral'"
             variant="subtle"
             size="xs"
           >
@@ -92,10 +92,10 @@ function formatToothInfo(treatment: ToothTreatmentView): string {
 
     <!-- Treatments completed -->
     <div v-if="groupedChanges.completed.length > 0">
-      <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+      <h4 class="text-caption text-muted mb-2 flex items-center gap-2">
         <UIcon
           name="i-lucide-check-circle"
-          class="w-4 h-4 text-green-500"
+          class="w-4 h-4 text-success-accent"
         />
         {{ t('common.completed') }}
       </h4>
@@ -103,17 +103,17 @@ function formatToothInfo(treatment: ToothTreatmentView): string {
         <li
           v-for="change in groupedChanges.completed"
           :key="change.id"
-          class="flex items-center gap-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800"
+          class="alert-surface-success rounded-token-md px-3 py-2 flex items-center gap-3"
         >
           <div class="flex-1">
             <span class="font-medium">{{ getTreatmentLabel(change) }}</span>
-            <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">
+            <span class="text-caption text-muted ml-2">
               {{ formatToothInfo(change) }}
             </span>
           </div>
           <UIcon
             name="i-lucide-check"
-            class="w-4 h-4 text-green-500"
+            class="w-4 h-4 text-success-accent"
           />
         </li>
       </ul>

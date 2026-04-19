@@ -53,9 +53,9 @@ function formatCurrency(amount: number, currency = 'EUR') {
         <UIcon
           v-if="isActive"
           name="i-lucide-star"
-          class="w-4 h-4 text-amber-500 shrink-0"
+          class="w-4 h-4 text-warning-accent shrink-0"
         />
-        <h4 class="font-semibold text-sm text-gray-900 dark:text-white truncate">
+        <h4 class="font-semibold text-sm text-default truncate">
           {{ plan.title || plan.plan_number }}
         </h4>
       </div>
@@ -72,17 +72,17 @@ function formatCurrency(amount: number, currency = 'EUR') {
     <!-- Progress bar -->
     <div class="mb-3">
       <div class="flex justify-between items-center mb-1">
-        <span class="text-xs text-gray-500">
+        <span class="text-caption text-subtle">
           {{ completedCount }}/{{ totalCount }} {{ t('treatmentPlans.treatments') }}
         </span>
-        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+        <span class="text-xs font-medium text-muted">
           {{ progress }}%
         </span>
       </div>
-      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+      <div class="w-full bg-surface-sunken rounded-full h-1.5">
         <div
           class="h-1.5 rounded-full transition-all duration-300"
-          :class="isActive ? 'bg-primary-500' : 'bg-gray-400'"
+          :class="isActive ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-text-subtle)]'"
           :style="{ width: `${progress}%` }"
         />
       </div>
@@ -91,13 +91,13 @@ function formatCurrency(amount: number, currency = 'EUR') {
     <!-- Total amount (if available) -->
     <div
       v-if="plan.total !== undefined"
-      class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-3"
+      class="flex items-center gap-1 text-xs text-muted mb-3"
     >
       <UIcon
         name="i-lucide-banknote"
         class="w-3.5 h-3.5"
       />
-      <span class="font-medium text-gray-700 dark:text-gray-300">
+      <span class="font-medium text-muted">
         {{ formatCurrency(plan.total) }}
       </span>
     </div>
@@ -105,13 +105,13 @@ function formatCurrency(amount: number, currency = 'EUR') {
     <!-- Budget link (if exists) -->
     <div
       v-if="plan.budget"
-      class="flex items-center gap-2 text-xs mb-3 p-2 bg-gray-50 dark:bg-gray-800 rounded"
+      class="flex items-center gap-2 text-xs mb-3 p-2 bg-surface-muted rounded"
     >
       <UIcon
         name="i-lucide-file-text"
-        class="w-3.5 h-3.5 text-gray-400"
+        class="w-3.5 h-3.5 text-subtle"
       />
-      <span class="text-gray-600 dark:text-gray-400">
+      <span class="text-muted">
         {{ plan.budget.budget_number }}
       </span>
       <UBadge

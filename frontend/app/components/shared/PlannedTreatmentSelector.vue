@@ -139,7 +139,7 @@ const hasPendingTreatments = computed(() => {
     <!-- No patient selected message -->
     <div
       v-if="!patientId"
-      class="text-sm text-gray-500 dark:text-gray-400 text-center py-4"
+      class="text-sm text-muted text-center py-4"
     >
       {{ t('appointments.selectPatientFirst') }}
     </div>
@@ -151,18 +151,18 @@ const hasPendingTreatments = computed(() => {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-5 h-5 animate-spin text-gray-400"
+        class="w-5 h-5 animate-spin text-subtle"
       />
     </div>
 
     <!-- No pending treatments message -->
     <div
       v-else-if="!hasPendingTreatments && selectedItems.length === 0"
-      class="text-sm text-gray-500 dark:text-gray-400 text-center py-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+      class="text-sm text-muted text-center py-4 bg-surface-muted rounded-lg"
     >
       <UIcon
         name="i-lucide-clipboard-list"
-        class="w-8 h-8 mx-auto mb-2 text-gray-300"
+        class="w-8 h-8 mx-auto mb-2 text-subtle"
       />
       <p>{{ t('appointments.noPendingTreatments') }}</p>
       <p class="text-xs mt-1">
@@ -179,16 +179,16 @@ const hasPendingTreatments = computed(() => {
         <div
           v-for="item in selectedItems"
           :key="item.id"
-          class="flex items-center justify-between p-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
+          class="flex items-center justify-between p-2 bg-[var(--color-primary-soft)] rounded-lg"
         >
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <p class="text-sm font-medium text-default truncate">
               {{ getItemName(item) }}
             </p>
             <div class="flex items-center gap-2 flex-wrap">
               <span
                 v-if="item.catalog_item?.internal_code"
-                class="text-xs text-gray-500"
+                class="text-caption text-subtle"
               >
                 {{ item.catalog_item.internal_code }}
               </span>
@@ -213,7 +213,7 @@ const hasPendingTreatments = computed(() => {
           <div class="flex items-center gap-2">
             <span
               v-if="getItemPrice(item)"
-              class="text-sm font-semibold text-primary-600"
+              class="text-sm font-semibold text-primary-accent"
             >
               {{ formatPrice(getItemPrice(item), currency || 'EUR') }}
             </span>
@@ -245,10 +245,10 @@ const hasPendingTreatments = computed(() => {
       <!-- Selector when adding -->
       <div
         v-if="showSelector"
-        class="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+        class="border border-default rounded-lg p-3"
       >
         <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span class="text-sm font-medium text-muted">
             {{ t('appointments.selectPendingTreatment') }}
           </span>
           <UButton
@@ -274,18 +274,18 @@ const hasPendingTreatments = computed(() => {
             v-for="item in availableItems"
             :key="item.id"
             type="button"
-            class="text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+            class="text-left p-3 rounded-lg border border-default hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
             @click="handleSelect(item)"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+                <p class="text-sm font-medium text-default line-clamp-1">
                   {{ getItemName(item) }}
                 </p>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
                   <span
                     v-if="item.catalog_item?.internal_code"
-                    class="text-xs text-gray-500"
+                    class="text-caption text-subtle"
                   >
                     {{ item.catalog_item.internal_code }}
                   </span>
@@ -309,7 +309,7 @@ const hasPendingTreatments = computed(() => {
               </div>
               <span
                 v-if="getItemPrice(item)"
-                class="text-sm font-semibold text-primary-600 whitespace-nowrap"
+                class="text-sm font-semibold text-primary-accent whitespace-nowrap"
               >
                 {{ formatPrice(getItemPrice(item), currency || 'EUR') }}
               </span>
@@ -319,7 +319,7 @@ const hasPendingTreatments = computed(() => {
           <!-- Empty state -->
           <div
             v-if="availableItems.length === 0 && searchQuery.length >= 2"
-            class="text-sm text-gray-500 text-center py-4"
+            class="text-caption text-subtle text-center py-4"
           >
             {{ t('common.noResults') }}
           </div>

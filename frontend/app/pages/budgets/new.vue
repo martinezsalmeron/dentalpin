@@ -90,7 +90,7 @@ async function handleCreate() {
       >
         {{ backLabel }}
       </UButton>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <h1 class="text-display text-default">
         {{ t('budget.new') }}
       </h1>
     </div>
@@ -109,7 +109,7 @@ async function handleCreate() {
             v-model="selectedPatient"
             :placeholder="t('budget.selectPatient')"
           />
-          <p class="text-sm text-gray-500 mt-1">
+          <p class="text-caption text-subtle mt-1">
             {{ t('budget.selectPatientHint') }}
           </p>
         </UFormField>
@@ -131,7 +131,7 @@ async function handleCreate() {
               v-model="form.valid_until"
               type="date"
             />
-            <p class="text-xs text-gray-500 mt-1">
+            <p class="text-caption text-subtle mt-1">
               {{ t('budget.validUntilHint') }}
             </p>
           </UFormField>
@@ -155,7 +155,7 @@ async function handleCreate() {
         </UFormField>
 
         <!-- Actions -->
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex justify-end gap-3 pt-4 border-t border-default">
           <UButton
             variant="outline"
             color="neutral"

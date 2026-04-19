@@ -177,10 +177,10 @@ function goBack() {
           @click="goBack"
         />
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 class="text-display text-default">
             {{ t('reports.billing.title') }}
           </h1>
-          <p class="text-sm text-gray-500">
+          <p class="text-caption text-subtle">
             {{ t('reports.billing.description') }}
           </p>
         </div>
@@ -229,7 +229,7 @@ function goBack() {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="h-8 w-8 animate-spin text-primary-500"
+        class="h-8 w-8 animate-spin text-primary-accent"
       />
     </div>
 
@@ -241,13 +241,13 @@ function goBack() {
       >
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.billing.totalInvoiced') }}
             </p>
-            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+            <p class="text-display text-default">
               {{ formatCurrency(summary.total_invoiced) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ summary.invoice_count }} {{ t('reports.billing.invoices') }}
             </p>
           </div>
@@ -255,13 +255,13 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.billing.totalCollected') }}
             </p>
-            <p class="text-2xl font-bold text-green-600">
+            <p class="text-display text-default text-success-accent">
               {{ formatCurrency(summary.total_paid) }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ summary.paid_count }} {{ t('reports.billing.paid') }}
             </p>
           </div>
@@ -269,10 +269,10 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.billing.pending') }}
             </p>
-            <p class="text-2xl font-bold text-amber-600">
+            <p class="text-display text-default text-warning-accent">
               {{ formatCurrency(summary.total_pending) }}
             </p>
           </div>
@@ -280,16 +280,16 @@ function goBack() {
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-caption text-subtle">
               {{ t('reports.billing.overdue') }}
             </p>
             <p
-              class="text-2xl font-bold"
-              :class="summary.overdue_count > 0 ? 'text-red-600' : 'text-gray-900 dark:text-white'"
+              class="text-display text-default"
+              :class="summary.overdue_count > 0 ? 'text-danger-accent' : 'text-default'"
             >
               {{ summary.overdue_count }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-caption text-subtle">
               {{ t('reports.billing.invoices') }}
             </p>
           </div>
@@ -322,7 +322,7 @@ function goBack() {
         <!-- Payment Methods -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.billing.byPaymentMethod') }}
             </h3>
           </template>
@@ -339,17 +339,17 @@ function goBack() {
               <div class="flex items-center gap-2">
                 <UIcon
                   :name="getPaymentMethodIcon(pm.payment_method)"
-                  class="h-5 w-5 text-gray-400"
+                  class="h-5 w-5 text-subtle"
                 />
-                <span class="text-gray-700 dark:text-gray-300">
+                <span class="text-muted">
                   {{ getPaymentMethodLabel(pm.payment_method) }}
                 </span>
               </div>
               <div class="text-right">
-                <p class="font-semibold text-gray-900 dark:text-white">
+                <p class="font-semibold text-default">
                   {{ formatCurrency(pm.total_amount) }}
                 </p>
-                <p class="text-xs text-gray-500">
+                <p class="text-caption text-subtle">
                   {{ pm.payment_count }} {{ t('reports.billing.payments') }}
                 </p>
               </div>
@@ -357,7 +357,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -366,7 +366,7 @@ function goBack() {
         <!-- VAT Summary -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.billing.vatSummary') }}
             </h3>
           </template>
@@ -375,38 +375,38 @@ function goBack() {
             v-if="vatSummary.length > 0"
             class="overflow-x-auto"
           >
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table class="min-w-full divide-y divide-[var(--color-border-subtle)]">
               <thead>
                 <tr>
-                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-left text-xs font-medium text-subtle uppercase">
                     {{ t('reports.billing.vatType') }}
                   </th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-right text-xs font-medium text-subtle uppercase">
                     {{ t('reports.billing.base') }}
                   </th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-right text-xs font-medium text-subtle uppercase">
                     {{ t('reports.billing.tax') }}
                   </th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th class="px-3 py-2 text-right text-xs font-medium text-subtle uppercase">
                     {{ t('invoice.total') }}
                   </th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody class="divide-y divide-[var(--color-border-subtle)]">
                 <tr
                   v-for="vat in vatSummary"
                   :key="vat.vat_type_id || 'exempt'"
                 >
-                  <td class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+                  <td class="px-3 py-2 text-sm text-muted">
                     {{ vat.vat_name }} ({{ vat.vat_rate }}%)
                   </td>
-                  <td class="px-3 py-2 text-sm text-right text-gray-700 dark:text-gray-300">
+                  <td class="px-3 py-2 text-sm text-right text-muted">
                     {{ formatCurrency(vat.base_amount) }}
                   </td>
-                  <td class="px-3 py-2 text-sm text-right text-gray-700 dark:text-gray-300">
+                  <td class="px-3 py-2 text-sm text-right text-muted">
                     {{ formatCurrency(vat.tax_amount) }}
                   </td>
-                  <td class="px-3 py-2 text-sm text-right font-medium text-gray-900 dark:text-white">
+                  <td class="px-3 py-2 text-sm text-right font-medium text-default">
                     {{ formatCurrency(vat.total_amount) }}
                   </td>
                 </tr>
@@ -415,7 +415,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -424,7 +424,7 @@ function goBack() {
         <!-- Billing by Professional -->
         <UCard>
           <template #header>
-            <h3 class="font-semibold text-gray-900 dark:text-white">
+            <h3 class="font-semibold text-default">
               {{ t('reports.billing.byProfessional') }}
             </h3>
           </template>
@@ -443,15 +443,15 @@ function goBack() {
                   :alt="prof.professional_name"
                   size="sm"
                 />
-                <span class="text-gray-700 dark:text-gray-300">
+                <span class="text-muted">
                   {{ prof.professional_name }}
                 </span>
               </div>
               <div class="text-right">
-                <p class="font-semibold text-gray-900 dark:text-white">
+                <p class="font-semibold text-default">
                   {{ formatCurrency(prof.total_invoiced) }}
                 </p>
-                <p class="text-xs text-gray-500">
+                <p class="text-caption text-subtle">
                   {{ prof.invoice_count }} {{ t('reports.billing.invoices') }}
                 </p>
               </div>
@@ -459,7 +459,7 @@ function goBack() {
           </div>
           <p
             v-else
-            class="text-gray-500 text-center py-4"
+            class="text-subtle text-center py-4"
           >
             {{ t('reports.billing.noData') }}
           </p>
@@ -469,7 +469,7 @@ function goBack() {
         <UCard>
           <template #header>
             <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="font-semibold text-default">
                 {{ t('reports.billing.overdueInvoices') }}
               </h3>
               <UBadge
@@ -483,33 +483,33 @@ function goBack() {
 
           <div
             v-if="overdueInvoices.length > 0"
-            class="divide-y divide-gray-200 dark:divide-gray-700 max-h-80 overflow-y-auto"
+            class="divide-y divide-[var(--color-border-subtle)] max-h-80 overflow-y-auto"
           >
             <div
               v-for="inv in overdueInvoices"
               :key="inv.id"
-              class="py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+              class="py-3 hover:bg-surface-muted cursor-pointer"
               @click="goToInvoice(inv.id)"
             >
               <div class="flex justify-between items-start">
                 <div>
-                  <p class="font-medium text-gray-900 dark:text-white">
+                  <p class="font-medium text-default">
                     {{ inv.invoice_number }}
                   </p>
-                  <p class="text-sm text-gray-500">
+                  <p class="text-caption text-subtle">
                     {{ inv.patient_name }}
                   </p>
                 </div>
                 <div class="text-right">
-                  <p class="font-semibold text-red-600">
+                  <p class="font-semibold text-danger-accent">
                     {{ formatCurrency(inv.balance_due) }}
                   </p>
-                  <p class="text-xs text-red-500">
+                  <p class="text-xs text-danger-accent">
                     {{ inv.days_overdue }} {{ t('reports.billing.daysOverdue') }}
                   </p>
                 </div>
               </div>
-              <p class="text-xs text-gray-400 mt-1">
+              <p class="text-xs text-subtle mt-1">
                 {{ t('invoice.dueDate') }}: {{ formatDate(inv.due_date) }}
               </p>
             </div>
@@ -520,9 +520,9 @@ function goBack() {
           >
             <UIcon
               name="i-lucide-check-circle"
-              class="h-12 w-12 text-green-500 mx-auto mb-2"
+              class="h-12 w-12 text-success-accent mx-auto mb-2"
             />
-            <p class="text-gray-500">
+            <p class="text-subtle">
               {{ t('reports.billing.noOverdue') }}
             </p>
           </div>

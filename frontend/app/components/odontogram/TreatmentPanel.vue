@@ -88,14 +88,14 @@ function formatDate(dateString: string): string {
     >
       <UIcon
         name="i-lucide-loader-2"
-        class="w-5 h-5 animate-spin text-gray-400"
+        class="w-5 h-5 animate-spin text-subtle"
       />
     </div>
 
     <!-- Empty state -->
     <div
       v-else-if="treatments.length === 0"
-      class="text-center py-6 text-gray-500 text-sm"
+      class="text-center py-6 text-subtle text-sm"
     >
       {{ t('odontogram.treatments.noTreatments') }}
     </div>
@@ -107,7 +107,7 @@ function formatDate(dateString: string): string {
     >
       <!-- Planned treatments (show first, most actionable) -->
       <div v-if="groupedTreatments.planned.length > 0">
-        <div class="text-xs font-medium text-amber-600 mb-2 flex items-center gap-1">
+        <div class="text-xs font-medium text-warning-accent mb-2 flex items-center gap-1">
           <UIcon
             name="i-lucide-clock"
             class="w-3 h-3"
@@ -162,7 +162,7 @@ function formatDate(dateString: string): string {
 
       <!-- Existing treatments -->
       <div v-if="groupedTreatments.existing.length > 0">
-        <div class="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1">
+        <div class="text-xs font-medium text-muted mb-2 flex items-center gap-1">
           <UIcon
             name="i-lucide-check-circle"
             class="w-3 h-3"
@@ -191,7 +191,7 @@ function formatDate(dateString: string): string {
                 {{ treatment.surfaces.join('-') }}
               </UBadge>
             </div>
-            <div class="text-xs text-gray-500 mt-1">
+            <div class="text-caption text-subtle mt-1">
               {{ formatDate(treatment.performed_at || treatment.recorded_at) }}
               <span v-if="treatment.performed_by_name"> - {{ treatment.performed_by_name }}</span>
             </div>

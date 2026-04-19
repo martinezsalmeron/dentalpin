@@ -713,7 +713,7 @@ const hasPlannedLateralTreatments = computed(() => {
 
       </svg>
 
-      <!-- Planned indicator "P" for lateral view (outside SVG to avoid transform) -->
+      <!-- Planned indicator"P" for lateral view (outside SVG to avoid transform) -->
       <div
         v-if="hasPlannedLateralTreatments"
         class="planned-indicator-lateral"
@@ -1002,7 +1002,7 @@ const hasPlannedLateralTreatments = computed(() => {
 
       </svg>
 
-      <!-- Planned indicator "P" for occlusal view (outside SVG to avoid transform) -->
+      <!-- Planned indicator"P" for occlusal view (outside SVG to avoid transform) -->
       <div
         v-if="hasPlannedOcclusalTreatments"
         class="planned-indicator-occlusal"
@@ -1224,7 +1224,7 @@ const hasPlannedLateralTreatments = computed(() => {
   justify-content: center;
 }
 
-/* Planned indicator "P" styling */
+/* Planned indicator"P" styling */
 .planned-indicator-lateral,
 .planned-indicator-occlusal {
   position: absolute;
