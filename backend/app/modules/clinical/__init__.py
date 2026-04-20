@@ -10,22 +10,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import EventType
 from app.core.plugins import BaseModule
 
-from .models import Appointment, AppointmentTreatment, Patient, PatientTimeline
+from .models import Appointment, AppointmentTreatment, PatientTimeline
 from .router import router
 from .service import TimelineService
 
 
 class ClinicalModule(BaseModule):
-    """Clinical module providing patient and appointment management."""
+    """Clinical module providing appointment + timeline management.
+
+    Patient identity lives in the ``patients`` module as of Fase B.
+    Appointments and timeline stay here until B.2 / B.3 extract them
+    into ``agenda`` and ``patient_timeline``.
+    """
 
     manifest = {
         "name": "clinical",
         "version": "0.1.0",
-        "summary": "Patients, appointments, timeline.",
+        "summary": "Appointments, timeline (patients module owns identity).",
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": [],
+        "depends": ["patients"],
         "installable": True,
         "auto_install": True,
         "removable": False,
@@ -81,13 +86,17 @@ class ClinicalModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [Patient, Appointment, AppointmentTreatment, PatientTimeline]
+        return [Appointment, AppointmentTreatment, PatientTimeline]
 
     def get_router(self) -> APIRouter:
         return router
 
     def get_permissions(self) -> list[str]:
         return [
+            # patients.* permissions re-namespace under the `patients`
+            # module. During B.1 chunk 1 they still live here to keep
+            # the HTTP endpoints (in clinical's router) authorizing
+            # without surprises. Chunk 3 moves them with the router.
             "patients.read",
             "patients.write",
             "patients.medical.read",

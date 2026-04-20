@@ -38,7 +38,8 @@ from app.core.plugins.db_models import (  # noqa: F401
     ModuleRecord,
 )
 from app.database import Base
-from app.modules.clinical.models import Appointment, Patient  # noqa: F401
+from app.modules.clinical.models import Appointment  # noqa: F401
+from app.modules.patients.models import Patient  # noqa: F401
 
 ALEMBIC_DIR = Path(__file__).parent
 BACKEND_ROOT = ALEMBIC_DIR.parent
