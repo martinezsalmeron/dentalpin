@@ -1,5 +1,23 @@
-from .base import BaseModule
-from .loader import load_modules
-from .registry import module_registry
+"""Module plugin system public API."""
 
-__all__ = ["BaseModule", "module_registry", "load_modules"]
+from .base import BaseModule
+from .context import ModuleContext
+from .loader import load_modules
+from .manifest import Manifest, ManifestError
+from .registry import module_registry
+from .service import DoctorReport, ModuleInfo, ModuleService
+from .state import ModuleCategory, ModuleState
+
+__all__ = [
+    "BaseModule",
+    "DoctorReport",
+    "Manifest",
+    "ManifestError",
+    "ModuleCategory",
+    "ModuleContext",
+    "ModuleInfo",
+    "ModuleService",
+    "ModuleState",
+    "load_modules",
+    "module_registry",
+]

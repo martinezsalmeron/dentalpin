@@ -35,6 +35,17 @@ dev = [
     "ruff>=0.1.0",
 ]
 
+[project.entry-points."dentalpin.modules"]
+clinical = "app.modules.clinical:ClinicalModule"
+catalog = "app.modules.catalog:CatalogModule"
+budget = "app.modules.budget:BudgetModule"
+billing = "app.modules.billing:BillingModule"
+odontogram = "app.modules.odontogram:OdontogramModule"
+treatment_plan = "app.modules.treatment_plan:TreatmentPlanModule"
+media = "app.modules.media:MediaModule"
+notifications = "app.modules.notifications:NotificationsModule"
+reports = "app.modules.reports:ReportsModule"
+
 [tool.setuptools.packages.find]
 where = ["."]
 

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# DentalPin admin CLI wrapper.
+#
+# Proxies commands to the backend container: `dentalpin modules list`
+# becomes `docker compose exec backend python -m app.cli modules list`.
+#
+# Usage:
+#   ./bin/dentalpin modules list
+#   ./bin/dentalpin modules info clinical
+#   ./bin/dentalpin modules doctor
+#
+# The wrapper must be run from the repository root (or any directory where
+# `docker-compose.yml` / `compose.yaml` resolves). It picks the first available
+# compose command (`docker compose` vs `docker-compose`).
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+cd "${REPO_ROOT}"
+
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE=(docker-compose)
+else
+    echo "error: neither 'docker compose' nor 'docker-compose' is available on PATH" >&2
+    exit 127
+fi
+
+# Allow -T to skip TTY allocation for non-interactive environments (CI).
+EXEC_FLAGS=()
+if [[ ! -t 0 || ! -t 1 ]]; then
+    EXEC_FLAGS+=("-T")
+fi
+
+exec "${COMPOSE[@]}" exec "${EXEC_FLAGS[@]}" backend python -m app.cli "$@"

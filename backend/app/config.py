@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Testing
     TESTING: bool = False
 
+    # Module system
+    DENTALPIN_DEV_MODULE_SCAN: bool = True  # Fallback filesystem scan for dev
+
     # Storage configuration
     STORAGE_BACKEND: str = "local"
     STORAGE_LOCAL_PATH: str = "/app/storage"

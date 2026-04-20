@@ -12,6 +12,11 @@ from app.config import settings
 
 # Import all models to register them with Base.metadata
 from app.core.auth.models import Clinic, ClinicMembership, User  # noqa: F401
+from app.core.plugins.db_models import (  # noqa: F401
+    ExternalId,
+    ModuleOperationLog,
+    ModuleRecord,
+)
 from app.database import Base
 from app.modules.clinical.models import Appointment, Patient  # noqa: F401
 
