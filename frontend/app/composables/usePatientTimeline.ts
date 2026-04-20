@@ -38,7 +38,7 @@ export function usePatientTimeline(patientId: Ref<string | undefined>) {
       }
 
       const response = await api.get<ApiResponse<TimelineResponse>>(
-        `/api/v1/clinical/patients/${patientId.value}/timeline?${params.toString()}`
+        `/api/v1/patient_timeline/patients/${patientId.value}?${params.toString()}`
       )
 
       if (reset) {

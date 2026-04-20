@@ -39,7 +39,7 @@ from app.core.plugins.db_models import (  # noqa: F401
 )
 from app.database import Base
 from app.modules.agenda.models import Appointment, Cabinet  # noqa: F401
-from app.modules.clinical.models import PatientTimeline  # noqa: F401
+from app.modules.patient_timeline.models import PatientTimeline  # noqa: F401
 from app.modules.patients.models import Patient  # noqa: F401
 
 ALEMBIC_DIR = Path(__file__).parent

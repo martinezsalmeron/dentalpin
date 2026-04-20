@@ -3,12 +3,13 @@
 Fase B transition:
 - Patient + medical-history schemas live in ``app.modules.patients.schemas``.
 - Appointment + cabinet schemas live in ``app.modules.agenda.schemas``.
-- Both are re-exported here for callers using the old import path.
+- Timeline schemas live in ``app.modules.patient_timeline.schemas``.
 
-Clinic + Timeline schemas still live in this module.
+All re-exported here for callers using the old import path. Only the
+Clinic metadata schemas (ClinicUpdate, ClinicResponse, AddressUpdate)
+remain implemented in this module.
 """
 
-from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -24,6 +25,12 @@ from app.modules.agenda.schemas import (  # noqa: F401
     CabinetResponse,
     CabinetUpdate,
     ProfessionalBrief,
+)
+
+# Re-export timeline schemas for legacy imports.
+from app.modules.patient_timeline.schemas import (  # noqa: F401
+    TimelineEntry,
+    TimelineResponse,
 )
 
 # Re-export patient schemas for legacy imports.
@@ -87,32 +94,5 @@ class ClinicResponse(BaseModel):
         from_attributes = True
 
 
-# --- Timeline schemas --------------------------------------------------
-
-
-class TimelineEntry(BaseModel):
-    """Schema for timeline entry."""
-
-    id: UUID
-    event_type: str
-    event_category: str
-    source_table: str
-    source_id: UUID
-    title: str
-    description: str | None = None
-    event_data: dict | None = None
-    occurred_at: datetime
-    created_by: UUID | None = None
-
-    class Config:
-        from_attributes = True
-
-
-class TimelineResponse(BaseModel):
-    """Paginated timeline response."""
-
-    entries: list[TimelineEntry]
-    total: int
-    page: int
-    page_size: int
-    has_more: bool
+# Timeline schemas live in ``app.modules.patient_timeline.schemas``
+# and are re-exported at the top of this module.
