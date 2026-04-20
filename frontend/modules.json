@@ -1,8 +1,23 @@
 {
   "layers": [
+    "/module_layers/catalog/frontend",
+    "/module_layers/media/frontend",
+    "/module_layers/notifications/frontend",
     "/module_layers/reports/frontend"
   ],
   "modules": [
+    {
+      "name": "catalog",
+      "path": "/module_layers/catalog/frontend"
+    },
+    {
+      "name": "media",
+      "path": "/module_layers/media/frontend"
+    },
+    {
+      "name": "notifications",
+      "path": "/module_layers/notifications/frontend"
+    },
     {
       "name": "reports",
       "path": "/module_layers/reports/frontend"

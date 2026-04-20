@@ -41,6 +41,9 @@ class CatalogModule(BaseModule):
             "assistant": ["read"],
             "receptionist": ["read"],
         },
+        "frontend": {
+            "layer_path": "frontend",
+        },
     }
 
     def get_models(self) -> list:
