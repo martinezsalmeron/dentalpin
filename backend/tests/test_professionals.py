@@ -219,7 +219,7 @@ async def test_create_appointment_with_valid_professional(
     """Test creating appointment with a valid professional (dentist)."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -251,7 +251,7 @@ async def test_create_appointment_with_hygienist(
     """Test creating appointment with a hygienist."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -283,7 +283,7 @@ async def test_create_appointment_with_invalid_professional_role(
     """Test that creating appointment with non-professional role fails."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -314,7 +314,7 @@ async def test_create_appointment_with_nonexistent_professional(
     """Test that creating appointment with non-existent professional fails."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -345,7 +345,7 @@ async def test_update_appointment_professional(
     """Test updating appointment to a different professional."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -387,7 +387,7 @@ async def test_update_appointment_to_invalid_professional(
     """Test that updating appointment to invalid professional fails."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -431,7 +431,7 @@ async def test_appointment_response_includes_professional(
     """Test that appointment response includes professional info."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -469,7 +469,7 @@ async def test_list_appointments_includes_professional(
     """Test that listing appointments includes professional info."""
     # Create patient first (wrapped in ApiResponse)
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )

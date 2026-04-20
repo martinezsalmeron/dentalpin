@@ -328,7 +328,7 @@ watch(() => props.open, async (isOpen) => {
       // Pre-select patient if initialPatientId provided
       if (props.initialPatientId) {
         try {
-          const response = await api.get<{ data: Patient }>(`/api/v1/clinical/patients/${props.initialPatientId}`)
+          const response = await api.get<{ data: Patient }>(`/api/v1/patients/${props.initialPatientId}`)
           selectedPatient.value = response.data
         } catch {
           selectedPatient.value = null

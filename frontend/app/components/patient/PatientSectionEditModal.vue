@@ -187,7 +187,7 @@ async function handleSave() {
     }
 
     await api.put(
-      `/api/v1/clinical/patients/${props.patient.id}/extended`,
+      `/api/v1/patients/${props.patient.id}/extended`,
       updateData
     )
 

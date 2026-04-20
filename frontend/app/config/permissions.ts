@@ -8,12 +8,12 @@
 // Resource-action permission mapping
 export const PERMISSIONS = {
   patients: {
-    read: 'clinical.patients.read',
-    write: 'clinical.patients.write'
+    read: 'patients.read',
+    write: 'patients.write'
   },
   medicalHistory: {
-    read: 'clinical.patients.medical.read',
-    write: 'clinical.patients.medical.write'
+    read: 'patients.medical.read',
+    write: 'patients.medical.write'
   },
   appointments: {
     read: 'clinical.appointments.read',

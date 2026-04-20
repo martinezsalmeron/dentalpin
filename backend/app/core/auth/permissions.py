@@ -21,75 +21,76 @@ CORE_PERMISSIONS: Final[list[str]] = [
     "admin.users.write",
     "admin.clinic.read",
     "admin.clinic.write",
-    # Medical history permissions (part of clinical.patients.* scope)
-    "clinical.patients.medical.read",
-    "clinical.patients.medical.write",
 ]
 
 # Role -> permissions mapping
 # Supports wildcards: "*" = all, "module.*" = all module permissions
+#
+# Fase B.1 chunk 3: ``clinical.patients.*`` renamed to ``patients.*``;
+# ``clinical.appointments.*`` keeps its namespace until Etapa B.2
+# introduces the ``agenda`` module.
 ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     "admin": [
         "*",  # Admin gets everything, including future modules
     ],
     "dentist": [
-        "clinical.*",  # All clinical permissions
-        "odontogram.*",  # Full odontogram access
-        "treatment_plan.*",  # Full treatment plan access
-        "catalog.read",  # Can view catalog (prices, treatments)
-        "budget.*",  # Full budget access
-        "billing.*",  # Full billing access
-        "media.*",  # Full document access
-        "notifications.preferences.*",  # Can manage patient notification preferences
-        "notifications.send",  # Can send manual notifications
-        "reports.billing.read",  # Can view billing reports
-        "reports.scheduling.read",  # Can view scheduling reports
+        "patients.*",  # Full patient access (identity + medical history)
+        "clinical.appointments.*",  # Appointments (moves to agenda.* in B.2)
+        "odontogram.*",
+        "treatment_plan.*",
+        "catalog.read",
+        "budget.*",
+        "billing.*",
+        "media.*",
+        "notifications.preferences.*",
+        "notifications.send",
+        "reports.billing.read",
+        "reports.scheduling.read",
     ],
     "hygienist": [
-        "clinical.patients.read",
-        "clinical.patients.medical.read",  # Can view medical history
+        "patients.read",
+        "patients.medical.read",
         "clinical.appointments.*",
         "odontogram.read",
         "odontogram.write",
-        "treatment_plan.plans.read",  # Can view treatment plans
-        "catalog.read",  # Can view catalog (prices, treatments)
-        "budget.read",  # Can view budgets
-        "billing.read",  # Can view invoices
-        "media.documents.read",  # Can view documents
-        "reports.scheduling.read",  # Can view scheduling reports (own data)
+        "treatment_plan.plans.read",
+        "catalog.read",
+        "budget.read",
+        "billing.read",
+        "media.documents.read",
+        "reports.scheduling.read",
     ],
     "assistant": [
-        "clinical.patients.*",
+        "patients.*",
         "clinical.appointments.*",
-        "odontogram.read",  # Can view but not edit
-        "treatment_plan.plans.read",  # Can view treatment plans
-        "treatment_plan.plans.write",  # Can edit treatment plans
-        "catalog.read",  # Can view catalog (prices, treatments)
-        "budget.read",  # Can view budgets
-        "budget.write",  # Can create/edit budgets
-        "billing.read",  # Can view invoices
-        "billing.write",  # Can create/edit invoices, record payments
-        "media.*",  # Full document access
-        "notifications.preferences.*",  # Can manage patient notification preferences
-        "notifications.send",  # Can send manual notifications
-        "reports.scheduling.read",  # Can view scheduling reports
+        "odontogram.read",
+        "treatment_plan.plans.read",
+        "treatment_plan.plans.write",
+        "catalog.read",
+        "budget.read",
+        "budget.write",
+        "billing.read",
+        "billing.write",
+        "media.*",
+        "notifications.preferences.*",
+        "notifications.send",
+        "reports.scheduling.read",
     ],
     "receptionist": [
-        "clinical.patients.read",
-        "clinical.patients.write",
-        "clinical.patients.medical.read",  # Can view medical history (for emergencies)
-        # No clinical.patients.medical.write - receptionist cannot edit medical history
+        "patients.read",
+        "patients.write",
+        "patients.medical.read",  # medical view only — no write for receptionist
         "clinical.appointments.*",
-        "catalog.read",  # Can view catalog for budgeting
-        "budget.read",  # Can view budgets
-        "budget.write",  # Can create/edit budgets
-        "billing.read",  # Can view invoices
-        "billing.write",  # Can create/edit invoices, record payments
-        "media.*",  # Full document access
-        "notifications.preferences.*",  # Can manage patient notification preferences
-        "notifications.send",  # Can send manual notifications
-        "reports.billing.read",  # Can view basic billing reports
-        "reports.scheduling.read",  # Can view scheduling reports
+        "catalog.read",
+        "budget.read",
+        "budget.write",
+        "billing.read",
+        "billing.write",
+        "media.*",
+        "notifications.preferences.*",
+        "notifications.send",
+        "reports.billing.read",
+        "reports.scheduling.read",
         # No odontogram access for receptionists
     ],
 }

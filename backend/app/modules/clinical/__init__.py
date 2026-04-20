@@ -10,49 +10,36 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import EventType
 from app.core.plugins import BaseModule
 
-from .models import Appointment, AppointmentTreatment, Patient, PatientTimeline
+from .models import Appointment, AppointmentTreatment, PatientTimeline
 from .router import router
 from .service import TimelineService
 
 
 class ClinicalModule(BaseModule):
-    """Clinical module providing patient and appointment management."""
+    """Clinical module providing appointment + timeline management.
+
+    Patient identity lives in the ``patients`` module as of Fase B.
+    Appointments and timeline stay here until B.2 / B.3 extract them
+    into ``agenda`` and ``patient_timeline``.
+    """
 
     manifest = {
         "name": "clinical",
         "version": "0.1.0",
-        "summary": "Patients, appointments, timeline.",
+        "summary": "Appointments, timeline (patients module owns identity).",
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": [],
+        "depends": ["patients"],
         "installable": True,
         "auto_install": True,
         "removable": False,
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["*"],
-            "hygienist": [
-                "patients.read",
-                "patients.medical.read",
-                "appointments.read",
-                "appointments.write",
-            ],
-            "assistant": [
-                "patients.read",
-                "patients.write",
-                "patients.medical.read",
-                "patients.medical.write",
-                "appointments.read",
-                "appointments.write",
-            ],
-            "receptionist": [
-                "patients.read",
-                "patients.write",
-                "patients.medical.read",
-                "appointments.read",
-                "appointments.write",
-            ],
+            "hygienist": ["appointments.read", "appointments.write"],
+            "assistant": ["appointments.read", "appointments.write"],
+            "receptionist": ["appointments.read", "appointments.write"],
         },
         "frontend": {
             "navigation": [
@@ -63,35 +50,30 @@ class ClinicalModule(BaseModule):
                     "order": 0,
                 },
                 {
-                    "label": "nav.patients",
-                    "icon": "i-lucide-users",
-                    "to": "/patients",
-                    "permission": "clinical.patients.read",
-                    "order": 10,
-                },
-                {
                     "label": "nav.appointments",
                     "icon": "i-lucide-calendar",
                     "to": "/appointments",
                     "permission": "clinical.appointments.read",
                     "order": 20,
                 },
+                {
+                    "label": "nav.settings",
+                    "icon": "i-lucide-settings",
+                    "to": "/settings",
+                    "order": 900,
+                },
             ],
         },
     }
 
     def get_models(self) -> list:
-        return [Patient, Appointment, AppointmentTreatment, PatientTimeline]
+        return [Appointment, AppointmentTreatment, PatientTimeline]
 
     def get_router(self) -> APIRouter:
         return router
 
     def get_permissions(self) -> list[str]:
         return [
-            "patients.read",
-            "patients.write",
-            "patients.medical.read",
-            "patients.medical.write",
             "appointments.read",
             "appointments.write",
         ]

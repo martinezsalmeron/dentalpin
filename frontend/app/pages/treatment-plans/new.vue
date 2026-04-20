@@ -36,7 +36,7 @@ async function searchPatients(query: string) {
   searchLoading.value = true
   try {
     const response = await api.get<{ data: Patient[] }>(
-      `/api/v1/clinical/patients?search=${encodeURIComponent(query)}&page_size=10`
+      `/api/v1/patients?search=${encodeURIComponent(query)}&page_size=10`
     )
     patients.value = response.data
   } catch {
