@@ -1,483 +1,911 @@
-# Creating Modules
+# Creating DentalPin modules
 
-This guide explains how to create new modules for DentalPin's plugin architecture.
+A complete guide to shipping a DentalPin module — backend, frontend,
+migrations, seeds, tests, distribution — from scratch. Written for
+contributors who have never read the core codebase.
 
-> **Visual guide:** See [Module Architecture Diagram](diagrams/module-architecture.md) for how the plugin system works.
+Everything below applies to both **official** modules (live inside the
+monorepo, maintained by the core team) and **community** modules
+(separate repos, shipped as Python packages on PyPI). The contract is
+identical — the only difference is where the code lives and who owns
+bug fixes.
 
-## Overview
+> **Status:** Fase A v1. The system is stable but young; report gaps
+> at https://github.com/dentalpin/dentalpin/issues.
 
-Modules are self-contained features that provide:
-- SQLAlchemy models (database tables)
-- FastAPI router (API endpoints)
-- Event handlers (react to other modules' events)
-- RBAC permissions (access control)
+---
 
-Modules are auto-discovered at startup and loaded in dependency order.
+## 1. Concepts
 
-## Directory Structure
+### What is a module?
+
+A module is a Python package that groups together:
+
+- SQLAlchemy models (optional — reports has none)
+- Alembic migrations (required if the module owns tables)
+- FastAPI routes (optional)
+- Pydantic schemas (optional)
+- Service-layer business logic (optional)
+- Event handlers (optional)
+- RBAC permissions (strongly encouraged)
+- Lifecycle hooks (`install`, `uninstall`, `post_upgrade`)
+- Seed data files (optional, YAML)
+- A Nuxt Layer for the frontend (optional)
+
+Each module declares its metadata through a **manifest** — a
+declarative dict embedded on the module class.
+
+### Official vs community
+
+The manifest field `category` determines the badge shown in the admin
+UI (`official` → green, `community` → amber). Trust semantics are
+intentionally minimal in v1; richer verification (signatures,
+marketplace) is post-v1.
+
+- **Official** modules ship inside `backend/app/modules/<name>/` and
+  are installed-by-default on every DentalPin instance.
+- **Community** modules live in their own git repo, publish to PyPI,
+  and are installed via `pip install` + `dentalpin modules install`.
+
+### Manifest
+
+See `docs/core-api.md` for the full schema. Key fields:
+
+| Field | Required | Purpose |
+|-------|----------|---------|
+| `name` | yes | Unique id (snake_case). Becomes the API prefix `/api/v1/<name>/` and the permission namespace. |
+| `version` | yes | Semver `X.Y.Z`. Bumped per the rules in §8. |
+| `summary` / `author` / `license` | recommended | Shown in `dentalpin modules info`. |
+| `category` | yes | `official` or `community`. |
+| `min_core_version` | recommended | Reject install if core is older. |
+| `depends` | yes (list) | Module names that must install first. |
+| `installable` / `auto_install` / `removable` | yes | Policy flags. |
+| `data_files` | optional | Seed YAML paths (relative). |
+| `role_permissions` | recommended | Declarative RBAC (see §7). |
+| `frontend.layer_path` | optional | Nuxt Layer folder (community UI). |
+| `frontend.navigation` | optional | Sidebar entries (see §4). |
+
+### Event bus
+
+Modules publish events and subscribe to each other's events instead of
+importing each other directly. Events are defined in
+`app/core/events/types.py` (core ones) and follow the naming
+convention `entity.action` (e.g. `appointment.completed`).
+
+### Slots
+
+Slots are named UI extension points (e.g. `patient.detail.sidebar`).
+Any module can register a component for a slot without touching the
+host page. See §4.
+
+---
+
+## 2. Quick start
+
+### A. Official module (inside the monorepo)
+
+```bash
+cd backend
+mkdir -p app/modules/inventory/{migrations/versions}
+touch app/modules/inventory/{__init__.py,models.py,schemas.py,router.py,service.py}
+```
+
+Add the entry point in `backend/pyproject.toml`:
+
+```toml
+[project.entry-points."dentalpin.modules"]
+inventory = "app.modules.inventory:InventoryModule"
+```
+
+Restart the backend, run `dentalpin modules list` — your module now
+appears as `uninstalled`.
+
+### B. Community module (standalone repo)
+
+```bash
+# Start from the template
+git clone https://github.com/dentalpin/dentalpin-module-template my-module
+cd my-module
+```
+
+The template carries a working `hello` module: backend route, frontend
+layer with one page, slot registration. Rename, adjust, publish:
+
+```bash
+pip install -e .
+```
+
+Inside the DentalPin instance:
+
+```bash
+./bin/dentalpin modules install my_module
+./bin/dentalpin modules restart
+docker compose build frontend && docker compose up -d frontend
+```
+
+Open `/my-module` in the app — the module is live.
+
+---
+
+## 3. Anatomy of a module
+
+Walk through every file of a minimal module. File tree:
 
 ```
-backend/app/modules/{module_name}/
-├── __init__.py      # Module class (required)
-├── models.py        # SQLAlchemy models
-├── schemas.py       # Pydantic request/response schemas
-├── router.py        # FastAPI endpoints
-└── service.py       # Business logic
+dentalpin_inventory/                        # Python package
+├── pyproject.toml
+├── dentalpin_inventory/
+│   ├── __init__.py
+│   ├── manifest.py
+│   ├── models.py
+│   ├── schemas.py
+│   ├── router.py
+│   ├── service.py
+│   ├── events.py
+│   ├── lifecycle.py
+│   ├── migrations/
+│   │   └── versions/
+│   │       └── inv_0001_initial.py
+│   ├── data/
+│   │   └── default_categories.yaml
+│   └── frontend/                           # Nuxt Layer
+│       ├── nuxt.config.ts
+│       ├── pages/
+│       ├── components/
+│       ├── composables/
+│       ├── i18n/
+│       └── slots.ts
+├── tests/
+└── README.md
 ```
 
-## Step 1: Create the Module Class
+### `pyproject.toml`
 
-In `__init__.py`, create a class inheriting from `BaseModule`:
+```toml
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dentalpin-inventory"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["dentalpin-core>=1.0"]
+
+[project.entry-points."dentalpin.modules"]
+inventory = "dentalpin_inventory:InventoryModule"
+```
+
+### `__init__.py`
+
+Exposes the `BaseModule` subclass referenced by the entry point:
 
 ```python
-"""Inventory module - supplies and stock management."""
-
 from fastapi import APIRouter
-
-from app.core.plugins import BaseModule
-
+from app.core.plugins import BaseModule, ModuleContext
+from . import lifecycle
+from .events import on_appointment_completed
 from .models import InventoryItem, StockMovement
 from .router import router
 
 
 class InventoryModule(BaseModule):
-    """Inventory module for managing clinic supplies."""
-
-    @property
-    def name(self) -> str:
-        """Unique module identifier."""
-        return "inventory"
-
-    @property
-    def version(self) -> str:
-        """Module version (semver format)."""
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        """Modules that must be loaded before this one.
-
-        The loader validates these exist and loads them first.
-        Circular dependencies will raise an error.
-        """
-        return ["clinical"]  # Requires clinical module
+    manifest = {
+        "name": "inventory",
+        "version": "0.1.0",
+        "summary": "Clinic supplies + stock tracking.",
+        "author": "Your Name",
+        "license": "MIT",
+        "category": "community",
+        "min_core_version": "1.0.0",
+        "depends": ["clinical"],
+        "installable": True,
+        "auto_install": False,
+        "removable": True,
+        "data_files": ["data/default_categories.yaml"],
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["items.read"],
+            "assistant": ["items.read", "items.write"],
+        },
+        "frontend": {
+            "layer_path": "frontend",
+            "navigation": [
+                {
+                    "label": "nav.inventory",
+                    "to": "/inventory",
+                    "icon": "i-lucide-box",
+                    "permission": "inventory.items.read",
+                    "order": 70,
+                }
+            ],
+        },
+    }
 
     def get_models(self) -> list:
-        """SQLAlchemy models to register with the database."""
         return [InventoryItem, StockMovement]
 
     def get_router(self) -> APIRouter:
-        """FastAPI router mounted at /api/v1/{name}/."""
         return router
 
-    def get_event_handlers(self) -> dict:
-        """Subscribe to events from other modules.
-
-        Returns a dict of event_name -> handler function.
-        """
-        return {
-            "appointment.completed": self._on_appointment_completed,
-        }
-
     def get_permissions(self) -> list[str]:
-        """RBAC permissions this module adds.
+        return ["items.read", "items.write", "movements.read"]
 
-        Format: 'resource.action'
-        """
-        return [
-            "inventory.read",
-            "inventory.write",
-            "inventory.manage",
-        ]
+    def get_event_handlers(self) -> dict:
+        return {"appointment.completed": on_appointment_completed}
 
-    def _on_appointment_completed(self, data: dict) -> None:
-        """Handle appointment.completed event."""
-        # Deduct supplies used in the appointment
-        pass
+    async def install(self, ctx: ModuleContext) -> None:
+        await lifecycle.install(ctx)
+
+    async def uninstall(self, ctx: ModuleContext) -> None:
+        await lifecycle.uninstall(ctx)
+
+    async def post_upgrade(self, ctx: ModuleContext, from_version: str) -> None:
+        await lifecycle.post_upgrade(ctx, from_version)
 ```
 
-## Step 2: Define Models
+### `models.py`
 
-In `models.py`, define SQLAlchemy models:
+Follow these conventions:
+
+- Every table has `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`.
+- Multi-tenant tables have `clinic_id UUID NOT NULL INDEX`.
+- Timestamps: `DateTime(timezone=True)` with `server_default=func.now()`.
+- Soft delete via `status` column, never hard-delete patient data.
+- JSONB for flexible/semi-structured fields.
 
 ```python
-"""Inventory models."""
-
 import uuid
 from datetime import datetime
-
-from sqlalchemy import ForeignKey, String, Integer, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
 class InventoryItem(Base):
-    """A supply item in the clinic inventory."""
-
     __tablename__ = "inventory_items"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("clinics.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("clinics.id"),
+        nullable=False,
+        index=True,
     )
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    sku: Mapped[str | None] = mapped_column(String(50))
-    quantity: Mapped[int] = mapped_column(Integer, default=0)
-    min_quantity: Mapped[int] = mapped_column(Integer, default=0)
-    notes: Mapped[str | None] = mapped_column(Text)
+    code: Mapped[str] = mapped_column(String(50))
+    name: Mapped[str] = mapped_column(String(200))
+    metadata_: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow
+        DateTime(timezone=True), server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 ```
 
-## Step 3: Define Schemas
+### `schemas.py`
 
-In `schemas.py`, define Pydantic schemas:
+Pydantic V2. Use the shared `ApiResponse[T]` / `PaginatedApiResponse[T]`
+wrappers from `app.core.schemas`.
 
 ```python
-"""Inventory schemas."""
-
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 from uuid import UUID
 
-from pydantic import BaseModel
 
-
-class InventoryItemBase(BaseModel):
+class InventoryItemCreate(BaseModel):
+    code: str
     name: str
-    sku: str | None = None
-    quantity: int = 0
-    min_quantity: int = 0
-    notes: str | None = None
 
 
-class InventoryItemCreate(InventoryItemBase):
-    pass
-
-
-class InventoryItemUpdate(BaseModel):
-    name: str | None = None
-    sku: str | None = None
-    quantity: int | None = None
-    min_quantity: int | None = None
-    notes: str | None = None
-
-
-class InventoryItemResponse(InventoryItemBase):
+class InventoryItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
-    clinic_id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = {"from_attributes": True}
+    code: str
+    name: str
 ```
 
-## Step 4: Define Router
+### `router.py`
 
-In `router.py`, define API endpoints:
+Every route must take `ctx: Annotated[ClinicContext, Depends(get_clinic_context)]`
+and `require_permission(...)`. Multi-tenancy is **mandatory**: every
+query filters by `ctx.clinic_id`.
 
 ```python
-"""Inventory router."""
-
-from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
+from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
-from app.core.auth import get_current_user, get_clinic_context
-
-from .schemas import (
-    InventoryItemCreate,
-    InventoryItemUpdate,
-    InventoryItemResponse,
-)
 from . import service
+from .schemas import InventoryItemCreate, InventoryItemResponse
 
 router = APIRouter()
 
 
-@router.get("/items", response_model=list[InventoryItemResponse])
+@router.get("/items", response_model=PaginatedApiResponse[InventoryItemResponse])
 async def list_items(
-    db: AsyncSession = Depends(get_db),
-    clinic = Depends(get_clinic_context),
-):
-    """List all inventory items for the clinic."""
-    return await service.list_items(db, clinic.id)
-
-
-@router.post("/items", response_model=InventoryItemResponse, status_code=201)
-async def create_item(
-    data: InventoryItemCreate,
-    db: AsyncSession = Depends(get_db),
-    clinic = Depends(get_clinic_context),
-):
-    """Create a new inventory item."""
-    return await service.create_item(db, clinic.id, data)
-
-
-@router.put("/items/{item_id}", response_model=InventoryItemResponse)
-async def update_item(
-    item_id: UUID,
-    data: InventoryItemUpdate,
-    db: AsyncSession = Depends(get_db),
-    clinic = Depends(get_clinic_context),
-):
-    """Update an inventory item."""
-    item = await service.update_item(db, clinic.id, item_id, data)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return item
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("inventory.items.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = 1,
+    page_size: int = 20,
+) -> PaginatedApiResponse[InventoryItemResponse]:
+    items, total = await service.list_items(db, ctx.clinic.id, page, page_size)
+    return PaginatedApiResponse(
+        data=[InventoryItemResponse.model_validate(i) for i in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 ```
 
-## Step 5: Create Database Migration
+### `service.py`
 
-After adding models, create an Alembic migration.
-
-> **Note:** This guide is being rewritten in full as part of the module-system
-> v1 refactor. The sections below cover the **new** branch-per-module
-> convention. The complete guide (with Nuxt layers, slots, lifecycle
-> hooks, role_permissions, external IDs, and packaging) lands in Etapa 7.
-
-### Where migrations live
-
-**Brand-new modules (recommended)** keep their migrations in their own
-Alembic branch:
-
-```
-backend/app/modules/<module_name>/
-├── __init__.py
-├── manifest.py
-├── models.py
-├── migrations/
-│   └── versions/
-│       └── <module>_0001_initial.py   # branch_labels=('<module>',)
-└── ...
-```
-
-The first revision declares its branch label and no down_revision:
+Business logic lives here. No FastAPI imports, no HTTP concerns.
 
 ```python
+from uuid import UUID
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from .models import InventoryItem
+
+
+async def list_items(
+    db: AsyncSession, clinic_id: UUID, page: int, page_size: int
+) -> tuple[list[InventoryItem], int]:
+    query = select(InventoryItem).where(InventoryItem.clinic_id == clinic_id)
+    total = (await db.execute(
+        select(func.count()).select_from(query.subquery())
+    )).scalar_one()
+    items = (await db.execute(
+        query.offset((page - 1) * page_size).limit(page_size)
+    )).scalars().all()
+    return list(items), total
+```
+
+### `events.py`
+
+```python
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def on_appointment_completed(db: AsyncSession, data: dict) -> None:
+    """Consume stock based on the appointment's treatments."""
+    # Reach into your service layer here.
+```
+
+### `lifecycle.py`
+
+Explicit `install` / `uninstall` / `post_upgrade`. Keep hooks idempotent:
+running them twice should be a no-op.
+
+```python
+from app.core.plugins import ModuleContext
+
+
+async def install(ctx: ModuleContext) -> None:
+    ctx.logger.info("Inventory module installed")
+    # Optional: custom provisioning beyond YAML seeds.
+
+
+async def uninstall(ctx: ModuleContext) -> None:
+    ctx.logger.info("Inventory module uninstalling")
+    # Stop background jobs, close external connections, etc.
+
+
+async def post_upgrade(ctx: ModuleContext, from_version: str) -> None:
+    ctx.logger.info(f"Upgrading inventory from {from_version}")
+```
+
+### `migrations/`
+
+Brand-new modules get their own Alembic branch:
+
+```python
+# migrations/versions/inv_0001_initial.py
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
 revision = "inv_0001"
 down_revision = None
 branch_labels = ("inventory",)
 depends_on = None
+
+
+def upgrade() -> None:
+    op.create_table(
+        "inventory_items",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("clinic_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("code", sa.String(50)),
+        sa.Column("name", sa.String(200)),
+        sa.Column("metadata_", postgresql.JSONB(), server_default="{}"),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+    )
+    op.create_index("ix_inventory_items_clinic", "inventory_items", ["clinic_id"])
+
+
+def downgrade() -> None:
+    op.drop_index("ix_inventory_items_clinic", table_name="inventory_items")
+    op.drop_table("inventory_items")
 ```
 
-`alembic/env.py` auto-discovers `backend/app/modules/*/migrations/versions/`
-at load time — there's no configuration step. Create the directory,
-write the revision file, and `alembic upgrade head` picks it up.
-
-**Existing modules (Fase A legacy)** — `clinical`, `catalog`, `budget`,
-`billing`, `odontogram`, `treatment_plan`, `media`, `notifications`,
-`reports` — currently keep their migrations in the main linear chain
-at `backend/alembic/versions/`. New migrations for these modules still
-go to main linear. The branch extraction is Fase B work.
-
-### Generating a revision
-
-For a **branch module**:
+Generate with:
 
 ```bash
-cd backend
-alembic revision \
-  --autogenerate \
-  -m "add inventory module" \
-  --version-path app/modules/inventory/migrations/versions \
+alembic revision --autogenerate \
+  -m "initial inventory schema" \
+  --version-path dentalpin_inventory/migrations/versions \
   --branch-label inventory \
   --head base
-alembic upgrade head
 ```
 
-For a **legacy module** (main linear):
+For **legacy modules** (the 9 Fase A officials): new migrations still
+go to `backend/alembic/versions/` with `down_revision=<previous>`, no
+branch. This is explicit Fase A policy.
 
-```bash
-cd backend
-alembic revision --autogenerate -m "add inventory column"
-alembic upgrade head
+### `data/*.yaml`
+
+Declarative seed format:
+
+```yaml
+- xml_id: inventory.category_consumables
+  table: inventory_categories
+  noupdate: false
+  values:
+    name: "Consumables"
+    description: "Single-use items"
+- xml_id: inventory.item_mask
+  table: inventory_items
+  values:
+    category_id: "$xmlref:inventory.category_consumables"
+    code: "MASK-001"
+    name: "Face Mask"
 ```
 
-### Frontend layer (optional)
+`$xmlref:` resolves at load time. Records are tracked in
+`core_external_id`; running the same file twice is a no-op (upserts
+respect `noupdate`).
 
-A community module can ship its own UI by bundling a Nuxt Layer inside
-its Python package:
+---
+
+## 4. Frontend layer
+
+Nuxt Layer lives under `<package>/frontend/` and is auto-discovered
+when the manifest declares `frontend.layer_path`. Structure:
 
 ```
-dentalpin_billing/
-├── __init__.py
-├── manifest.py
-├── ...backend files...
-└── frontend/                 # the layer
-    ├── nuxt.config.ts
-    ├── pages/
-    ├── components/
-    ├── composables/
-    ├── i18n/
-    └── slots.ts              # optional: registerSlot(...) calls
+frontend/
+├── nuxt.config.ts      # bare defineNuxtConfig({}) is enough
+├── pages/              # file-based routing, merged with host
+├── components/         # auto-imported by Nuxt
+├── composables/        # auto-imported
+├── i18n/               # merged with @nuxtjs/i18n
+└── slots.ts            # registerSlot(...) calls run at setup
 ```
 
-Declare the layer in the manifest:
+### Backend-driven navigation
+
+Do **not** register nav items in a TypeScript file. Declare them in
+the manifest:
 
 ```python
-MANIFEST = {
-    "name": "my_module",
-    "version": "0.1.0",
-    # ...
-    "frontend": {
-        "layer_path": "frontend",   # relative to the package root
-        "navigation": [
-            {
-                "label": "nav.myModule",
-                "to": "/my-module",
-                "icon": "i-lucide-box",
-                "permission": "my_module.read",
-                "order": 80,
-            }
-        ],
-    },
+"frontend": {
+    "navigation": [
+        {
+            "label": "nav.inventory",       # i18n key
+            "to": "/inventory",
+            "icon": "i-lucide-box",
+            "permission": "inventory.items.read",
+            "order": 70,
+        }
+    ],
 }
 ```
 
-At install time, the registry:
+The frontend fetches `/api/v1/modules/-/active` at login and renders
+the merged list. Permission filtering runs server-side; i18n resolves
+client-side.
 
-1. resolves `<pkg>/frontend` to an absolute path,
-2. rewrites `frontend/modules.json` atomically,
-3. expects the host to rebuild the frontend container:
-   `docker compose build frontend && docker compose up -d frontend`.
+### Canonical slots (v1)
 
-`frontend/nuxt.config.ts` reads `modules.json` at boot and passes the
-layer array to `extends`, so Nuxt auto-discovers the layer's pages,
-components, composables and i18n files.
+| Name | Context (`ctx`) |
+|------|-----------------|
+| `patient.detail.tabs` | `{ patient }` |
+| `patient.detail.sidebar` | `{ patient }` |
+| `appointment.detail.actions` | `{ appointment }` |
+| `dashboard.widgets` | `{}` |
+| `settings.sections` | `{}` |
 
-**Fase A policy**: the 9 official modules keep their UI on the host
-frontend and do **not** declare `layer_path` — per the pre-bundled
-decision. Install/uninstall of officials never triggers a frontend
-rebuild. Community modules are the primary consumer of the layer
-mechanism.
+Consume:
 
-CLI helpers inside the backend container:
-
-```bash
-./bin/dentalpin modules sync-frontend     # regenerate modules.json
-./bin/dentalpin modules rebuild-frontend  # prints the docker command
+```vue
+<ModuleSlot name="patient.detail.sidebar" :ctx="{ patient }" />
 ```
 
-### Cross-module FKs
+Register (typically in `frontend/slots.ts` of your layer):
 
-A migration that references tables owned by another module must declare
-the dependency explicitly so Alembic orders the upgrade correctly:
+```ts
+import { defineAsyncComponent } from 'vue'
+import { registerSlot } from '~/composables/useModuleSlots'
+
+registerSlot('patient.detail.sidebar', {
+  id: 'inventory.patient.sidebar',   // stable, unique
+  component: defineAsyncComponent(() => import('./components/InventoryWidget.vue')),
+  order: 30,
+  permission: 'inventory.items.read',
+  condition: (ctx) => ctx.patient.status === 'active',
+})
+```
+
+---
+
+## 5. Lifecycle
+
+State machine tracked in `core_module`:
+
+```
+uninstalled ──install──▶ to_install ──restart──▶ installed
+installed   ──upgrade──▶ to_upgrade ──restart──▶ installed
+installed   ──uninstall─▶ to_remove ──restart──▶ uninstalled
+installed   ◀──toggle──▶ disabled    (no restart, no DB write)
+```
+
+On each restart, the **pending processor** runs every module in
+`to_*` state, in topological order, through these steps:
+
+- **install**: `migrate → seed → module.install(ctx) → finalize`
+- **upgrade**: `migrate → seed → module.post_upgrade(ctx, from) → finalize`
+- **uninstall**: `backup → module.uninstall(ctx) → delete_data → migrate_down → finalize`
+
+Every step is logged to `core_module_operation_log` with
+`started/completed/failed`. Crashes leave a trail; the next restart
+can detect and retry.
+
+### External IDs
+
+`core_external_id` tracks every seed record. On `uninstall` every row
+owned by the module is deleted (preceded by a `pg_dump` of the
+module's tables to `storage/backups/`).
+
+### Explicit restart
+
+Modules never hot-load. CLI responses and REST endpoints always return
+"restart required" after a state change. Restart via:
+
+- REST: `POST /api/v1/modules/-/restart`
+- CLI hint: `./bin/dentalpin modules rebuild-frontend`
+- Host: `docker compose restart backend`
+
+---
+
+## 6. Dependencies and events
+
+### `depends`
+
+Hard dependency. If `billing.depends = ["clinical", "catalog"]`, both
+must be `installed` before billing can be `installed`. The install
+flow resolves transitively: installing billing while clinical and
+catalog are uninstalled schedules all three.
+
+Circular dependencies are rejected at discovery time (topological
+sort fails loud).
+
+### Events
+
+The core publishes a fixed catalog of events. See `docs/core-api.md`
+for the full list + payload schemas. Common ones:
+
+- `patient.created`, `patient.updated`, `patient.medical_updated`
+- `appointment.scheduled`, `appointment.completed`, `appointment.cancelled`
+- `budget.sent`, `budget.accepted`
+- `invoice.issued`, `invoice.paid`
+
+Publish your own:
 
 ```python
-depends_on = ("billing@head",)
+event_bus.publish("inventory.restocked", {
+    "clinic_id": str(clinic_id),
+    "item_id": str(item.id),
+    "qty": qty,
+})
 ```
 
-The other module must also be listed in `manifest["depends"]`. A CI
-validator (Etapa 7) rejects PRs that violate this rule.
+Naming convention: `<module>.<action>` (lower-snake).
 
-## Module Dependencies
+### FK cross-module
 
-Dependencies are validated at startup:
+Allowed **only** when the target module is in `depends`. A CI
+validator rejects migrations that reference tables of undeclared
+modules.
 
-```python
-@property
-def dependencies(self) -> list[str]:
-    return ["clinical", "billing"]  # Both must exist
-```
+---
 
-If a dependency is missing, the app will fail to start with an error:
-```
-ValueError: Missing dependency: 'billing' required by 'inventory'
-```
+## 7. Permissions
 
-Circular dependencies are also detected:
-```
-ValueError: Circular dependency detected: inventory -> billing -> inventory
-```
+### Declaring permissions
 
-## Event Bus
-
-Modules can communicate via events:
-
-**Publishing events (in service.py):**
-```python
-from app.core.events import event_bus
-
-async def complete_appointment(db, appointment_id):
-    # ... business logic ...
-    event_bus.publish("appointment.completed", {
-        "appointment_id": str(appointment_id),
-        "patient_id": str(appointment.patient_id),
-    })
-```
-
-**Subscribing to events (in module class):**
-```python
-def get_event_handlers(self) -> dict:
-    return {
-        "appointment.completed": self._handle_completed,
-        "patient.created": self._handle_new_patient,
-    }
-
-def _handle_completed(self, data: dict) -> None:
-    appointment_id = data["appointment_id"]
-    # React to the event
-```
-
-## RBAC Permissions
-
-Permissions follow the format `resource.action`:
+Your module returns module-local names from `get_permissions()`:
 
 ```python
 def get_permissions(self) -> list[str]:
-    return [
-        "inventory.read",    # View inventory
-        "inventory.write",   # Create/update items
-        "inventory.manage",  # Full control including delete
-    ]
+    return ["items.read", "items.write", "movements.read"]
 ```
 
-These permissions are aggregated by the registry and can be assigned to roles.
+The registry namespaces them automatically: `inventory.items.read`,
+etc. That's the string roles reference.
 
-## Testing Your Module
+### `role_permissions` in manifest
 
-Create tests in `backend/tests/modules/{module_name}/`:
+Declare which permissions each existing role should obtain on install:
 
 ```python
-"""Tests for inventory module."""
+"role_permissions": {
+    "admin": ["*"],
+    "dentist": ["items.read"],
+    "assistant": ["items.read", "items.write"],
+}
+```
 
-import pytest
-from httpx import AsyncClient
+`*` = every permission in this module. Sub-wildcards like `movements.*`
+are allowed. In Fase A this metadata is informational; when the RBAC
+table moves to the database (Fase C), the registry will apply it at
+install time.
 
+### Using permissions in code
 
+Backend:
+
+```python
+_: Annotated[None, Depends(require_permission("inventory.items.read"))],
+```
+
+Frontend:
+
+```vue
+<ActionButton resource="inventory.items" action="write" ...>
+```
+
+Or programmatically:
+
+```ts
+const { can } = usePermissions()
+if (can('inventory.items.read')) { /* ... */ }
+```
+
+---
+
+## 8. Versioning
+
+Rules (enforced by CI):
+
+- Any new Alembic revision → bump **minor**.
+- Breaking change to public API, permissions or slot contract → bump
+  **major**.
+- Bugfix with no interface change → bump **patch**.
+
+The manifest validator (`app.core.plugins.manifest_validator`) runs as
+part of the test suite and rejects version strings that aren't
+semver-ish (`\d+\.\d+\.\d+`).
+
+When you bump, write an entry in your module's `CHANGELOG.md`:
+
+```
+## 0.2.0 - 2026-06-01
+### Added
+- Low-stock alerts.
+### Changed
+- InventoryItem.code is now unique per clinic (breaking for clinics
+  that had duplicates — cleanup script provided).
+```
+
+---
+
+## 9. Testing
+
+### Fixtures
+
+The core's `tests/conftest.py` exposes:
+
+- `db_session` — fresh DB + session per test
+- `client` — HTTPX async client with lifespan
+- `auth_headers` — Bearer token for a registered user
+
+Community modules can import these via pytest discovery once
+`dentalpin-core[tests]` is a dev dependency.
+
+### What to cover
+
+- Happy-path CRUD + auth filtering
+- Multi-tenancy: patient from clinic A invisible to user in clinic B
+- Event bus: your handlers fire on published events; unrelated events
+  don't crash
+- Seed idempotency: run `install` twice, no duplicates, no errors
+- Round-trip schema (modules with Alembic branch): `install` then
+  `uninstall` leaves the DB schema identical to pre-install (diff
+  via `pg_dump --schema-only`)
+
+### Example
+
+```python
 @pytest.mark.asyncio
-async def test_create_inventory_item(client: AsyncClient, auth_headers: dict):
+async def test_create_item(client, auth_headers):
     response = await client.post(
         "/api/v1/inventory/items",
-        json={"name": "Dental Floss", "quantity": 100},
+        json={"code": "X", "name": "Widget"},
         headers=auth_headers,
     )
     assert response.status_code == 201
-    assert response.json()["name"] == "Dental Floss"
 ```
 
-## Checklist
+---
 
-Before submitting a new module:
+## 10. Distribution
 
-- [ ] Module class inherits from `BaseModule`
-- [ ] `name` and `version` properties defined
-- [ ] `get_models()` returns all models
-- [ ] `get_router()` returns router with endpoints
-- [ ] `dependencies` lists required modules (if any)
-- [ ] Database migration created and tested
-- [ ] Schemas validate input/output correctly
-- [ ] Service layer handles business logic
-- [ ] Tests cover critical paths
-- [ ] Permissions defined for RBAC
+### Official module
+
+1. Add `backend/app/modules/<name>/` with the files above.
+2. Register the entry point in `backend/pyproject.toml`.
+3. Open a PR to the main repo.
+4. Ship as part of the next DentalPin release.
+
+### Community module
+
+1. Push to GitHub under your own account.
+2. `pip install build && python -m build`.
+3. Upload to PyPI: `twine upload dist/*`.
+4. Document the install steps in your README:
+
+```bash
+pip install dentalpin-my-module
+./bin/dentalpin modules install my_module
+./bin/dentalpin modules restart
+docker compose build frontend && docker compose up -d frontend
+```
+
+The core team does **not** accept PRs for community modules on the
+main repo — you own the code, the releases and the support.
+
+---
+
+## 11. Debugging
+
+### CLI
+
+```bash
+./bin/dentalpin modules list              # everything + state
+./bin/dentalpin modules info inventory    # full metadata
+./bin/dentalpin modules status            # pending + errored summary
+./bin/dentalpin modules doctor            # orphans, missing deps, manifest errors
+./bin/dentalpin modules sync-frontend     # regenerate modules.json
+```
+
+### Useful SQL
+
+```sql
+-- Active state + last error
+SELECT name, state, error_message, error_at
+FROM core_module
+ORDER BY name;
+
+-- Recent operations
+SELECT module_name, operation, step, status, created_at
+FROM core_module_operation_log
+ORDER BY id DESC
+LIMIT 20;
+
+-- Seed records tracked for a module
+SELECT xml_id, table_name, record_id
+FROM core_external_id
+WHERE module_name = 'inventory';
+```
+
+### Logs
+
+Everything goes through `logging`. Look for the logger name
+`app.core.plugins.*` (core) or `app.modules.<name>` (your module).
+
+---
+
+## 12. Common recipes
+
+### Add a tab to the patient detail view
+
+```ts
+// frontend/slots.ts
+registerSlot('patient.detail.tabs', {
+  id: 'my_module.patient.tab',
+  component: defineAsyncComponent(() => import('./components/MyTab.vue')),
+  order: 50,
+  permission: 'my_module.read',
+})
+```
+
+### React to an appointment completion
+
+```python
+def get_event_handlers(self) -> dict:
+    return {EventType.APPOINTMENT_COMPLETED: on_completed}
+
+async def on_completed(db: AsyncSession, data: dict) -> None:
+    appointment_id = UUID(data["appointment_id"])
+    # Do work
+```
+
+### Seed data that depends on a record from another module
+
+```yaml
+- xml_id: my_module.item
+  table: my_table
+  values:
+    category_id: "$xmlref:catalog.category_default"  # cross-module ref
+```
+
+Declare `catalog` in `depends` to guarantee the referenced record
+exists at install time.
+
+### Migration referencing another module's table
+
+```python
+revision = "mymod_0002"
+down_revision = "mymod_0001"
+branch_labels = None
+depends_on = ("catalog@head",)   # ensure catalog ran first
+
+def upgrade() -> None:
+    op.add_column(
+        "my_table",
+        sa.Column("catalog_item_id", postgresql.UUID(as_uuid=True),
+                  sa.ForeignKey("treatment_catalog_items.id")),
+    )
+```
+
+---
+
+## 13. Pre-publish checklist
+
+Before tagging a community module release:
+
+- [ ] `pytest` passes locally
+- [ ] `ruff check .` and `ruff format --check .` are clean
+- [ ] `dentalpin modules doctor` reports no issues after install
+- [ ] `CHANGELOG.md` has an entry for the new version
+- [ ] `README.md` has install + config instructions
+- [ ] `version` bumped per §8 rules
+- [ ] Smoke test: install on a fresh instance, exercise the module,
+      uninstall — DB returns to pre-install schema
+
+---
+
+## 14. Governance
+
+- **Community modules stay in their own repos** and are not merged
+  into the DentalPin monorepo.
+- **Official modules** are maintained by the core team; PRs welcome
+  through the usual review process.
+- A **registry of known community modules** will appear at
+  `docs/community-modules.md` once the first third-party modules
+  exist. Inclusion is informational; it is not an endorsement.
+- **Security reports**: email security@dentalpin.example (placeholder
+  until the first release). Critical issues trigger a coordinated
+  disclosure.
+- **Breaking changes to the core API** follow the deprecation policy
+  described in `docs/core-api.md`.
+
+---
+
+## Where to go next
+
+- `docs/core-api.md` — full public API reference.
+- `docs/operations.md` — admin/self-hoster guide.
+- `docs/design/module-system-architecture.md` — why things are the
+  way they are.
+- `tests/fixtures/sample_module/` — minimal working module you can
+  copy.
