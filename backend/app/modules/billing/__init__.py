@@ -39,6 +39,17 @@ class BillingModule(BaseModule):
             "assistant": ["read", "write"],
             "receptionist": ["read", "write"],
         },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.invoices",
+                    "icon": "i-lucide-receipt",
+                    "to": "/invoices",
+                    "permission": "billing.read",
+                    "order": 50,
+                },
+            ],
+        },
     }
 
     def get_models(self) -> list:

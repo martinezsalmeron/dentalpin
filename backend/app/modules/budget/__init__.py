@@ -47,6 +47,17 @@ class BudgetModule(BaseModule):
             "assistant": ["read", "write"],
             "receptionist": ["read", "write"],
         },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.budgets",
+                    "icon": "i-lucide-file-text",
+                    "to": "/budgets",
+                    "permission": "budget.read",
+                    "order": 40,
+                },
+            ],
+        },
     }
 
     def get_models(self) -> list:

@@ -1,31 +1,85 @@
-import { getModules, getNavigationItems } from '~/utils/moduleRegistry'
-import type { ModuleDefinition, NavigationItem } from '~/types'
+/**
+ * Backend-driven module + navigation registry.
+ *
+ * Fetches ``GET /api/v1/modules/-/active`` once per session and caches
+ * the result in :func:`useState`. The sidebar consumes
+ * ``navigationItems`` — entries are permission-filtered on the server
+ * and re-translated client-side via i18n. ``ensureLoaded`` is
+ * idempotent so guards / layouts can call it without coordinating.
+ *
+ * If the fetch fails (offline, auth missing, network hiccup) the
+ * static :mod:`utils/moduleRegistry` is used as a fallback so the UI
+ * never shows a blank sidebar for authenticated users.
+ */
+
+import type { ActiveModule, ApiResponse, NavigationItem } from '~/types'
+import {
+  getModules as getStaticModules,
+  getNavigationItems as getStaticNav,
+} from '~/utils/moduleRegistry'
 
 export function useModules() {
   const { t } = useI18n()
   const { can } = usePermissions()
+  const auth = useAuth()
+  const api = useApi()
 
-  const modules = computed<ModuleDefinition[]>(() => getModules())
+  const active = useState<ActiveModule[] | null>('modules:active', () => null)
+  const loading = useState<boolean>('modules:active:loading', () => false)
+  const error = useState<string | null>('modules:active:error', () => null)
 
-  // Filter navigation items based on user permissions
-  const navigationItems = computed<NavigationItem[]>(() => {
-    return getNavigationItems()
-      .filter((item) => {
-        // If no permission required, show to all
-        if (!item.permission) {
-          return true
-        }
-        // Check if user has the required permission
-        return can(item.permission)
-      })
-      .map(item => ({
-        ...item,
-        label: t(item.label)
+  async function ensureLoaded(force = false): Promise<void> {
+    if (!auth.accessToken.value) return
+    if (!force && active.value !== null) return
+    if (loading.value) return
+
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get<ApiResponse<ActiveModule[]>>(
+        '/api/v1/modules/-/active'
+      )
+      active.value = response.data
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load modules'
+      console.warn('useModules: falling back to static registry —', error.value)
+      active.value = null // keep the cached fallback transparent
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // All modules — either from backend response or the static fallback.
+  const modules = computed(() => {
+    if (active.value) {
+      return active.value.map(m => ({
+        name: m.name,
+        label: m.name,
+        icon: '',
+        navigation: m.navigation,
       }))
+    }
+    return getStaticModules()
+  })
+
+  const navigationItems = computed<NavigationItem[]>(() => {
+    const raw = active.value
+      ? active.value.flatMap(m => m.navigation)
+      : getStaticNav()
+
+    return raw
+      .filter(item => !item.permission || can(item.permission))
+      .slice()
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+      .map(item => ({ ...item, label: t(item.label) }))
   })
 
   return {
     modules,
-    navigationItems
+    navigationItems,
+    active,
+    loading,
+    error,
+    ensureLoaded,
   }
 }

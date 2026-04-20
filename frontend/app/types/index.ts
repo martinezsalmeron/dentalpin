@@ -245,6 +245,7 @@ export interface NavigationItem {
   icon: string
   to: string
   permission?: string // Required permission to see this item
+  order?: number
 }
 
 export interface ModuleDefinition {
@@ -252,6 +253,16 @@ export interface ModuleDefinition {
   label: string
   icon: string
   navigation: NavigationItem[]
+}
+
+// Response from GET /api/v1/modules/-/active (backend-driven nav).
+export interface ActiveModule {
+  name: string
+  version: string
+  category: 'official' | 'community'
+  summary: string
+  navigation: NavigationItem[]
+  permissions: string[]
 }
 
 // Permission config for centralized management

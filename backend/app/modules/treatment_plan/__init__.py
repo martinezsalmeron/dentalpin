@@ -48,6 +48,17 @@ class TreatmentPlanModule(BaseModule):
             "assistant": ["plans.read", "plans.write"],
             "receptionist": [],
         },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.treatmentPlans",
+                    "icon": "i-lucide-clipboard-list",
+                    "to": "/treatment-plans",
+                    "permission": "treatment_plan.plans.read",
+                    "order": 30,
+                },
+            ],
+        },
     }
 
     def get_models(self) -> list:

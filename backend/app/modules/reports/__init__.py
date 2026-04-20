@@ -35,6 +35,17 @@ class ReportsModule(BaseModule):
             "assistant": ["scheduling.read"],
             "receptionist": ["billing.read", "scheduling.read"],
         },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.reports",
+                    "icon": "i-lucide-bar-chart-3",
+                    "to": "/reports",
+                    "permission": "reports.billing.read",
+                    "order": 60,
+                },
+            ],
+        },
     }
 
     def get_models(self) -> list:

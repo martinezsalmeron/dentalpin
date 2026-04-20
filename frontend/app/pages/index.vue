@@ -205,5 +205,8 @@ const isEmpty = computed(() =>
         </template>
       </SectionCard>
     </div>
+
+    <!-- Extension point for module-provided dashboard widgets. -->
+    <ModuleSlot name="dashboard.widgets" :ctx="{}" />
   </div>
 </template>

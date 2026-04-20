@@ -54,6 +54,30 @@ class ClinicalModule(BaseModule):
                 "appointments.write",
             ],
         },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.dashboard",
+                    "icon": "i-lucide-home",
+                    "to": "/",
+                    "order": 0,
+                },
+                {
+                    "label": "nav.patients",
+                    "icon": "i-lucide-users",
+                    "to": "/patients",
+                    "permission": "clinical.patients.read",
+                    "order": 10,
+                },
+                {
+                    "label": "nav.appointments",
+                    "icon": "i-lucide-calendar",
+                    "to": "/appointments",
+                    "permission": "clinical.appointments.read",
+                    "order": 20,
+                },
+            ],
+        },
     }
 
     def get_models(self) -> list:
