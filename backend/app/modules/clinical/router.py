@@ -36,7 +36,7 @@ router = APIRouter()
 async def get_patient_timeline(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     category: str | None = Query(default=None, max_length=30),
     page: int = Query(default=1, ge=1),

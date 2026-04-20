@@ -141,9 +141,7 @@ async def test_search_patients(
     )
 
     # Search for Juan
-    response = await client.get(
-        "/api/v1/patients", headers=auth_headers, params={"search": "Juan"}
-    )
+    response = await client.get("/api/v1/patients", headers=auth_headers, params={"search": "Juan"})
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1

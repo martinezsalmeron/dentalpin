@@ -37,27 +37,9 @@ class ClinicalModule(BaseModule):
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["*"],
-            "hygienist": [
-                "patients.read",
-                "patients.medical.read",
-                "appointments.read",
-                "appointments.write",
-            ],
-            "assistant": [
-                "patients.read",
-                "patients.write",
-                "patients.medical.read",
-                "patients.medical.write",
-                "appointments.read",
-                "appointments.write",
-            ],
-            "receptionist": [
-                "patients.read",
-                "patients.write",
-                "patients.medical.read",
-                "appointments.read",
-                "appointments.write",
-            ],
+            "hygienist": ["appointments.read", "appointments.write"],
+            "assistant": ["appointments.read", "appointments.write"],
+            "receptionist": ["appointments.read", "appointments.write"],
         },
         "frontend": {
             "navigation": [
@@ -66,13 +48,6 @@ class ClinicalModule(BaseModule):
                     "icon": "i-lucide-home",
                     "to": "/",
                     "order": 0,
-                },
-                {
-                    "label": "nav.patients",
-                    "icon": "i-lucide-users",
-                    "to": "/patients",
-                    "permission": "clinical.patients.read",
-                    "order": 10,
                 },
                 {
                     "label": "nav.appointments",
@@ -93,14 +68,6 @@ class ClinicalModule(BaseModule):
 
     def get_permissions(self) -> list[str]:
         return [
-            # patients.* permissions re-namespace under the `patients`
-            # module. During B.1 chunk 1 they still live here to keep
-            # the HTTP endpoints (in clinical's router) authorizing
-            # without surprises. Chunk 3 moves them with the router.
-            "patients.read",
-            "patients.write",
-            "patients.medical.read",
-            "patients.medical.write",
             "appointments.read",
             "appointments.write",
         ]

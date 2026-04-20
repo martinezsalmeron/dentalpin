@@ -1,9 +1,8 @@
 """Patient HTTP surface.
 
-Moved from ``app.modules.clinical.router`` in Fase B.1 chunk 2. The
-endpoints now mount under ``/api/v1/patients/*``. Permissions remain
-``clinical.patients.*`` during this chunk — they re-namespace to
-``patients.*`` in chunk 3.
+Mounts under ``/api/v1/patients/*``. Permissions live in the
+``patients.*`` namespace: ``patients.read``, ``patients.write``,
+``patients.medical.read`` and ``patients.medical.write``.
 """
 
 from datetime import datetime
@@ -35,7 +34,7 @@ router = APIRouter()
 @router.get("/recent", response_model=ApiResponse[list[PatientResponse]])
 async def get_recent_patients(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(default=8, ge=1, le=20),
 ) -> ApiResponse[list[PatientResponse]]:
@@ -47,7 +46,7 @@ async def get_recent_patients(
 @router.get("", response_model=PaginatedApiResponse[PatientResponse])
 async def list_patients(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     search: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1),
@@ -71,7 +70,7 @@ async def list_patients(
 async def create_patient(
     data: PatientCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
+    _: Annotated[None, Depends(require_permission("patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientResponse]:
     """Create a new patient."""
@@ -85,7 +84,7 @@ async def create_patient(
 async def get_patient(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientResponse]:
     """Get a patient by ID."""
@@ -103,7 +102,7 @@ async def update_patient(
     patient_id: UUID,
     data: PatientUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
+    _: Annotated[None, Depends(require_permission("patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientResponse]:
     """Update a patient."""
@@ -121,7 +120,7 @@ async def update_patient(
 async def delete_patient(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
+    _: Annotated[None, Depends(require_permission("patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Soft delete (archive) a patient."""
@@ -141,7 +140,7 @@ async def delete_patient(
 async def get_patient_extended(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientExtendedResponse]:
     """Get patient with extended info (demographics, emergency contact, alerts)."""
@@ -159,7 +158,7 @@ async def update_patient_extended(
     patient_id: UUID,
     data: PatientExtendedUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.write"))],
+    _: Annotated[None, Depends(require_permission("patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientExtendedResponse]:
     """Update patient with extended fields."""
@@ -183,7 +182,7 @@ async def update_patient_extended(
 async def get_medical_history(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.medical.read"))],
+    _: Annotated[None, Depends(require_permission("patients.medical.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[MedicalHistoryResponse]:
     """Get patient medical history."""
@@ -205,7 +204,7 @@ async def update_medical_history(
     patient_id: UUID,
     data: MedicalHistoryUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.medical.write"))],
+    _: Annotated[None, Depends(require_permission("patients.medical.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[MedicalHistoryResponse]:
     """Update patient medical history."""
@@ -231,7 +230,7 @@ async def update_medical_history(
 async def get_patient_alerts(
     patient_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientAlertsResponse]:
     """Get active alerts for a patient (computed from medical history)."""

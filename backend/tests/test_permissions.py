@@ -46,15 +46,15 @@ class TestHasPermission:
 
     def test_admin_has_all_permissions(self):
         """Admin role should have all permissions via wildcard."""
-        assert has_permission("admin", "clinical.patients.read") is True
-        assert has_permission("admin", "clinical.patients.write") is True
+        assert has_permission("admin", "patients.read") is True
+        assert has_permission("admin", "patients.write") is True
         assert has_permission("admin", "admin.users.write") is True
         assert has_permission("admin", "future.module.action") is True
 
     def test_dentist_has_clinical_permissions(self):
-        """Dentist role should have all clinical permissions."""
-        assert has_permission("dentist", "clinical.patients.read") is True
-        assert has_permission("dentist", "clinical.patients.write") is True
+        """Dentist should have patients + appointments access."""
+        assert has_permission("dentist", "patients.read") is True
+        assert has_permission("dentist", "patients.write") is True
         assert has_permission("dentist", "clinical.appointments.read") is True
         assert has_permission("dentist", "clinical.appointments.write") is True
 
@@ -63,24 +63,27 @@ class TestHasPermission:
         assert has_permission("dentist", "admin.users.write") is False
 
     def test_hygienist_limited_permissions(self):
-        """Hygienist should have limited clinical permissions."""
-        assert has_permission("hygienist", "clinical.patients.read") is True
-        assert has_permission("hygienist", "clinical.patients.write") is False
+        """Hygienist has read-only patient + medical.read + full appointments."""
+        assert has_permission("hygienist", "patients.read") is True
+        assert has_permission("hygienist", "patients.write") is False
+        assert has_permission("hygienist", "patients.medical.read") is True
         assert has_permission("hygienist", "clinical.appointments.read") is True
         assert has_permission("hygienist", "clinical.appointments.write") is True
 
     def test_receptionist_permissions(self):
-        """Receptionist should have patient and appointment permissions."""
-        assert has_permission("receptionist", "clinical.patients.read") is True
-        assert has_permission("receptionist", "clinical.patients.write") is True
+        """Receptionist has patient + appointment access; medical read-only."""
+        assert has_permission("receptionist", "patients.read") is True
+        assert has_permission("receptionist", "patients.write") is True
+        assert has_permission("receptionist", "patients.medical.read") is True
+        assert has_permission("receptionist", "patients.medical.write") is False
         assert has_permission("receptionist", "clinical.appointments.read") is True
         assert has_permission("receptionist", "clinical.appointments.write") is True
         assert has_permission("receptionist", "admin.users.write") is False
 
     def test_unknown_role_has_no_permissions(self):
         """Unknown role should have no permissions."""
-        assert has_permission("unknown_role", "clinical.patients.read") is False
-        assert has_permission("", "clinical.patients.read") is False
+        assert has_permission("unknown_role", "patients.read") is False
+        assert has_permission("", "patients.read") is False
 
 
 class TestExpandPermissions:

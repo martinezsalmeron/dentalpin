@@ -32,8 +32,8 @@ export function usePermissions() {
   }
 
   // Convenience computed properties for common checks
-  const canReadPatients = computed(() => can('clinical.patients.read'))
-  const canWritePatients = computed(() => can('clinical.patients.write'))
+  const canReadPatients = computed(() => can('patients.read'))
+  const canWritePatients = computed(() => can('patients.write'))
   const canReadAppointments = computed(() => can('clinical.appointments.read'))
   const canWriteAppointments = computed(() => can('clinical.appointments.write'))
   const canManageUsers = computed(() => can('admin.users.write'))

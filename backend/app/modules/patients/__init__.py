@@ -1,8 +1,8 @@
 """Patients module — patient identity.
 
 Holds Patient, its schemas, service and the ``/api/v1/patients/*``
-HTTP surface. Permissions re-namespace from ``clinical.patients.*``
-to ``patients.*`` in chunk 3.
+HTTP surface. Permissions use the ``patients.*`` namespace as of Fase
+B.1 chunk 3.
 """
 
 from fastapi import APIRouter
@@ -27,12 +27,23 @@ class PatientsModule(BaseModule):
         "installable": True,
         "auto_install": True,
         "removable": False,
-        # Permissions stay under the ``clinical.patients.*`` namespace
-        # during B.1 chunk 2 to avoid churn on ROLE_PERMISSIONS.
-        # Chunk 3 renames them to ``patients.*`` and updates every
-        # caller + the frontend permissions config at once.
         "role_permissions": {
             "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": ["read", "medical.read"],
+            "assistant": ["*"],
+            "receptionist": ["read", "write", "medical.read"],
+        },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.patients",
+                    "icon": "i-lucide-users",
+                    "to": "/patients",
+                    "permission": "patients.read",
+                    "order": 10,
+                },
+            ],
         },
     }
 
@@ -43,4 +54,4 @@ class PatientsModule(BaseModule):
         return router
 
     def get_permissions(self) -> list[str]:
-        return []
+        return ["read", "write", "medical.read", "medical.write"]
