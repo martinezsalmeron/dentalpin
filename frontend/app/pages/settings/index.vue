@@ -1211,5 +1211,8 @@ async function handleSaveClinicInfo() {
         </UCard>
       </template>
     </UModal>
+
+    <!-- Extension point for module-provided settings sections. -->
+    <ModuleSlot name="settings.sections" :ctx="{}" />
   </div>
 </template>

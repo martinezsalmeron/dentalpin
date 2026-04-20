@@ -2,9 +2,21 @@
 const { t } = useI18n()
 const auth = useAuth()
 const clinic = useClinic()
-const { navigationItems } = useModules()
+const { navigationItems, ensureLoaded } = useModules()
 const { init: initDensity } = useDensity()
 const route = useRoute()
+
+// Pull the backend-driven nav once the layout mounts on a signed-in
+// route. `ensureLoaded` is idempotent, so revisiting the layout is
+// cheap.
+ensureLoaded()
+
+watch(
+  () => auth.accessToken.value,
+  (token) => {
+    if (token) ensureLoaded(true)
+  }
+)
 
 // Sidebar state
 const isSidebarCollapsed = useState('sidebar:collapsed', () => false)

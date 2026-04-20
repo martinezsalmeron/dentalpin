@@ -335,7 +335,7 @@ const infoAccordionItems = computed(() => {
         <!-- Sticky Sidebar (hidden when viewing plan detail) -->
         <aside
           v-if="!hideSidebar"
-          class="lg:w-72 lg:shrink-0"
+          class="lg:w-72 lg:shrink-0 space-y-4"
         >
           <div class="lg:sticky lg:top-4">
             <UCard>
@@ -347,6 +347,8 @@ const infoAccordionItems = computed(() => {
                 :loading-appointment="appointmentsStatus === 'pending'"
               />
             </UCard>
+            <!-- Extension point for module-provided sidebar widgets. -->
+            <ModuleSlot name="patient.detail.sidebar" :ctx="{ patient }" />
           </div>
         </aside>
 

@@ -18,13 +18,67 @@ from .service import TimelineService
 class ClinicalModule(BaseModule):
     """Clinical module providing patient and appointment management."""
 
-    @property
-    def name(self) -> str:
-        return "clinical"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
+    manifest = {
+        "name": "clinical",
+        "version": "0.1.0",
+        "summary": "Patients, appointments, timeline.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": [],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": [
+                "patients.read",
+                "patients.medical.read",
+                "appointments.read",
+                "appointments.write",
+            ],
+            "assistant": [
+                "patients.read",
+                "patients.write",
+                "patients.medical.read",
+                "patients.medical.write",
+                "appointments.read",
+                "appointments.write",
+            ],
+            "receptionist": [
+                "patients.read",
+                "patients.write",
+                "patients.medical.read",
+                "appointments.read",
+                "appointments.write",
+            ],
+        },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.dashboard",
+                    "icon": "i-lucide-home",
+                    "to": "/",
+                    "order": 0,
+                },
+                {
+                    "label": "nav.patients",
+                    "icon": "i-lucide-users",
+                    "to": "/patients",
+                    "permission": "clinical.patients.read",
+                    "order": 10,
+                },
+                {
+                    "label": "nav.appointments",
+                    "icon": "i-lucide-calendar",
+                    "to": "/appointments",
+                    "permission": "clinical.appointments.read",
+                    "order": 20,
+                },
+            ],
+        },
+    }
 
     def get_models(self) -> list:
         return [Patient, Appointment, AppointmentTreatment, PatientTimeline]

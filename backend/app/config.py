@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     # Testing
     TESTING: bool = False
 
+    # Module system
+    DENTALPIN_DEV_MODULE_SCAN: bool = True  # Fallback filesystem scan for dev
+    # Host-mounted path where `frontend/modules.json` lives. The backend
+    # writes this file whenever a module with a Nuxt layer is
+    # installed/uninstalled so the Nuxt host picks up `extends` on next
+    # build. docker-compose mounts `./frontend` → `/host_frontend`.
+    DENTALPIN_FRONTEND_ROOT: str = "/host_frontend"
+
     # Storage configuration
     STORAGE_BACKEND: str = "local"
     STORAGE_LOCAL_PATH: str = "/app/storage"

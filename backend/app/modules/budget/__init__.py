@@ -29,17 +29,36 @@ class BudgetModule(BaseModule):
     - Synchronization with treatment plans
     """
 
-    @property
-    def name(self) -> str:
-        return "budget"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return ["clinical", "catalog"]  # Requires patients and catalog
+    manifest = {
+        "name": "budget",
+        "version": "0.1.0",
+        "summary": "Dental treatment quotes, versioning, signatures.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": ["clinical", "catalog"],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": ["read"],
+            "assistant": ["read", "write"],
+            "receptionist": ["read", "write"],
+        },
+        "frontend": {
+            "navigation": [
+                {
+                    "label": "nav.budgets",
+                    "icon": "i-lucide-file-text",
+                    "to": "/budgets",
+                    "permission": "budget.read",
+                    "order": 40,
+                },
+            ],
+        },
+    }
 
     def get_models(self) -> list:
         return [Budget, BudgetItem, BudgetSignature, BudgetHistory]

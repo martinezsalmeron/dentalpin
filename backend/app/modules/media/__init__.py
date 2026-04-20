@@ -16,17 +16,25 @@ from .service import DocumentService
 class MediaModule(BaseModule):
     """Media module providing document management."""
 
-    @property
-    def name(self) -> str:
-        return "media"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return ["clinical"]  # Requires patients
+    manifest = {
+        "name": "media",
+        "version": "0.1.0",
+        "summary": "Patient documents, images, file storage.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": ["clinical"],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": ["documents.read"],
+            "assistant": ["*"],
+            "receptionist": ["*"],
+        },
+    }
 
     def get_models(self) -> list:
         return [Document]

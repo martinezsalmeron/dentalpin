@@ -29,9 +29,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
     volumes:
       - ./backend:/app
       - storage_data:/app/storage
+      # Mount the frontend root read-write so the backend can regenerate
+      # modules.json when a module with a Nuxt layer is installed.
+      - ./frontend:/host_frontend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:

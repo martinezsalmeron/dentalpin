@@ -1,16 +1,41 @@
-"""Module loader for discovering and loading modules at startup."""
+"""Module discovery and loading.
+
+Discovery happens in two stages:
+
+1. **Entry points** — the primary mechanism. Modules (internal or
+   third-party) declare an entry point in the ``dentalpin.modules``
+   group. This is how published PyPI packages plug in without any
+   filesystem layout assumptions.
+
+2. **Filesystem scan** — a dev-mode fallback that walks
+   ``backend/app/modules/`` and imports any package containing a
+   ``BaseModule`` subclass. Controlled by
+   ``settings.DENTALPIN_DEV_MODULE_SCAN``. The fallback skips modules
+   that an entry point already provided, so entry points win when both
+   are present.
+
+The public entry points for the rest of the app remain
+:func:`load_modules` and the :class:`ModuleLoader` wrapper.
+"""
+
+from __future__ import annotations
 
 import importlib
 import logging
 import pkgutil
+from importlib import metadata
 from pathlib import Path
 
 from fastapi import FastAPI
+
+from app.config import settings
 
 from .base import BaseModule
 from .registry import module_registry
 
 logger = logging.getLogger(__name__)
+
+ENTRY_POINT_GROUP = "dentalpin.modules"
 
 
 def _resolve_load_order(modules: list[BaseModule]) -> list[BaseModule]:
@@ -18,7 +43,6 @@ def _resolve_load_order(modules: list[BaseModule]) -> list[BaseModule]:
 
     Raises ValueError if circular dependencies are detected.
     """
-    # Build dependency graph
     module_map = {m.name: m for m in modules}
     visited: set[str] = set()
     in_stack: set[str] = set()
@@ -54,13 +78,56 @@ def _resolve_load_order(modules: list[BaseModule]) -> list[BaseModule]:
     return order
 
 
-def _discover_modules() -> list[BaseModule]:
-    """Discover all modules in app/modules/ directory."""
+def _instantiate_module_class(cls: type) -> BaseModule | None:
+    """Instantiate a BaseModule subclass, return None on failure."""
+    if not (isinstance(cls, type) and issubclass(cls, BaseModule) and cls is not BaseModule):
+        return None
+    try:
+        return cls()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Failed to instantiate module class %s: %s", cls.__name__, exc)
+        return None
+
+
+def _discover_entry_points() -> list[BaseModule]:
+    """Discover modules registered as ``dentalpin.modules`` entry points."""
+    modules: list[BaseModule] = []
+
+    try:
+        eps = metadata.entry_points(group=ENTRY_POINT_GROUP)
+    except TypeError:
+        # Python <3.10 fallback (not expected here but cheap).
+        eps = metadata.entry_points().get(ENTRY_POINT_GROUP, [])  # type: ignore[union-attr]
+
+    for ep in eps:
+        try:
+            cls = ep.load()
+        except Exception as exc:
+            logger.error("Failed to load entry point %s: %s", ep.name, exc)
+            continue
+
+        instance = _instantiate_module_class(cls)
+        if instance is None:
+            logger.warning("Entry point %s did not resolve to a BaseModule subclass", ep.name)
+            continue
+
+        modules.append(instance)
+        logger.info("Discovered module via entry point: %s", instance.name)
+
+    return modules
+
+
+def _discover_filesystem(seen: set[str]) -> list[BaseModule]:
+    """Filesystem scan fallback for dev mode.
+
+    Skips modules already present in ``seen`` (names discovered via
+    entry points).
+    """
     modules: list[BaseModule] = []
     modules_path = Path(__file__).parent.parent.parent / "modules"
 
     if not modules_path.exists():
-        logger.warning(f"Modules directory not found: {modules_path}")
+        logger.warning("Modules directory not found: %s", modules_path)
         return modules
 
     for module_info in pkgutil.iter_modules([str(modules_path)]):
@@ -68,88 +135,90 @@ def _discover_modules() -> list[BaseModule]:
             continue
 
         try:
-            # Import the module package
-            module_pkg = importlib.import_module(f"app.modules.{module_info.name}")
+            pkg = importlib.import_module(f"app.modules.{module_info.name}")
+        except Exception as exc:
+            logger.error("Failed to import module %s: %s", module_info.name, exc)
+            continue
 
-            # Look for a class that inherits from BaseModule
-            for attr_name in dir(module_pkg):
-                attr = getattr(module_pkg, attr_name)
-                if (
-                    isinstance(attr, type)
-                    and issubclass(attr, BaseModule)
-                    and attr is not BaseModule
-                ):
-                    # Instantiate and add to list
-                    instance = attr()
-                    modules.append(instance)
-                    logger.info(f"Discovered module: {instance.name}")
-                    break
-            else:
-                logger.warning(f"No BaseModule subclass found in app.modules.{module_info.name}")
-
-        except Exception as e:
-            logger.error(f"Failed to load module {module_info.name}: {e}")
+        for attr_name in dir(pkg):
+            cls = getattr(pkg, attr_name)
+            instance = _instantiate_module_class(cls)
+            if instance is None:
+                continue
+            if instance.name in seen:
+                # Entry point already provided this module.
+                break
+            modules.append(instance)
+            seen.add(instance.name)
+            logger.info("Discovered module via filesystem scan: %s", instance.name)
+            break
 
     return modules
 
 
-def load_modules(app: FastAPI) -> None:
-    """Discover, resolve dependencies, and load all modules.
+def discover_modules() -> list[BaseModule]:
+    """Run both discovery stages and return all unique modules."""
+    modules = _discover_entry_points()
+    seen = {m.name for m in modules}
 
-    This function:
-    1. Scans app/modules/ for packages with BaseModule subclasses
-    2. Resolves dependency order (topological sort)
-    3. Registers all models with SQLAlchemy metadata
-    4. Mounts all routers under /api/v1/{module_name}/
-    5. Subscribes event handlers to event bus
-    """
+    if settings.DENTALPIN_DEV_MODULE_SCAN:
+        modules.extend(_discover_filesystem(seen))
+    else:
+        logger.info("DENTALPIN_DEV_MODULE_SCAN disabled; skipping filesystem discovery")
+
+    return modules
+
+
+def _mount_modules(app: FastAPI, modules: list[BaseModule]) -> None:
+    """Mount routers + subscribe event handlers for a resolved list."""
     from app.core.events import event_bus
 
-    # Discover modules
-    modules = _discover_modules()
+    for module in modules:
+        module_registry.register(module)
+        app.include_router(
+            module.get_router(),
+            prefix=f"/api/v1/{module.name}",
+            tags=[module.name],
+        )
+        logger.info("Mounted router for module: %s", module.name)
 
+        handlers = module.get_event_handlers()
+        for event_type, handler in handlers.items():
+            event_bus.subscribe(event_type, handler)
+            logger.info("Subscribed %s to event: %s", module.name, event_type)
+
+
+def load_modules(app: FastAPI) -> None:
+    """Discover, resolve dependencies, and load all modules."""
+    modules = discover_modules()
     if not modules:
         logger.warning("No modules discovered")
         return
 
-    # Resolve load order
     try:
         ordered = _resolve_load_order(modules)
-    except ValueError as e:
-        logger.error(f"Failed to resolve module dependencies: {e}")
+    except ValueError as exc:
+        logger.error("Failed to resolve module dependencies: %s", exc)
         raise
 
-    # Load each module
-    for module in ordered:
-        # Register in registry
-        module_registry.register(module)
-
-        # Mount router
-        router = module.get_router()
-        app.include_router(router, prefix=f"/api/v1/{module.name}", tags=[module.name])
-        logger.info(f"Mounted router for module: {module.name}")
-
-        # Subscribe event handlers
-        handlers = module.get_event_handlers()
-        for event_type, handler in handlers.items():
-            event_bus.subscribe(event_type, handler)
-            logger.info(f"Subscribed {module.name} to event: {event_type}")
-
-    logger.info(f"Loaded {len(ordered)} modules: {[m.name for m in ordered]}")
+    _mount_modules(app, ordered)
+    logger.info("Loaded %d modules: %s", len(ordered), [m.name for m in ordered])
 
 
 class ModuleLoader:
-    """Class wrapper for module loading functionality."""
+    """Class wrapper for module loading functionality.
+
+    Keeps backward compatibility with the previous API used by
+    ``app.main.lifespan``.
+    """
 
     def __init__(self) -> None:
         self._modules: list[BaseModule] = []
 
     def discover_modules(self) -> None:
-        """Discover all modules in app/modules/ directory."""
-        self._modules = _discover_modules()
+        self._modules = discover_modules()
 
     def load_modules(self, app: FastAPI) -> None:
-        """Load discovered modules into the FastAPI app."""
         if not self._modules:
             self.discover_modules()
 
@@ -157,25 +226,11 @@ class ModuleLoader:
             logger.warning("No modules to load")
             return
 
-        from app.core.events import event_bus
-
-        # Resolve load order
         try:
             ordered = _resolve_load_order(self._modules)
-        except ValueError as e:
-            logger.error(f"Failed to resolve module dependencies: {e}")
+        except ValueError as exc:
+            logger.error("Failed to resolve module dependencies: %s", exc)
             raise
 
-        # Load each module
-        for module in ordered:
-            module_registry.register(module)
-            router = module.get_router()
-            app.include_router(router, prefix=f"/api/v1/{module.name}", tags=[module.name])
-            logger.info(f"Mounted router for module: {module.name}")
-
-            handlers = module.get_event_handlers()
-            for event_type, handler in handlers.items():
-                event_bus.subscribe(event_type, handler)
-                logger.info(f"Subscribed {module.name} to event: {event_type}")
-
-        logger.info(f"Loaded {len(ordered)} modules: {[m.name for m in ordered]}")
+        _mount_modules(app, ordered)
+        logger.info("Loaded %d modules: %s", len(ordered), [m.name for m in ordered])
