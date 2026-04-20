@@ -33,6 +33,18 @@ class Settings(BaseSettings):
     # installed/uninstalled so the Nuxt host picks up `extends` on next
     # build. docker-compose mounts `./frontend` → `/host_frontend`.
     DENTALPIN_FRONTEND_ROOT: str = "/host_frontend"
+    # Absolute path INSIDE the frontend container where
+    # `backend/app/modules` is mounted (see docker-compose). The writer
+    # uses this prefix when rendering layer paths in `modules.json` so
+    # the frontend container can resolve them with `extends`. In
+    # production (single container / bundled deploy) this can be set to
+    # the same path the backend sees for modules, in which case no
+    # translation happens.
+    DENTALPIN_MODULE_LAYERS_MOUNT: str = "/module_layers"
+    # The backend-container path at which module packages live. Stripped
+    # from absolute layer paths before the MOUNT prefix is applied. Rare
+    # to override; exists for non-standard container layouts.
+    DENTALPIN_MODULE_PKG_ROOT: str = "/app/app/modules"
 
     # Storage configuration
     STORAGE_BACKEND: str = "local"

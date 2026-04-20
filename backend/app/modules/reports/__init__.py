@@ -36,6 +36,7 @@ class ReportsModule(BaseModule):
             "receptionist": ["billing.read", "scheduling.read"],
         },
         "frontend": {
+            "layer_path": "frontend",
             "navigation": [
                 {
                     "label": "nav.reports",

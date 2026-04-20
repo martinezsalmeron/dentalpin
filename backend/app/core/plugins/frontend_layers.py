@@ -83,6 +83,27 @@ def resolve_layer_path(module: BaseModule) -> Path | None:
     return candidate
 
 
+def _translate_for_frontend(path: Path) -> str:
+    """Rewrite a backend-container layer path for the frontend container.
+
+    The backend sees layers at ``{DENTALPIN_MODULE_PKG_ROOT}/<name>/...``;
+    the frontend container mounts the same filesystem at
+    ``{DENTALPIN_MODULE_LAYERS_MOUNT}``. When the two paths differ we
+    rewrite so ``modules.json`` is usable by whoever reads it. If the
+    path doesn't live under the known backend root (e.g. tests,
+    community module installed from site-packages) we emit it as-is.
+    """
+    pkg_root = Path(settings.DENTALPIN_MODULE_PKG_ROOT)
+    mount = Path(settings.DENTALPIN_MODULE_LAYERS_MOUNT)
+    if pkg_root == mount:
+        return str(path)
+    try:
+        rel = path.relative_to(pkg_root)
+    except ValueError:
+        return str(path)
+    return str(mount / rel)
+
+
 def collect_layers(modules: list[BaseModule]) -> list[LayerEntry]:
     """Run :func:`resolve_layer_path` for every module with one."""
     entries: list[LayerEntry] = []
@@ -90,7 +111,9 @@ def collect_layers(modules: list[BaseModule]) -> list[LayerEntry]:
         path = resolve_layer_path(module)
         if path is None:
             continue
-        entries.append(LayerEntry(module_name=module.name, path=str(path)))
+        entries.append(
+            LayerEntry(module_name=module.name, path=_translate_for_frontend(path))
+        )
     return entries
 
 
