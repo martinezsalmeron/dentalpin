@@ -6,15 +6,22 @@ const { navigationItems, ensureLoaded } = useModules()
 const { init: initDensity } = useDensity()
 const route = useRoute()
 
-// Pull the backend-driven nav once the layout mounts on a signed-in
-// route. `ensureLoaded` is idempotent, so revisiting the layout is
-// cheap.
+// Pull the backend-driven nav on mount + on every route change, so
+// sidebar reflects module installs/upgrades without a full reload.
+// ensureLoaded enforces a 60s freshness window internally.
 ensureLoaded()
 
 watch(
   () => auth.accessToken.value,
   (token) => {
     if (token) ensureLoaded(true)
+  }
+)
+
+watch(
+  () => route.path,
+  () => {
+    ensureLoaded()
   }
 )
 

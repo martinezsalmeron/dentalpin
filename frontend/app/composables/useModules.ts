@@ -27,11 +27,15 @@ export function useModules() {
   const active = useState<ActiveModule[] | null>('modules:active', () => null)
   const loading = useState<boolean>('modules:active:loading', () => false)
   const error = useState<string | null>('modules:active:error', () => null)
+  const lastLoadedAt = useState<number>('modules:active:at', () => 0)
 
   async function ensureLoaded(force = false): Promise<void> {
     if (!auth.accessToken.value) return
-    if (!force && active.value !== null) return
     if (loading.value) return
+
+    const age = Date.now() - lastLoadedAt.value
+    const FRESH_MS = 60_000 // 1 min — cheap enough to refetch often
+    if (!force && active.value !== null && age < FRESH_MS) return
 
     loading.value = true
     error.value = null
@@ -40,6 +44,7 @@ export function useModules() {
         '/api/v1/modules/-/active'
       )
       active.value = response.data
+      lastLoadedAt.value = Date.now()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load modules'
       console.warn('useModules: falling back to static registry —', error.value)
