@@ -56,6 +56,12 @@ class ClinicalModule(BaseModule):
                     "permission": "clinical.appointments.read",
                     "order": 20,
                 },
+                {
+                    "label": "nav.settings",
+                    "icon": "i-lucide-settings",
+                    "to": "/settings",
+                    "order": 900,
+                },
             ],
         },
     }
