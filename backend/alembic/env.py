@@ -1,7 +1,26 @@
-"""Alembic environment configuration for async migrations."""
+"""Alembic environment configuration for async migrations.
+
+Supports Fase A's mixed Alembic layout:
+
+* **Main linear** — the historic chain under ``backend/alembic/versions/``.
+  Holds every migration shipped before the module-system refactor plus
+  any new migrations of modules that have not been extracted to a branch
+  (clinical and the other legacy modules in Fase A).
+* **Per-module branches** — brand-new modules keep their migrations
+  under ``backend/app/modules/<name>/migrations/versions/`` and declare
+  ``branch_labels=('<name>',)`` on the first revision. The directory is
+  discovered at env-load time; missing or empty folders are ignored, so
+  bootstrap on a fresh database works identically to before.
+
+Discovery is filesystem-based on purpose: querying ``core_module`` from
+here would create a circular dependency (the table does not exist
+during its own migration and is missing in offline ``--sql`` mode).
+"""
 
 import asyncio
+import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -12,6 +31,7 @@ from app.config import settings
 
 # Import all models to register them with Base.metadata
 from app.core.auth.models import Clinic, ClinicMembership, User  # noqa: F401
+from app.core.plugins.alembic_paths import discover_version_locations
 from app.core.plugins.db_models import (  # noqa: F401
     ExternalId,
     ModuleOperationLog,
@@ -20,10 +40,23 @@ from app.core.plugins.db_models import (  # noqa: F401
 from app.database import Base
 from app.modules.clinical.models import Appointment, Patient  # noqa: F401
 
+ALEMBIC_DIR = Path(__file__).parent
+BACKEND_ROOT = ALEMBIC_DIR.parent
+MAIN_LINEAR = ALEMBIC_DIR / "versions"
+MODULES_ROOT = BACKEND_ROOT / "app" / "modules"
+
 config = context.config
 
 # Set the database URL from settings
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+# Register main linear + discovered branches so Alembic can resolve heads
+# across all of them. ``version_path_separator = os`` in alembic.ini, so
+# join on ``os.pathsep``.
+config.set_main_option(
+    "version_locations",
+    os.pathsep.join(discover_version_locations(MAIN_LINEAR, MODULES_ROOT)),
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

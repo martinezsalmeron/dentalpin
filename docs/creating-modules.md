@@ -239,13 +239,82 @@ async def update_item(
 
 ## Step 5: Create Database Migration
 
-After adding models, create an Alembic migration:
+After adding models, create an Alembic migration.
+
+> **Note:** This guide is being rewritten in full as part of the module-system
+> v1 refactor. The sections below cover the **new** branch-per-module
+> convention. The complete guide (with Nuxt layers, slots, lifecycle
+> hooks, role_permissions, external IDs, and packaging) lands in Etapa 7.
+
+### Where migrations live
+
+**Brand-new modules (recommended)** keep their migrations in their own
+Alembic branch:
+
+```
+backend/app/modules/<module_name>/
+├── __init__.py
+├── manifest.py
+├── models.py
+├── migrations/
+│   └── versions/
+│       └── <module>_0001_initial.py   # branch_labels=('<module>',)
+└── ...
+```
+
+The first revision declares its branch label and no down_revision:
+
+```python
+revision = "inv_0001"
+down_revision = None
+branch_labels = ("inventory",)
+depends_on = None
+```
+
+`alembic/env.py` auto-discovers `backend/app/modules/*/migrations/versions/`
+at load time — there's no configuration step. Create the directory,
+write the revision file, and `alembic upgrade head` picks it up.
+
+**Existing modules (Fase A legacy)** — `clinical`, `catalog`, `budget`,
+`billing`, `odontogram`, `treatment_plan`, `media`, `notifications`,
+`reports` — currently keep their migrations in the main linear chain
+at `backend/alembic/versions/`. New migrations for these modules still
+go to main linear. The branch extraction is Fase B work.
+
+### Generating a revision
+
+For a **branch module**:
 
 ```bash
 cd backend
-alembic revision --autogenerate -m "add inventory module"
+alembic revision \
+  --autogenerate \
+  -m "add inventory module" \
+  --version-path app/modules/inventory/migrations/versions \
+  --branch-label inventory \
+  --head base
 alembic upgrade head
 ```
+
+For a **legacy module** (main linear):
+
+```bash
+cd backend
+alembic revision --autogenerate -m "add inventory column"
+alembic upgrade head
+```
+
+### Cross-module FKs
+
+A migration that references tables owned by another module must declare
+the dependency explicitly so Alembic orders the upgrade correctly:
+
+```python
+depends_on = ("billing@head",)
+```
+
+The other module must also be listed in `manifest["depends"]`. A CI
+validator (Etapa 7) rejects PRs that violate this rule.
 
 ## Module Dependencies
 

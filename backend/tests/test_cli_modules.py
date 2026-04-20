@@ -66,9 +66,7 @@ async def test_cli_list_text_table(db_session: AsyncSession, capsys) -> None:
 
 
 @pytest.mark.asyncio
-async def test_cli_info_unknown_returns_nonzero(
-    db_session: AsyncSession, capsys
-) -> None:
+async def test_cli_info_unknown_returns_nonzero(db_session: AsyncSession, capsys) -> None:
     _seed_registry()
     await ModuleService(db_session).reconcile_with_db()
 
@@ -137,7 +135,5 @@ def test_parser_has_modules_subcommand() -> None:
 def test_parser_supports_all_subcommands() -> None:
     parser = build_parser()
     for cmd in ("list", "info", "status", "doctor"):
-        args = parser.parse_args(
-            ["modules", cmd] + (["x"] if cmd == "info" else [])
-        )
+        args = parser.parse_args(["modules", cmd] + (["x"] if cmd == "info" else []))
         assert args.modules_command == cmd
