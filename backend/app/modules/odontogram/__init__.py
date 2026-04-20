@@ -22,7 +22,7 @@ class OdontogramModule(BaseModule):
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": ["clinical"],
+        "depends": ["patients", "catalog"],
         "installable": True,
         "auto_install": True,
         "removable": False,

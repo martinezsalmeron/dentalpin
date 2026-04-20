@@ -81,7 +81,7 @@ async def test_active_shape_for_admin(client: AsyncClient, db_session: AsyncSess
 
     names = {m["name"] for m in payload}
     # Every declared module should be installed + visible to admin.
-    assert {"clinical", "budget", "billing", "treatment_plan", "reports"}.issubset(names)
+    assert {"patients", "agenda", "budget", "billing", "treatment_plan", "reports"}.issubset(names)
 
     billing = next(m for m in payload if m["name"] == "billing")
     assert billing["version"] == "0.1.0"
@@ -110,10 +110,15 @@ async def test_active_navigation_filtered_for_hygienist(
 
     by_name = {m["name"]: m for m in payload}
 
-    # Hygienist has patients.read + agenda.appointments.* + budget.read +
-    # treatment_plan.plans.read + billing.read — all surface.
-    clinical_paths = {item["to"] for item in by_name["clinical"]["navigation"]}
-    assert "/" in clinical_paths  # dashboard
+    # Dashboard (/) is a host-owned nav item after B.5 — not emitted by
+    # any module, so it won't appear in the active-modules payload. The
+    # frontend merges it from `HOST_NAV` locally.
+    for module in payload:
+        for item in module["navigation"]:
+            assert item["to"] != "/", (
+                f"dashboard '/' must not be owned by module {module['name']} "
+                "after Fase B.5 — it lives in the host shell"
+            )
 
     # /appointments nav item is owned by the agenda module (B.2).
     agenda_paths = {item["to"] for item in by_name["agenda"]["navigation"]}

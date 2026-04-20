@@ -22,7 +22,7 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic
     from app.modules.agenda.models import Appointment
-    from app.modules.clinical.models import PatientTimeline
+    from app.modules.patient_timeline.models import PatientTimeline
 
 
 class Patient(Base, TimestampMixin):

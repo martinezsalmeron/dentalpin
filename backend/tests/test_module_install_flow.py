@@ -64,7 +64,7 @@ async def test_install_already_installed_is_noop(
     await _reconcile(db_session)
 
     svc = ModuleService(db_session)
-    scheduled = await svc.install("clinical")
+    scheduled = await svc.install("patients")
     assert scheduled == []
 
 

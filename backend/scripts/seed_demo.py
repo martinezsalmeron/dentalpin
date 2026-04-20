@@ -36,8 +36,10 @@ from app.modules.billing.models import Invoice, InvoiceItem, InvoiceSeries, Paym
 from app.modules.budget.models import Budget, BudgetItem, BudgetSignature
 from app.modules.catalog.models import TreatmentCatalogItem
 from app.modules.catalog.seed import seed_catalog
-from app.modules.clinical.models import Appointment, AppointmentTreatment, Patient
+from app.modules.agenda.models import Appointment, AppointmentTreatment
 from app.modules.media.models import Document  # noqa: F401 - needed for relationship resolution
+from app.modules.patient_timeline.models import PatientTimeline  # noqa: F401 - relationship resolution
+from app.modules.patients.models import Patient
 from app.modules.odontogram.models import ToothRecord, Treatment, TreatmentTooth
 from app.modules.patients_clinical.models import (
     Allergy,

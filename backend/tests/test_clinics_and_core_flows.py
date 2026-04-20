@@ -1,4 +1,10 @@
-"""Tests for clinical module endpoints."""
+"""Core flow tests: clinic metadata + patient/appointment happy paths.
+
+Originally ``test_clinical.py``; renamed in Fase B.5 when the clinical
+module was removed. Clinic metadata endpoints now live under
+``/api/v1/auth/clinics`` (core auth), while patient and appointment
+tests target the patients / agenda modules directly.
+"""
 
 from uuid import uuid4
 
@@ -86,7 +92,7 @@ async def test_list_clinics(
     client: AsyncClient, auth_headers: dict[str, str], clinic_setup: dict
 ) -> None:
     """Test listing clinics (wrapped in PaginatedApiResponse)."""
-    response = await client.get("/api/v1/clinical/clinics", headers=auth_headers)
+    response = await client.get("/api/v1/auth/clinics", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert len(data["data"]) == 1

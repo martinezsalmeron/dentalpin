@@ -24,7 +24,7 @@ class ReportsModule(BaseModule):
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": ["clinical", "catalog", "budget", "billing"],
+        "depends": ["patients", "agenda", "catalog", "budget", "billing"],
         "installable": True,
         "auto_install": True,
         "removable": False,

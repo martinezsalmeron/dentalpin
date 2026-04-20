@@ -19,9 +19,12 @@ async def test_reconcile_empty_db_inserts_all_modules(db_session: AsyncSession) 
     records = (await db_session.execute(select(ModuleRecord))).scalars().all()
     names = {r.name for r in records}
 
-    # All nine modules are loaded in conftest.load_modules.
+    # All modules declared as entry points in pyproject.toml should land.
     expected = {
-        "clinical",
+        "patients",
+        "patients_clinical",
+        "agenda",
+        "patient_timeline",
         "catalog",
         "budget",
         "billing",
@@ -46,14 +49,14 @@ async def test_reconcile_updates_version_change(db_session: AsyncSession) -> Non
 
     # Tamper with a version to simulate an out-of-date row.
     record = (
-        await db_session.execute(select(ModuleRecord).where(ModuleRecord.name == "clinical"))
+        await db_session.execute(select(ModuleRecord).where(ModuleRecord.name == "patients"))
     ).scalar_one()
     record.version = "0.0.1-old"
     await db_session.commit()
 
     await svc.reconcile_with_db()
     refreshed = (
-        await db_session.execute(select(ModuleRecord).where(ModuleRecord.name == "clinical"))
+        await db_session.execute(select(ModuleRecord).where(ModuleRecord.name == "patients"))
     ).scalar_one()
     assert refreshed.version != "0.0.1-old"
 
@@ -66,9 +69,9 @@ async def test_list_modules_combines_disk_and_db(db_session: AsyncSession) -> No
     infos = await svc.list_modules()
     by_name = {i.name: i for i in infos}
 
-    assert "clinical" in by_name
-    assert by_name["clinical"].in_disk is True
-    assert by_name["clinical"].state == ModuleState.INSTALLED
+    assert "patients" in by_name
+    assert by_name["patients"].in_disk is True
+    assert by_name["patients"].state == ModuleState.INSTALLED
 
 
 @pytest.mark.asyncio
