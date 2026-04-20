@@ -1,5 +1,12 @@
 {
-  "layers": [],
-  "modules": [],
+  "layers": [
+    "/module_layers/reports/frontend"
+  ],
+  "modules": [
+    {
+      "name": "reports",
+      "path": "/module_layers/reports/frontend"
+    }
+  ],
   "version": 1
 }
