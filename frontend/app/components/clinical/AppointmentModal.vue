@@ -177,6 +177,10 @@ const lastOverlapWarningKey = ref('')
 
 // Show toast when NEW overlaps are detected (not pre-existing ones)
 watch(overlappingAppointments, (overlaps) => {
+  // Only warn while the modal is open — prevents a false positive when the
+  // parent reloads `existingAppointments` right after save/close and the
+  // just-created appointment re-triggers the overlap computation.
+  if (!props.open) return
   // Don't check until initial data is loaded
   if (!initialDataLoaded.value) return
 
@@ -221,154 +225,158 @@ watch(overlappingAppointments, (overlaps) => {
 
 // Watch for initial values
 watch(() => props.open, async (isOpen) => {
-  if (isOpen) {
-    // Reset flags when modal opens
+  if (!isOpen) {
+    // Disable overlap warnings while closed so reloads of existingAppointments
+    // don't trigger a late false positive.
     initialDataLoaded.value = false
-    lastOverlapWarningKey.value = ''
-    initialOverlapIds.value = { professional: new Set(), cabinet: new Set() }
+    return
+  }
+  // Reset flags when modal opens
+  initialDataLoaded.value = false
+  lastOverlapWarningKey.value = ''
+  initialOverlapIds.value = { professional: new Set(), cabinet: new Set() }
 
-    // Fetch professionals and notification settings when modal opens
-    await Promise.all([fetchProfessionals(), fetchSettings()])
+  // Fetch professionals and notification settings when modal opens
+  await Promise.all([fetchProfessionals(), fetchSettings()])
 
-    if (props.appointment) {
-      // Edit mode - populate from appointment
-      const apt = props.appointment
-      selectedPatient.value = apt.patient || null
-      selectedProfessionalId.value = apt.professional_id
-      formData.date = apt.start_time.split('T')[0] ?? ''
-      formData.startTime = apt.start_time.split('T')[1]?.substring(0, 5) ?? '09:00'
-      formData.cabinet = apt.cabinet
-      formData.notes = apt.notes || ''
+  if (props.appointment) {
+    // Edit mode - populate from appointment
+    const apt = props.appointment
+    selectedPatient.value = apt.patient || null
+    selectedProfessionalId.value = apt.professional_id
+    formData.date = apt.start_time.split('T')[0] ?? ''
+    formData.startTime = apt.start_time.split('T')[1]?.substring(0, 5) ?? '09:00'
+    formData.cabinet = apt.cabinet
+    formData.notes = apt.notes || ''
 
-      // Map each AppointmentTreatmentBrief into a PlannedTreatmentItem shape so the
-      // shared selector can render it. The Treatment.id is not available in the
-      // brief, so we leave treatment_id empty; it is only used server-side when
-      // submitting, and the selector keys off the PlannedTreatmentItem.id.
-      if (apt.treatments && apt.treatments.length > 0) {
-        selectedTreatments.value = apt.treatments.map((t): PlannedTreatmentItem => ({
-          id: t.planned_item_id,
-          clinic_id: apt.clinic_id,
-          treatment_plan_id: t.plan_id || '',
-          treatment_id: '',
-          sequence_order: 0,
-          status: t.planned_item_status,
-          completed_without_appointment: false,
-          completed_at: undefined,
-          completed_by: undefined,
-          notes: undefined,
-          created_at: '',
-          updated_at: '',
-          treatment: {
-            id: '',
-            clinical_type: 'crown',
-            scope: 'tooth',
-            arch: null,
-            status: 'planned',
-            catalog_item_id: t.catalog_item_id,
-            price_snapshot: t.default_price ? String(t.default_price) : null,
-            currency_snapshot: 'EUR',
-            teeth: t.tooth_number
-              ? [{
-                  tooth_number: t.tooth_number,
-                  role: null,
-                  surfaces: (t.surfaces as Surface[] | undefined) ?? null
-                }]
-              : []
-          },
-          catalog_item: t.catalog_item_id
-            ? {
-                id: t.catalog_item_id,
-                internal_code: t.internal_code,
-                names: t.names,
-                default_price: t.default_price != null ? String(t.default_price) : null,
-                currency: 'EUR'
-              }
-            : undefined,
-          media: []
-        }))
-      } else {
-        selectedTreatments.value = []
-      }
-
-      // Calculate duration from start/end time, rounded to nearest valid option
-      const start = new Date(apt.start_time)
-      const end = new Date(apt.end_time)
-      const calculatedDuration = Math.round((end.getTime() - start.getTime()) / 60000)
-      formData.duration = validDurations.reduce((prev, curr) =>
-        Math.abs(curr - calculatedDuration) < Math.abs(prev - calculatedDuration) ? curr : prev
-      )
+    // Map each AppointmentTreatmentBrief into a PlannedTreatmentItem shape so the
+    // shared selector can render it. The Treatment.id is not available in the
+    // brief, so we leave treatment_id empty; it is only used server-side when
+    // submitting, and the selector keys off the PlannedTreatmentItem.id.
+    if (apt.treatments && apt.treatments.length > 0) {
+      selectedTreatments.value = apt.treatments.map((t): PlannedTreatmentItem => ({
+        id: t.planned_item_id,
+        clinic_id: apt.clinic_id,
+        treatment_plan_id: t.plan_id || '',
+        treatment_id: '',
+        sequence_order: 0,
+        status: t.planned_item_status,
+        completed_without_appointment: false,
+        completed_at: undefined,
+        completed_by: undefined,
+        notes: undefined,
+        created_at: '',
+        updated_at: '',
+        treatment: {
+          id: '',
+          clinical_type: 'crown',
+          scope: 'tooth',
+          arch: null,
+          status: 'planned',
+          catalog_item_id: t.catalog_item_id,
+          price_snapshot: t.default_price ? String(t.default_price) : null,
+          currency_snapshot: 'EUR',
+          teeth: t.tooth_number
+            ? [{
+                tooth_number: t.tooth_number,
+                role: null,
+                surfaces: (t.surfaces as Surface[] | undefined) ?? null
+              }]
+            : []
+        },
+        catalog_item: t.catalog_item_id
+          ? {
+              id: t.catalog_item_id,
+              internal_code: t.internal_code,
+              names: t.names,
+              default_price: t.default_price != null ? String(t.default_price) : null,
+              currency: 'EUR'
+            }
+          : undefined,
+        media: []
+      }))
     } else {
-      // Create mode - use initial values
-      if (props.initialDate) {
-        formData.date = formatLocalDate(props.initialDate)
-      } else {
-        formData.date = formatLocalDate(new Date())
-      }
+      selectedTreatments.value = []
+    }
 
-      if (props.initialTime) {
-        formData.startTime = props.initialTime
-      } else {
-        formData.startTime = '09:00'
-      }
+    // Calculate duration from start/end time, rounded to nearest valid option
+    const start = new Date(apt.start_time)
+    const end = new Date(apt.end_time)
+    const calculatedDuration = Math.round((end.getTime() - start.getTime()) / 60000)
+    formData.duration = validDurations.reduce((prev, curr) =>
+      Math.abs(curr - calculatedDuration) < Math.abs(prev - calculatedDuration) ? curr : prev
+    )
+  } else {
+    // Create mode - use initial values
+    if (props.initialDate) {
+      formData.date = formatLocalDate(props.initialDate)
+    } else {
+      formData.date = formatLocalDate(new Date())
+    }
 
-      // Set professional - use initialProfessionalId, current user if professional, or first available
-      if (props.initialProfessionalId) {
-        selectedProfessionalId.value = props.initialProfessionalId
-      } else {
-        // Check if current user is a professional
-        const currentUserId = auth.user.value?.id
-        const isCurrentUserProfessional = professionals.value.some(p => p.id === currentUserId)
-        if (isCurrentUserProfessional && currentUserId) {
-          selectedProfessionalId.value = currentUserId
-        } else {
-          selectedProfessionalId.value = professionals.value[0]?.id || ''
-        }
-      }
+    if (props.initialTime) {
+      formData.startTime = props.initialTime
+    } else {
+      formData.startTime = '09:00'
+    }
 
-      // Pre-select patient if initialPatientId provided
-      if (props.initialPatientId) {
-        try {
-          const response = await api.get<{ data: Patient }>(`/api/v1/patients/${props.initialPatientId}`)
-          selectedPatient.value = response.data
-        } catch {
-          selectedPatient.value = null
-        }
+    // Set professional - use initialProfessionalId, current user if professional, or first available
+    if (props.initialProfessionalId) {
+      selectedProfessionalId.value = props.initialProfessionalId
+    } else {
+      // Check if current user is a professional
+      const currentUserId = auth.user.value?.id
+      const isCurrentUserProfessional = professionals.value.some(p => p.id === currentUserId)
+      if (isCurrentUserProfessional && currentUserId) {
+        selectedProfessionalId.value = currentUserId
       } else {
+        selectedProfessionalId.value = professionals.value[0]?.id || ''
+      }
+    }
+
+    // Pre-select patient if initialPatientId provided
+    if (props.initialPatientId) {
+      try {
+        const response = await api.get<{ data: Patient }>(`/api/v1/patients/${props.initialPatientId}`)
+        selectedPatient.value = response.data
+      } catch {
         selectedPatient.value = null
       }
-      if (props.initialEndTime) {
-        const startParts = formData.startTime.split(':').map(Number)
-        const endParts = props.initialEndTime.split(':').map(Number)
-        const startMin = (startParts[0] ?? 9) * 60 + (startParts[1] ?? 0)
-        const endMin = (endParts[0] ?? 9) * 60 + (endParts[1] ?? 0)
-        const draggedMinutes = endMin - startMin
-        formData.duration = draggedMinutes > 0
-          ? validDurations.reduce((prev, curr) =>
-              Math.abs(curr - draggedMinutes) < Math.abs(prev - draggedMinutes) ? curr : prev)
-          : clinic.slotDuration.value || 30
-      } else {
-        formData.duration = clinic.slotDuration.value || 30
-      }
-      formData.cabinet = clinic.cabinets.value[0]?.name || ''
-      formData.notes = ''
-      selectedTreatments.value = []
-      // Reset email checkbox for create mode
-      sendConfirmationEmail.value = true
+    } else {
+      selectedPatient.value = null
     }
-
-    // Wait for next tick so overlappingAppointments computed can recalculate
-    await nextTick()
-
-    // Capture initial overlaps (these existed before user made changes)
-    const currentOverlaps = overlappingAppointments.value
-    initialOverlapIds.value = {
-      professional: new Set(currentOverlaps.sameProfessional.map(apt => apt.id)),
-      cabinet: new Set(currentOverlaps.sameCabinet.map(apt => apt.id))
+    if (props.initialEndTime) {
+      const startParts = formData.startTime.split(':').map(Number)
+      const endParts = props.initialEndTime.split(':').map(Number)
+      const startMin = (startParts[0] ?? 9) * 60 + (startParts[1] ?? 0)
+      const endMin = (endParts[0] ?? 9) * 60 + (endParts[1] ?? 0)
+      const draggedMinutes = endMin - startMin
+      formData.duration = draggedMinutes > 0
+        ? validDurations.reduce((prev, curr) =>
+            Math.abs(curr - draggedMinutes) < Math.abs(prev - draggedMinutes) ? curr : prev)
+        : clinic.slotDuration.value || 30
+    } else {
+      formData.duration = clinic.slotDuration.value || 30
     }
-
-    // Now enable overlap warnings for new overlaps only
-    initialDataLoaded.value = true
+    formData.cabinet = clinic.cabinets.value[0]?.name || ''
+    formData.notes = ''
+    selectedTreatments.value = []
+    // Reset email checkbox for create mode
+    sendConfirmationEmail.value = true
   }
+
+  // Wait for next tick so overlappingAppointments computed can recalculate
+  await nextTick()
+
+  // Capture initial overlaps (these existed before user made changes)
+  const currentOverlaps = overlappingAppointments.value
+  initialOverlapIds.value = {
+    professional: new Set(currentOverlaps.sameProfessional.map(apt => apt.id)),
+    cabinet: new Set(currentOverlaps.sameCabinet.map(apt => apt.id))
+  }
+
+  // Now enable overlap warnings for new overlaps only
+  initialDataLoaded.value = true
 })
 
 // Calculate end time from start time and duration
