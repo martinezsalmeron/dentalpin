@@ -162,6 +162,7 @@ watch(() => props.open, (isOpen) => {
             <TreatmentVisualSelector
               :model-value="selectedItem"
               :currency="currency"
+              :in-modal="true"
               @update:model-value="handleItemSelect"
             />
           </UFormField>

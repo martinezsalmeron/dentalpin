@@ -5,6 +5,7 @@ const props = defineProps<{
   modelValue?: TreatmentCatalogItem | null
   placeholder?: string
   currency?: string
+  inModal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -126,6 +127,7 @@ function getCategoryName(item: TreatmentCatalogItem): string {
       :placeholder="placeholder || t('budget.items.searchCatalog')"
       :empty-label="t('selector.noCommonTreatments')"
       :grid-cols="2"
+      :in-modal="inModal"
       @update:model-value="handleSelect"
       @search="handleSearch"
     >
