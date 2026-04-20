@@ -77,6 +77,18 @@ def register(sub: argparse._SubParsersAction) -> None:
     )
     p_restart.set_defaults(func=_run(_cmd_restart))
 
+    p_sync = mod_sub.add_parser(
+        "sync-frontend",
+        help="Regenerate frontend/modules.json from installed modules",
+    )
+    p_sync.set_defaults(func=_run(_cmd_sync_frontend))
+
+    p_rebuild = mod_sub.add_parser(
+        "rebuild-frontend",
+        help="Print the docker compose command the host should run to rebuild the Nuxt frontend",
+    )
+    p_rebuild.set_defaults(func=_run(_cmd_rebuild_frontend))
+
 
 # --- Runners --------------------------------------------------------------
 
@@ -252,6 +264,34 @@ async def _cmd_upgrade(svc: ModuleService, args: argparse.Namespace) -> int:
 
     print(f"Scheduled upgrade for {args.name}.")
     print("Run `dentalpin modules restart` to apply.")
+    return 0
+
+
+async def _cmd_sync_frontend(svc: ModuleService, args: argparse.Namespace) -> int:
+    from app.core.plugins.frontend_layers import (
+        DEFAULT_FRONTEND_ROOT,
+        collect_layers,
+        write_modules_json,
+    )
+
+    installed_infos = [info for info in await svc.list_modules() if info.state.value == "installed"]
+    discovered = {m.name: m for m in svc.discovered()}
+    installed = [discovered[i.name] for i in installed_infos if i.name in discovered]
+
+    entries = collect_layers(installed)
+    path = write_modules_json(entries, DEFAULT_FRONTEND_ROOT)
+    print(f"Wrote {path} with {len(entries)} layer(s):")
+    for entry in entries:
+        print(f"  - {entry.module_name}: {entry.path}")
+    if not entries:
+        print("  (no modules declare a frontend.layer_path)")
+    return 0
+
+
+async def _cmd_rebuild_frontend(svc: ModuleService, args: argparse.Namespace) -> int:
+    print("Run this from the repo root on the host to rebuild the Nuxt bundle:")
+    print("  docker compose build frontend && docker compose up -d frontend")
+    print("\nThe CLI runs inside the backend container and cannot invoke docker compose itself.")
     return 0
 
 

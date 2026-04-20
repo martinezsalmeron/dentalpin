@@ -304,6 +304,71 @@ alembic revision --autogenerate -m "add inventory column"
 alembic upgrade head
 ```
 
+### Frontend layer (optional)
+
+A community module can ship its own UI by bundling a Nuxt Layer inside
+its Python package:
+
+```
+dentalpin_billing/
+├── __init__.py
+├── manifest.py
+├── ...backend files...
+└── frontend/                 # the layer
+    ├── nuxt.config.ts
+    ├── pages/
+    ├── components/
+    ├── composables/
+    ├── i18n/
+    └── slots.ts              # optional: registerSlot(...) calls
+```
+
+Declare the layer in the manifest:
+
+```python
+MANIFEST = {
+    "name": "my_module",
+    "version": "0.1.0",
+    # ...
+    "frontend": {
+        "layer_path": "frontend",   # relative to the package root
+        "navigation": [
+            {
+                "label": "nav.myModule",
+                "to": "/my-module",
+                "icon": "i-lucide-box",
+                "permission": "my_module.read",
+                "order": 80,
+            }
+        ],
+    },
+}
+```
+
+At install time, the registry:
+
+1. resolves `<pkg>/frontend` to an absolute path,
+2. rewrites `frontend/modules.json` atomically,
+3. expects the host to rebuild the frontend container:
+   `docker compose build frontend && docker compose up -d frontend`.
+
+`frontend/nuxt.config.ts` reads `modules.json` at boot and passes the
+layer array to `extends`, so Nuxt auto-discovers the layer's pages,
+components, composables and i18n files.
+
+**Fase A policy**: the 9 official modules keep their UI on the host
+frontend and do **not** declare `layer_path` — per the pre-bundled
+decision. Install/uninstall of officials never triggers a frontend
+rebuild. Community modules are the primary consumer of the layer
+mechanism.
+
+CLI helpers inside the backend container:
+
+```bash
+./bin/dentalpin modules sync-frontend     # regenerate modules.json
+./bin/dentalpin modules rebuild-frontend  # prints the docker command
+```
+
 ### Cross-module FKs
 
 A migration that references tables owned by another module must declare

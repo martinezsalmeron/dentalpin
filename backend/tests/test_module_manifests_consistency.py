@@ -22,7 +22,6 @@ import pytest
 from app.core.auth.permissions import ROLE_PERMISSIONS, has_permission
 from app.core.plugins.loader import discover_modules
 
-
 MODULE_NAMES = {
     "clinical",
     "catalog",

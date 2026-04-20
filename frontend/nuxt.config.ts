@@ -1,5 +1,35 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+/**
+ * Load Nuxt Layer paths from `modules.json`.
+ *
+ * The backend writes this file whenever a module with a declared
+ * `manifest.frontend.layer_path` is installed. When absent (fresh
+ * checkout, no community modules yet), returns an empty array.
+ */
+function loadModuleLayers(): string[] {
+  const path = resolve(__dirname, 'modules.json')
+  try {
+    const raw = readFileSync(path, 'utf-8')
+    const payload = JSON.parse(raw) as { layers?: string[] }
+    return Array.isArray(payload.layers) ? payload.layers : []
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code
+    if (code !== 'ENOENT') {
+      // eslint-disable-next-line no-console
+      console.warn('[nuxt.config] modules.json is malformed, using empty layers:', err)
+    }
+    return []
+  }
+}
+
+const moduleLayers = loadModuleLayers()
+
 export default defineNuxtConfig({
+
+  extends: moduleLayers,
 
   modules: [
     '@nuxt/eslint',

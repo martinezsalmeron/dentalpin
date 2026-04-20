@@ -56,28 +56,57 @@ class PendingProcessor:
         processed: list[str] = []
 
         pending = await self._load_pending()
-        if not pending:
-            return processed
+        if pending:
+            ordered = self._order_pending(pending)
+            logger.info(
+                "Processing pending modules: %s",
+                [(r.name, r.state) for r in ordered],
+            )
 
-        ordered = self._order_pending(pending)
-        logger.info(
-            "Processing pending modules: %s",
-            [(r.name, r.state) for r in ordered],
-        )
+            for record in ordered:
+                try:
+                    await self._process_one(record)
+                    processed.append(record.name)
+                except Exception as exc:
+                    logger.exception(
+                        "Pending operation for %s (%s) failed",
+                        record.name,
+                        record.state,
+                    )
+                    await self._mark_error(record.name, str(exc))
 
-        for record in ordered:
-            try:
-                await self._process_one(record)
-                processed.append(record.name)
-            except Exception as exc:
-                logger.exception(
-                    "Pending operation for %s (%s) failed",
-                    record.name,
-                    record.state,
-                )
-                await self._mark_error(record.name, str(exc))
+        # Regenerate frontend modules.json so the Nuxt host picks up any
+        # newly installed/uninstalled community layers on next build.
+        # Runs every boot (even when no pending operations) so manual
+        # edits and drift also self-heal.
+        try:
+            await self._sync_frontend_layers()
+        except Exception:
+            logger.exception("Frontend layer sync failed (non-fatal)")
 
         return processed
+
+    async def _sync_frontend_layers(self) -> None:
+        from .base import BaseModule as _BaseModule
+        from .frontend_layers import (
+            DEFAULT_FRONTEND_ROOT,
+            collect_layers,
+            write_modules_json,
+        )
+
+        installed: list[_BaseModule] = []
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(ModuleRecord).where(ModuleRecord.state == ModuleState.INSTALLED.value)
+            )
+            installed_names = {r.name for r in result.scalars()}
+
+        for module in module_registry.list_modules():
+            if module.name in installed_names:
+                installed.append(module)
+
+        entries = collect_layers(installed)
+        write_modules_json(entries, DEFAULT_FRONTEND_ROOT)
 
     # --- Loading --------------------------------------------------------
 
