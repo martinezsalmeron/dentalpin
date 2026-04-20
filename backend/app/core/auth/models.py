@@ -10,7 +10,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.modules.clinical.models import Appointment, Patient
+    from app.modules.agenda.models import Appointment, Cabinet
+    from app.modules.patients.models import Patient
 
 
 class Clinic(Base, TimestampMixin):
@@ -25,7 +26,6 @@ class Clinic(Base, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(20))
     email: Mapped[str | None] = mapped_column(String(255))
     settings: Mapped[dict] = mapped_column(JSONB, default=dict)
-    cabinets: Mapped[list] = mapped_column(JSONB, default=list)
 
     # Relationships
     memberships: Mapped[list["ClinicMembership"]] = relationship(
@@ -33,6 +33,11 @@ class Clinic(Base, TimestampMixin):
     )
     patients: Mapped[list["Patient"]] = relationship(back_populates="clinic")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="clinic")
+    cabinets: Mapped[list["Cabinet"]] = relationship(
+        back_populates="clinic",
+        cascade="all, delete-orphan",
+        order_by="Cabinet.display_order",
+    )
 
 
 class User(Base, TimestampMixin):

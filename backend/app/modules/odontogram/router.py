@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
 from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
-from app.modules.clinical.models import Patient
+from app.modules.patients.models import Patient
 
 from .constants import CONDITION_COLORS, SURFACES, ToothCondition, is_valid_tooth_number
 from .schemas import (

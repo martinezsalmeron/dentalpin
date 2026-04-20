@@ -26,9 +26,8 @@ class PatientService:
     ) -> list[Patient]:
         """Patients ordered by last visit, falling back to newest created."""
         # Lazy import to avoid a circular path between
-        # ``patients.service`` and ``clinical.models`` (which re-exports
-        # Patient during the Fase B.1 transition).
-        from app.modules.clinical.models import Appointment
+        # ``patients.service`` and ``agenda.models``.
+        from app.modules.agenda.models import Appointment
 
         subquery = (
             select(

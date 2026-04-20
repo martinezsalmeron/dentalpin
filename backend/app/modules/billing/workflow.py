@@ -114,7 +114,7 @@ class InvoiceWorkflowService:
         if invoice.billing_name is None:
             from sqlalchemy import select
 
-            from app.modules.clinical.models import Patient
+            from app.modules.patients.models import Patient
 
             result = await db.execute(select(Patient).where(Patient.id == invoice.patient_id))
             patient = result.scalar_one_or_none()

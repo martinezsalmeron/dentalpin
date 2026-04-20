@@ -84,10 +84,13 @@ async def get_clinic_context(
     If clinic_id is not provided, uses the user's first clinic.
     Raises 403 if user doesn't have access to the clinic.
     """
-    # Get user's clinic memberships
+    # Get user's clinic memberships; eager-load cabinets so downstream
+    # ClinicResponse.model_validate doesn't trigger async lazy loads.
+    from app.core.auth.models import Clinic as ClinicModel
+
     result = await db.execute(
         select(ClinicMembership)
-        .options(selectinload(ClinicMembership.clinic))
+        .options(selectinload(ClinicMembership.clinic).selectinload(ClinicModel.cabinets))
         .where(ClinicMembership.user_id == current_user.id)
     )
     memberships = result.scalars().all()

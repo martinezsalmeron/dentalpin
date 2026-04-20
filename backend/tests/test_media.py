@@ -27,7 +27,6 @@ async def media_setup(
         tax_id="B87654321",
         address={"street": "Test St", "city": "Madrid"},
         settings={"slot_duration_min": 15},
-        cabinets=[{"name": "Gabinete 1", "color": "#3B82F6"}],
     )
     db_session.add(clinic)
     await db_session.flush()
@@ -340,7 +339,6 @@ async def test_cross_clinic_access_denied(
         name="Other Clinic",
         tax_id="X99999999",
         settings={},
-        cabinets=[],
     )
     db_session.add(other_clinic)
     await db_session.flush()

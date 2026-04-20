@@ -437,7 +437,7 @@ async def update_user(
 @router.get("/professionals", response_model=PaginatedApiResponse[ProfessionalResponse])
 async def list_professionals(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.appointments.read"))],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PaginatedApiResponse[ProfessionalResponse]:
     """List professionals (dentists and hygienists) in the current clinic."""

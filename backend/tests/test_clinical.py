@@ -26,7 +26,6 @@ async def clinic_setup(
         tax_id="B12345678",
         address={"street": "Test St", "city": "Madrid"},
         settings={"slot_duration_min": 15},
-        cabinets=[{"name": "Gabinete 1", "color": "#3B82F6"}],
     )
     db_session.add(clinic)
     await db_session.flush()
@@ -59,6 +58,20 @@ async def clinic_setup(
         role="dentist",
     )
     db_session.add(dentist_membership)
+
+    # Default cabinet so appointment tests resolve the cabinet FK.
+    from app.modules.agenda.models import Cabinet
+
+    db_session.add(
+        Cabinet(
+            id=uuid4(),
+            clinic_id=clinic.id,
+            name="Gabinete 1",
+            color="#3B82F6",
+            display_order=0,
+            is_active=True,
+        )
+    )
     await db_session.commit()
 
     return {
@@ -175,7 +188,7 @@ async def test_create_appointment(
 
     # Create appointment (must use dentist, not admin)
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -215,7 +228,7 @@ async def test_appointment_time_conflict(
 
     # First appointment should succeed
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json=appointment_data,
     )
@@ -223,7 +236,7 @@ async def test_appointment_time_conflict(
 
     # Second appointment at same time should fail
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json=appointment_data,
     )

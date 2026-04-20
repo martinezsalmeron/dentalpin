@@ -312,7 +312,8 @@ async def send_notification(
     """
     from sqlalchemy import select
 
-    from app.modules.clinical.models import Appointment, Patient
+    from app.modules.agenda.models import Appointment
+    from app.modules.patients.models import Patient
 
     # Get patient if provided
     patient = None

@@ -28,7 +28,6 @@ async def _ensure_clinic_and_patient(
         tax_id="B11111111",
         address={"street": "a", "city": "b"},
         settings={"slot_duration_min": 15},
-        cabinets=[{"name": "G1", "color": "#000"}],
     )
     db_session.add(clinic)
     await db_session.flush()

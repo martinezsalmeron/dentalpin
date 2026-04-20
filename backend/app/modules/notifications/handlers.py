@@ -30,8 +30,9 @@ class NotificationHandlers:
     @staticmethod
     async def _handle_appointment_scheduled(data: dict[str, Any]) -> None:
         """Async handler for appointment scheduled."""
-        from app.modules.clinical.models import Appointment, Patient
+        from app.modules.agenda.models import Appointment
         from app.modules.notifications.service import NotificationService
+        from app.modules.patients.models import Patient
 
         try:
             clinic_id = UUID(data["clinic_id"])
@@ -113,8 +114,9 @@ class NotificationHandlers:
     @staticmethod
     async def _handle_appointment_cancelled(data: dict[str, Any]) -> None:
         """Async handler for appointment cancelled."""
-        from app.modules.clinical.models import Appointment, Patient
+        from app.modules.agenda.models import Appointment
         from app.modules.notifications.service import NotificationService
+        from app.modules.patients.models import Patient
 
         try:
             clinic_id = UUID(data["clinic_id"])
@@ -191,8 +193,8 @@ class NotificationHandlers:
     @staticmethod
     async def _handle_patient_created(data: dict[str, Any]) -> None:
         """Async handler for patient created."""
-        from app.modules.clinical.models import Patient
         from app.modules.notifications.service import NotificationService
+        from app.modules.patients.models import Patient
 
         try:
             clinic_id = UUID(data["clinic_id"])
@@ -248,8 +250,8 @@ class NotificationHandlers:
         Manual sends (printed/handed) don't trigger email.
         """
         from app.modules.budget.models import Budget, BudgetItem
-        from app.modules.clinical.models import Patient
         from app.modules.notifications.service import NotificationService
+        from app.modules.patients.models import Patient
 
         # Only send email if explicitly requested
         send_method = data.get("send_method", "manual")
@@ -357,8 +359,8 @@ class NotificationHandlers:
         Manual sends don't trigger email.
         """
         from app.modules.billing.models import Invoice, InvoiceItem
-        from app.modules.clinical.models import Patient
         from app.modules.notifications.service import NotificationService
+        from app.modules.patients.models import Patient
 
         # Only send email if explicitly requested
         send_method = data.get("send_method", "manual")
@@ -457,8 +459,8 @@ class NotificationHandlers:
     async def _handle_budget_accepted(data: dict[str, Any]) -> None:
         """Async handler for budget accepted."""
         from app.modules.budget.models import Budget
-        from app.modules.clinical.models import Patient
         from app.modules.notifications.service import NotificationService
+        from app.modules.patients.models import Patient
 
         try:
             clinic_id = UUID(data["clinic_id"])

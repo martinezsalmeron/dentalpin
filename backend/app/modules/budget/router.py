@@ -125,7 +125,7 @@ async def create_budget(
 ) -> ApiResponse[BudgetDetailResponse]:
     """Create a new budget."""
     # Verify patient exists
-    from app.modules.clinical.models import Patient
+    from app.modules.patients.models import Patient
 
     patient = await db.get(Patient, data.patient_id)
     if not patient or patient.clinic_id != ctx.clinic_id:
@@ -303,7 +303,7 @@ async def send_budget(
 
         if data.send_email:
             # Get patient email for sending
-            from app.modules.clinical.models import Patient
+            from app.modules.patients.models import Patient
 
             patient = await db.get(Patient, budget.patient_id)
             if not patient or not patient.email:

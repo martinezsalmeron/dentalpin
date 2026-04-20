@@ -112,7 +112,11 @@ def _print_status_counts(header: str, rows: list[dict], status_key: str = "statu
 
 
 async def seed_clinic(db: AsyncSession) -> Clinic:
-    """Create the demo clinic."""
+    """Create the demo clinic + its cabinets."""
+    from uuid import uuid4
+
+    from app.modules.agenda.models import Cabinet
+
     clinic_data = get_clinic_data()
     clinic = Clinic(
         id=clinic_data["id"],
@@ -122,10 +126,23 @@ async def seed_clinic(db: AsyncSession) -> Clinic:
         phone=clinic_data["phone"],
         email=clinic_data["email"],
         settings=clinic_data["settings"],
-        cabinets=clinic_data["cabinets"],
     )
     db.add(clinic)
     await db.flush()
+
+    for order, cab in enumerate(clinic_data.get("cabinets") or []):
+        db.add(
+            Cabinet(
+                id=uuid4(),
+                clinic_id=clinic.id,
+                name=cab["name"],
+                color=cab["color"],
+                display_order=order,
+                is_active=True,
+            )
+        )
+    await db.flush()
+
     print(f"  Created clinic: {clinic.name}")
     return clinic
 
@@ -276,9 +293,22 @@ async def seed_budgets(db: AsyncSession, catalog_map: dict, plans_result: dict) 
 
 async def seed_appointments(db: AsyncSession, plans_result: dict) -> dict:
     """Create appointments anchored to plan items + their AppointmentTreatment rows."""
+    from sqlalchemy import select
+
+    from app.modules.agenda.models import Cabinet
+
     data = generate_appointments_data(plans_result)
 
+    # Resolve cabinet_id from the cabinet name for every appointment.
+    result = await db.execute(select(Cabinet))
+    cab_by_name = {(c.clinic_id, c.name): c.id for c in result.scalars().all()}
+
     for appt_dict in data["appointments"]:
+        key = (appt_dict["clinic_id"], appt_dict["cabinet"])
+        cab_id = cab_by_name.get(key)
+        if cab_id is None:
+            raise RuntimeError(f"Demo seed: cabinet {key} not found")
+        appt_dict["cabinet_id"] = cab_id
         db.add(Appointment(**appt_dict))
     await db.flush()
 

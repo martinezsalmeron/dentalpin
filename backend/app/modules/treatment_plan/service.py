@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.events import event_bus
-from app.modules.clinical.models import Patient
 from app.modules.odontogram.models import Treatment
+from app.modules.patients.models import Patient
 
 from .models import PlannedTreatmentItem, TreatmentMedia, TreatmentPlan
 

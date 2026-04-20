@@ -8,7 +8,7 @@ from sqlalchemy import case, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.models import User
-from app.modules.clinical.models import Appointment
+from app.modules.agenda.models import Appointment
 
 
 class SchedulingReportService:
