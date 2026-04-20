@@ -43,6 +43,9 @@ class NotificationsModule(BaseModule):
             "assistant": ["preferences.read", "preferences.write", "send"],
             "receptionist": ["preferences.read", "preferences.write", "send"],
         },
+        "frontend": {
+            "layer_path": "frontend",
+        },
     }
 
     def get_models(self) -> list:

@@ -1,11 +1,66 @@
 {
   "layers": [
-    "/module_layers/reports/frontend"
+    "/module_layers/patients/frontend",
+    "/module_layers/catalog/frontend",
+    "/module_layers/agenda/frontend",
+    "/module_layers/budget/frontend",
+    "/module_layers/billing/frontend",
+    "/module_layers/media/frontend",
+    "/module_layers/notifications/frontend",
+    "/module_layers/odontogram/frontend",
+    "/module_layers/patient_timeline/frontend",
+    "/module_layers/patients_clinical/frontend",
+    "/module_layers/reports/frontend",
+    "/module_layers/treatment_plan/frontend"
   ],
   "modules": [
     {
+      "name": "patients",
+      "path": "/module_layers/patients/frontend"
+    },
+    {
+      "name": "catalog",
+      "path": "/module_layers/catalog/frontend"
+    },
+    {
+      "name": "agenda",
+      "path": "/module_layers/agenda/frontend"
+    },
+    {
+      "name": "budget",
+      "path": "/module_layers/budget/frontend"
+    },
+    {
+      "name": "billing",
+      "path": "/module_layers/billing/frontend"
+    },
+    {
+      "name": "media",
+      "path": "/module_layers/media/frontend"
+    },
+    {
+      "name": "notifications",
+      "path": "/module_layers/notifications/frontend"
+    },
+    {
+      "name": "odontogram",
+      "path": "/module_layers/odontogram/frontend"
+    },
+    {
+      "name": "patient_timeline",
+      "path": "/module_layers/patient_timeline/frontend"
+    },
+    {
+      "name": "patients_clinical",
+      "path": "/module_layers/patients_clinical/frontend"
+    },
+    {
       "name": "reports",
       "path": "/module_layers/reports/frontend"
+    },
+    {
+      "name": "treatment_plan",
+      "path": "/module_layers/treatment_plan/frontend"
     }
   ],
   "version": 1

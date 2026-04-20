@@ -6,7 +6,7 @@ import type {
   ProfessionalBillingSummary,
   VatSummaryItem,
   NumberingGap
-} from '~/types'
+} from '~~/app/types'
 
 // Budget report types
 export interface BudgetSummary {

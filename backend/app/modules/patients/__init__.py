@@ -35,6 +35,7 @@ class PatientsModule(BaseModule):
             "receptionist": ["read", "write"],
         },
         "frontend": {
+            "layer_path": "frontend",
             "navigation": [
                 {
                     "label": "nav.patients",

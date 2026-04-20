@@ -42,6 +42,7 @@ class AgendaModule(BaseModule):
             ],
         },
         "frontend": {
+            "layer_path": "frontend",
             "navigation": [
                 {
                     "label": "nav.appointments",

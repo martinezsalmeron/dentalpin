@@ -34,6 +34,9 @@ class MediaModule(BaseModule):
             "assistant": ["*"],
             "receptionist": ["*"],
         },
+        "frontend": {
+            "layer_path": "frontend",
+        },
     }
 
     def get_models(self) -> list:

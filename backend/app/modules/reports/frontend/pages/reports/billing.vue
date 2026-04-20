@@ -6,7 +6,7 @@ import type {
   PaymentMethodSummary,
   ProfessionalBillingSummary,
   VatSummaryItem
-} from '~/types'
+} from '~~/app/types'
 
 const { t, locale } = useI18n()
 const router = useRouter()
