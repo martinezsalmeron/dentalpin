@@ -28,8 +28,9 @@ from app.modules.catalog.models import (  # noqa: F401
     TreatmentCategory,
     TreatmentOdontogramMapping,
 )
-from app.modules.clinical.models import Appointment, Patient  # noqa: F401
+from app.modules.agenda.models import Appointment  # noqa: F401
 from app.modules.media.models import Document  # noqa: F401
+from app.modules.patients.models import Patient  # noqa: F401
 from app.modules.odontogram.models import (  # noqa: F401
     OdontogramHistory,
     ToothRecord,

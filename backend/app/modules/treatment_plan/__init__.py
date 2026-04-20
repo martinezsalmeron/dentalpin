@@ -37,7 +37,7 @@ class TreatmentPlanModule(BaseModule):
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": ["clinical", "odontogram", "catalog", "budget", "media"],
+        "depends": ["patients", "agenda", "odontogram", "catalog", "budget", "media"],
         "installable": True,
         "auto_install": True,
         "removable": False,

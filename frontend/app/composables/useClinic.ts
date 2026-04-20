@@ -25,7 +25,7 @@ export function useClinic() {
     isLoading.value = true
     try {
       // Get user's clinics (for MVP, we just use the first one)
-      const response = await api.get<PaginatedResponse<Clinic>>('/api/v1/clinical/clinics')
+      const response = await api.get<PaginatedResponse<Clinic>>('/api/v1/auth/clinics')
       if (response.data.length > 0) {
         currentClinic.value = response.data[0] ?? null
       }
@@ -38,7 +38,7 @@ export function useClinic() {
 
   async function updateClinic(data: ClinicUpdate): Promise<Clinic | null> {
     try {
-      const response = await api.put<ApiResponse<Clinic>>('/api/v1/clinical/clinics', data as unknown as Record<string, unknown>)
+      const response = await api.put<ApiResponse<Clinic>>('/api/v1/auth/clinics', data as unknown as Record<string, unknown>)
       toast.add({
         title: t('common.success', 'Success'),
         description: 'Clinica actualizada correctamente',

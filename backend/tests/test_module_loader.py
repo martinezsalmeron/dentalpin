@@ -84,14 +84,17 @@ def test_topo_sort_self_cycle() -> None:
         _resolve_load_order([m])
 
 
-def test_discovered_modules_include_existing_nine() -> None:
+def test_discovered_modules_include_every_module() -> None:
     """Entry points in pyproject.toml should surface every module."""
     from app.core.plugins.loader import discover_modules
 
     modules = discover_modules()
     names = {m.name for m in modules}
     expected = {
-        "clinical",
+        "patients",
+        "patients_clinical",
+        "agenda",
+        "patient_timeline",
         "catalog",
         "budget",
         "billing",

@@ -273,15 +273,15 @@ import type { ApiResponse, PaginatedResponse, Patient } from '~/types'
 const api = useApi()
 
 // GET paginated list (data is in response.data array)
-const response = await api.get<PaginatedResponse<Patient>>('/api/v1/clinical/patients')
+const response = await api.get<PaginatedResponse<Patient>>('/api/v1/patients')
 const patients = response.data  // Patient[]
 
 // GET single item (wrapped in ApiResponse)
-const response = await api.get<ApiResponse<Patient>>('/api/v1/clinical/patients/123')
+const response = await api.get<ApiResponse<Patient>>('/api/v1/patients/123')
 const patient = response.data  // Patient
 
 // POST (wrapped in ApiResponse)
-const response = await api.post<ApiResponse<Patient>>('/api/v1/clinical/patients', {
+const response = await api.post<ApiResponse<Patient>>('/api/v1/patients', {
   first_name: 'John',
   last_name: 'Doe'
 })
@@ -729,7 +729,7 @@ async def auth_headers():  # {"Authorization": "Bearer ..."}
 @pytest.mark.asyncio
 async def test_create_patient(client: AsyncClient, auth_headers: dict):
     response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         json={"first_name": "John", "last_name": "Doe"},
         headers=auth_headers,
     )

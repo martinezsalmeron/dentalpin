@@ -45,7 +45,7 @@ async def test_cli_list_json(db_session: AsyncSession, capsys) -> None:
     out = capsys.readouterr().out
     data = json.loads(out)
     names = {entry["name"] for entry in data}
-    assert "clinical" in names
+    assert "patients" in names
     assert "billing" in names
 
 
@@ -62,7 +62,7 @@ async def test_cli_list_text_table(db_session: AsyncSession, capsys) -> None:
 
     out = capsys.readouterr().out
     assert "NAME" in out
-    assert "clinical" in out
+    assert "patients" in out
 
 
 @pytest.mark.asyncio
@@ -84,12 +84,12 @@ async def test_cli_info_known_module(db_session: AsyncSession, capsys) -> None:
 
     exit_code = await _cmd_info(
         ModuleService(db_session),
-        argparse.Namespace(name="clinical", as_json=True),
+        argparse.Namespace(name="patients", as_json=True),
     )
     assert exit_code == 0
 
     data = json.loads(capsys.readouterr().out)
-    assert data["name"] == "clinical"
+    assert data["name"] == "patients"
     assert data["state"] == "installed"
 
 

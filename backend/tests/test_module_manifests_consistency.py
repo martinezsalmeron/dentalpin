@@ -23,7 +23,10 @@ from app.core.auth.permissions import ROLE_PERMISSIONS, has_permission
 from app.core.plugins.loader import discover_modules
 
 MODULE_NAMES = {
-    "clinical",
+    "patients",
+    "patients_clinical",
+    "agenda",
+    "patient_timeline",
     "catalog",
     "budget",
     "billing",

@@ -14,6 +14,7 @@
 
 import type { ActiveModule, ApiResponse, NavigationItem } from '~/types'
 import {
+  HOST_NAV,
   getModules as getStaticModules,
   getNavigationItems as getStaticNav,
 } from '~/utils/moduleRegistry'
@@ -68,9 +69,13 @@ export function useModules() {
   })
 
   const navigationItems = computed<NavigationItem[]>(() => {
-    const raw = active.value
+    const moduleNav = active.value
       ? active.value.flatMap(m => m.navigation)
       : getStaticNav()
+
+    // Host-owned entries (dashboard + settings) aren't published by any
+    // module; merge them on top of the backend-driven list.
+    const raw = active.value ? [...HOST_NAV, ...moduleNav] : moduleNav
 
     return raw
       .filter(item => !item.permission || can(item.permission))

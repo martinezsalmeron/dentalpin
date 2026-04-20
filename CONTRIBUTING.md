@@ -398,7 +398,7 @@ cd frontend && npm test
 @pytest.mark.asyncio
 async def test_create_patient(client: AsyncClient, auth_headers: dict):
     response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         json={"first_name": "John", "last_name": "Doe"},
         headers=auth_headers,
     )

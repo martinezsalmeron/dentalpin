@@ -60,6 +60,61 @@ class ClinicResponse(BaseModel):
         from_attributes = True
 
 
+# --- Clinic metadata admin (moved from clinical module in B.5) ---------
+
+
+class ClinicAddressUpdate(BaseModel):
+    """Schema for address fields on a clinic."""
+
+    street: str | None = Field(default=None, max_length=200)
+    city: str | None = Field(default=None, max_length=100)
+    postal_code: str | None = Field(default=None, max_length=20)
+    country: str | None = Field(default=None, max_length=100)
+
+
+class ClinicMetadataUpdate(BaseModel):
+    """Schema for updating clinic info (admin only)."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    tax_id: str | None = Field(default=None, max_length=20)
+    address: ClinicAddressUpdate | None = None
+    phone: str | None = Field(default=None, max_length=20)
+    email: EmailStr | None = None
+
+
+class _ClinicCabinetBrief(BaseModel):
+    """Minimal cabinet projection for the clinic metadata endpoint.
+
+    Agenda owns the full cabinet schema; this is a core-layer view so
+    core doesn't need to import from modules.
+    """
+
+    id: UUID
+    name: str
+    color: str
+    display_order: int = 0
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True
+
+
+class ClinicMetadataResponse(BaseModel):
+    """Schema for clinic metadata detail response."""
+
+    id: UUID
+    name: str
+    tax_id: str
+    address: dict | None
+    phone: str | None
+    email: str | None
+    settings: dict
+    cabinets: list[_ClinicCabinetBrief]
+
+    class Config:
+        from_attributes = True
+
+
 class MeResponse(BaseModel):
     """Schema for /me endpoint response."""
 

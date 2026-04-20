@@ -26,9 +26,12 @@ def test_resolve_layer_path_for_fixture() -> None:
 
 
 def test_resolve_layer_path_returns_none_for_module_without_layer() -> None:
-    from app.modules.clinical import ClinicalModule
+    from app.modules.billing import BillingModule
 
-    assert resolve_layer_path(ClinicalModule()) is None
+    # BillingModule has no ``frontend/`` directory yet (moves to a layer
+    # in Fase B.6). ``resolve_layer_path`` must return ``None`` for any
+    # such module until then.
+    assert resolve_layer_path(BillingModule()) is None
 
 
 def test_collect_layers_filters_modules_without_layer() -> None:

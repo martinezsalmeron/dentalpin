@@ -28,7 +28,7 @@ class BillingModule(BaseModule):
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": ["clinical", "catalog", "budget"],
+        "depends": ["patients", "catalog", "budget"],
         "installable": True,
         "auto_install": True,
         "removable": False,

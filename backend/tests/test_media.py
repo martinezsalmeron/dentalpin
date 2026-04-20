@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.models import Clinic, ClinicMembership
-from app.modules.clinical.models import Patient
+from app.modules.patients.models import Patient
 
 
 @pytest.fixture

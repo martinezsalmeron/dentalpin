@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
 from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
-from app.modules.clinical.service import PatientService
+from app.modules.patients.service import PatientService
 
 from .schemas import DocumentResponse, DocumentUpdate
 from .service import DocumentService

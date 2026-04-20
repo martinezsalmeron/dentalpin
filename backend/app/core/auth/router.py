@@ -22,6 +22,8 @@ from .models import ClinicMembership, User
 from .permissions import CORE_PERMISSIONS, ROLES, expand_permissions, get_role_permissions
 from .schemas import (
     AuthResponse,
+    ClinicMetadataResponse,
+    ClinicMetadataUpdate,
     ClinicResponse,
     MeResponse,
     ProfessionalResponse,
@@ -506,3 +508,63 @@ async def delete_user(
 
     await db.delete(membership)
     await db.commit()
+
+
+# --- Clinic metadata (B.5: moved from clinical module) ------------------
+
+
+@router.get("/clinics", response_model=PaginatedApiResponse[ClinicMetadataResponse])
+async def list_user_clinics(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+) -> PaginatedApiResponse[ClinicMetadataResponse]:
+    """List the caller's active clinic with full metadata + cabinets."""
+    clinics = [ClinicMetadataResponse.model_validate(ctx.clinic)]
+    return PaginatedApiResponse(
+        data=clinics,
+        total=len(clinics),
+        page=1,
+        page_size=len(clinics),
+    )
+
+
+@router.get("/clinics/{clinic_id}", response_model=ApiResponse[ClinicMetadataResponse])
+async def get_clinic_metadata(
+    clinic_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+) -> ApiResponse[ClinicMetadataResponse]:
+    """Get clinic details."""
+    if ctx.clinic_id != clinic_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this clinic",
+        )
+    return ApiResponse(data=ClinicMetadataResponse.model_validate(ctx.clinic))
+
+
+@router.put("/clinics", response_model=ApiResponse[ClinicMetadataResponse])
+async def update_clinic_metadata(
+    data: ClinicMetadataUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[ClinicMetadataResponse]:
+    """Update clinic info (admin only)."""
+    clinic = ctx.clinic
+
+    if data.name is not None:
+        clinic.name = data.name
+    if data.tax_id is not None:
+        clinic.tax_id = data.tax_id
+    if data.phone is not None:
+        clinic.phone = data.phone
+    if data.email is not None:
+        clinic.email = data.email
+    if data.address is not None:
+        existing_address = clinic.address or {}
+        new_address = data.address.model_dump(exclude_unset=True)
+        clinic.address = {**existing_address, **new_address}
+
+    await db.commit()
+    await db.refresh(clinic)
+
+    return ApiResponse(data=ClinicMetadataResponse.model_validate(clinic))
