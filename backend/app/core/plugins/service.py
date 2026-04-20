@@ -27,6 +27,11 @@ from .state import ModuleCategory, ModuleState
 logger = logging.getLogger(__name__)
 
 
+class ModuleOperationError(RuntimeError):
+    """Raised by :class:`ModuleService` install/uninstall/upgrade when a
+    transition is not allowed (blocked dep, legacy module, etc.)."""
+
+
 @dataclass
 class ModuleInfo:
     """Projection of a module + its DB row for CLI/API output."""
@@ -315,6 +320,182 @@ class ModuleService:
         record.error_at = None
         await self.db.commit()
         return True
+
+    # --- State transitions (no execution; processor handles that) -------
+
+    async def install(self, name: str, *, force: bool = False) -> list[str]:
+        """Mark ``name`` and every uninstalled dep as ``to_install``.
+
+        Returns the ordered list of module names scheduled (topo order),
+        including transitive dependencies. Caller is expected to trigger
+        a restart — the lifespan processor executes pending operations.
+        """
+        module = self._require_discovered(name)
+        manifest = module.get_manifest()
+        if not manifest.installable and not force:
+            raise ModuleOperationError(f"Module '{name}' is marked installable=False")
+
+        records = await self._load_existing_records()
+        chain = self._dependency_chain(name)
+        scheduled: list[str] = []
+        now = datetime.now(UTC)
+
+        for dep_name in chain:
+            dep_module = self._require_discovered(dep_name)
+            dep_manifest = dep_module.get_manifest()
+            record = records.get(dep_name)
+
+            if record is None:
+                self.db.add(
+                    ModuleRecord(
+                        name=dep_manifest.name,
+                        version=dep_manifest.version,
+                        state=ModuleState.TO_INSTALL.value,
+                        category=dep_manifest.category.value,
+                        removable=dep_manifest.removable,
+                        auto_install=dep_manifest.auto_install,
+                        last_state_change=now,
+                        manifest_snapshot=dep_manifest.to_snapshot(),
+                    )
+                )
+                scheduled.append(dep_name)
+                continue
+
+            if record.state == ModuleState.INSTALLED.value:
+                continue
+            if record.state in {
+                ModuleState.TO_INSTALL.value,
+                ModuleState.TO_UPGRADE.value,
+            }:
+                continue
+
+            record.state = ModuleState.TO_INSTALL.value
+            record.version = dep_manifest.version
+            record.manifest_snapshot = dep_manifest.to_snapshot()
+            record.category = dep_manifest.category.value
+            record.removable = dep_manifest.removable
+            record.auto_install = dep_manifest.auto_install
+            record.last_state_change = now
+            record.error_message = None
+            record.error_at = None
+            scheduled.append(dep_name)
+
+        await self.db.commit()
+        return scheduled
+
+    async def uninstall(self, name: str, *, force: bool = False) -> None:
+        """Mark ``name`` as ``to_remove`` unless blocked.
+
+        Blocked scenarios:
+
+        * module is ``removable=False`` (official modules) and
+          ``force`` is not set.
+        * another installed module declares ``name`` in its ``depends``
+          — reverse-dep. Unless ``force``.
+        * module has no Alembic ``base_revision`` (Fase A legacy) —
+          its schema is part of main linear and cannot be cleanly
+          unwound. Always blocked, even with ``force``.
+        """
+        records = await self._load_existing_records()
+        record = records.get(name)
+        if record is None:
+            raise ModuleOperationError(f"Unknown module: '{name}'")
+
+        if record.state == ModuleState.UNINSTALLED.value:
+            return  # no-op
+
+        if record.base_revision is None:
+            raise ModuleOperationError(
+                f"Module '{name}' has no Alembic branch (legacy in main linear). "
+                "Uninstall is not supported in Fase A."
+            )
+
+        if not record.removable and not force:
+            raise ModuleOperationError(
+                f"Module '{name}' is marked removable=False. Use force=True to override."
+            )
+
+        dependents = [
+            other.name
+            for other in records.values()
+            if other.state
+            in {
+                ModuleState.INSTALLED.value,
+                ModuleState.TO_INSTALL.value,
+                ModuleState.TO_UPGRADE.value,
+            }
+            and name in (other.manifest_snapshot or {}).get("depends", [])
+        ]
+        if dependents and not force:
+            raise ModuleOperationError(
+                f"Cannot uninstall '{name}' — required by: {dependents}. "
+                "Uninstall them first or pass force=True."
+            )
+
+        record.state = ModuleState.TO_REMOVE.value
+        record.last_state_change = datetime.now(UTC)
+        record.error_message = None
+        record.error_at = None
+        await self.db.commit()
+
+    async def upgrade(self, name: str) -> bool:
+        """Mark ``name`` as ``to_upgrade`` when the on-disk manifest
+        version differs from the stored version.
+
+        Returns ``True`` if an upgrade was scheduled, ``False`` if the
+        module is already at the declared version.
+        """
+        module = self._require_discovered(name)
+        manifest = module.get_manifest()
+        record = (
+            await self.db.execute(select(ModuleRecord).where(ModuleRecord.name == name))
+        ).scalar_one_or_none()
+        if record is None:
+            raise ModuleOperationError(f"Unknown module: '{name}'")
+        if record.state != ModuleState.INSTALLED.value:
+            raise ModuleOperationError(
+                f"Cannot upgrade '{name}' from state {record.state}. "
+                "Only installed modules can be upgraded."
+            )
+
+        if record.version == manifest.version:
+            return False
+
+        record.state = ModuleState.TO_UPGRADE.value
+        record.version = manifest.version
+        record.manifest_snapshot = manifest.to_snapshot()
+        record.last_state_change = datetime.now(UTC)
+        record.error_message = None
+        record.error_at = None
+        await self.db.commit()
+        return True
+
+    # --- Helpers --------------------------------------------------------
+
+    def _require_discovered(self, name: str) -> BaseModule:
+        module = module_registry.get(name)
+        if module is None:
+            raise ModuleOperationError(f"Module '{name}' is not discovered; cannot operate on it.")
+        return module
+
+    def _dependency_chain(self, name: str) -> list[str]:
+        """Return module + every transitive dep in topo order (deps first)."""
+        chain: list[str] = []
+        visited: set[str] = set()
+
+        def visit(current: str) -> None:
+            if current in visited:
+                return
+            visited.add(current)
+            module = module_registry.get(current)
+            if module is None:
+                raise ModuleOperationError(f"Missing dependency '{current}' (required by '{name}')")
+            for dep in module.dependencies:
+                visit(dep)
+            chain.append(current)
+
+        visit(name)
+        return chain
 
     # --- Helpers --------------------------------------------------------
 

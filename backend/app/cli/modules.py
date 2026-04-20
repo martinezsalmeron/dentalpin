@@ -15,7 +15,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.plugins import ModuleService
+from app.core.plugins import ModuleOperationError, ModuleService
 from app.core.plugins.loader import discover_modules
 from app.core.plugins.registry import module_registry
 from app.database import async_session_maker
@@ -48,6 +48,34 @@ def register(sub: argparse._SubParsersAction) -> None:
     )
     p_orphan.add_argument("name")
     p_orphan.set_defaults(func=_run(_cmd_orphan))
+
+    p_install = mod_sub.add_parser("install", help="Schedule a module install")
+    p_install.add_argument("name")
+    p_install.add_argument(
+        "--force",
+        action="store_true",
+        help="Override installable=False checks",
+    )
+    p_install.set_defaults(func=_run(_cmd_install))
+
+    p_uninstall = mod_sub.add_parser("uninstall", help="Schedule a module uninstall")
+    p_uninstall.add_argument("name")
+    p_uninstall.add_argument(
+        "--force",
+        action="store_true",
+        help="Override removable=False / reverse-dep checks (cannot bypass legacy block)",
+    )
+    p_uninstall.set_defaults(func=_run(_cmd_uninstall))
+
+    p_upgrade = mod_sub.add_parser("upgrade", help="Schedule a module upgrade")
+    p_upgrade.add_argument("name")
+    p_upgrade.set_defaults(func=_run(_cmd_upgrade))
+
+    p_restart = mod_sub.add_parser(
+        "restart",
+        help="Terminate backend process so docker respawns and applies pending operations",
+    )
+    p_restart.set_defaults(func=_run(_cmd_restart))
 
 
 # --- Runners --------------------------------------------------------------
@@ -177,6 +205,72 @@ async def _cmd_orphan(svc: ModuleService, args: argparse.Namespace) -> int:
         print(f"Module not found: {args.name}", file=sys.stderr)
         return 2
     print(f"Marked {args.name} as uninstalled.")
+    return 0
+
+
+async def _cmd_install(svc: ModuleService, args: argparse.Namespace) -> int:
+    try:
+        scheduled = await svc.install(args.name, force=args.force)
+    except ModuleOperationError as exc:
+        print(f"Install blocked: {exc}", file=sys.stderr)
+        return 3
+
+    if not scheduled:
+        print(f"{args.name} is already installed.")
+        return 0
+
+    print("Scheduled for install on next restart:")
+    for item in scheduled:
+        print(f"  - {item}")
+    print("\nRun `dentalpin modules restart` to apply.")
+    return 0
+
+
+async def _cmd_uninstall(svc: ModuleService, args: argparse.Namespace) -> int:
+    try:
+        await svc.uninstall(args.name, force=args.force)
+    except ModuleOperationError as exc:
+        print(f"Uninstall blocked: {exc}", file=sys.stderr)
+        return 3
+
+    print(f"Scheduled uninstall for {args.name}.")
+    print("A data backup will be taken before Alembic downgrade.")
+    print("Run `dentalpin modules restart` to apply.")
+    return 0
+
+
+async def _cmd_upgrade(svc: ModuleService, args: argparse.Namespace) -> int:
+    try:
+        changed = await svc.upgrade(args.name)
+    except ModuleOperationError as exc:
+        print(f"Upgrade blocked: {exc}", file=sys.stderr)
+        return 3
+
+    if not changed:
+        print(f"{args.name} is already at the declared version.")
+        return 0
+
+    print(f"Scheduled upgrade for {args.name}.")
+    print("Run `dentalpin modules restart` to apply.")
+    return 0
+
+
+async def _cmd_restart(svc: ModuleService, args: argparse.Namespace) -> int:
+    import os
+    import signal
+
+    pid = os.getpid()
+    # The CLI runs in a separate process from the backend; signal to
+    # the backend container happens via docker restart. Here we surface
+    # the recommended command instead of pretending to kill ourselves.
+    print(
+        "The CLI cannot restart the backend from inside its own "
+        "process. Either:\n"
+        "  1. Hit POST /api/v1/modules/-/restart (requires auth), or\n"
+        "  2. Run `docker compose restart backend` from the host."
+    )
+    # For completeness if ever run inside the backend container process.
+    _ = pid, signal
     return 0
 
 

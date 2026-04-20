@@ -1,0 +1,411 @@
+"""Lifespan processor for pending module operations.
+
+Runs once at FastAPI startup, after the registry has been populated
+and reconciled. Walks every module in ``to_install`` / ``to_upgrade``
+/ ``to_remove`` (topological order) and executes the corresponding
+step sequence, writing each step to :class:`OperationLog`.
+
+Execution is intentionally best-effort-per-module: a failure on one
+module is recorded in ``core_module.error_message`` and does not stop
+the rest from being processed. The admin resolves failures via CLI
+(retry install, force uninstall, etc.).
+"""
+
+from __future__ import annotations
+
+import logging
+import subprocess
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.config import settings
+
+from .context import ModuleContext
+from .db_models import ModuleRecord
+from .external_id import ExternalIdHelper
+from .operation_log import OperationLog
+from .registry import module_registry
+from .state import ModuleState
+from .yaml_loader import load_module_data_files
+
+if TYPE_CHECKING:
+    from .base import BaseModule
+
+logger = logging.getLogger(__name__)
+
+
+BACKUP_ROOT = Path(settings.STORAGE_LOCAL_PATH) / "backups"
+
+
+class PendingProcessor:
+    """Resolve pending state transitions at boot."""
+
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        self._session_factory = session_factory
+        self._op_log = OperationLog(session_factory)
+
+    async def run(self) -> list[str]:
+        """Process every pending module. Returns the processed names."""
+        processed: list[str] = []
+
+        pending = await self._load_pending()
+        if not pending:
+            return processed
+
+        ordered = self._order_pending(pending)
+        logger.info(
+            "Processing pending modules: %s",
+            [(r.name, r.state) for r in ordered],
+        )
+
+        for record in ordered:
+            try:
+                await self._process_one(record)
+                processed.append(record.name)
+            except Exception as exc:
+                logger.exception(
+                    "Pending operation for %s (%s) failed",
+                    record.name,
+                    record.state,
+                )
+                await self._mark_error(record.name, str(exc))
+
+        return processed
+
+    # --- Loading --------------------------------------------------------
+
+    async def _load_pending(self) -> list[ModuleRecord]:
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(ModuleRecord).where(
+                    ModuleRecord.state.in_(
+                        [
+                            ModuleState.TO_INSTALL.value,
+                            ModuleState.TO_UPGRADE.value,
+                            ModuleState.TO_REMOVE.value,
+                        ]
+                    )
+                )
+            )
+            return list(result.scalars())
+
+    def _order_pending(self, records: list[ModuleRecord]) -> list[ModuleRecord]:
+        """Topological order so dependencies install first, removes last."""
+        by_name = {r.name: r for r in records}
+        visited: set[str] = set()
+        order: list[ModuleRecord] = []
+
+        def visit(name: str) -> None:
+            if name in visited or name not in by_name:
+                return
+            visited.add(name)
+            rec = by_name[name]
+            for dep in (rec.manifest_snapshot or {}).get("depends", []) or []:
+                if dep in by_name:
+                    visit(dep)
+            order.append(rec)
+
+        for rec in records:
+            visit(rec.name)
+        return order
+
+    # --- Dispatch -------------------------------------------------------
+
+    async def _process_one(self, record: ModuleRecord) -> None:
+        if record.state == ModuleState.TO_INSTALL.value:
+            await self._install(record)
+        elif record.state == ModuleState.TO_UPGRADE.value:
+            await self._upgrade(record)
+        elif record.state == ModuleState.TO_REMOVE.value:
+            await self._remove(record)
+
+    # --- Install --------------------------------------------------------
+
+    async def _install(self, record: ModuleRecord) -> None:
+        module = module_registry.get(record.name)
+        if module is None:
+            raise RuntimeError(f"Cannot install {record.name}: not in in-memory registry")
+
+        migrate_log = await self._op_log.started(
+            module_name=record.name, operation="install", step="migrate"
+        )
+        applied_revision = await self._run_migrate(module)
+        await self._op_log.completed(migrate_log, {"applied_revision": applied_revision})
+
+        seed_log = await self._op_log.started(
+            module_name=record.name, operation="install", step="seed"
+        )
+        async with self._session_factory() as session:
+            seed_files = _resolve_data_files(module)
+            if seed_files:
+                await load_module_data_files(session, record.name, seed_files)
+                await session.commit()
+        await self._op_log.completed(seed_log, {"files": len(seed_files)})
+
+        lifecycle_log = await self._op_log.started(
+            module_name=record.name, operation="install", step="lifecycle"
+        )
+        async with self._session_factory() as session:
+            ctx = _build_context(record.name, session)
+            await module.install(ctx)
+            await session.commit()
+        await self._op_log.completed(lifecycle_log)
+
+        finalize_log = await self._op_log.started(
+            module_name=record.name, operation="install", step="finalize"
+        )
+        async with self._session_factory() as session:
+            db_record = await session.get(ModuleRecord, record.name)
+            if db_record is None:
+                raise RuntimeError(f"Record {record.name} vanished mid-install")
+            now = datetime.now(UTC)
+            db_record.state = ModuleState.INSTALLED.value
+            db_record.installed_at = db_record.installed_at or now
+            db_record.applied_revision = applied_revision
+            if db_record.base_revision is None:
+                db_record.base_revision = applied_revision
+            db_record.last_state_change = now
+            await session.commit()
+        await self._op_log.completed(finalize_log)
+
+    # --- Upgrade --------------------------------------------------------
+
+    async def _upgrade(self, record: ModuleRecord) -> None:
+        module = module_registry.get(record.name)
+        if module is None:
+            raise RuntimeError(f"Cannot upgrade {record.name}: not in in-memory registry")
+
+        previous_version = record.manifest_snapshot.get("version", record.version)
+
+        migrate_log = await self._op_log.started(
+            module_name=record.name, operation="upgrade", step="migrate"
+        )
+        applied_revision = await self._run_migrate(module)
+        await self._op_log.completed(migrate_log, {"applied_revision": applied_revision})
+
+        seed_log = await self._op_log.started(
+            module_name=record.name, operation="upgrade", step="seed"
+        )
+        async with self._session_factory() as session:
+            seed_files = _resolve_data_files(module)
+            if seed_files:
+                await load_module_data_files(session, record.name, seed_files)
+                await session.commit()
+        await self._op_log.completed(seed_log, {"files": len(seed_files)})
+
+        post_log = await self._op_log.started(
+            module_name=record.name, operation="upgrade", step="lifecycle"
+        )
+        async with self._session_factory() as session:
+            ctx = _build_context(record.name, session)
+            await module.post_upgrade(ctx, previous_version)
+            await session.commit()
+        await self._op_log.completed(post_log)
+
+        finalize_log = await self._op_log.started(
+            module_name=record.name, operation="upgrade", step="finalize"
+        )
+        async with self._session_factory() as session:
+            db_record = await session.get(ModuleRecord, record.name)
+            if db_record is None:
+                raise RuntimeError(f"Record {record.name} vanished mid-upgrade")
+            db_record.state = ModuleState.INSTALLED.value
+            db_record.applied_revision = applied_revision
+            db_record.last_state_change = datetime.now(UTC)
+            await session.commit()
+        await self._op_log.completed(finalize_log)
+
+    # --- Uninstall ------------------------------------------------------
+
+    async def _remove(self, record: ModuleRecord) -> None:
+        module = module_registry.get(record.name)
+        tables = _tables_for(module) if module else []
+
+        backup_log = await self._op_log.started(
+            module_name=record.name, operation="uninstall", step="backup"
+        )
+        backup_path = await self._dump_tables(record.name, tables)
+        await self._op_log.completed(
+            backup_log, {"backup_path": str(backup_path) if backup_path else None}
+        )
+
+        lifecycle_log = await self._op_log.started(
+            module_name=record.name, operation="uninstall", step="lifecycle"
+        )
+        if module is not None:
+            async with self._session_factory() as session:
+                ctx = _build_context(record.name, session)
+                await module.uninstall(ctx)
+                await session.commit()
+        await self._op_log.completed(lifecycle_log)
+
+        delete_log = await self._op_log.started(
+            module_name=record.name, operation="uninstall", step="delete_data"
+        )
+        async with self._session_factory() as session:
+            helper = ExternalIdHelper(session)
+            pairs = await helper.purge_for_module(record.name)
+            await session.commit()
+        await self._op_log.completed(delete_log, {"rows_deleted": len(pairs)})
+
+        migrate_log = await self._op_log.started(
+            module_name=record.name, operation="uninstall", step="migrate_down"
+        )
+        downgrade_target = record.base_revision or "base"
+        await self._run_downgrade(downgrade_target)
+        await self._op_log.completed(migrate_log, {"target_revision": downgrade_target})
+
+        finalize_log = await self._op_log.started(
+            module_name=record.name, operation="uninstall", step="finalize"
+        )
+        async with self._session_factory() as session:
+            db_record = await session.get(ModuleRecord, record.name)
+            if db_record is None:
+                return
+            db_record.state = ModuleState.UNINSTALLED.value
+            db_record.applied_revision = None
+            db_record.installed_at = None
+            db_record.last_state_change = datetime.now(UTC)
+            await session.commit()
+        await self._op_log.completed(finalize_log)
+
+    # --- External commands ---------------------------------------------
+
+    async def _run_migrate(self, module: BaseModule) -> str | None:
+        """Run ``alembic upgrade`` for the module's branch, if any.
+
+        Modules with no Alembic branch (legacy, main linear) don't need
+        any migration step — the main chain has already been applied.
+        """
+        if not _has_branch(module):
+            return None
+        return _alembic_cmd(["upgrade", f"{module.name}@head"])
+
+    async def _run_downgrade(self, revision: str) -> None:
+        _alembic_cmd(["downgrade", revision])
+
+    async def _dump_tables(self, module_name: str, tables: list[str]) -> Path | None:
+        if not tables:
+            return None
+        BACKUP_ROOT.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        target = BACKUP_ROOT / f"module_{module_name}_{timestamp}.sql"
+
+        args = ["pg_dump", "--data-only", "--no-owner", settings.DATABASE_URL]
+        for table in tables:
+            args.extend(["--table", table])
+
+        try:
+            with target.open("w") as fh:
+                subprocess.run(args, stdout=fh, check=True)
+        except FileNotFoundError:
+            logger.warning(
+                "pg_dump not available; skipping backup for module %s",
+                module_name,
+            )
+            return None
+        return target
+
+    # --- Error book-keeping --------------------------------------------
+
+    async def _mark_error(self, module_name: str, message: str) -> None:
+        async with self._session_factory() as session:
+            record = await session.get(ModuleRecord, module_name)
+            if record is None:
+                return
+            record.error_message = message
+            record.error_at = datetime.now(UTC)
+            await session.commit()
+
+
+# --- Module-level helpers -------------------------------------------------
+
+
+def _resolve_data_files(module: BaseModule) -> list[Path]:
+    """Return on-disk paths for ``manifest.data_files`` that exist."""
+    manifest = module.get_manifest()
+    if not manifest.data_files:
+        return []
+
+    import importlib.util
+
+    spec = importlib.util.find_spec(type(module).__module__)
+    if spec is None or spec.origin is None:
+        return []
+
+    base = Path(spec.origin).parent
+    paths: list[Path] = []
+    for rel in manifest.data_files:
+        candidate = (base / rel).resolve()
+        if candidate.exists():
+            paths.append(candidate)
+        else:
+            logger.warning(
+                "Seed file %s declared by %s does not exist",
+                candidate,
+                manifest.name,
+            )
+    return paths
+
+
+def _tables_for(module: BaseModule) -> list[str]:
+    """Collect ``__tablename__`` values from the module's SQLAlchemy models."""
+    tables: list[str] = []
+    for model in module.get_models():
+        name = getattr(model, "__tablename__", None)
+        if name:
+            tables.append(str(name))
+    return tables
+
+
+def _build_context(module_name: str, session: AsyncSession) -> ModuleContext:
+    from app.core.events import event_bus
+
+    return ModuleContext(
+        module_name=module_name,
+        db=session,
+        event_bus=event_bus,
+        logger=logging.getLogger(f"app.modules.{module_name}"),
+    )
+
+
+def _has_branch(module: BaseModule) -> bool:
+    """True when the module ships its own Alembic branch directory."""
+    import importlib.util
+
+    spec = importlib.util.find_spec(type(module).__module__)
+    if spec is None or spec.origin is None:
+        return False
+    base = Path(spec.origin).parent
+    return (base / "migrations" / "versions").is_dir()
+
+
+def _alembic_cmd(args: list[str]) -> str | None:
+    """Run an Alembic command in-process and return the resulting head.
+
+    Runs in the backend container via the same Python interpreter so we
+    don't spawn a subprocess. Returns the head revision name after the
+    command completed (or ``None`` if not determinable).
+    """
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    from alembic import command
+
+    # Production layout: alembic.ini sits at backend/alembic.ini.
+    cfg_path = Path(__file__).resolve().parents[3] / "alembic.ini"
+    cfg = Config(str(cfg_path))
+
+    command_name, *command_args = args
+    getattr(command, command_name)(cfg, *command_args)
+
+    script = ScriptDirectory.from_config(cfg)
+    head = script.get_current_head()
+    return head

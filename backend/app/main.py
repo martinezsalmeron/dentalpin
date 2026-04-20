@@ -15,6 +15,7 @@ from app.config import settings
 from app.core.auth.router import limiter
 from app.core.auth.router import router as auth_router
 from app.core.plugins.loader import ModuleLoader
+from app.core.plugins.processor import PendingProcessor
 from app.core.plugins.service import ModuleService
 from app.core.scheduler import init_scheduler, shutdown_scheduler
 from app.core.schemas import ErrorResponse
@@ -37,6 +38,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await ModuleService(session).reconcile_with_db()
     except Exception:
         logger.exception("Module registry reconciliation failed at startup")
+
+    # Process pending install/uninstall/upgrade operations.
+    try:
+        processor = PendingProcessor(async_session_maker)
+        processed = await processor.run()
+        if processed:
+            logger.info("Processed pending module operations: %s", processed)
+    except Exception:
+        logger.exception("Pending module processor raised")
 
     # Initialize scheduler for background jobs
     init_scheduler()
@@ -122,6 +132,11 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 # Mount auth router
 app.include_router(auth_router, prefix="/api/v1")
+
+# Mount module management router (install/uninstall/upgrade/restart).
+from app.core.plugins.router import router as modules_router  # noqa: E402
+
+app.include_router(modules_router, prefix="/api/v1")
 
 
 @app.get("/health")

@@ -29,6 +29,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
     volumes:
       - ./backend:/app
       - storage_data:/app/storage
