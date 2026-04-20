@@ -30,17 +30,25 @@ class TreatmentPlanModule(BaseModule):
     - Media attachments for treatment documentation
     """
 
-    @property
-    def name(self) -> str:
-        return "treatment_plan"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return ["clinical", "odontogram", "catalog", "budget", "media"]
+    manifest = {
+        "name": "treatment_plan",
+        "version": "0.1.0",
+        "summary": "Patient treatment plans with budget + odontogram sync.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": ["clinical", "odontogram", "catalog", "budget", "media"],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": ["plans.read"],
+            "assistant": ["plans.read", "plans.write"],
+            "receptionist": [],
+        },
+    }
 
     def get_models(self) -> list:
         return [TreatmentPlan, PlannedTreatmentItem, TreatmentMedia]

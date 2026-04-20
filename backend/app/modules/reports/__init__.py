@@ -17,17 +17,25 @@ class ReportsModule(BaseModule):
     - Export functionality (CSV)
     """
 
-    @property
-    def name(self) -> str:
-        return "reports"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return ["clinical", "catalog", "budget", "billing"]
+    manifest = {
+        "name": "reports",
+        "version": "0.1.0",
+        "summary": "Cross-module reporting: billing, budgets, scheduling.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": ["clinical", "catalog", "budget", "billing"],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["billing.read", "scheduling.read"],
+            "hygienist": ["scheduling.read"],
+            "assistant": ["scheduling.read"],
+            "receptionist": ["billing.read", "scheduling.read"],
+        },
+    }
 
     def get_models(self) -> list:
         # Reports module has no models - it queries other modules' data

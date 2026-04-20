@@ -25,17 +25,25 @@ class NotificationsModule(BaseModule):
     - Event-driven notifications
     """
 
-    @property
-    def name(self) -> str:
-        return "notifications"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return ["clinical", "budget", "billing"]  # Needs patient, budget, and invoice data
+    manifest = {
+        "name": "notifications",
+        "version": "0.1.0",
+        "summary": "Email templates, preferences, SMTP, event-driven sending.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": ["clinical", "budget", "billing"],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["preferences.read", "preferences.write", "send"],
+            "hygienist": [],
+            "assistant": ["preferences.read", "preferences.write", "send"],
+            "receptionist": ["preferences.read", "preferences.write", "send"],
+        },
+    }
 
     def get_models(self) -> list:
         return [

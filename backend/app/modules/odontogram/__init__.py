@@ -15,17 +15,25 @@ logger = logging.getLogger(__name__)
 class OdontogramModule(BaseModule):
     """Odontogram module: tooth state + clinical treatments."""
 
-    @property
-    def name(self) -> str:
-        return "odontogram"
-
-    @property
-    def version(self) -> str:
-        return "0.3.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return ["clinical"]
+    manifest = {
+        "name": "odontogram",
+        "version": "0.3.0",
+        "summary": "Dental charting, tooth state, clinical treatments.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": ["clinical"],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": ["read", "write"],
+            "assistant": ["read"],
+            "receptionist": [],
+        },
+    }
 
     def get_models(self) -> list:
         return [ToothRecord, OdontogramHistory, Treatment, TreatmentTooth]

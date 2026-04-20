@@ -23,17 +23,25 @@ class CatalogModule(BaseModule):
     - Odontogram integration (visual treatment mapping)
     """
 
-    @property
-    def name(self) -> str:
-        return "catalog"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return []  # No dependencies for MVP
+    manifest = {
+        "name": "catalog",
+        "version": "0.1.0",
+        "summary": "Treatment catalog, categories, VAT types.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": [],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["read"],
+            "hygienist": ["read"],
+            "assistant": ["read"],
+            "receptionist": ["read"],
+        },
+    }
 
     def get_models(self) -> list:
         return [TreatmentCategory, TreatmentCatalogItem, TreatmentOdontogramMapping]

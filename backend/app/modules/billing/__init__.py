@@ -21,17 +21,25 @@ class BillingModule(BaseModule):
     - Extensible hooks for country compliance modules
     """
 
-    @property
-    def name(self) -> str:
-        return "billing"
-
-    @property
-    def version(self) -> str:
-        return "0.1.0"
-
-    @property
-    def dependencies(self) -> list[str]:
-        return ["clinical", "catalog", "budget"]
+    manifest = {
+        "name": "billing",
+        "version": "0.1.0",
+        "summary": "Invoices, payments, credit notes, PDF billing.",
+        "author": "DentalPin Core Team",
+        "license": "BSL-1.1",
+        "category": "official",
+        "depends": ["clinical", "catalog", "budget"],
+        "installable": True,
+        "auto_install": True,
+        "removable": False,
+        "role_permissions": {
+            "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": ["read"],
+            "assistant": ["read", "write"],
+            "receptionist": ["read", "write"],
+        },
+    }
 
     def get_models(self) -> list:
         return [InvoiceSeries, Invoice, InvoiceItem, Payment, InvoiceHistory]
