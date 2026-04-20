@@ -1,6 +1,10 @@
 // Nuxt layer for the `reports` module.
 //
-// The host `frontend/nuxt.config.ts` reads `frontend/modules.json` at
-// boot and passes every listed layer path to `extends`. This file just
-// needs to exist so Nuxt recognises the folder as a layer.
-export default defineNuxtConfig({})
+// Components live under ./components with no folder-prefix naming
+// (matches host convention so <PatientQuickInfo /> and friends resolve
+// across layers).
+export default defineNuxtConfig({
+  components: [
+    { path: './components', pathPrefix: false }
+  ]
+})

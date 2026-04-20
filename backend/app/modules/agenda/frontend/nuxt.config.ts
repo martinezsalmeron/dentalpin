@@ -1,2 +1,10 @@
 // Nuxt layer for the `agenda` module.
-export default defineNuxtConfig({})
+//
+// Components live under ./components with no folder-prefix naming
+// (matches host convention so <PatientQuickInfo /> and friends resolve
+// across layers).
+export default defineNuxtConfig({
+  components: [
+    { path: './components', pathPrefix: false }
+  ]
+})
