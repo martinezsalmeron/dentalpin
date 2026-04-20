@@ -43,6 +43,12 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      DATABASE_URL: postgresql+asyncpg://dental:testpass@localhost:5432/dental_clinic_test
+      SECRET_KEY: test-secret-key-for-ci
+      ENVIRONMENT: test
+      TESTING: "true"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -56,15 +62,48 @@ jobs:
         run: |
           pip install -e ".[dev]"
 
-      - name: Run tests
+      - name: Run tests (default set)
+        working-directory: backend
+        run: |
+          python -m pytest -v --tb=short
+
+      - name: Alembic round-trip (base → head → base → head)
+        working-directory: backend
+        run: |
+          python -m pytest -v -m alembic_roundtrip --tb=short
+
+  manifest-consistency:
+    # Static manifest sanity — every entry point in pyproject.toml must
+    # resolve, declare a valid manifest, and its role permissions must
+    # match the ROLE_PERMISSIONS table. Runs without a database so we
+    # get a quick signal on PRs that touch modules.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Validate manifests
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+asyncpg://dental:testpass@localhost:5432/dental_clinic_test
-          SECRET_KEY: test-secret-key-for-ci
+          DATABASE_URL: postgresql+asyncpg://dental:testpass@localhost:5432/stub
+          SECRET_KEY: ci-stub
           ENVIRONMENT: test
           TESTING: "true"
         run: |
-          python -m pytest -v --tb=short
+          python -m pytest tests/test_module_manifest.py \
+                           tests/test_module_manifests_consistency.py \
+                           tests/test_manifest_validator.py \
+                           tests/test_module_loader.py \
+                           -v --tb=short
 
   frontend-lint:
     runs-on: ubuntu-latest
@@ -83,6 +122,32 @@ jobs:
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint
+
+  frontend-typecheck:
+    # Guards against broken Vue/TS imports across module Nuxt layers
+    # (Fase B.6). `modules.json` is written by the backend at runtime;
+    # we stub an empty one here so Nuxt picks up only the host sources.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Ensure empty modules.json
+        working-directory: frontend
+        run: |
+          echo '{"layers":[],"modules":[],"version":1}' > modules.json
+
+      - name: Nuxt prepare (generates .nuxt type stubs)
+        working-directory: frontend
+        run: npx nuxi prepare
 
   frontend-test:
     runs-on: ubuntu-latest

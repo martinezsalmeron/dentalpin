@@ -64,3 +64,9 @@ ignore = ["E501"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+# Slow-marked suites — opt-in with `-m <mark>` or included in CI via
+# an explicit step. Unmarked runs exclude them to keep local TDD fast.
+markers = [
+    "alembic_roundtrip: full base → head → base migration cycle (slow, needs DB)",
+]
+addopts = "-m 'not alembic_roundtrip'"

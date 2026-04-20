@@ -10,8 +10,11 @@ monorepo, maintained by the core team) and **community** modules
 identical — the only difference is where the code lives and who owns
 bug fixes.
 
-> **Status:** Fase A v1. The system is stable but young; report gaps
-> at https://github.com/dentalpin/dentalpin/issues.
+> **Status:** Fase B complete. The monolithic `clinical` module has
+> been split into `patients`, `patients_clinical`, `agenda` and
+> `patient_timeline`; every official module now ships its frontend as
+> a Nuxt layer. Report gaps at
+> https://github.com/dentalpin/dentalpin/issues.
 
 ---
 
@@ -198,7 +201,7 @@ class InventoryModule(BaseModule):
         "license": "MIT",
         "category": "community",
         "min_core_version": "1.0.0",
-        "depends": ["clinical"],
+        "depends": ["patients", "agenda"],
         "installable": True,
         "auto_install": False,
         "removable": True,
@@ -447,9 +450,12 @@ alembic revision --autogenerate \
   --head base
 ```
 
-For **legacy modules** (the 9 Fase A officials): new migrations still
-go to `backend/alembic/versions/` with `down_revision=<previous>`, no
-branch. This is explicit Fase A policy.
+For **official modules** (`backend/app/modules/<name>/`): today they
+all share the main linear chain under `backend/alembic/versions/` with
+`down_revision=<previous>` and no branch label. A future squash etapa
+rebuilds each as its own Alembic branch with a clean initial
+migration; new community-style branches are already the recommended
+pattern for any new module.
 
 ### `data/*.yaml`
 
@@ -479,16 +485,38 @@ respect `noupdate`).
 ## 4. Frontend layer
 
 Nuxt Layer lives under `<package>/frontend/` and is auto-discovered
-when the manifest declares `frontend.layer_path`. Structure:
+when the manifest declares `frontend.layer_path`. Every official
+module already ships one (Fase B.6). Structure:
 
 ```
 frontend/
-├── nuxt.config.ts      # bare defineNuxtConfig({}) is enough
+├── nuxt.config.ts      # see template below — must register components/
 ├── pages/              # file-based routing, merged with host
-├── components/         # auto-imported by Nuxt
+├── components/         # auto-imported when declared in nuxt.config.ts
 ├── composables/        # auto-imported
 ├── i18n/               # merged with @nuxtjs/i18n
 └── slots.ts            # registerSlot(...) calls run at setup
+```
+
+The host sets `components: [{path: '~/components', pathPrefix: false}]`,
+which **overrides** Nuxt's default auto-scan. Each layer must declare
+its own components path so cross-layer auto-import works:
+
+```ts
+// <module>/frontend/nuxt.config.ts
+export default defineNuxtConfig({
+  components: [
+    { path: './components', pathPrefix: false }
+  ]
+})
+```
+
+TypeScript aliases inside layer files: `~` resolves per-layer, so use
+`~~` (rootDir, = host frontend root) to reach shared types:
+
+```ts
+import type { Patient } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 ```
 
 ### Backend-driven navigation
@@ -590,10 +618,10 @@ Modules never hot-load. CLI responses and REST endpoints always return
 
 ### `depends`
 
-Hard dependency. If `billing.depends = ["clinical", "catalog"]`, both
-must be `installed` before billing can be `installed`. The install
-flow resolves transitively: installing billing while clinical and
-catalog are uninstalled schedules all three.
+Hard dependency. If `billing.depends = ["patients", "catalog", "budget"]`,
+all three must be `installed` before billing can be `installed`. The
+install flow resolves transitively: installing billing while its
+dependencies are uninstalled schedules the full chain.
 
 Circular dependencies are rejected at discovery time (topological
 sort fails loud).
@@ -655,8 +683,8 @@ Declare which permissions each existing role should obtain on install:
 ```
 
 `*` = every permission in this module. Sub-wildcards like `movements.*`
-are allowed. In Fase A this metadata is informational; when the RBAC
-table moves to the database (Fase C), the registry will apply it at
+are allowed. Today this metadata is informational; when the RBAC
+table moves to the database (post-v2), the registry will apply it at
 install time.
 
 ### Using permissions in code
