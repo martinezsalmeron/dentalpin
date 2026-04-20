@@ -45,7 +45,7 @@ export function usePatientAlerts(patientId: Ref<string | undefined>) {
 
     try {
       const response = await api.get<ApiResponse<{ alerts: PatientAlert[] }>>(
-        `/api/v1/patients/${patientId.value}/alerts`
+        `/api/v1/patients_clinical/patients/${patientId.value}/alerts`
       )
       alerts.value = response.data.alerts
     } catch (e) {

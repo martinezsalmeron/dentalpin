@@ -16,15 +16,35 @@ const patientIdRef = computed(() => patientId)
 const returnTo = computed(() => route.query.returnTo as string | undefined)
 const openBillingEdit = computed(() => route.query.tab === 'billing')
 
-// Fetch patient (extended version with alerts)
+// Fetch patient identity + clinical rows in parallel. Emergency contact,
+// legal guardian and alerts live in the patients_clinical module
+// (B.4), but we stitch them back onto the `PatientExtended` object so
+// the rest of the page can consume them unchanged.
 const { data: patient, status, refresh } = await useAsyncData(
   `patient:${patientId}`,
   async () => {
     try {
-      const response = await api.get<ApiResponse<PatientExtended>>(
-        `/api/v1/patients/${patientId}/extended`
-      )
-      return response.data
+      const [identity, emergency, guardian, alertsResp] = await Promise.all([
+        api.get<ApiResponse<PatientExtended>>(
+          `/api/v1/patients/${patientId}/extended`
+        ),
+        api.get<ApiResponse<PatientExtended['emergency_contact']>>(
+          `/api/v1/patients_clinical/patients/${patientId}/emergency-contact`
+        ).catch(() => ({ data: null })),
+        api.get<ApiResponse<PatientExtended['legal_guardian']>>(
+          `/api/v1/patients_clinical/patients/${patientId}/legal-guardian`
+        ).catch(() => ({ data: null })),
+        api.get<ApiResponse<{ alerts: PatientExtended['active_alerts'] }>>(
+          `/api/v1/patients_clinical/patients/${patientId}/alerts`
+        ).catch(() => ({ data: { alerts: [] } }))
+      ])
+
+      return {
+        ...identity.data,
+        emergency_contact: emergency.data ?? undefined,
+        legal_guardian: guardian.data ?? undefined,
+        active_alerts: alertsResp.data?.alerts ?? []
+      } as PatientExtended
     } catch (error: unknown) {
       const fetchError = error as { statusCode?: number }
       if (fetchError.statusCode === 404) {

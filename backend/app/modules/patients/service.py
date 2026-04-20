@@ -145,22 +145,3 @@ class PatientService:
         )
         return patient
 
-    @staticmethod
-    async def update_medical_history(
-        db: AsyncSession,
-        patient: Patient,
-        medical_data: dict,
-        user_id: UUID,
-    ) -> Patient:
-        patient.medical_history = medical_data
-        await db.flush()
-
-        event_bus.publish(
-            EventType.PATIENT_MEDICAL_UPDATED,
-            {
-                "patient_id": str(patient.id),
-                "clinic_id": str(patient.clinic_id),
-                "user_id": str(user_id),
-            },
-        )
-        return patient

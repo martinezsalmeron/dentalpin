@@ -35,25 +35,14 @@ from app.modules.patient_timeline.schemas import (  # noqa: F401
 
 # Re-export patient schemas for legacy imports.
 from app.modules.patients.schemas import (  # noqa: F401
-    AllergyEntry,
     BillingAddress,
-    EmergencyContact,
-    LegalGuardian,
-    MedicalHistoryData,
-    MedicalHistoryResponse,
-    MedicalHistoryUpdate,
-    MedicationEntry,
     PatientAddress,
-    PatientAlert,
-    PatientAlertsResponse,
     PatientBrief,
     PatientCreate,
     PatientExtendedResponse,
     PatientExtendedUpdate,
     PatientResponse,
     PatientUpdate,
-    SurgicalHistoryEntry,
-    SystemicDiseaseEntry,
 )
 
 # --- Clinic metadata ----------------------------------------------------

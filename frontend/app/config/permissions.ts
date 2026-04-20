@@ -12,8 +12,12 @@ export const PERMISSIONS = {
     write: 'patients.write'
   },
   medicalHistory: {
-    read: 'patients.medical.read',
-    write: 'patients.medical.write'
+    read: 'patients_clinical.medical.read',
+    write: 'patients_clinical.medical.write'
+  },
+  emergencyContact: {
+    read: 'patients_clinical.emergency.read',
+    write: 'patients_clinical.emergency.write'
   },
   appointments: {
     read: 'agenda.appointments.read',

@@ -63,19 +63,21 @@ class TestHasPermission:
         assert has_permission("dentist", "admin.users.write") is False
 
     def test_hygienist_limited_permissions(self):
-        """Hygienist has read-only patient + medical.read + full appointments."""
+        """Hygienist has read-only patient + clinical.medical.read + full appointments."""
         assert has_permission("hygienist", "patients.read") is True
         assert has_permission("hygienist", "patients.write") is False
-        assert has_permission("hygienist", "patients.medical.read") is True
+        assert has_permission("hygienist", "patients_clinical.medical.read") is True
+        assert has_permission("hygienist", "patients_clinical.medical.write") is False
         assert has_permission("hygienist", "agenda.appointments.read") is True
         assert has_permission("hygienist", "agenda.appointments.write") is True
 
     def test_receptionist_permissions(self):
-        """Receptionist has patient + appointment access; medical read-only."""
+        """Receptionist has patient + appointment access; no medical history access."""
         assert has_permission("receptionist", "patients.read") is True
         assert has_permission("receptionist", "patients.write") is True
-        assert has_permission("receptionist", "patients.medical.read") is True
-        assert has_permission("receptionist", "patients.medical.write") is False
+        assert has_permission("receptionist", "patients_clinical.medical.read") is False
+        assert has_permission("receptionist", "patients_clinical.emergency.read") is True
+        assert has_permission("receptionist", "patients_clinical.emergency.write") is True
         assert has_permission("receptionist", "agenda.appointments.read") is True
         assert has_permission("receptionist", "agenda.appointments.write") is True
         assert has_permission("receptionist", "admin.users.write") is False

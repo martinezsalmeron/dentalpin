@@ -34,7 +34,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "*",  # Admin gets everything, including future modules
     ],
     "dentist": [
-        "patients.*",  # Full patient access (identity + medical history)
+        "patients.*",  # Full patient identity access
+        "patients_clinical.*",  # Medical history + emergency contacts
         "patient_timeline.read",
         "agenda.*",  # Appointments + cabinets (read/write)
         "odontogram.*",
@@ -50,7 +51,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     ],
     "hygienist": [
         "patients.read",
-        "patients.medical.read",
+        "patients_clinical.medical.read",
+        "patients_clinical.emergency.read",
         "patient_timeline.read",
         "agenda.appointments.*",
         "agenda.cabinets.read",
@@ -65,6 +67,9 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     ],
     "assistant": [
         "patients.*",
+        "patients_clinical.medical.read",
+        "patients_clinical.emergency.read",
+        "patients_clinical.emergency.write",
         "patient_timeline.read",
         "agenda.appointments.*",
         "agenda.cabinets.read",
@@ -84,7 +89,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     "receptionist": [
         "patients.read",
         "patients.write",
-        "patients.medical.read",  # medical view only — no write for receptionist
+        "patients_clinical.emergency.read",
+        "patients_clinical.emergency.write",
         "patient_timeline.read",
         "agenda.appointments.*",
         "agenda.cabinets.read",
