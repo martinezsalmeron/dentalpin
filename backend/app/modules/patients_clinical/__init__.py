@@ -46,6 +46,9 @@ class PatientsClinicalModule(BaseModule):
             "assistant": ["medical.read", "emergency.read", "emergency.write"],
             "receptionist": ["emergency.read", "emergency.write"],
         },
+        "frontend": {
+            "layer_path": "frontend",
+        },
     }
 
     def get_models(self) -> list:
