@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DocumentType } from '~/types'
+import type { DocumentType } from '~~/app/types'
 
 interface Props {
   patientId: string

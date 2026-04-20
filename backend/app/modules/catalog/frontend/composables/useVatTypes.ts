@@ -3,7 +3,7 @@
  *
  * Handles CRUD operations for VAT types and provides computed helpers.
  */
-import type { VatType, VatTypeCreate, VatTypeUpdate, ApiResponse } from '~/types'
+import type { VatType, VatTypeCreate, VatTypeUpdate, ApiResponse } from '~~/app/types'
 
 export function useVatTypes() {
   const api = useApi()

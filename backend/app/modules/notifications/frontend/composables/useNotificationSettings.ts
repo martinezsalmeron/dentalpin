@@ -15,7 +15,7 @@ import type {
   SmtpSettingsUpdate,
   SmtpTestRequest,
   TestEmailResponse
-} from '~/types'
+} from '~~/app/types'
 
 export function useNotificationSettings() {
   const api = useApi()

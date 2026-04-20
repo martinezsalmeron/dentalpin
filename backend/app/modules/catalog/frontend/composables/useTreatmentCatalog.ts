@@ -5,7 +5,7 @@
  * with fallback to hardcoded constants if catalog is empty.
  */
 
-import type { ApiResponse, OdontogramTreatment, VisualizationRuleLayer } from '~/types'
+import type { ApiResponse, OdontogramTreatment, VisualizationRuleLayer } from '~~/app/types'
 import {
   TREATMENT_CATEGORIES,
   TREATMENT_COLORS,
@@ -14,7 +14,7 @@ import {
   THERAPEUTIC_CATEGORIES,
   isSurfaceTreatment,
   type TreatmentClinicalCategory
-} from '~/config/odontogramConstants'
+} from '~~/app/config/odontogramConstants'
 
 export function useTreatmentCatalog() {
   const api = useApi()

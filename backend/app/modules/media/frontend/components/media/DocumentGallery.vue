@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { Document, DocumentType } from '~/types'
-import { PERMISSIONS } from '~/config/permissions'
+import type { Document, DocumentType } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 interface Props {
   patientId: string

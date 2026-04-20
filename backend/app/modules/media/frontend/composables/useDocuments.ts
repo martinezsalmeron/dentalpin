@@ -1,4 +1,4 @@
-import type { ApiResponse, Document, DocumentType, PaginatedResponse } from '~/types'
+import type { ApiResponse, Document, DocumentType, PaginatedResponse } from '~~/app/types'
 
 interface UploadProgress {
   loaded: number

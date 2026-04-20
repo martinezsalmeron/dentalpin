@@ -4,13 +4,13 @@ import type {
   TreatmentCatalogItem,
   TreatmentCatalogItemUpdate,
   TreatmentCatalogItemCreate
-} from '~/types'
+} from '~~/app/types'
 import {
   ALL_TREATMENT_TYPES,
   TREATMENT_CATEGORIES,
   VISUALIZATION_RULES,
   isSurfaceTreatment
-} from '~/config/odontogramConstants'
+} from '~~/app/config/odontogramConstants'
 
 const props = defineProps<{
   item: TreatmentCatalogItem | null

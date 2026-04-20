@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TreatmentCatalogItem, TreatmentCatalogItemUpdate, TreatmentCatalogItemCreate, TreatmentCatalogCategory, VatTypeBrief } from '~/types'
+import type { TreatmentCatalogItem, TreatmentCatalogItemUpdate, TreatmentCatalogItemCreate, TreatmentCatalogCategory, VatTypeBrief } from '~~/app/types'
 
 const { t, locale } = useI18n()
 const { isAdmin } = usePermissions()

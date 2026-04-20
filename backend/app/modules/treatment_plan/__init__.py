@@ -49,6 +49,7 @@ class TreatmentPlanModule(BaseModule):
             "receptionist": [],
         },
         "frontend": {
+            "layer_path": "frontend",
             "navigation": [
                 {
                     "label": "nav.treatmentPlans",

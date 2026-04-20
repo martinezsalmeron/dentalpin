@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { Document } from '~/types'
-import { PERMISSIONS } from '~/config/permissions'
+import type { Document } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 interface Props {
   document: Document

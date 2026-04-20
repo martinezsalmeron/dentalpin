@@ -8,7 +8,7 @@
  * 3. The recipient has an email address
  */
 
-import type { ManualSendRequest } from '~/types'
+import type { ManualSendRequest } from '~~/app/types'
 
 const props = defineProps<{
   /** Type of notification to send */

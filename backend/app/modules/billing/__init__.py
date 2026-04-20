@@ -40,6 +40,7 @@ class BillingModule(BaseModule):
             "receptionist": ["read", "write"],
         },
         "frontend": {
+            "layer_path": "frontend",
             "navigation": [
                 {
                     "label": "nav.invoices",

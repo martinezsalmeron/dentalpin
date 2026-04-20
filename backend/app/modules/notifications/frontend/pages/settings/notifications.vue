@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NotificationTypeSettings, SmtpSettingsUpdate, SmtpTestRequest } from '~/types'
+import type { NotificationTypeSettings, SmtpSettingsUpdate, SmtpTestRequest } from '~~/app/types'
 
 const { t } = useI18n()
 const { isAdmin } = usePermissions()

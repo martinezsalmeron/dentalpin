@@ -1,14 +1,26 @@
 {
   "layers": [
     "/module_layers/catalog/frontend",
+    "/module_layers/budget/frontend",
+    "/module_layers/billing/frontend",
     "/module_layers/media/frontend",
     "/module_layers/notifications/frontend",
-    "/module_layers/reports/frontend"
+    "/module_layers/odontogram/frontend",
+    "/module_layers/reports/frontend",
+    "/module_layers/treatment_plan/frontend"
   ],
   "modules": [
     {
       "name": "catalog",
       "path": "/module_layers/catalog/frontend"
+    },
+    {
+      "name": "budget",
+      "path": "/module_layers/budget/frontend"
+    },
+    {
+      "name": "billing",
+      "path": "/module_layers/billing/frontend"
     },
     {
       "name": "media",
@@ -19,8 +31,16 @@
       "path": "/module_layers/notifications/frontend"
     },
     {
+      "name": "odontogram",
+      "path": "/module_layers/odontogram/frontend"
+    },
+    {
       "name": "reports",
       "path": "/module_layers/reports/frontend"
+    },
+    {
+      "name": "treatment_plan",
+      "path": "/module_layers/treatment_plan/frontend"
     }
   ],
   "version": 1

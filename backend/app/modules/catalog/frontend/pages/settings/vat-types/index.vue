@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { VatType, VatTypeCreate, VatTypeUpdate } from '~/types'
+import type { VatType, VatTypeCreate, VatTypeUpdate } from '~~/app/types'
 
 const { t, locale } = useI18n()
 const { isAdmin } = usePermissions()

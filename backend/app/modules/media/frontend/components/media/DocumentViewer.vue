@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Document } from '~/types'
+import type { Document } from '~~/app/types'
 
 interface Props {
   document: Document | null

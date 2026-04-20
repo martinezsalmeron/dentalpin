@@ -14,7 +14,7 @@ import type {
   TreatmentCatalogItem,
   TreatmentCatalogItemCreate,
   TreatmentCatalogItemUpdate
-} from '~/types'
+} from '~~/app/types'
 
 export function useCatalog() {
   const api = useApi()

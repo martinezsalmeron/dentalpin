@@ -33,6 +33,9 @@ class OdontogramModule(BaseModule):
             "assistant": ["read"],
             "receptionist": [],
         },
+        "frontend": {
+            "layer_path": "frontend",
+        },
     }
 
     def get_models(self) -> list:

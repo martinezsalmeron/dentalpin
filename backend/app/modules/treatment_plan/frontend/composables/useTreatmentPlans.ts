@@ -1,0 +1,582 @@
+import type {
+  ApiResponse,
+  CompleteItemRequest,
+  GenerateBudgetResponse,
+  LinkBudgetRequest,
+  PaginatedResponse,
+  PlannedTreatmentItem,
+  PlannedTreatmentItemCreate,
+  PlannedTreatmentItemUpdate,
+  TreatmentMediaCreate,
+  TreatmentMedia,
+  TreatmentPlan,
+  TreatmentPlanCreate,
+  TreatmentPlanDetail,
+  TreatmentPlanStatusUpdate,
+  TreatmentPlanUpdate
+} from '~~/app/types'
+
+export function useTreatmentPlans() {
+  const api = useApi()
+  const toast = useToast()
+  const { t } = useI18n()
+
+  // State
+  const plans = ref<TreatmentPlan[]>([])
+  const currentPlan = ref<TreatmentPlanDetail | null>(null)
+  const loading = ref(false)
+  const total = ref(0)
+  const page = ref(1)
+  const pageSize = ref(20)
+
+  // Fetch plans list
+  async function fetchPlans(options: {
+    patient_id?: string
+    status?: string | string[]
+    search?: string
+    page?: number
+    page_size?: number
+  } = {}) {
+    loading.value = true
+    try {
+      const params = new URLSearchParams()
+      params.append('page', String(options.page || 1))
+      params.append('page_size', String(options.page_size || 20))
+      if (options.patient_id) params.append('patient_id', options.patient_id)
+      if (options.status) {
+        const statuses = Array.isArray(options.status) ? options.status : [options.status]
+        statuses.forEach(s => params.append('status', s))
+      }
+      if (options.search) params.append('search', options.search)
+
+      const response = await api.get<PaginatedResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans?${params}`
+      )
+      plans.value = response.data
+      total.value = response.total
+      page.value = response.page
+      pageSize.value = response.page_size
+    } catch (error) {
+      console.error('Error fetching treatment plans:', error)
+      toast.add({
+        title: t('errors.loadFailed'),
+        color: 'red'
+      })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Fetch plans for a specific patient
+  async function fetchPatientPlans(patientId: string) {
+    return fetchPlans({ patient_id: patientId })
+  }
+
+  // Fetch single plan with details
+  async function fetchPlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.get<ApiResponse<TreatmentPlanDetail>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}`
+      )
+      currentPlan.value = response.data
+      return response.data
+    } catch (error) {
+      console.error('Error fetching treatment plan:', error)
+      toast.add({
+        title: t('errors.loadFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Create plan
+  async function createPlan(data: TreatmentPlanCreate) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        '/api/v1/treatment_plan/treatment-plans',
+        data
+      )
+      toast.add({
+        title: t('treatmentPlans.created'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error creating treatment plan:', error)
+      toast.add({
+        title: t('errors.createFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Update plan
+  async function updatePlan(planId: string, data: TreatmentPlanUpdate) {
+    loading.value = true
+    try {
+      const response = await api.put<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}`,
+        data
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({
+        title: t('treatmentPlans.updated'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error updating treatment plan:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Update plan status
+  async function updatePlanStatus(planId: string, data: TreatmentPlanStatusUpdate) {
+    loading.value = true
+    try {
+      const response = await api.patch<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/status`,
+        data
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({
+        title: t('treatmentPlans.statusUpdated'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error updating plan status:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Delete plan
+  async function deletePlan(planId: string) {
+    loading.value = true
+    try {
+      await api.del(`/api/v1/treatment_plan/treatment-plans/${planId}`)
+      plans.value = plans.value.filter(p => p.id !== planId)
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = null
+      }
+      toast.add({
+        title: t('treatmentPlans.deleted'),
+        color: 'green'
+      })
+      return true
+    } catch (error) {
+      console.error('Error deleting treatment plan:', error)
+      toast.add({
+        title: t('errors.deleteFailed'),
+        color: 'red'
+      })
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Add item to plan
+  async function addItem(planId: string, data: PlannedTreatmentItemCreate) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<PlannedTreatmentItem>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/items`,
+        data
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value.items.push(response.data)
+      }
+      return response.data
+    } catch (error) {
+      console.error('Error adding treatment item:', error)
+      toast.add({
+        title: t('errors.createFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Update item
+  async function updateItem(
+    planId: string,
+    itemId: string,
+    data: PlannedTreatmentItemUpdate
+  ) {
+    loading.value = true
+    try {
+      const response = await api.put<ApiResponse<PlannedTreatmentItem>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/items/${itemId}`,
+        data
+      )
+      if (currentPlan.value?.id === planId) {
+        const idx = currentPlan.value.items.findIndex(i => i.id === itemId)
+        if (idx !== -1) {
+          currentPlan.value.items[idx] = response.data
+        }
+      }
+      return response.data
+    } catch (error) {
+      console.error('Error updating treatment item:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Remove item
+  async function removeItem(planId: string, itemId: string) {
+    loading.value = true
+    try {
+      await api.del(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/items/${itemId}`
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value.items = currentPlan.value.items.filter(
+          i => i.id !== itemId
+        )
+      }
+      return true
+    } catch (error) {
+      console.error('Error removing treatment item:', error)
+      toast.add({
+        title: t('errors.deleteFailed'),
+        color: 'red'
+      })
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Reorder items (optimistic)
+  async function reorderItems(
+    planId: string,
+    itemIds: string[]
+  ): Promise<TreatmentPlanDetail | null> {
+    if (currentPlan.value?.id !== planId) {
+      console.error('reorderItems: plan not currently loaded')
+      return null
+    }
+    const snapshot = [...currentPlan.value.items]
+    const indexById = new Map(itemIds.map((id, i) => [id, i]))
+    currentPlan.value.items = [...snapshot].sort((a, b) => {
+      const ia = indexById.get(a.id) ?? Number.MAX_SAFE_INTEGER
+      const ib = indexById.get(b.id) ?? Number.MAX_SAFE_INTEGER
+      return ia - ib
+    })
+
+    try {
+      const response = await api.patch<ApiResponse<TreatmentPlanDetail>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/items/reorder`,
+        { item_ids: itemIds }
+      )
+      currentPlan.value = response.data
+      return response.data
+    } catch (error) {
+      console.error('Error reordering treatment items:', error)
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value.items = snapshot
+      }
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    }
+  }
+
+  // Complete item
+  async function completeItem(
+    planId: string,
+    itemId: string,
+    data: CompleteItemRequest = {}
+  ) {
+    loading.value = true
+    try {
+      const response = await api.patch<ApiResponse<PlannedTreatmentItem>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/items/${itemId}/complete`,
+        data
+      )
+      if (currentPlan.value?.id === planId) {
+        const idx = currentPlan.value.items.findIndex(i => i.id === itemId)
+        if (idx !== -1) {
+          currentPlan.value.items[idx] = response.data
+        }
+      }
+      toast.add({
+        title: t('treatmentPlans.itemCompleted'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error completing treatment item:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Link budget
+  async function linkToBudget(planId: string, data: LinkBudgetRequest) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/link-budget`,
+        data
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({
+        title: t('treatmentPlans.budgetLinked'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error linking budget:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Sync budget
+  async function syncBudget(planId: string) {
+    loading.value = true
+    try {
+      await api.post<ApiResponse<{ synced: boolean }>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/sync-budget`
+      )
+      toast.add({
+        title: t('treatmentPlans.budgetSynced'),
+        color: 'green'
+      })
+      return true
+    } catch (error) {
+      console.error('Error syncing budget:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Generate budget from plan
+  async function generateBudget(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<GenerateBudgetResponse>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/generate-budget`
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value.budget_id = response.data.budget_id
+      }
+      toast.add({
+        title: t('treatmentPlans.budgetGenerated'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error generating budget:', error)
+      toast.add({
+        title: t('errors.createFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Unlock plan (cancels linked budget to allow modifications)
+  async function unlockPlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/unlock`
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({
+        title: t('treatmentPlans.unlocked'),
+        color: 'green'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error unlocking plan:', error)
+      toast.add({
+        title: t('errors.updateFailed'),
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Add media to item
+  async function addMedia(itemId: string, data: TreatmentMediaCreate) {
+    try {
+      const response = await api.post<ApiResponse<TreatmentMedia>>(
+        `/api/v1/treatment_plan/treatment-plans/items/${itemId}/media`,
+        data
+      )
+      return response.data
+    } catch (error) {
+      console.error('Error adding media:', error)
+      toast.add({
+        title: t('errors.createFailed'),
+        color: 'red'
+      })
+      return null
+    }
+  }
+
+  // Remove media from item
+  async function removeMedia(itemId: string, mediaId: string) {
+    try {
+      await api.del(
+        `/api/v1/treatment_plan/treatment-plans/items/${itemId}/media/${mediaId}`
+      )
+      return true
+    } catch (error) {
+      console.error('Error removing media:', error)
+      toast.add({
+        title: t('errors.deleteFailed'),
+        color: 'red'
+      })
+      return false
+    }
+  }
+
+  /**
+   * Fetch pending items for a patient from all active plans.
+   * Used in appointment modal to select which treatments to schedule.
+   */
+  async function fetchPatientPendingItems(patientId: string): Promise<PlannedTreatmentItem[]> {
+    try {
+      // Fetch all active/draft plans for this patient
+      const params = new URLSearchParams()
+      params.append('patient_id', patientId)
+      params.append('status', 'active')
+      params.append('status', 'draft')
+      params.append('page_size', '100')
+
+      const response = await api.get<PaginatedResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans?${params}`
+      )
+
+      // For each plan, fetch full details to get items
+      const allPendingItems: PlannedTreatmentItem[] = []
+
+      for (const plan of response.data) {
+        const detailResponse = await api.get<ApiResponse<TreatmentPlanDetail>>(
+          `/api/v1/treatment_plan/treatment-plans/${plan.id}`
+        )
+        if (detailResponse.data?.items) {
+          // Filter to pending items only and attach plan info
+          const pendingItems = detailResponse.data.items
+            .filter(item => item.status === 'pending')
+            .map(item => ({
+              ...item,
+              treatment_plan: {
+                id: plan.id,
+                plan_number: plan.plan_number,
+                title: plan.title,
+                status: plan.status
+              }
+            }))
+          allPendingItems.push(...pendingItems)
+        }
+      }
+
+      return allPendingItems
+    } catch (error) {
+      console.error('Error fetching patient pending items:', error)
+      return []
+    }
+  }
+
+  return {
+    // State
+    plans,
+    currentPlan,
+    loading,
+    total,
+    page,
+    pageSize,
+
+    // Plan operations
+    fetchPlans,
+    fetchPatientPlans,
+    fetchPlan,
+    createPlan,
+    updatePlan,
+    updatePlanStatus,
+    deletePlan,
+
+    // Item operations
+    addItem,
+    updateItem,
+    removeItem,
+    reorderItems,
+    completeItem,
+
+    // Budget operations
+    linkToBudget,
+    syncBudget,
+    generateBudget,
+    unlockPlan,
+
+    // Media operations
+    addMedia,
+    removeMedia,
+
+    // Appointment integration
+    fetchPatientPendingItems
+  }
+}

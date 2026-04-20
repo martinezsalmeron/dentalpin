@@ -4,7 +4,7 @@
  * Provides helper functions to send confirmation, reminder, and cancellation emails.
  */
 
-import type { ApiResponse, ManualSendResponse } from '~/types'
+import type { ApiResponse, ManualSendResponse } from '~~/app/types'
 
 export type AppointmentNotificationType
   = 'appointment_confirmation'
