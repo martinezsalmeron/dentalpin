@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,192 +11,15 @@ from sqlalchemy.orm import selectinload
 from app.core.auth.models import ClinicMembership
 from app.core.events import EventType, event_bus
 from app.modules.odontogram.models import Treatment
+from app.modules.patients.models import Patient
+
+# Re-export PatientService so legacy callers keep resolving. The
+# implementation now lives in ``app.modules.patients.service``.
+from app.modules.patients.service import PatientService  # noqa: F401
 from app.modules.treatment_plan.models import PlannedTreatmentItem
 
-from .models import Appointment, AppointmentTreatment, Patient, PatientTimeline
+from .models import Appointment, AppointmentTreatment, PatientTimeline
 from .schemas import TimelineEntry
-
-
-class PatientService:
-    """Service for patient operations."""
-
-    @staticmethod
-    async def get_recent_patients(
-        db: AsyncSession,
-        clinic_id: UUID,
-        limit: int = 8,
-    ) -> list[Patient]:
-        """Get patients with most recent appointments, falling back to newest patients."""
-        # Try to get patients ordered by last appointment date
-        subquery = (
-            select(
-                Appointment.patient_id,
-                func.max(Appointment.start_time).label("last_visit"),
-            )
-            .where(
-                Appointment.clinic_id == clinic_id,
-                Appointment.patient_id.isnot(None),
-            )
-            .group_by(Appointment.patient_id)
-            .subquery()
-        )
-
-        query = (
-            select(Patient)
-            .outerjoin(subquery, Patient.id == subquery.c.patient_id)
-            .where(
-                Patient.clinic_id == clinic_id,
-                Patient.status != "archived",
-            )
-            .order_by(
-                subquery.c.last_visit.desc().nulls_last(),
-                Patient.created_at.desc(),
-            )
-            .limit(limit)
-        )
-
-        result = await db.execute(query)
-        return list(result.scalars().all())
-
-    @staticmethod
-    async def list_patients(
-        db: AsyncSession,
-        clinic_id: UUID,
-        search: str | None = None,
-        page: int = 1,
-        page_size: int = 20,
-    ) -> tuple[list[Patient], int]:
-        """List patients with optional search and pagination."""
-        page_size = min(max(page_size, 1), 100)  # Clamp to 1-100
-        page = max(page, 1)
-        offset = (page - 1) * page_size
-
-        # Base query
-        query = select(Patient).where(
-            Patient.clinic_id == clinic_id,
-            Patient.status != "archived",
-        )
-
-        # Add search filter
-        if search:
-            search_term = f"%{search}%"
-            query = query.where(
-                or_(
-                    Patient.first_name.ilike(search_term),
-                    Patient.last_name.ilike(search_term),
-                    Patient.phone.ilike(search_term),
-                )
-            )
-
-        # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
-        total = (await db.execute(count_query)).scalar() or 0
-
-        # Get paginated results
-        query = query.order_by(Patient.last_name, Patient.first_name)
-        query = query.offset(offset).limit(page_size)
-        result = await db.execute(query)
-        patients = result.scalars().all()
-
-        return list(patients), total
-
-    @staticmethod
-    async def get_patient(
-        db: AsyncSession,
-        clinic_id: UUID,
-        patient_id: UUID,
-    ) -> Patient | None:
-        """Get a patient by ID within a clinic."""
-        result = await db.execute(
-            select(Patient).where(
-                Patient.id == patient_id,
-                Patient.clinic_id == clinic_id,
-            )
-        )
-        return result.scalar_one_or_none()
-
-    @staticmethod
-    async def create_patient(
-        db: AsyncSession,
-        clinic_id: UUID,
-        data: dict,
-    ) -> Patient:
-        """Create a new patient."""
-        patient = Patient(clinic_id=clinic_id, **data)
-        db.add(patient)
-        await db.flush()
-
-        # Publish event
-        event_bus.publish(
-            EventType.PATIENT_CREATED,
-            {"patient_id": str(patient.id), "clinic_id": str(clinic_id)},
-        )
-
-        return patient
-
-    @staticmethod
-    async def update_patient(
-        db: AsyncSession,
-        patient: Patient,
-        data: dict,
-    ) -> Patient:
-        """Update an existing patient.
-
-        Note: data should come from model_dump(exclude_unset=True) so only
-        explicitly provided fields are present. This allows setting fields
-        to None (e.g., clearing emergency_contact).
-        """
-        for key, value in data.items():
-            setattr(patient, key, value)
-
-        await db.flush()
-
-        # Publish event
-        event_bus.publish(
-            EventType.PATIENT_UPDATED,
-            {"patient_id": str(patient.id), "changes": list(data.keys())},
-        )
-
-        return patient
-
-    @staticmethod
-    async def archive_patient(
-        db: AsyncSession,
-        patient: Patient,
-    ) -> Patient:
-        """Soft delete a patient by setting status to archived."""
-        patient.status = "archived"
-        await db.flush()
-
-        event_bus.publish(
-            EventType.PATIENT_ARCHIVED,
-            {"patient_id": str(patient.id)},
-        )
-
-        return patient
-
-    @staticmethod
-    async def update_medical_history(
-        db: AsyncSession,
-        patient: Patient,
-        medical_data: dict,
-        user_id: UUID,
-    ) -> Patient:
-        """Update patient medical history and publish event."""
-        patient.medical_history = medical_data
-        await db.flush()
-
-        # Publish event for timeline
-        event_bus.publish(
-            EventType.PATIENT_MEDICAL_UPDATED,
-            {
-                "patient_id": str(patient.id),
-                "clinic_id": str(patient.clinic_id),
-                "user_id": str(user_id),
-            },
-        )
-
-        return patient
 
 
 class AppointmentService:

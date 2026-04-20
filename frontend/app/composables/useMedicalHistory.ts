@@ -47,7 +47,7 @@ export function useMedicalHistory(patientId: Ref<string | undefined>) {
 
     try {
       const response = await api.get<ApiResponse<MedicalHistory>>(
-        `/api/v1/clinical/patients/${patientId.value}/medical-history`
+        `/api/v1/patients/${patientId.value}/medical-history`
       )
       medicalHistory.value = response.data || { ...DEFAULT_MEDICAL_HISTORY }
     } catch (e) {
@@ -66,7 +66,7 @@ export function useMedicalHistory(patientId: Ref<string | undefined>) {
 
     try {
       const response = await api.put<ApiResponse<MedicalHistory>>(
-        `/api/v1/clinical/patients/${patientId.value}/medical-history`,
+        `/api/v1/patients/${patientId.value}/medical-history`,
         medicalHistory.value as unknown as Record<string, unknown>
       )
       medicalHistory.value = response.data

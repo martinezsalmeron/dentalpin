@@ -39,7 +39,7 @@ async def _ensure_clinic_and_patient(
     await db_session.commit()
 
     patient_resp = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Luis", "last_name": "Soto", "phone": "+34666333444"},
     )

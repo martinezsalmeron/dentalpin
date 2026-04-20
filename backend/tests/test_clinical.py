@@ -86,7 +86,7 @@ async def test_create_patient(
 ) -> None:
     """Test creating a patient (wrapped in ApiResponse)."""
     response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={
             "first_name": "Juan",
@@ -110,12 +110,12 @@ async def test_list_patients(
     """Test listing patients with pagination."""
     # Create a patient first
     await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Maria", "last_name": "Lopez"},
     )
 
-    response = await client.get("/api/v1/clinical/patients", headers=auth_headers)
+    response = await client.get("/api/v1/patients", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -130,19 +130,19 @@ async def test_search_patients(
     """Test searching patients by name."""
     # Create patients
     await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Juan", "last_name": "Garcia"},
     )
     await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Maria", "last_name": "Lopez"},
     )
 
     # Search for Juan
     response = await client.get(
-        "/api/v1/clinical/patients", headers=auth_headers, params={"search": "Juan"}
+        "/api/v1/patients", headers=auth_headers, params={"search": "Juan"}
     )
     assert response.status_code == 200
     data = response.json()
@@ -156,7 +156,7 @@ async def test_get_patient_not_found(
 ) -> None:
     """Test getting a non-existent patient."""
     response = await client.get(
-        "/api/v1/clinical/patients/00000000-0000-0000-0000-000000000000",
+        "/api/v1/patients/00000000-0000-0000-0000-000000000000",
         headers=auth_headers,
     )
     assert response.status_code == 404
@@ -169,7 +169,7 @@ async def test_create_appointment(
     """Test creating an appointment (wrapped in ApiResponse)."""
     # Create patient first
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )
@@ -201,7 +201,7 @@ async def test_appointment_time_conflict(
     """Test that overlapping appointments are rejected."""
     # Create patient
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={"first_name": "Test", "last_name": "Patient"},
     )

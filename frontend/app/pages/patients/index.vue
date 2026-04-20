@@ -22,7 +22,7 @@ const { data: patientsData, status, refresh } = await useAsyncData(
     if (debouncedSearch.value) params.append('search', debouncedSearch.value)
     try {
       return await api.get<PaginatedResponse<Patient>>(
-        `/api/v1/clinical/patients?${params.toString()}`
+        `/api/v1/patients?${params.toString()}`
       )
     } catch {
       return { data: [], total: 0, page: 1, page_size: pageSize }
@@ -69,7 +69,7 @@ async function createPatient() {
   isSubmitting.value = true
   try {
     const response = await api.post<ApiResponse<Patient>>(
-      '/api/v1/clinical/patients',
+      '/api/v1/patients',
       {
         first_name: newPatient.first_name,
         last_name: newPatient.last_name,

@@ -43,7 +43,7 @@ async def timeline_setup(
 
     # Create patient via API
     patient_response = await client.post(
-        "/api/v1/clinical/patients",
+        "/api/v1/patients",
         headers=auth_headers,
         json={
             "first_name": "Maria",

@@ -30,7 +30,7 @@ async function loadRecentPatients() {
   isLoadingRecent.value = true
   try {
     const response = await api.get<ApiResponse<Patient[]>>(
-      '/api/v1/clinical/patients/recent?limit=8'
+      '/api/v1/patients/recent?limit=8'
     )
     recentPatients.value = response.data
   } catch {
@@ -54,7 +54,7 @@ async function handleSearch(query: string) {
       page_size: '10'
     })
     const response = await api.get<PaginatedResponse<Patient>>(
-      `/api/v1/clinical/patients?${params.toString()}`
+      `/api/v1/patients?${params.toString()}`
     )
     searchResults.value = response.data
   } catch {

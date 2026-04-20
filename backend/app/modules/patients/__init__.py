@@ -1,9 +1,8 @@
 """Patients module — patient identity.
 
-Fase B foundation: Patient model lives here. Schemas, router and
-service are being migrated from `clinical` in subsequent chunks of
-B.1. Until the migration completes, the Patient CRUD endpoints remain
-mounted at ``/api/v1/clinical/patients/*`` via the clinical router.
+Holds Patient, its schemas, service and the ``/api/v1/patients/*``
+HTTP surface. Permissions re-namespace from ``clinical.patients.*``
+to ``patients.*`` in chunk 3.
 """
 
 from fastapi import APIRouter
@@ -11,6 +10,7 @@ from fastapi import APIRouter
 from app.core.plugins import BaseModule
 
 from .models import Patient
+from .router import router
 
 
 class PatientsModule(BaseModule):
@@ -27,10 +27,10 @@ class PatientsModule(BaseModule):
         "installable": True,
         "auto_install": True,
         "removable": False,
-        # Permissions + role mapping arrive in chunk 3 of B.1 alongside
-        # the router move. During chunk 1 the HTTP surface still lives
-        # in the clinical router, so patients declares no runtime
-        # permissions yet.
+        # Permissions stay under the ``clinical.patients.*`` namespace
+        # during B.1 chunk 2 to avoid churn on ROLE_PERMISSIONS.
+        # Chunk 3 renames them to ``patients.*`` and updates every
+        # caller + the frontend permissions config at once.
         "role_permissions": {
             "admin": ["*"],
         },
@@ -40,9 +40,7 @@ class PatientsModule(BaseModule):
         return [Patient]
 
     def get_router(self) -> APIRouter:
-        # Router is empty during B.1 chunk 1 — endpoints still live in
-        # the clinical router. They will move here in chunk 2.
-        return APIRouter()
+        return router
 
     def get_permissions(self) -> list[str]:
         return []

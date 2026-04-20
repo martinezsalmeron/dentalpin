@@ -22,7 +22,7 @@ const { data: patient, status, refresh } = await useAsyncData(
   async () => {
     try {
       const response = await api.get<ApiResponse<PatientExtended>>(
-        `/api/v1/clinical/patients/${patientId}/extended`
+        `/api/v1/patients/${patientId}/extended`
       )
       return response.data
     } catch (error: unknown) {
@@ -208,7 +208,7 @@ async function archivePatient() {
   isSubmitting.value = true
 
   try {
-    await api.del(`/api/v1/clinical/patients/${patientId}`)
+    await api.del(`/api/v1/patients/${patientId}`)
 
     toast.add({
       title: t('common.success'),
