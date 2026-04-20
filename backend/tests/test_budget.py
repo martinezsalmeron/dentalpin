@@ -27,7 +27,6 @@ async def budget_clinic_setup(
         tax_id="B99999999",
         address={"street": "Budget St", "city": "Madrid"},
         settings={"slot_duration_min": 15},
-        cabinets=[{"name": "Gabinete 1", "color": "#3B82F6"}],
     )
     db_session.add(clinic)
     await db_session.flush()

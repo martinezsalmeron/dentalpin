@@ -38,7 +38,7 @@ from app.core.plugins.db_models import (  # noqa: F401
     ModuleRecord,
 )
 from app.database import Base
-from app.modules.agenda.models import Appointment  # noqa: F401
+from app.modules.agenda.models import Appointment, Cabinet  # noqa: F401
 from app.modules.clinical.models import PatientTimeline  # noqa: F401
 from app.modules.patients.models import Patient  # noqa: F401
 

@@ -35,7 +35,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     ],
     "dentist": [
         "patients.*",  # Full patient access (identity + medical history)
-        "agenda.*",  # Appointments + cabinets
+        "agenda.*",  # Appointments + cabinets (read/write)
         "odontogram.*",
         "treatment_plan.*",
         "catalog.read",
@@ -51,6 +51,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "patients.read",
         "patients.medical.read",
         "agenda.appointments.*",
+        "agenda.cabinets.read",
         "odontogram.read",
         "odontogram.write",
         "treatment_plan.plans.read",
@@ -63,6 +64,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     "assistant": [
         "patients.*",
         "agenda.appointments.*",
+        "agenda.cabinets.read",
         "odontogram.read",
         "treatment_plan.plans.read",
         "treatment_plan.plans.write",
@@ -81,6 +83,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "patients.write",
         "patients.medical.read",  # medical view only — no write for receptionist
         "agenda.appointments.*",
+        "agenda.cabinets.read",
         "catalog.read",
         "budget.read",
         "budget.write",

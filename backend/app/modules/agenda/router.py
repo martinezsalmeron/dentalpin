@@ -11,6 +11,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +19,7 @@ from app.core.auth.dependencies import ClinicContext, get_clinic_context, requir
 from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
+from .models import Appointment
 from .schemas import (
     AppointmentCreate,
     AppointmentResponse,
@@ -26,7 +28,7 @@ from .schemas import (
     CabinetResponse,
     CabinetUpdate,
 )
-from .service import AppointmentService
+from .service import AppointmentService, CabinetService
 
 router = APIRouter()
 
@@ -196,7 +198,18 @@ async def delete_appointment(
     await AppointmentService.cancel_appointment(db, appointment)
 
 
-# --- Cabinets (JSONB on clinic.cabinets until B.2 chunk 3) --------------
+# --- Cabinets (real table) ----------------------------------------------
+
+
+@router.get("/cabinets", response_model=ApiResponse[list[CabinetResponse]])
+async def list_cabinets(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("agenda.cabinets.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[CabinetResponse]]:
+    """List cabinets in the current clinic."""
+    cabinets = await CabinetService.list_cabinets(db, ctx.clinic_id)
+    return ApiResponse(data=[CabinetResponse.model_validate(c) for c in cabinets])
 
 
 @router.post(
@@ -207,90 +220,87 @@ async def delete_appointment(
 async def create_cabinet(
     data: CabinetCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    _: Annotated[None, Depends(require_permission("agenda.cabinets.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[CabinetResponse]:
     """Create a new cabinet in the clinic."""
-    clinic = ctx.clinic
-    cabinets = list(clinic.cabinets) if clinic.cabinets else []
-
-    if any(c.get("name") == data.name for c in cabinets):
+    existing = await CabinetService.get_by_name(db, ctx.clinic_id, data.name)
+    if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Cabinet name already exists",
         )
 
-    new_cabinet = {"name": data.name, "color": data.color}
-    cabinets.append(new_cabinet)
-    clinic.cabinets = cabinets
+    cabinet = await CabinetService.create_cabinet(
+        db, ctx.clinic_id, data.model_dump(exclude_unset=True)
+    )
     await db.commit()
-    await db.refresh(clinic)
+    await db.refresh(cabinet)
+    return ApiResponse(data=CabinetResponse.model_validate(cabinet))
 
-    return ApiResponse(data=CabinetResponse(**new_cabinet))
 
-
-@router.put("/cabinets/{cabinet_name}", response_model=ApiResponse[CabinetResponse])
+@router.put("/cabinets/{cabinet_id}", response_model=ApiResponse[CabinetResponse])
 async def update_cabinet(
-    cabinet_name: str,
+    cabinet_id: UUID,
     data: CabinetUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    _: Annotated[None, Depends(require_permission("agenda.cabinets.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[CabinetResponse]:
-    """Update a cabinet in the clinic."""
-    clinic = ctx.clinic
-    cabinets = list(clinic.cabinets) if clinic.cabinets else []
-
-    cabinet_index = None
-    for i, c in enumerate(cabinets):
-        if c.get("name") == cabinet_name:
-            cabinet_index = i
-            break
-
-    if cabinet_index is None:
+    """Update a cabinet."""
+    cabinet = await CabinetService.get_cabinet(db, ctx.clinic_id, cabinet_id)
+    if cabinet is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cabinet not found",
         )
 
-    if data.name and data.name != cabinet_name:
-        if any(c.get("name") == data.name for c in cabinets):
+    if data.name and data.name != cabinet.name:
+        clash = await CabinetService.get_by_name(db, ctx.clinic_id, data.name)
+        if clash is not None and clash.id != cabinet.id:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Cabinet name already exists",
             )
 
-    if data.name:
-        cabinets[cabinet_index]["name"] = data.name
-    if data.color:
-        cabinets[cabinet_index]["color"] = data.color
-
-    clinic.cabinets = cabinets
+    cabinet = await CabinetService.update_cabinet(db, cabinet, data.model_dump(exclude_unset=True))
     await db.commit()
-    await db.refresh(clinic)
+    await db.refresh(cabinet)
+    return ApiResponse(data=CabinetResponse.model_validate(cabinet))
 
-    return ApiResponse(data=CabinetResponse(**cabinets[cabinet_index]))
 
-
-@router.delete("/cabinets/{cabinet_name}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/cabinets/{cabinet_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_cabinet(
-    cabinet_name: str,
+    cabinet_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    _: Annotated[None, Depends(require_permission("agenda.cabinets.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    """Delete a cabinet from the clinic."""
-    clinic = ctx.clinic
-    cabinets = list(clinic.cabinets) if clinic.cabinets else []
-
-    original_length = len(cabinets)
-    cabinets = [c for c in cabinets if c.get("name") != cabinet_name]
-
-    if len(cabinets) == original_length:
+    """Delete a cabinet. Blocks when any non-cancelled appointment still uses it."""
+    cabinet = await CabinetService.get_cabinet(db, ctx.clinic_id, cabinet_id)
+    if cabinet is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cabinet not found",
         )
 
-    clinic.cabinets = cabinets
+    from sqlalchemy import func as sql_func
+
+    in_use = (
+        await db.execute(
+            select(sql_func.count())
+            .select_from(Appointment)
+            .where(
+                Appointment.cabinet_id == cabinet.id,
+                Appointment.status != "cancelled",
+            )
+        )
+    ).scalar() or 0
+    if in_use:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cabinet has {in_use} active appointments",
+        )
+
+    await CabinetService.delete_cabinet(db, cabinet)
     await db.commit()

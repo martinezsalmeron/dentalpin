@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from app.core.plugins import BaseModule
 
-from .models import Appointment, AppointmentTreatment
+from .models import Appointment, AppointmentTreatment, Cabinet
 from .router import router
 
 
@@ -13,7 +13,7 @@ class AgendaModule(BaseModule):
 
     manifest = {
         "name": "agenda",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "summary": "Appointments, scheduling, cabinets.",
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
@@ -25,9 +25,21 @@ class AgendaModule(BaseModule):
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["*"],
-            "hygienist": ["appointments.read", "appointments.write"],
-            "assistant": ["appointments.read", "appointments.write"],
-            "receptionist": ["appointments.read", "appointments.write"],
+            "hygienist": [
+                "appointments.read",
+                "appointments.write",
+                "cabinets.read",
+            ],
+            "assistant": [
+                "appointments.read",
+                "appointments.write",
+                "cabinets.read",
+            ],
+            "receptionist": [
+                "appointments.read",
+                "appointments.write",
+                "cabinets.read",
+            ],
         },
         "frontend": {
             "navigation": [
@@ -43,7 +55,7 @@ class AgendaModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [Appointment, AppointmentTreatment]
+        return [Cabinet, Appointment, AppointmentTreatment]
 
     def get_router(self) -> APIRouter:
         return router
@@ -52,7 +64,6 @@ class AgendaModule(BaseModule):
         return [
             "appointments.read",
             "appointments.write",
-            # Cabinets' CRUD still lives in agenda router but uses
-            # admin.clinic.* during Fase B.2; chunk 3 introduces
-            # agenda.cabinets.* alongside the cabinets table.
+            "cabinets.read",
+            "cabinets.write",
         ]

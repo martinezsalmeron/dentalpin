@@ -1,13 +1,4 @@
-"""Agenda models — appointments + linked treatments.
-
-Moved from ``app.modules.clinical.models`` in Fase B.2 chunk 1. The
-backing tables (``appointments``, ``appointment_treatments``) keep
-their name and schema, so cross-module FKs resolve unchanged.
-
-Cabinets still live as a JSONB column on ``clinic.cabinets`` during
-chunk 1; chunk 3 extracts them into their own table with
-``appointment.cabinet_id`` as FK.
-"""
+"""Agenda models — appointments + linked treatments + cabinets."""
 
 from __future__ import annotations
 
@@ -28,6 +19,36 @@ if TYPE_CHECKING:
     from app.modules.treatment_plan.models import PlannedTreatmentItem
 
 
+class Cabinet(Base, TimestampMixin):
+    """Cabinet (physical scheduling slot) belonging to a clinic.
+
+    Fase B.2 chunk 3 promoted cabinets from a JSONB column on
+    ``clinic.cabinets`` to their own table with referential integrity.
+    """
+
+    __tablename__ = "cabinets"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    clinic_id: Mapped[UUID] = mapped_column(
+        ForeignKey("clinics.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(50))
+    color: Mapped[str] = mapped_column(String(7))  # Hex color
+    display_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    clinic: Mapped[Clinic] = relationship(back_populates="cabinets")
+
+    __table_args__ = (
+        Index(
+            "uq_cabinet_clinic_name",
+            "clinic_id",
+            "name",
+            unique=True,
+        ),
+    )
+
+
 class Appointment(Base, TimestampMixin):
     """Appointment entity."""
 
@@ -37,7 +58,11 @@ class Appointment(Base, TimestampMixin):
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
     patient_id: Mapped[UUID | None] = mapped_column(ForeignKey("patients.id"))
     professional_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    # Denormalized cabinet name (kept in sync on Cabinet rename). The
+    # authoritative reference is ``cabinet_id`` — the string lets
+    # legacy filters keep working during the frontend migration.
     cabinet: Mapped[str] = mapped_column(String(50))
+    cabinet_id: Mapped[UUID] = mapped_column(ForeignKey("cabinets.id"), index=True)
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     treatment_type: Mapped[str | None] = mapped_column(String(100))
@@ -48,6 +73,7 @@ class Appointment(Base, TimestampMixin):
     clinic: Mapped[Clinic] = relationship(back_populates="appointments")
     patient: Mapped[Patient | None] = relationship(back_populates="appointments")
     professional: Mapped[User] = relationship()
+    cabinet_ref: Mapped[Cabinet] = relationship()
 
     treatments: Mapped[list[AppointmentTreatment]] = relationship(
         back_populates="appointment",
@@ -59,7 +85,7 @@ class Appointment(Base, TimestampMixin):
         Index(
             "idx_appointment_slot",
             "clinic_id",
-            "cabinet",
+            "cabinet_id",
             "professional_id",
             "start_time",
             unique=True,

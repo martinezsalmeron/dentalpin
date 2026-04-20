@@ -123,7 +123,6 @@ async def test_clinic(
         tax_id="B12345678",
         address={"street": "Test St", "city": "Madrid"},
         settings={"slot_duration_min": 15},
-        cabinets=[{"name": "Gabinete 1", "color": "#3B82F6"}],
     )
     db_session.add(clinic)
     await db_session.flush()
@@ -136,6 +135,22 @@ async def test_clinic(
         role="admin",
     )
     db_session.add(membership)
+
+    # Default cabinet so appointment-oriented tests resolve cabinet FK
+    # without extra setup.
+    from app.modules.agenda.models import Cabinet
+
+    db_session.add(
+        Cabinet(
+            id=uuid4(),
+            clinic_id=clinic.id,
+            name="Gabinete 1",
+            color="#3B82F6",
+            display_order=0,
+            is_active=True,
+        )
+    )
+
     await db_session.commit()
 
     return clinic

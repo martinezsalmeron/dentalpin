@@ -26,7 +26,6 @@ async def seeded_clinic(db_session: AsyncSession) -> Clinic:
         tax_id="B44444444",
         address={"street": "x", "city": "y"},
         settings={"slot_duration_min": 15},
-        cabinets=[{"name": "G1", "color": "#000"}],
     )
     db_session.add(clinic)
     await db_session.flush()

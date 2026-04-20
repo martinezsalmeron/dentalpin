@@ -107,7 +107,10 @@ class AppointmentTreatmentBrief(BaseModel):
 class AppointmentCreate(BaseModel):
     patient_id: UUID | None = None
     professional_id: UUID
-    cabinet: str = Field(min_length=1, max_length=50)
+    # Callers may send either cabinet_id (preferred) or cabinet name;
+    # the service resolves the other side.
+    cabinet_id: UUID | None = None
+    cabinet: str | None = Field(default=None, min_length=1, max_length=50)
     start_time: datetime
     end_time: datetime
     treatment_type: str | None = Field(default=None, max_length=100)  # Legacy field
@@ -119,6 +122,7 @@ class AppointmentCreate(BaseModel):
 class AppointmentUpdate(BaseModel):
     patient_id: UUID | None = None
     professional_id: UUID | None = None
+    cabinet_id: UUID | None = None
     cabinet: str | None = Field(default=None, min_length=1, max_length=50)
     start_time: datetime | None = None
     end_time: datetime | None = None
@@ -134,7 +138,8 @@ class AppointmentResponse(BaseModel):
     clinic_id: UUID
     patient_id: UUID | None
     professional_id: UUID
-    cabinet: str
+    cabinet: str  # Denormalized name for legacy UI callers.
+    cabinet_id: UUID
     start_time: datetime
     end_time: datetime
     treatment_type: str | None
@@ -166,6 +171,7 @@ class AppointmentResponse(BaseModel):
                 "patient_id": data.patient_id,
                 "professional_id": data.professional_id,
                 "cabinet": data.cabinet,
+                "cabinet_id": data.cabinet_id,
                 "start_time": data.start_time,
                 "end_time": data.end_time,
                 "treatment_type": data.treatment_type,
@@ -184,7 +190,7 @@ class AppointmentResponse(BaseModel):
         from_attributes = True
 
 
-# --- Cabinets (JSONB for now; B.2 chunk 3 normalizes) ------------------
+# --- Cabinets ----------------------------------------------------------
 
 
 class CabinetBase(BaseModel):
@@ -193,7 +199,8 @@ class CabinetBase(BaseModel):
 
 
 class CabinetCreate(CabinetBase):
-    pass
+    display_order: int | None = None
+    is_active: bool | None = None
 
 
 class CabinetUpdate(BaseModel):
@@ -201,7 +208,15 @@ class CabinetUpdate(BaseModel):
     color: str | None = Field(
         default=None, min_length=4, max_length=7, pattern=r"^#[0-9A-Fa-f]{3,6}$"
     )
+    display_order: int | None = None
+    is_active: bool | None = None
 
 
 class CabinetResponse(CabinetBase):
-    pass
+    id: UUID
+    clinic_id: UUID
+    display_order: int = 0
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True

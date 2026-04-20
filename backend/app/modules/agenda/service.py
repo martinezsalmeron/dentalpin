@@ -20,7 +20,83 @@ from app.modules.odontogram.models import Treatment
 from app.modules.patients.models import Patient
 from app.modules.treatment_plan.models import PlannedTreatmentItem
 
-from .models import Appointment, AppointmentTreatment
+from .models import Appointment, AppointmentTreatment, Cabinet
+
+
+class CabinetService:
+    """CRUD for clinic cabinets."""
+
+    @staticmethod
+    async def list_cabinets(db: AsyncSession, clinic_id: UUID) -> list[Cabinet]:
+        result = await db.execute(
+            select(Cabinet)
+            .where(Cabinet.clinic_id == clinic_id)
+            .order_by(Cabinet.display_order, Cabinet.name)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_cabinet(db: AsyncSession, clinic_id: UUID, cabinet_id: UUID) -> Cabinet | None:
+        result = await db.execute(
+            select(Cabinet).where(Cabinet.id == cabinet_id, Cabinet.clinic_id == clinic_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_name(db: AsyncSession, clinic_id: UUID, name: str) -> Cabinet | None:
+        result = await db.execute(
+            select(Cabinet).where(Cabinet.clinic_id == clinic_id, Cabinet.name == name)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def create_cabinet(db: AsyncSession, clinic_id: UUID, data: dict) -> Cabinet:
+        if data.get("display_order") is None:
+            # Append at the end.
+            max_order = (
+                await db.execute(
+                    select(func.coalesce(func.max(Cabinet.display_order), -1)).where(
+                        Cabinet.clinic_id == clinic_id
+                    )
+                )
+            ).scalar_one()
+            data["display_order"] = int(max_order) + 1
+        if data.get("is_active") is None:
+            data["is_active"] = True
+
+        cabinet = Cabinet(clinic_id=clinic_id, **data)
+        db.add(cabinet)
+        await db.flush()
+        await db.refresh(cabinet)
+        return cabinet
+
+    @staticmethod
+    async def update_cabinet(db: AsyncSession, cabinet: Cabinet, data: dict) -> Cabinet:
+        old_name = cabinet.name
+        for key, value in data.items():
+            if value is not None:
+                setattr(cabinet, key, value)
+        await db.flush()
+
+        # Keep the denormalized appointments.cabinet string in sync.
+        if "name" in data and data["name"] != old_name:
+            from sqlalchemy import update as sql_update
+
+            await db.execute(
+                sql_update(Appointment)
+                .where(
+                    Appointment.clinic_id == cabinet.clinic_id,
+                    Appointment.cabinet_id == cabinet.id,
+                )
+                .values(cabinet=cabinet.name)
+            )
+
+        return cabinet
+
+    @staticmethod
+    async def delete_cabinet(db: AsyncSession, cabinet: Cabinet) -> None:
+        await db.delete(cabinet)
+        await db.flush()
 
 
 class AppointmentService:
@@ -176,9 +252,36 @@ class AppointmentService:
             raise ValueError("; ".join(errors))
 
     @staticmethod
+    async def _resolve_cabinet(db: AsyncSession, clinic_id: UUID, data: dict) -> None:
+        """Ensure ``data`` ends up with matching cabinet_id + cabinet (name).
+
+        Accepts either cabinet_id or cabinet; rejects both if absent.
+        Mutates ``data`` in place. Raises ValueError when unresolved.
+        """
+        cabinet_id = data.get("cabinet_id")
+        cabinet_name = data.get("cabinet")
+
+        cab: Cabinet | None = None
+        if cabinet_id:
+            cab = await CabinetService.get_cabinet(db, clinic_id, cabinet_id)
+            if cab is None:
+                raise ValueError(f"Cabinet not found: {cabinet_id}")
+        elif cabinet_name:
+            cab = await CabinetService.get_by_name(db, clinic_id, cabinet_name)
+            if cab is None:
+                raise ValueError(f"Cabinet not found: {cabinet_name}")
+        else:
+            raise ValueError("Either cabinet_id or cabinet (name) is required")
+
+        data["cabinet_id"] = cab.id
+        data["cabinet"] = cab.name
+
+    @staticmethod
     async def create_appointment(db: AsyncSession, clinic_id: UUID, data: dict) -> Appointment:
         """Create an appointment. Raises IntegrityError on slot conflict."""
         planned_item_ids = data.pop("planned_item_ids", None)
+
+        await AppointmentService._resolve_cabinet(db, clinic_id, data)
 
         if planned_item_ids and data.get("patient_id"):
             await AppointmentService.validate_planned_items(
@@ -241,6 +344,10 @@ class AppointmentService:
         old_status = appointment.status
 
         planned_item_ids = data.pop("planned_item_ids", None)
+
+        # Resolve cabinet change (accepts cabinet_id or cabinet name).
+        if data.get("cabinet_id") or data.get("cabinet"):
+            await AppointmentService._resolve_cabinet(db, appointment.clinic_id, data)
 
         if planned_item_ids:
             patient_id = data.get("patient_id") or appointment.patient_id
