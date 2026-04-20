@@ -38,6 +38,7 @@ dev = [
 [project.entry-points."dentalpin.modules"]
 patients = "app.modules.patients:PatientsModule"
 agenda = "app.modules.agenda:AgendaModule"
+patient_timeline = "app.modules.patient_timeline:PatientTimelineModule"
 clinical = "app.modules.clinical:ClinicalModule"
 catalog = "app.modules.catalog:CatalogModule"
 budget = "app.modules.budget:BudgetModule"
