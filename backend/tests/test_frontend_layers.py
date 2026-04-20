@@ -14,7 +14,37 @@ from app.core.plugins.frontend_layers import (
     resolve_layer_path,
     write_modules_json,
 )
+from app.core.plugins.base import BaseModule
 from tests.fixtures.sample_module import SampleModule
+
+
+class _HeadlessModule(BaseModule):
+    """Minimal module with no frontend layer, for negative-path tests."""
+
+    manifest = {
+        "name": "headless_fixture",
+        "version": "0.0.1",
+        "summary": "Backend-only fixture.",
+        "author": "DentalPin tests",
+        "license": "MIT",
+        "category": "community",
+        "depends": [],
+        "installable": True,
+        "auto_install": False,
+        "removable": True,
+        "role_permissions": {"admin": ["*"]},
+    }
+
+    def get_models(self) -> list:
+        return []
+
+    def get_router(self):
+        from fastapi import APIRouter
+
+        return APIRouter()
+
+    def get_permissions(self) -> list[str]:
+        return []
 
 
 def test_resolve_layer_path_for_fixture() -> None:
@@ -26,18 +56,13 @@ def test_resolve_layer_path_for_fixture() -> None:
 
 
 def test_resolve_layer_path_returns_none_for_module_without_layer() -> None:
-    from app.modules.billing import BillingModule
-
-    # BillingModule has no ``frontend/`` directory yet (moves to a layer
-    # in Fase B.6). ``resolve_layer_path`` must return ``None`` for any
-    # such module until then.
-    assert resolve_layer_path(BillingModule()) is None
+    # Modules that don't declare ``manifest.frontend.layer_path`` must
+    # silently drop out of layer discovery.
+    assert resolve_layer_path(_HeadlessModule()) is None
 
 
 def test_collect_layers_filters_modules_without_layer() -> None:
-    from app.modules.billing import BillingModule
-
-    layers = collect_layers([BillingModule(), SampleModule()])
+    layers = collect_layers([_HeadlessModule(), SampleModule()])
     assert len(layers) == 1
     assert layers[0].module_name == "sample_community"
 

@@ -2,15 +2,24 @@
 
 Documento de diseño para refactorizar el sistema modular actual hacia una arquitectura tipo Odoo moderna, preparada para un ecosistema open source sano (oficial + community) y sostenible a 5 años.
 
-**Estado**: propuesta para validación. Plan técnico detallado se redacta después de aprobar este documento.
+**Estado**: Fase A + Fase B implementadas y mergeadas a main. Este documento mantiene su forma original para reflejar el diseño tal como se propuso; el estado de ejecución actual se resume en este bloque.
 
-**Fecha**: 2026-04-19
+**Fecha original**: 2026-04-19
 
 **Contexto**: el core de DentalPin está casi listo. Antes de construir módulos opcionales (facturación, odontograma, presupuestos, planes de tratamiento, etc.) se refactoriza la plataforma modular para que módulos oficiales y comunitarios funcionen bajo el mismo contrato, con instalación/desinstalación limpia y reinicio explícito.
 
-**Scope v1 (Fase A)**: se construye toda la infraestructura modular (backend + frontend slots + Nuxt layers + CLI) sin refactorizar el módulo `clinical` existente. Clinical queda como **módulo legacy especial** (modelos Patient/Appointment/AppointmentTreatment/PatientTimeline en su sitio actual, migraciones en main linear de Alembic, componentes frontend en sus carpetas actuales). Funciona bajo el contrato nuevo pero no se extrae ni se parte.
+**Scope v1 (Fase A) — completado**: toda la infraestructura modular (backend + frontend slots + Nuxt layers + CLI) entregada; los 9 módulos officiales originales se migraron al contrato nuevo.
 
-**Fase B diferida**: split de `clinical` en core (Patient mínimo) + módulos `patients_clinical` + `agenda`, con reorganización de migraciones, rutas API, permisos y componentes frontend. Se aborda cuando aparezca motivo concreto (cliente laboratorio dental, auditoría GDPR específica, reorganización para billing v2). No bloquea nada en Fase A.
+**Fase B — completada** (B.1 → B.6 + CI/docs de B.7). El módulo `clinical` se partió en:
+
+* `patients` — identidad (Patient model, permanece auto-install / non-removable).
+* `patients_clinical` — historia clínica normalizada en 7 tablas (allergy, medication, systemic_disease, surgical_history, emergency_contact, legal_guardian, medical_context).
+* `agenda` — Appointment + AppointmentTreatment + Cabinet (tabla real con FK, no JSONB).
+* `patient_timeline` — log unificado, alimentado por eventos de otros módulos.
+
+Además: metadata de la clínica (`/api/v1/auth/clinics`) vive en core/auth, los 12 módulos oficiales ship su frontend como Nuxt layer bajo `<module>/frontend/`, las rutas API se renombraron (`/api/v1/clinical/*` → `/api/v1/patients/*`, `/api/v1/agenda/*`, `/api/v1/patients_clinical/*`, `/api/v1/patient_timeline/*`), los permisos se re-namespace, y `ClinicalModule` quedó eliminado por completo.
+
+**Fuera de scope de Fase B (a considerar post-v2)**: squash total de migraciones con per-module Alembic branches (actualmente main linear). El test `test_alembic_roundtrip` existe y está marcado xfail hasta que se ejecute el squash.
 
 ---
 

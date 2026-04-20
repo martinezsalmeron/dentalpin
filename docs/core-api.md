@@ -4,8 +4,9 @@ Public contract that DentalPin modules (official + community) can rely
 on. Everything in this document is covered by the deprecation policy
 in §7 — change-without-notice is a bug.
 
-**Scope:** Fase A v1. Marked sections are additive; breaking changes
-bump the core version's major.
+**Scope:** Fase B complete. The patient/appointment/timeline split is
+reflected throughout; the `clinical` module no longer exists. Marked
+sections are additive; breaking changes bump the core version's major.
 
 ---
 
@@ -73,7 +74,7 @@ MANIFEST = {
     "category": "official",                   # "official" | "community"
 
     # Dependencies — required (list, may be empty)
-    "depends": ["clinical", "catalog"],
+    "depends": ["patients", "catalog"],
 
     # Policies — required booleans
     "installable": True,                      # false = hidden from UI
@@ -226,18 +227,19 @@ interface SlotEntry<Ctx = unknown> {
 
 ## 7. Importable core models
 
-Safe to import from modules:
+Safe to import from modules (stable across the v2 line):
 
 ```python
 from app.core.auth.models import Clinic, ClinicMembership, User
-from app.modules.clinical.models import Patient  # Fase A — becomes core in Fase B
+from app.modules.patients.models import Patient
+from app.modules.agenda.models import Appointment, Cabinet
+from app.modules.patient_timeline.models import PatientTimeline
 ```
 
-These are **stable** in Fase A. When Fase B splits `clinical`, the
-`Patient` minimal columns (id, clinic_id, first_name, last_name,
-email, phone, date_of_birth, status, timestamps) move to
-`app.core.patients.models` with the same shape — module code compiles
-unchanged.
+Patient moved out of core on purpose: it's a real module with its own
+manifest, version and migration surface (`auto_install: True`,
+`removable: False`). A lab-oriented fork could replace it with a
+`lab_clients` module without forking core.
 
 ---
 
