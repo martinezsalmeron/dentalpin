@@ -16,8 +16,8 @@ export const PERMISSIONS = {
     write: 'patients.medical.write'
   },
   appointments: {
-    read: 'clinical.appointments.read',
-    write: 'clinical.appointments.write'
+    read: 'agenda.appointments.read',
+    write: 'agenda.appointments.write'
   },
   users: {
     read: 'admin.users.read',

@@ -111,7 +111,7 @@ async def test_active_navigation_filtered_for_hygienist(
 
     by_name = {m["name"]: m for m in payload}
 
-    # Hygienist has patients.read + clinical.appointments.* + budget.read +
+    # Hygienist has patients.read + agenda.appointments.* + budget.read +
     # treatment_plan.plans.read + billing.read — all surface.
     clinical_paths = {item["to"] for item in by_name["clinical"]["navigation"]}
     assert "/" in clinical_paths  # dashboard

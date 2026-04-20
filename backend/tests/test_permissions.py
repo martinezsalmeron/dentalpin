@@ -55,8 +55,8 @@ class TestHasPermission:
         """Dentist should have patients + appointments access."""
         assert has_permission("dentist", "patients.read") is True
         assert has_permission("dentist", "patients.write") is True
-        assert has_permission("dentist", "clinical.appointments.read") is True
-        assert has_permission("dentist", "clinical.appointments.write") is True
+        assert has_permission("dentist", "agenda.appointments.read") is True
+        assert has_permission("dentist", "agenda.appointments.write") is True
 
     def test_dentist_lacks_admin_permissions(self):
         """Dentist role should not have admin permissions."""
@@ -67,8 +67,8 @@ class TestHasPermission:
         assert has_permission("hygienist", "patients.read") is True
         assert has_permission("hygienist", "patients.write") is False
         assert has_permission("hygienist", "patients.medical.read") is True
-        assert has_permission("hygienist", "clinical.appointments.read") is True
-        assert has_permission("hygienist", "clinical.appointments.write") is True
+        assert has_permission("hygienist", "agenda.appointments.read") is True
+        assert has_permission("hygienist", "agenda.appointments.write") is True
 
     def test_receptionist_permissions(self):
         """Receptionist has patient + appointment access; medical read-only."""
@@ -76,8 +76,8 @@ class TestHasPermission:
         assert has_permission("receptionist", "patients.write") is True
         assert has_permission("receptionist", "patients.medical.read") is True
         assert has_permission("receptionist", "patients.medical.write") is False
-        assert has_permission("receptionist", "clinical.appointments.read") is True
-        assert has_permission("receptionist", "clinical.appointments.write") is True
+        assert has_permission("receptionist", "agenda.appointments.read") is True
+        assert has_permission("receptionist", "agenda.appointments.write") is True
         assert has_permission("receptionist", "admin.users.write") is False
 
     def test_unknown_role_has_no_permissions(self):

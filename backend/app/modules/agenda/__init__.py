@@ -22,11 +22,12 @@ class AgendaModule(BaseModule):
         "installable": True,
         "auto_install": True,
         "removable": False,
-        # Permissions remain under clinical.appointments.* during chunk
-        # 1 so ROLE_PERMISSIONS + require_permission calls resolve
-        # without churn. Chunk 2 renames them to agenda.appointments.*.
         "role_permissions": {
             "admin": ["*"],
+            "dentist": ["*"],
+            "hygienist": ["appointments.read", "appointments.write"],
+            "assistant": ["appointments.read", "appointments.write"],
+            "receptionist": ["appointments.read", "appointments.write"],
         },
         "frontend": {
             "navigation": [
@@ -34,7 +35,7 @@ class AgendaModule(BaseModule):
                     "label": "nav.appointments",
                     "icon": "i-lucide-calendar",
                     "to": "/appointments",
-                    "permission": "clinical.appointments.read",
+                    "permission": "agenda.appointments.read",
                     "order": 20,
                 },
             ],
@@ -48,6 +49,10 @@ class AgendaModule(BaseModule):
         return router
 
     def get_permissions(self) -> list[str]:
-        # Empty during chunk 1; chunk 2 declares agenda.appointments.*
-        # and agenda.cabinets.* once ROLE_PERMISSIONS switches.
-        return []
+        return [
+            "appointments.read",
+            "appointments.write",
+            # Cabinets' CRUD still lives in agenda router but uses
+            # admin.clinic.* during Fase B.2; chunk 3 introduces
+            # agenda.cabinets.* alongside the cabinets table.
+        ]

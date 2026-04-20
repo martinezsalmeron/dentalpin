@@ -26,16 +26,16 @@ CORE_PERMISSIONS: Final[list[str]] = [
 # Role -> permissions mapping
 # Supports wildcards: "*" = all, "module.*" = all module permissions
 #
-# Fase B.1 chunk 3: ``clinical.patients.*`` renamed to ``patients.*``;
-# ``clinical.appointments.*`` keeps its namespace until Etapa B.2
-# introduces the ``agenda`` module.
+# Fase B renamed the patient + appointment namespaces:
+#  - ``clinical.patients.*``     → ``patients.*``
+#  - ``clinical.appointments.*`` → ``agenda.appointments.*``
 ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     "admin": [
         "*",  # Admin gets everything, including future modules
     ],
     "dentist": [
         "patients.*",  # Full patient access (identity + medical history)
-        "clinical.appointments.*",  # Appointments (moves to agenda.* in B.2)
+        "agenda.*",  # Appointments + cabinets
         "odontogram.*",
         "treatment_plan.*",
         "catalog.read",
@@ -50,7 +50,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     "hygienist": [
         "patients.read",
         "patients.medical.read",
-        "clinical.appointments.*",
+        "agenda.appointments.*",
         "odontogram.read",
         "odontogram.write",
         "treatment_plan.plans.read",
@@ -62,7 +62,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
     ],
     "assistant": [
         "patients.*",
-        "clinical.appointments.*",
+        "agenda.appointments.*",
         "odontogram.read",
         "treatment_plan.plans.read",
         "treatment_plan.plans.write",
@@ -80,7 +80,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "patients.read",
         "patients.write",
         "patients.medical.read",  # medical view only — no write for receptionist
-        "clinical.appointments.*",
+        "agenda.appointments.*",
         "catalog.read",
         "budget.read",
         "budget.write",

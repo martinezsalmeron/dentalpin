@@ -1,8 +1,9 @@
 """Agenda HTTP surface: appointments + cabinets.
 
-Mounts at ``/api/v1/agenda/*``. Moved from ``clinical.router`` in
-Fase B.2 chunk 1. Permissions remain ``clinical.appointments.*`` and
-``admin.clinic.*`` until chunk 2 renames them to ``agenda.*``.
+Mounts at ``/api/v1/agenda/*``. Appointments use the
+``agenda.appointments.*`` namespace; cabinets still gate on
+``admin.clinic.write`` until Etapa B.2 chunk 3 normalizes cabinets
+into their own table + permission namespace.
 """
 
 from datetime import datetime
@@ -36,7 +37,7 @@ router = APIRouter()
 @router.get("/appointments", response_model=PaginatedApiResponse[AppointmentResponse])
 async def list_appointments(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.appointments.read"))],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
     start_date: datetime | None = None,
     end_date: datetime | None = None,
@@ -74,7 +75,7 @@ async def list_appointments(
 async def create_appointment(
     data: AppointmentCreate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.appointments.write"))],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[AppointmentResponse]:
     """Create a new appointment."""
@@ -115,7 +116,7 @@ async def create_appointment(
 async def get_appointment(
     appointment_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.appointments.read"))],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[AppointmentResponse]:
     """Get an appointment by ID."""
@@ -133,7 +134,7 @@ async def update_appointment(
     appointment_id: UUID,
     data: AppointmentUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.appointments.write"))],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[AppointmentResponse]:
     """Update an appointment."""
@@ -182,7 +183,7 @@ async def update_appointment(
 async def delete_appointment(
     appointment_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.appointments.write"))],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Cancel an appointment."""
