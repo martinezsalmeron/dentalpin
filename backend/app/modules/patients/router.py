@@ -1,11 +1,12 @@
 """Patient HTTP surface.
 
 Mounts under ``/api/v1/patients/*``. Permissions live in the
-``patients.*`` namespace: ``patients.read``, ``patients.write``,
-``patients.medical.read`` and ``patients.medical.write``.
+``patients.*`` namespace: ``patients.read`` and ``patients.write``.
+
+Medical history, emergency contact, legal guardian and alerts live in
+the ``patients_clinical`` module after Fase B.4.
 """
 
-from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -17,9 +18,6 @@ from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
 from .schemas import (
-    MedicalHistoryResponse,
-    MedicalHistoryUpdate,
-    PatientAlertsResponse,
     PatientCreate,
     PatientExtendedResponse,
     PatientExtendedUpdate,
@@ -143,7 +141,7 @@ async def get_patient_extended(
     _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientExtendedResponse]:
-    """Get patient with extended info (demographics, emergency contact, alerts)."""
+    """Get patient with extended identity/demographics info."""
     patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
     if not patient:
         raise HTTPException(
@@ -161,7 +159,7 @@ async def update_patient_extended(
     _: Annotated[None, Depends(require_permission("patients.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[PatientExtendedResponse]:
-    """Update patient with extended fields."""
+    """Update patient with extended demographic fields."""
     patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
     if not patient:
         raise HTTPException(
@@ -170,74 +168,3 @@ async def update_patient_extended(
         )
     patient = await PatientService.update_patient(db, patient, data.model_dump(exclude_unset=True))
     return ApiResponse(data=PatientExtendedResponse.model_validate(patient))
-
-
-# --- Medical history ----------------------------------------------------
-
-
-@router.get(
-    "/{patient_id}/medical-history",
-    response_model=ApiResponse[MedicalHistoryResponse],
-)
-async def get_medical_history(
-    patient_id: UUID,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("patients.medical.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[MedicalHistoryResponse]:
-    """Get patient medical history."""
-    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient not found",
-        )
-    medical_history = patient.medical_history or {}
-    return ApiResponse(data=MedicalHistoryResponse.model_validate(medical_history))
-
-
-@router.put(
-    "/{patient_id}/medical-history",
-    response_model=ApiResponse[MedicalHistoryResponse],
-)
-async def update_medical_history(
-    patient_id: UUID,
-    data: MedicalHistoryUpdate,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("patients.medical.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[MedicalHistoryResponse]:
-    """Update patient medical history."""
-    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient not found",
-        )
-
-    medical_data = data.model_dump()
-    medical_data["last_updated_at"] = datetime.utcnow().isoformat()
-    medical_data["last_updated_by"] = str(ctx.user_id)
-
-    patient = await PatientService.update_medical_history(db, patient, medical_data, ctx.user_id)
-    return ApiResponse(data=MedicalHistoryResponse.model_validate(patient.medical_history))
-
-
-# --- Alerts -------------------------------------------------------------
-
-
-@router.get("/{patient_id}/alerts", response_model=ApiResponse[PatientAlertsResponse])
-async def get_patient_alerts(
-    patient_id: UUID,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("patients.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[PatientAlertsResponse]:
-    """Get active alerts for a patient (computed from medical history)."""
-    patient = await PatientService.get_patient(db, ctx.clinic_id, patient_id)
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient not found",
-        )
-    return ApiResponse(data=PatientAlertsResponse(alerts=patient.active_alerts))

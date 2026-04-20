@@ -30,9 +30,9 @@ class PatientsModule(BaseModule):
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["*"],
-            "hygienist": ["read", "medical.read"],
+            "hygienist": ["read"],
             "assistant": ["*"],
-            "receptionist": ["read", "write", "medical.read"],
+            "receptionist": ["read", "write"],
         },
         "frontend": {
             "navigation": [
@@ -54,4 +54,4 @@ class PatientsModule(BaseModule):
         return router
 
     def get_permissions(self) -> list[str]:
-        return ["read", "write", "medical.read", "medical.write"]
+        return ["read", "write"]

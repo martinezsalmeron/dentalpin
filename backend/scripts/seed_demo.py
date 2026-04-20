@@ -39,6 +39,15 @@ from app.modules.catalog.seed import seed_catalog
 from app.modules.clinical.models import Appointment, AppointmentTreatment, Patient
 from app.modules.media.models import Document  # noqa: F401 - needed for relationship resolution
 from app.modules.odontogram.models import ToothRecord, Treatment, TreatmentTooth
+from app.modules.patients_clinical.models import (
+    Allergy,
+    EmergencyContact,
+    LegalGuardian,
+    MedicalContext,
+    Medication,
+    SurgicalHistory,
+    SystemicDisease,
+)
 from app.modules.treatment_plan.models import PlannedTreatmentItem, TreatmentPlan
 from app.seeds.demo_data import (
     CLINIC_ID,
@@ -179,7 +188,7 @@ async def seed_users(db: AsyncSession, password_hash: str) -> list[User]:
 
 
 async def seed_patients(db: AsyncSession) -> list[Patient]:
-    """Create demo patients."""
+    """Create demo patients + their normalized clinical rows."""
     patients: list[Patient] = []
     for patient_data in get_patients_data():
         patient = Patient(
@@ -192,15 +201,135 @@ async def seed_patients(db: AsyncSession) -> list[Patient]:
             date_of_birth=patient_data["date_of_birth"],
             notes=patient_data["notes"],
             status="active",
-            emergency_contact=patient_data.get("emergency_contact"),
-            medical_history=patient_data.get("medical_history"),
         )
         db.add(patient)
         patients.append(patient)
 
+        _seed_patient_clinical(db, patient_data)
+
     await db.flush()
-    print(f"  Created {len(patients)} patients")
+    print(f"  Created {len(patients)} patients (+ normalized clinical rows)")
     return patients
+
+
+_MEDICAL_CONTEXT_KEYS = (
+    "is_pregnant",
+    "pregnancy_week",
+    "is_lactating",
+    "is_on_anticoagulants",
+    "anticoagulant_medication",
+    "inr_value",
+    "last_inr_date",
+    "is_smoker",
+    "smoking_frequency",
+    "alcohol_consumption",
+    "bruxism",
+    "adverse_reactions_to_anesthesia",
+    "anesthesia_reaction_details",
+)
+
+
+def _seed_patient_clinical(db: AsyncSession, patient_data: dict) -> None:
+    """Fan out the legacy-shaped ``medical_history`` + ``emergency_contact``
+    blobs into the normalized patients_clinical tables."""
+    patient_id = patient_data["id"]
+
+    ec = patient_data.get("emergency_contact")
+    if ec and ec.get("name") and ec.get("phone"):
+        db.add(
+            EmergencyContact(
+                patient_id=patient_id,
+                clinic_id=CLINIC_ID,
+                name=ec["name"],
+                relationship=ec.get("relationship"),
+                phone=ec["phone"],
+                email=ec.get("email"),
+                is_legal_guardian=bool(ec.get("is_legal_guardian", False)),
+            )
+        )
+
+    lg = patient_data.get("legal_guardian")
+    if lg and lg.get("name") and lg.get("relationship") and lg.get("phone"):
+        db.add(
+            LegalGuardian(
+                patient_id=patient_id,
+                clinic_id=CLINIC_ID,
+                name=lg["name"],
+                relationship=lg["relationship"],
+                dni=lg.get("dni"),
+                phone=lg["phone"],
+                email=lg.get("email"),
+                address=lg.get("address"),
+                notes=lg.get("notes"),
+            )
+        )
+
+    mh = patient_data.get("medical_history") or {}
+    if not mh:
+        return
+
+    for allergy in mh.get("allergies") or []:
+        db.add(
+            Allergy(
+                patient_id=patient_id,
+                clinic_id=CLINIC_ID,
+                name=allergy.get("name") or "Desconocida",
+                type=allergy.get("type"),
+                severity=allergy.get("severity") or "medium",
+                reaction=allergy.get("reaction"),
+                notes=allergy.get("notes"),
+            )
+        )
+
+    for med in mh.get("medications") or []:
+        db.add(
+            Medication(
+                patient_id=patient_id,
+                clinic_id=CLINIC_ID,
+                name=med.get("name") or "Desconocido",
+                dosage=med.get("dosage"),
+                frequency=med.get("frequency"),
+                start_date=med.get("start_date"),
+                notes=med.get("notes"),
+            )
+        )
+
+    for disease in mh.get("systemic_diseases") or []:
+        db.add(
+            SystemicDisease(
+                patient_id=patient_id,
+                clinic_id=CLINIC_ID,
+                name=disease.get("name") or "Desconocida",
+                type=disease.get("type"),
+                diagnosis_date=disease.get("diagnosis_date"),
+                is_controlled=bool(disease.get("is_controlled", True)),
+                is_critical=bool(disease.get("is_critical", False)),
+                medications=disease.get("medications"),
+                notes=disease.get("notes"),
+            )
+        )
+
+    for surgery in mh.get("surgical_history") or []:
+        db.add(
+            SurgicalHistory(
+                patient_id=patient_id,
+                clinic_id=CLINIC_ID,
+                procedure=surgery.get("procedure") or "Sin especificar",
+                surgery_date=surgery.get("surgery_date"),
+                complications=surgery.get("complications"),
+                notes=surgery.get("notes"),
+            )
+        )
+
+    context_data = {k: mh[k] for k in _MEDICAL_CONTEXT_KEYS if k in mh}
+    if context_data:
+        db.add(
+            MedicalContext(
+                patient_id=patient_id,
+                clinic_id=CLINIC_ID,
+                **context_data,
+            )
+        )
 
 
 async def seed_odontogram(db: AsyncSession) -> dict:

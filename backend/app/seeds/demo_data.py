@@ -877,8 +877,11 @@ def get_patients_data() -> list[dict]:
             "email": email,
             "date_of_birth": p["date_of_birth"],
             "notes": p[LANG]["notes"],
+            # Consumed downstream by seed_demo._seed_patient_clinical to
+            # populate the normalized patients_clinical_* tables (B.4).
             "emergency_contact": emergency_contact,
             "medical_history": medical_history,
+            "legal_guardian": p.get("legal_guardian"),
         }
         patients.append(patient)
     return patients

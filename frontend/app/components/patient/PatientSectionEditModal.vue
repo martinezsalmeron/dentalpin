@@ -149,7 +149,9 @@ async function handleSave() {
   isSubmitting.value = true
 
   try {
-    let updateData: Partial<PatientExtendedUpdate> = {}
+    let updateData: Partial<PatientExtendedUpdate> | EmergencyContact | LegalGuardian | null = {}
+    let endpoint = `/api/v1/patients/${props.patient.id}/extended`
+    let method: 'put' | 'del' = 'put'
 
     if (props.section === 'demographics') {
       const address = demographicsForm.address?.street ? demographicsForm.address : null
@@ -169,12 +171,20 @@ async function handleSave() {
         address
       }
     } else if (props.section === 'emergency') {
-      updateData = {
-        emergency_contact: emergencyForm.value
+      endpoint = `/api/v1/patients_clinical/patients/${props.patient.id}/emergency-contact`
+      if (emergencyForm.value) {
+        updateData = emergencyForm.value
+      } else {
+        method = 'del'
+        updateData = null
       }
     } else if (props.section === 'guardian') {
-      updateData = {
-        legal_guardian: guardianForm.value
+      endpoint = `/api/v1/patients_clinical/patients/${props.patient.id}/legal-guardian`
+      if (guardianForm.value) {
+        updateData = guardianForm.value
+      } else {
+        method = 'del'
+        updateData = null
       }
     } else if (props.section === 'billing') {
       const billingAddress = billingForm.billing_address?.street ? billingForm.billing_address : null
@@ -186,10 +196,17 @@ async function handleSave() {
       }
     }
 
-    await api.put(
-      `/api/v1/patients/${props.patient.id}/extended`,
-      updateData
-    )
+    if (method === 'del') {
+      try {
+        await api.del(endpoint)
+      } catch (e: unknown) {
+        // Emergency/guardian may not exist yet — delete 404 is harmless.
+        const err = e as { statusCode?: number }
+        if (err.statusCode !== 404) throw e
+      }
+    } else {
+      await api.put(endpoint, updateData as Record<string, unknown>)
+    }
 
     toast.add({
       title: t('common.success'),
@@ -200,7 +217,7 @@ async function handleSave() {
     closeModal()
     // Emit after close to avoid reactive loop during refresh
     await nextTick()
-    emit('save', props.section, updateData)
+    emit('save', props.section, (updateData ?? {}) as Record<string, unknown>)
   } catch (error: unknown) {
     const fetchError = error as { statusCode?: number, data?: { message?: string } }
     toast.add({
