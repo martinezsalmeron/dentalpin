@@ -18,18 +18,26 @@ export interface ClinicMembership {
 }
 
 export interface Cabinet {
+  id: string
+  clinic_id: string
   name: string
   color: string
+  display_order?: number
+  is_active?: boolean
 }
 
 export interface CabinetCreate {
   name: string
   color: string
+  display_order?: number
+  is_active?: boolean
 }
 
 export interface CabinetUpdate {
   name?: string
   color?: string
+  display_order?: number
+  is_active?: boolean
 }
 
 export interface ClinicAddress {

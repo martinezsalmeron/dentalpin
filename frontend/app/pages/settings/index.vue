@@ -231,7 +231,7 @@ async function handleUpdateCabinet() {
   if (!editingCabinet.value) return
 
   isEditingCabinet.value = true
-  const result = await clinic.updateCabinet(editingCabinet.value.name, {
+  const result = await clinic.updateCabinet(editingCabinet.value.id, {
     name: editCabinetData.value.name,
     color: editCabinetData.value.color
   })
@@ -251,7 +251,7 @@ async function handleDeleteCabinet() {
   if (!cabinetToDelete.value) return
 
   isDeletingCabinet.value = true
-  const result = await clinic.deleteCabinet(cabinetToDelete.value.name)
+  const result = await clinic.deleteCabinet(cabinetToDelete.value.id)
   isDeletingCabinet.value = false
   if (result) {
     showDeleteCabinetModal.value = false

@@ -87,9 +87,9 @@ export function useClinic() {
     }
   }
 
-  async function updateCabinet(cabinetName: string, data: CabinetUpdate): Promise<Cabinet | null> {
+  async function updateCabinet(cabinetId: string, data: CabinetUpdate): Promise<Cabinet | null> {
     try {
-      const response = await api.put<ApiResponse<Cabinet>>(`/api/v1/agenda/cabinets/${encodeURIComponent(cabinetName)}`, data as unknown as Record<string, unknown>)
+      const response = await api.put<ApiResponse<Cabinet>>(`/api/v1/agenda/cabinets/${cabinetId}`, data as unknown as Record<string, unknown>)
       toast.add({
         title: t('common.success', 'Success'),
         description: 'Gabinete actualizado correctamente',
@@ -123,9 +123,9 @@ export function useClinic() {
     }
   }
 
-  async function deleteCabinet(cabinetName: string): Promise<boolean> {
+  async function deleteCabinet(cabinetId: string): Promise<boolean> {
     try {
-      await api.del(`/api/v1/agenda/cabinets/${encodeURIComponent(cabinetName)}`)
+      await api.del(`/api/v1/agenda/cabinets/${cabinetId}`)
       toast.add({
         title: t('common.success', 'Success'),
         description: 'Gabinete eliminado correctamente',
