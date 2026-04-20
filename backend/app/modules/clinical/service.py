@@ -250,6 +250,7 @@ class AppointmentService:
             EventType.APPOINTMENT_SCHEDULED,
             {
                 "appointment_id": str(appointment.id),
+                "clinic_id": str(appointment.clinic_id),
                 "patient_id": str(appointment.patient_id) if appointment.patient_id else None,
                 "professional_id": str(appointment.professional_id),
                 "start_time": appointment.start_time.isoformat(),
@@ -336,25 +337,26 @@ class AppointmentService:
         # Publish appropriate event based on status change
         new_status = appointment.status
         if old_status != new_status:
+            payload = {
+                "appointment_id": str(appointment.id),
+                "clinic_id": str(appointment.clinic_id),
+                "patient_id": (
+                    str(appointment.patient_id) if appointment.patient_id else None
+                ),
+            }
             if new_status == "completed":
-                event_bus.publish(
-                    EventType.APPOINTMENT_COMPLETED,
-                    {"appointment_id": str(appointment.id)},
-                )
+                event_bus.publish(EventType.APPOINTMENT_COMPLETED, payload)
             elif new_status == "cancelled":
-                event_bus.publish(
-                    EventType.APPOINTMENT_CANCELLED,
-                    {"appointment_id": str(appointment.id)},
-                )
+                event_bus.publish(EventType.APPOINTMENT_CANCELLED, payload)
             elif new_status == "no_show":
-                event_bus.publish(
-                    EventType.APPOINTMENT_NO_SHOW,
-                    {"appointment_id": str(appointment.id)},
-                )
+                event_bus.publish(EventType.APPOINTMENT_NO_SHOW, payload)
         else:
             event_bus.publish(
                 EventType.APPOINTMENT_UPDATED,
-                {"appointment_id": str(appointment.id)},
+                {
+                    "appointment_id": str(appointment.id),
+                    "clinic_id": str(appointment.clinic_id),
+                },
             )
 
         return appointment
@@ -370,7 +372,13 @@ class AppointmentService:
 
         event_bus.publish(
             EventType.APPOINTMENT_CANCELLED,
-            {"appointment_id": str(appointment.id)},
+            {
+                "appointment_id": str(appointment.id),
+                "clinic_id": str(appointment.clinic_id),
+                "patient_id": (
+                    str(appointment.patient_id) if appointment.patient_id else None
+                ),
+            },
         )
 
         return appointment
