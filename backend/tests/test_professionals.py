@@ -227,7 +227,7 @@ async def test_create_appointment_with_valid_professional(
 
     # Create appointment with dentist (wrapped in ApiResponse)
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -259,7 +259,7 @@ async def test_create_appointment_with_hygienist(
 
     # Create appointment with hygienist (wrapped in ApiResponse)
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -291,7 +291,7 @@ async def test_create_appointment_with_invalid_professional_role(
 
     # Try to create appointment with receptionist (should fail)
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -322,7 +322,7 @@ async def test_create_appointment_with_nonexistent_professional(
 
     # Try to create appointment with non-existent professional
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -353,7 +353,7 @@ async def test_update_appointment_professional(
 
     # Create appointment with dentist (wrapped in ApiResponse)
     create_response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -367,7 +367,7 @@ async def test_update_appointment_professional(
 
     # Update to hygienist (wrapped in ApiResponse)
     update_response = await client.put(
-        f"/api/v1/clinical/appointments/{appointment_id}",
+        f"/api/v1/agenda/appointments/{appointment_id}",
         headers=auth_headers,
         json={"professional_id": clinic_with_professionals["hygienist_id"]},
     )
@@ -395,7 +395,7 @@ async def test_update_appointment_to_invalid_professional(
 
     # Create appointment with dentist (wrapped in ApiResponse)
     create_response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -409,7 +409,7 @@ async def test_update_appointment_to_invalid_professional(
 
     # Try to update to receptionist (should fail)
     update_response = await client.put(
-        f"/api/v1/clinical/appointments/{appointment_id}",
+        f"/api/v1/agenda/appointments/{appointment_id}",
         headers=auth_headers,
         json={"professional_id": clinic_with_professionals["receptionist_id"]},
     )
@@ -439,7 +439,7 @@ async def test_appointment_response_includes_professional(
 
     # Create appointment (wrapped in ApiResponse)
     create_response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -477,7 +477,7 @@ async def test_list_appointments_includes_professional(
 
     # Create appointment
     await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -490,7 +490,7 @@ async def test_list_appointments_includes_professional(
 
     # List appointments (PaginatedApiResponse)
     response = await client.get(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         params={"start_date": "2026-05-05T00:00:00Z", "end_date": "2026-05-05T23:59:59Z"},
     )

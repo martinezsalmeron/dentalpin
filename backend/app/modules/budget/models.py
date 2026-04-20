@@ -25,8 +25,8 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.catalog.models import TreatmentCatalogItem, VatType
-    from app.modules.clinical.models import Patient
     from app.modules.odontogram.models import Treatment
+    from app.modules.patients.models import Patient
 
 
 class Budget(Base, TimestampMixin):

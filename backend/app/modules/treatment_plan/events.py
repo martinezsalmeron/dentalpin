@@ -32,7 +32,7 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
     async with async_session_maker() as db:
         try:
             # Import here to avoid circular imports
-            from app.modules.clinical.models import AppointmentTreatment
+            from app.modules.agenda.models import AppointmentTreatment
 
             # Get completed treatments from the appointment
             result = await db.execute(

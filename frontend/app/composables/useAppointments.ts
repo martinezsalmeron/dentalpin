@@ -21,7 +21,7 @@ export function useAppointments() {
       })
 
       const response = await api.get<PaginatedResponse<Appointment>>(
-        `/api/v1/clinical/appointments?${params.toString()}`
+        `/api/v1/agenda/appointments?${params.toString()}`
       )
 
       appointments.value = response.data
@@ -37,7 +37,7 @@ export function useAppointments() {
 
   async function createAppointment(data: AppointmentCreate): Promise<Appointment> {
     const response = await api.post<ApiResponse<Appointment>>(
-      '/api/v1/clinical/appointments',
+      '/api/v1/agenda/appointments',
       data as unknown as Record<string, unknown>
     )
 
@@ -49,7 +49,7 @@ export function useAppointments() {
 
   async function updateAppointment(id: string, data: AppointmentUpdate): Promise<Appointment> {
     const response = await api.put<ApiResponse<Appointment>>(
-      `/api/v1/clinical/appointments/${id}`,
+      `/api/v1/agenda/appointments/${id}`,
       data as unknown as Record<string, unknown>
     )
 
@@ -62,7 +62,7 @@ export function useAppointments() {
   }
 
   async function cancelAppointment(id: string): Promise<void> {
-    await api.del(`/api/v1/clinical/appointments/${id}`)
+    await api.del(`/api/v1/agenda/appointments/${id}`)
 
     // Update local state - mark as cancelled
     appointments.value = appointments.value.map(apt =>

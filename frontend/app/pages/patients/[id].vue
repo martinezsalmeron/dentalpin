@@ -44,7 +44,7 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
   async () => {
     try {
       return await api.get<PaginatedResponse<Appointment>>(
-        `/api/v1/clinical/appointments?patient_id=${patientId}`
+        `/api/v1/agenda/appointments?patient_id=${patientId}`
       )
     } catch {
       return { data: [], total: 0, page: 1, page_size: 20 }

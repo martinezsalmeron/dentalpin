@@ -114,10 +114,13 @@ async def test_active_navigation_filtered_for_hygienist(
     # Hygienist has patients.read + clinical.appointments.* + budget.read +
     # treatment_plan.plans.read + billing.read — all surface.
     clinical_paths = {item["to"] for item in by_name["clinical"]["navigation"]}
-    assert "/" in clinical_paths
-    assert "/appointments" in clinical_paths
+    assert "/" in clinical_paths  # dashboard
 
-    # /patients nav item is owned by the patients module.
+    # /appointments nav item is owned by the agenda module (B.2).
+    agenda_paths = {item["to"] for item in by_name["agenda"]["navigation"]}
+    assert "/appointments" in agenda_paths
+
+    # /patients nav item is owned by the patients module (B.1).
     patients_paths = {item["to"] for item in by_name["patients"]["navigation"]}
     assert "/patients" in patients_paths
 

@@ -27,9 +27,10 @@ async def process_appointment_reminders() -> None:
     The reminder window is: now < start_time <= now + hours_before
     """
     from app.core.auth.models import Clinic, User
-    from app.modules.clinical.models import Appointment, Patient
+    from app.modules.agenda.models import Appointment
     from app.modules.notifications.models import ClinicNotificationSettings, EmailLog
     from app.modules.notifications.service import NotificationService
+    from app.modules.patients.models import Patient
 
     logger.debug("Processing appointment reminders...")
     reminders_sent = 0
@@ -178,8 +179,9 @@ async def send_single_reminder(appointment_id: UUID, clinic_id: UUID) -> bool:
         True if sent successfully, False otherwise.
     """
     from app.core.auth.models import Clinic, User
-    from app.modules.clinical.models import Appointment, Patient
+    from app.modules.agenda.models import Appointment
     from app.modules.notifications.service import NotificationService
+    from app.modules.patients.models import Patient
 
     try:
         async with async_session_maker() as db:

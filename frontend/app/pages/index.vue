@@ -12,7 +12,7 @@ const { data: appointmentsData, status: appointmentsStatus } = await useAsyncDat
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString()
     try {
       return await api.get<PaginatedResponse<Appointment>>(
-        `/api/v1/clinical/appointments?start_date=${startOfDay}&end_date=${endOfDay}`
+        `/api/v1/agenda/appointments?start_date=${startOfDay}&end_date=${endOfDay}`
       )
     } catch {
       return { data: [], total: 0, page: 1, page_size: 20 }

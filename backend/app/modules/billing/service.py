@@ -605,7 +605,7 @@ class InvoiceService:
                 query = query.where(Invoice.credit_note_for_id.is_(None))
 
         if search:
-            from app.modules.clinical.models import Patient
+            from app.modules.patients.models import Patient
 
             # Search in invoice number or patient name
             search_term = f"%{search}%"
@@ -689,7 +689,7 @@ class InvoiceService:
         patient. When the invoice is issued, billing data is snapshotted.
         """
         # Verify patient exists
-        from app.modules.clinical.models import Patient
+        from app.modules.patients.models import Patient
 
         result = await db.execute(
             select(Patient).where(
@@ -762,7 +762,7 @@ class InvoiceService:
                     raise ValueError("Cannot change patient for invoice linked to a budget")
 
                 # Verify new patient exists
-                from app.modules.clinical.models import Patient
+                from app.modules.patients.models import Patient
 
                 result = await db.execute(
                     select(Patient).where(

@@ -32,7 +32,7 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.catalog.models import TreatmentCatalogItem
-    from app.modules.clinical.models import Patient
+    from app.modules.patients.models import Patient
 
 
 class ToothRecord(Base, TimestampMixin):

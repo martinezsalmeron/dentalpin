@@ -175,7 +175,7 @@ async def test_create_appointment(
 
     # Create appointment (must use dentist, not admin)
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json={
             "patient_id": patient_id,
@@ -215,7 +215,7 @@ async def test_appointment_time_conflict(
 
     # First appointment should succeed
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json=appointment_data,
     )
@@ -223,7 +223,7 @@ async def test_appointment_time_conflict(
 
     # Second appointment at same time should fail
     response = await client.post(
-        "/api/v1/clinical/appointments",
+        "/api/v1/agenda/appointments",
         headers=auth_headers,
         json=appointment_data,
     )

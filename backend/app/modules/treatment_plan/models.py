@@ -22,9 +22,9 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.budget.models import Budget
-    from app.modules.clinical.models import Patient
     from app.modules.media.models import Document
     from app.modules.odontogram.models import Treatment
+    from app.modules.patients.models import Patient
 
 
 class TreatmentPlan(Base, TimestampMixin):

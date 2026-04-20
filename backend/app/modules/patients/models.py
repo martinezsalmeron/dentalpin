@@ -24,7 +24,8 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic
-    from app.modules.clinical.models import Appointment, PatientTimeline
+    from app.modules.agenda.models import Appointment
+    from app.modules.clinical.models import PatientTimeline
 
 
 class Patient(Base, TimestampMixin):

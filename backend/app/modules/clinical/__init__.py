@@ -1,4 +1,13 @@
-"""Clinical module - patients and appointments management."""
+"""Clinical module — timeline + clinic metadata.
+
+Fase B.2 moved Appointment + AppointmentTreatment into the agenda
+module. Patient lives in the patients module. What remains here:
+
+* PatientTimeline model + its event-driven population (moves to
+  patient_timeline in Etapa B.3).
+* /clinics + PUT /clinics endpoints.
+* Dashboard + settings navigation (host shell items).
+"""
 
 from datetime import datetime
 from typing import Any
@@ -10,36 +19,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import EventType
 from app.core.plugins import BaseModule
 
-from .models import Appointment, AppointmentTreatment, PatientTimeline
+from .models import PatientTimeline
 from .router import router
 from .service import TimelineService
 
 
 class ClinicalModule(BaseModule):
-    """Clinical module providing appointment + timeline management.
-
-    Patient identity lives in the ``patients`` module as of Fase B.
-    Appointments and timeline stay here until B.2 / B.3 extract them
-    into ``agenda`` and ``patient_timeline``.
-    """
+    """Timeline + clinic metadata + host navigation shell."""
 
     manifest = {
         "name": "clinical",
-        "version": "0.1.0",
-        "summary": "Appointments, timeline (patients module owns identity).",
+        "version": "0.2.0",
+        "summary": "Timeline, clinic metadata, host nav shell.",
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": ["patients"],
+        "depends": ["patients", "agenda"],
         "installable": True,
         "auto_install": True,
         "removable": False,
         "role_permissions": {
             "admin": ["*"],
-            "dentist": ["*"],
-            "hygienist": ["appointments.read", "appointments.write"],
-            "assistant": ["appointments.read", "appointments.write"],
-            "receptionist": ["appointments.read", "appointments.write"],
         },
         "frontend": {
             "navigation": [
@@ -48,13 +48,6 @@ class ClinicalModule(BaseModule):
                     "icon": "i-lucide-home",
                     "to": "/",
                     "order": 0,
-                },
-                {
-                    "label": "nav.appointments",
-                    "icon": "i-lucide-calendar",
-                    "to": "/appointments",
-                    "permission": "clinical.appointments.read",
-                    "order": 20,
                 },
                 {
                     "label": "nav.settings",
@@ -67,16 +60,13 @@ class ClinicalModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [Appointment, AppointmentTreatment, PatientTimeline]
+        return [PatientTimeline]
 
     def get_router(self) -> APIRouter:
         return router
 
     def get_permissions(self) -> list[str]:
-        return [
-            "appointments.read",
-            "appointments.write",
-        ]
+        return []
 
     def get_event_handlers(self) -> dict[str, Any]:
         """Register event handlers for timeline population."""
@@ -89,10 +79,11 @@ class ClinicalModule(BaseModule):
 
     async def _on_appointment_completed(self, db: AsyncSession, data: dict) -> None:
         """Add timeline entry when appointment is completed."""
-        appointment_id = UUID(data["appointment_id"])
-        # We need clinic_id to query - fetch from appointment
         from sqlalchemy import select
 
+        from app.modules.agenda.models import Appointment
+
+        appointment_id = UUID(data["appointment_id"])
         result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
         appointment = result.scalar_one_or_none()
         if not appointment or not appointment.patient_id:
@@ -117,9 +108,11 @@ class ClinicalModule(BaseModule):
 
     async def _on_appointment_cancelled(self, db: AsyncSession, data: dict) -> None:
         """Add timeline entry when appointment is cancelled."""
-        appointment_id = UUID(data["appointment_id"])
         from sqlalchemy import select
 
+        from app.modules.agenda.models import Appointment
+
+        appointment_id = UUID(data["appointment_id"])
         result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
         appointment = result.scalar_one_or_none()
         if not appointment or not appointment.patient_id:

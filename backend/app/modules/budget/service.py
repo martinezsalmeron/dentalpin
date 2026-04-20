@@ -254,7 +254,7 @@ class BudgetService:
         if search:
             search_pattern = f"%{search}%"
             # Import Patient model for search
-            from app.modules.clinical.models import Patient
+            from app.modules.patients.models import Patient
 
             # Subquery for patient name search
             patient_subq = (

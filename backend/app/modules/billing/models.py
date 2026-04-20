@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.budget.models import Budget, BudgetItem
     from app.modules.catalog.models import TreatmentCatalogItem, VatType
-    from app.modules.clinical.models import Patient
+    from app.modules.patients.models import Patient
 
 
 # Payment method constants
