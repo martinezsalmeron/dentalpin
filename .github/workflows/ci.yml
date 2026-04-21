@@ -200,6 +200,12 @@ jobs:
             sleep 2
           done
 
+      - name: Run migrations
+        # Backend lifespan doesn't run alembic upgrade on boot (dev
+        # workflow runs `./scripts/reset-db.sh` by hand). CI needs an
+        # explicit step so `./scripts/seed-demo.sh` has a schema.
+        run: docker compose exec -T backend alembic upgrade head
+
       - name: Seed demo data
         run: ./scripts/seed-demo.sh --lang es
 
