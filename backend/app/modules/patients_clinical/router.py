@@ -97,6 +97,8 @@ async def update_medical_context(
             "patient_id": str(patient_id),
             "clinic_id": str(ctx.clinic_id),
             "user_id": str(ctx.user_id),
+            "section": "context",
+            "summary": "Contexto médico actualizado",
         },
     )
     return ApiResponse(data=MedicalContextResponse.model_validate(ctx_row))
@@ -594,6 +596,8 @@ async def replace_medical_history(
             "patient_id": str(patient_id),
             "clinic_id": str(ctx.clinic_id),
             "user_id": str(ctx.user_id),
+            "section": "history",
+            "summary": "Historial médico actualizado",
         },
     )
     refreshed = await PatientsClinicalService.build_medical_history(db, patient_id)

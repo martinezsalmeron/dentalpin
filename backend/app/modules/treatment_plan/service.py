@@ -21,7 +21,10 @@ logger = logging.getLogger(__name__)
 
 def _treatment_loader() -> selectinload:
     """Eager-load the Treatment (with teeth + catalog_item)."""
-    return selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
+    return selectinload(PlannedTreatmentItem.treatment).options(
+        selectinload(Treatment.teeth),
+        selectinload(Treatment.catalog_item),
+    )
 
 
 class PlanLockedError(ValueError):
@@ -193,6 +196,8 @@ class TreatmentPlanService:
                 "patient_id": str(plan.patient_id),
                 "clinic_id": str(clinic_id),
                 "created_by": str(user_id),
+                "plan_number": plan.plan_number,
+                "plan_name": plan.title,
             },
         )
 
@@ -628,6 +633,14 @@ class TreatmentPlanService:
             notes=notes,
         )
 
+        item_name: str | None = None
+        patient_id_str: str | None = None
+        if item.treatment:
+            patient_id_str = str(item.treatment.patient_id)
+            if item.treatment.catalog_item:
+                names = item.treatment.catalog_item.names or {}
+                item_name = names.get("es") or names.get("en")
+
         event_bus.publish(
             "treatment_plan.treatment_completed",
             {
@@ -635,7 +648,10 @@ class TreatmentPlanService:
                 "item_id": str(item_id),
                 "treatment_id": str(item.treatment_id),
                 "clinic_id": str(clinic_id),
+                "patient_id": patient_id_str,
                 "completed_by": str(user_id),
+                "item_name": item_name,
+                "occurred_at": item.completed_at.isoformat() if item.completed_at else None,
             },
         )
 

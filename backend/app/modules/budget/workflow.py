@@ -91,13 +91,15 @@ class BudgetWorkflowService:
 
         await db.flush()
 
-        # Publish event for notifications module
+        # Publish event for notifications + timeline modules
         event_bus.publish(
             EventType.BUDGET_SENT,
             {
                 "clinic_id": str(budget.clinic_id),
                 "budget_id": str(budget.id),
                 "patient_id": str(budget.patient_id),
+                "budget_number": budget.budget_number,
+                "total": str(budget.total) if budget.total is not None else None,
                 "send_method": send_method,
                 "recipient_email": recipient_email,
                 "custom_message": custom_message,
@@ -170,6 +172,19 @@ class BudgetWorkflowService:
         )
 
         await db.flush()
+
+        event_bus.publish(
+            EventType.BUDGET_ACCEPTED,
+            {
+                "clinic_id": str(budget.clinic_id),
+                "budget_id": str(budget.id),
+                "patient_id": str(budget.patient_id),
+                "budget_number": budget.budget_number,
+                "total": str(budget.total) if budget.total is not None else None,
+                "accepted_by": str(accepted_by),
+                "occurred_at": datetime.now(UTC).isoformat(),
+            },
+        )
 
         return budget
 

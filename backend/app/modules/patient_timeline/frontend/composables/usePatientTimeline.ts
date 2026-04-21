@@ -2,6 +2,7 @@ import type { ApiResponse, TimelineCategory, TimelineEntry, TimelineResponse } f
 
 export function usePatientTimeline(patientId: Ref<string | undefined>) {
   const api = useApi()
+  const { t } = useI18n()
 
   const entries = ref<TimelineEntry[]>([])
   const total = ref(0)
@@ -72,39 +73,47 @@ export function usePatientTimeline(patientId: Ref<string | undefined>) {
   // Get icon for event type
   function getEventIcon(eventType: string): string {
     const icons: Record<string, string> = {
+      'appointment.scheduled': 'i-lucide-calendar',
       'appointment.completed': 'i-lucide-calendar-check',
       'appointment.cancelled': 'i-lucide-calendar-x',
-      'appointment.scheduled': 'i-lucide-calendar',
-      'budget.created': 'i-lucide-file-text',
+      'appointment.no_show': 'i-lucide-calendar-off',
+      'odontogram.treatment.performed': 'i-lucide-stethoscope',
+      'treatment_plan.created': 'i-lucide-clipboard-list',
+      'treatment_plan.treatment_completed': 'i-lucide-clipboard-check',
+      'budget.sent': 'i-lucide-send',
       'budget.accepted': 'i-lucide-file-check',
       'invoice.issued': 'i-lucide-receipt',
       'invoice.paid': 'i-lucide-banknote',
+      'email.sent': 'i-lucide-mail',
+      'email.failed': 'i-lucide-mail-warning',
       'patient.medical_updated': 'i-lucide-heart-pulse',
-      'odontogram.treatment.performed': 'i-lucide-stethoscope'
+      'document.uploaded': 'i-lucide-file-plus'
     }
     return icons[eventType] || 'i-lucide-circle-dot'
   }
 
   // Get color for category
   function getCategoryColor(category: TimelineCategory): string {
-    const colors: Record<TimelineCategory, string> = {
+    const colors: Record<string, string> = {
       visit: 'primary',
       treatment: 'success',
       financial: 'warning',
       communication: 'info',
-      medical: 'error'
+      medical: 'error',
+      document: 'neutral'
     }
     return colors[category] || 'neutral'
   }
 
   // Category filter options
   const categoryOptions = computed(() => [
-    { label: 'Todas', value: null },
-    { label: 'Visitas', value: 'visit' as TimelineCategory },
-    { label: 'Tratamientos', value: 'treatment' as TimelineCategory },
-    { label: 'Financiero', value: 'financial' as TimelineCategory },
-    { label: 'Comunicaciones', value: 'communication' as TimelineCategory },
-    { label: 'Historial médico', value: 'medical' as TimelineCategory }
+    { label: t('patients.timeline.categories.all'), value: null },
+    { label: t('patients.timeline.categories.visit'), value: 'visit' as TimelineCategory },
+    { label: t('patients.timeline.categories.treatment'), value: 'treatment' as TimelineCategory },
+    { label: t('patients.timeline.categories.financial'), value: 'financial' as TimelineCategory },
+    { label: t('patients.timeline.categories.communication'), value: 'communication' as TimelineCategory },
+    { label: t('patients.timeline.categories.medical'), value: 'medical' as TimelineCategory },
+    { label: t('patients.timeline.categories.document'), value: 'document' as TimelineCategory }
   ])
 
   // Watch patientId and fetch when it changes

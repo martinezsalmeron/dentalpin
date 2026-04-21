@@ -150,7 +150,7 @@ onMounted(() => {
                 variant="subtle"
                 size="xs"
               >
-                {{ entry.event_category }}
+                {{ t(`patients.timeline.categories.${entry.event_category}`) }}
               </UBadge>
             </div>
             <div class="mt-2 text-caption text-subtle">

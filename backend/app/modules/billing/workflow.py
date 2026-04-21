@@ -6,6 +6,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import EventType, event_bus
+
 from .models import Invoice, InvoiceItem, Payment
 
 # Valid status transitions
@@ -262,6 +264,19 @@ class InvoiceWorkflowService:
 
         await db.flush()
 
+        event_bus.publish(
+            EventType.INVOICE_ISSUED,
+            {
+                "clinic_id": str(invoice.clinic_id),
+                "invoice_id": str(invoice.id),
+                "patient_id": str(invoice.patient_id),
+                "invoice_number": invoice.invoice_number,
+                "total": str(invoice.total) if invoice.total is not None else None,
+                "issued_by": str(issued_by),
+                "occurred_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
         return invoice
 
     @staticmethod
@@ -370,6 +385,20 @@ class InvoiceWorkflowService:
         )
 
         await db.flush()
+
+        if invoice.status == "paid":
+            event_bus.publish(
+                EventType.INVOICE_PAID,
+                {
+                    "clinic_id": str(invoice.clinic_id),
+                    "invoice_id": str(invoice.id),
+                    "patient_id": str(invoice.patient_id),
+                    "invoice_number": invoice.invoice_number,
+                    "total": str(invoice.total) if invoice.total is not None else None,
+                    "total_paid": str(invoice.total_paid),
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                },
+            )
 
         return payment
 

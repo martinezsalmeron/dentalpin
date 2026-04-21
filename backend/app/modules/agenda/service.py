@@ -323,6 +323,9 @@ class AppointmentService:
                 "patient_id": str(appointment.patient_id) if appointment.patient_id else None,
                 "professional_id": str(appointment.professional_id),
                 "start_time": appointment.start_time.isoformat(),
+                "end_time": appointment.end_time.isoformat(),
+                "treatment_type": appointment.treatment_type,
+                "cabinet": appointment.cabinet,
             },
         )
 
@@ -404,6 +407,12 @@ class AppointmentService:
                 "appointment_id": str(appointment.id),
                 "clinic_id": str(appointment.clinic_id),
                 "patient_id": (str(appointment.patient_id) if appointment.patient_id else None),
+                "professional_id": str(appointment.professional_id),
+                "treatment_type": appointment.treatment_type,
+                "cabinet": appointment.cabinet,
+                "start_time": appointment.start_time.isoformat(),
+                "end_time": appointment.end_time.isoformat(),
+                "notes": appointment.notes,
             }
             if new_status == "completed":
                 event_bus.publish(EventType.APPOINTMENT_COMPLETED, payload)
@@ -417,6 +426,7 @@ class AppointmentService:
                 {
                     "appointment_id": str(appointment.id),
                     "clinic_id": str(appointment.clinic_id),
+                    "patient_id": (str(appointment.patient_id) if appointment.patient_id else None),
                 },
             )
 
@@ -434,6 +444,11 @@ class AppointmentService:
                 "appointment_id": str(appointment.id),
                 "clinic_id": str(appointment.clinic_id),
                 "patient_id": (str(appointment.patient_id) if appointment.patient_id else None),
+                "professional_id": str(appointment.professional_id),
+                "treatment_type": appointment.treatment_type,
+                "cabinet": appointment.cabinet,
+                "start_time": appointment.start_time.isoformat(),
+                "end_time": appointment.end_time.isoformat(),
             },
         )
 

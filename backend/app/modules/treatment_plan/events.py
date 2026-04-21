@@ -65,6 +65,8 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
                                 "item_id": str(item.id),
                                 "treatment_id": str(item.treatment_id),
                                 "clinic_id": clinic_id,
+                                "patient_id": data.get("patient_id"),
+                                "triggered_by": "appointment_completed",
                             },
                         )
 
@@ -166,6 +168,7 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                         "item_id": str(item.id),
                         "treatment_id": treatment_id,
                         "clinic_id": clinic_id,
+                        "patient_id": data.get("patient_id"),
                         "triggered_by": "odontogram_performed",
                     },
                 )

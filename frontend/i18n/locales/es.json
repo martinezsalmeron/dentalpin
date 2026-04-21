@@ -204,7 +204,16 @@
     "timeline": {
       "empty": "No hay actividad registrada",
       "endOfTimeline": "Fin del historial",
-      "totalEntries": "{count} entrada | {count} entradas"
+      "totalEntries": "{count} entrada | {count} entradas",
+      "categories": {
+        "all": "Todas",
+        "visit": "Visitas",
+        "treatment": "Tratamientos",
+        "financial": "Financiero",
+        "communication": "Comunicaciones",
+        "medical": "Historial médico",
+        "document": "Documentos"
+      }
     },
     "alerts": {
       "title": "{count} alerta | {count} alertas",
@@ -763,7 +772,9 @@
       "friday": "Viernes",
       "saturday": "Sábado"
     },
-    "now": "Ahora"
+    "now": "Ahora",
+    "today": "Hoy",
+    "yesterday": "Ayer"
   },
   "validation": {
     "required": "Este campo es requerido",

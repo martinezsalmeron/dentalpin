@@ -608,6 +608,17 @@ async def main(lang: str = "en") -> None:
                     f"Overrides: {stats['overrides']}"
                 )
 
+            if await _module_is_installed(db, "patient_timeline"):
+                print("\n[opt] Creating patient timeline demo (module installed)...")
+                from app.modules.patient_timeline.seed import seed_timeline_demo
+
+                stats = await seed_timeline_demo(db, clinic_id=CLINIC_ID)
+                print(
+                    f"  Visits: {stats['visit']} | "
+                    f"Treatments: {stats['treatment']} | "
+                    f"Financial: {stats['financial']}"
+                )
+
             await db.commit()
             print("\n" + "=" * 60)
             print("Demo data created successfully!")

@@ -1722,7 +1722,7 @@ export interface PatientExtendedUpdate extends PatientUpdate {
 }
 
 // Timeline Types
-export type TimelineCategory = 'visit' | 'treatment' | 'financial' | 'communication' | 'medical'
+export type TimelineCategory = 'visit' | 'treatment' | 'financial' | 'communication' | 'medical' | 'document'
 
 export interface TimelineEntry {
   id: string

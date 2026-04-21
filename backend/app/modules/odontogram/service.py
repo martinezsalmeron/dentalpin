@@ -834,6 +834,12 @@ class TreatmentService:
                 "patient_id": str(treatment.patient_id),
                 "treatment_id": str(treatment_id),
                 "clinical_type": treatment.clinical_type,
+                "treatment_name": (
+                    (treatment.catalog_item.names or {}).get("es")
+                    or (treatment.catalog_item.names or {}).get("en")
+                    if treatment.catalog_item
+                    else None
+                ),
                 "catalog_item_id": str(treatment.catalog_item_id)
                 if treatment.catalog_item_id
                 else None,

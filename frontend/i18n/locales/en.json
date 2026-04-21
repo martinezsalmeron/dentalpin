@@ -177,7 +177,16 @@
     "timeline": {
       "empty": "No activity recorded",
       "endOfTimeline": "End of timeline",
-      "totalEntries": "{count} entry | {count} entries"
+      "totalEntries": "{count} entry | {count} entries",
+      "categories": {
+        "all": "All",
+        "visit": "Visits",
+        "treatment": "Treatments",
+        "financial": "Financial",
+        "communication": "Communications",
+        "medical": "Medical history",
+        "document": "Documents"
+      }
     },
     "alerts": {
       "title": "{count} alert | {count} alerts",
@@ -741,7 +750,9 @@
       "friday": "Friday",
       "saturday": "Saturday"
     },
-    "now": "Now"
+    "now": "Now",
+    "today": "Today",
+    "yesterday": "Yesterday"
   },
   "validation": {
     "required": "This field is required",

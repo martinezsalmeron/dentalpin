@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.email import EmailResult, email_service
 from app.core.email.providers.base import EmailStatus
+from app.core.events import EventType, event_bus
 
 from .models import (
     ClinicNotificationSettings,
@@ -511,6 +512,26 @@ class NotificationService:
         db.add(log)
         await db.commit()
         await db.refresh(log)
+
+        # Broadcast to the event bus so the patient_timeline (and any other
+        # listener) can record the communication without querying email_logs.
+        bus_event = EventType.EMAIL_SENT if log.status == "sent" else EventType.EMAIL_FAILED
+        event_bus.publish(
+            bus_event,
+            {
+                "clinic_id": str(log.clinic_id),
+                "patient_id": str(log.patient_id) if log.patient_id else None,
+                "email_log_id": str(log.id),
+                "template_key": log.template_key,
+                "subject": log.subject,
+                "recipient_email": log.recipient_email,
+                "status": log.status,
+                "error_message": log.error_message,
+                "occurred_at": (log.sent_at or log.created_at).isoformat()
+                if (log.sent_at or log.created_at)
+                else None,
+            },
+        )
         return log
 
     # ========================================================================
