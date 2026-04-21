@@ -1348,6 +1348,7 @@
     "selectVatType": "Select VAT type",
     "summary": "Summary",
     "createDraft": "Create draft",
+    "createFromBudget": "Create invoice from quote",
     "notes": "Notes",
     "status": {
       "draft": "Draft",
