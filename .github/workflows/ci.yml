@@ -168,11 +168,12 @@ jobs:
         run: npm run test
 
   e2e:
-    # Browser E2E smoke. Boots the full stack inside the runner via
-    # docker-compose, seeds demo data, then drives it with Playwright
-    # from the host. Slow (~5 min). Required on main + PRs.
+    # Browser E2E smoke. Boots db + backend via docker compose, runs
+    # Nuxt on the host (simpler than juggling the container's bind
+    # mount + host npm), drives it with Playwright on the host. Slow
+    # (~6 min). Required on main + PRs.
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       POSTGRES_PASSWORD: testpass
       SECRET_KEY: ci-secret-key-for-e2e
@@ -188,8 +189,8 @@ jobs:
           ENVIRONMENT=development
           EOF
 
-      - name: Boot stack
-        run: docker compose up -d db backend frontend
+      - name: Boot db + backend
+        run: docker compose up -d db backend
 
       - name: Wait for backend health
         run: |
@@ -201,41 +202,80 @@ jobs:
           done
 
       - name: Run migrations
-        # Backend lifespan doesn't run alembic upgrade on boot (dev
-        # workflow runs `./scripts/reset-db.sh` by hand). CI needs an
-        # explicit step so `./scripts/seed-demo.sh` has a schema.
         run: docker compose exec -T backend alembic upgrade head
 
       - name: Seed demo data
         run: ./scripts/seed-demo.sh --lang es
-
-      - name: Wait for frontend
-        run: |
-          for i in $(seq 1 60); do
-            if [ "$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000/login)" = "200" ]; then
-              echo "frontend ready"; break
-            fi
-            sleep 2
-          done
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install Playwright + browsers
+      - name: Install frontend deps + Playwright browsers
         working-directory: frontend
         run: |
-          # The frontend container wrote node_modules/ as root via the
-          # bind mount; reclaim ownership so the host runner can npm
-          # install Playwright alongside the container's install.
-          sudo chown -R "$USER" . || true
           npm install
           npx playwright install --with-deps chromium
+
+      - name: Generate modules.json with host paths
+        # The backend writes `modules.json` with `/module_layers/...`
+        # paths that only resolve inside the frontend container. For
+        # the host-run Nuxt dev server we regenerate it with absolute
+        # host paths pointing at `backend/app/modules/<name>/frontend`.
+        working-directory: frontend
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["GITHUB_WORKSPACE"])
+          modules_dir = root / "backend/app/modules"
+          entries = []
+          for m in sorted(modules_dir.iterdir()):
+              layer = m / "frontend"
+              if layer.is_dir():
+                  entries.append({"name": m.name, "path": str(layer.resolve())})
+          Path("modules.json").write_text(
+              json.dumps(
+                  {"layers": [e["path"] for e in entries], "modules": entries, "version": 1},
+                  indent=2,
+              )
+          )
+          PY
+          cat modules.json
+
+      - name: Start Nuxt dev in background
+        working-directory: frontend
+        env:
+          NUXT_PUBLIC_API_BASE_URL: http://localhost:8000
+          API_BASE_URL_SERVER: http://localhost:8000
+          NITRO_HOST: 0.0.0.0
+          NITRO_PORT: "3000"
+        run: |
+          nohup npm run dev > /tmp/nuxt.log 2>&1 &
+          echo "nuxt started (pid $!)"
+
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 120); do
+            if [ "$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000/login)" = "200" ]; then
+              echo "frontend ready"; break
+            fi
+            sleep 2
+          done
+          curl -sf -o /dev/null -w "final status: %{http_code}\n" http://localhost:3000/login
 
       - name: Run E2E
         working-directory: frontend
         run: npx playwright test --reporter=list
+
+      - name: Upload Nuxt log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuxt-dev-log
+          path: /tmp/nuxt.log
+          retention-days: 7
 
       - name: Upload report on failure
         if: failure()
