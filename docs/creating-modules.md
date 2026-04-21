@@ -450,12 +450,18 @@ alembic revision --autogenerate \
   --head base
 ```
 
-For **official modules** (`backend/app/modules/<name>/`): today they
-all share the main linear chain under `backend/alembic/versions/` with
-`down_revision=<previous>` and no branch label. A future squash etapa
-rebuilds each as its own Alembic branch with a clean initial
-migration; new community-style branches are already the recommended
-pattern for any new module.
+For **official modules** (`backend/app/modules/<name>/`): each module
+owns its initial migration under
+`backend/app/modules/<name>/migrations/versions/<mod>_0001_initial.py`.
+All module initials chain off the core `0001_core_initial.py`
+(main-linear at `backend/alembic/versions/`) via `down_revision`.
+Subsequent module migrations chain off the module's own previous
+revision. No `branch_labels` needed — the chain is linear across all
+modules so Alembic CLI works the same as before.
+
+`backend/alembic.ini`'s `version_locations` lists every module's
+`migrations/versions` directory so `alembic history | heads | upgrade`
+find them before `env.py` runs.
 
 ### `data/*.yaml`
 

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
-import type { BudgetItem, SignatureCreate } from '~~/app/types'
+import type { BudgetItem, InvoiceListItem, PaginatedResponse, SignatureCreate } from '~~/app/types'
 
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const toast = useToast()
 const { can } = usePermissions()
+const api = useApi()
 
 const {
   currentBudget,
@@ -28,6 +29,8 @@ const {
   canComplete
 } = useBudgets()
 
+const hasActiveInvoice = ref(false)
+
 // Check if budget can be invoiced (budget accepted and has uninvoiced items)
 function canInvoice(): boolean {
   if (!currentBudget.value) return false
@@ -35,10 +38,23 @@ function canInvoice(): boolean {
   if (!['accepted', 'completed'].includes(currentBudget.value.status)) {
     return false
   }
+  // Hide if budget already has a non-cancelled invoice
+  if (hasActiveInvoice.value) return false
   // Must have at least one item with available quantity to invoice
   return currentBudget.value.items.some(item =>
     item.quantity > (item.invoiced_quantity || 0)
   )
+}
+
+async function checkActiveInvoice(budgetId: string) {
+  try {
+    const response = await api.get<PaginatedResponse<InvoiceListItem>>(
+      `/api/v1/billing/invoices?budget_id=${budgetId}&page_size=100`
+    )
+    hasActiveInvoice.value = response.data.some(inv => inv.status !== 'cancelled')
+  } catch {
+    hasActiveInvoice.value = false
+  }
 }
 
 function goToCreateInvoice() {
@@ -60,6 +76,10 @@ async function loadBudget() {
       color: 'error'
     })
     router.push('/budgets')
+    return
+  }
+  if (can('billing.read')) {
+    await checkActiveInvoice(budget.id)
   }
 }
 
@@ -452,7 +472,7 @@ function getItemName(item: BudgetItem): string {
               size="sm"
               @click="goToCreateInvoice"
             >
-              {{ t('invoice.fromBudget') }}
+              {{ t('invoice.createFromBudget') }}
             </UButton>
 
             <UButton

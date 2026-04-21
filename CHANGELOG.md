@@ -11,7 +11,19 @@ frontend as a Nuxt layer under its own Python package.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- Alembic history squashed. The 29-migration main-linear chain
+  inherited from Fase A collapsed into one `0001_core_initial` for
+  core tables + 11 module-owned initials under
+  `backend/app/modules/<name>/migrations/versions/<mod>_0001_initial.py`.
+  Each module's initial lives in its own package so community module
+  authors can pattern-match their own migrations on the official
+  examples. Cross-module FKs live on the "late" side — the only
+  circular dep (`appointment_treatments.planned_treatment_item_id`
+  → `planned_treatment_items`) is created in `tp_0001` after both
+  tables exist. Round-trip `upgrade head → downgrade base → upgrade
+  head` is clean and `test_alembic_roundtrip` no longer xfails.
 
 ## [2.0.0] - 2026-04-21
 

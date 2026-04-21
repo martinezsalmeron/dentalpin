@@ -38,7 +38,41 @@ from app.core.plugins.db_models import (  # noqa: F401
     ModuleRecord,
 )
 from app.database import Base
-from app.modules.agenda.models import Appointment, Cabinet  # noqa: F401
+from app.modules.agenda.models import Appointment, AppointmentTreatment, Cabinet  # noqa: F401
+from app.modules.billing.models import (  # noqa: F401
+    Invoice,
+    InvoiceHistory,
+    InvoiceItem,
+    InvoiceSeries,
+    InvoiceSeriesHistory,
+    Payment,
+)
+from app.modules.budget.models import (  # noqa: F401
+    Budget,
+    BudgetHistory,
+    BudgetItem,
+    BudgetSignature,
+)
+from app.modules.catalog.models import (  # noqa: F401
+    TreatmentCatalogItem,
+    TreatmentCategory,
+    TreatmentOdontogramMapping,
+    VatType,
+)
+from app.modules.media.models import Document  # noqa: F401
+from app.modules.notifications.models import (  # noqa: F401
+    ClinicNotificationSettings,
+    ClinicSmtpSettings,
+    EmailLog,
+    EmailTemplate,
+    NotificationPreference,
+)
+from app.modules.odontogram.models import (  # noqa: F401
+    OdontogramHistory,
+    ToothRecord,
+    Treatment,
+    TreatmentTooth,
+)
 from app.modules.patient_timeline.models import PatientTimeline  # noqa: F401
 from app.modules.patients.models import Patient  # noqa: F401
 from app.modules.patients_clinical.models import (  # noqa: F401
@@ -49,6 +83,11 @@ from app.modules.patients_clinical.models import (  # noqa: F401
     Medication,
     SurgicalHistory,
     SystemicDisease,
+)
+from app.modules.treatment_plan.models import (  # noqa: F401
+    PlannedTreatmentItem,
+    TreatmentMedia,
+    TreatmentPlan,
 )
 
 ALEMBIC_DIR = Path(__file__).parent

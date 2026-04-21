@@ -19,7 +19,7 @@ Documento de diseño para refactorizar el sistema modular actual hacia una arqui
 
 Además: metadata de la clínica (`/api/v1/auth/clinics`) vive en core/auth, los 12 módulos oficiales ship su frontend como Nuxt layer bajo `<module>/frontend/`, las rutas API se renombraron (`/api/v1/clinical/*` → `/api/v1/patients/*`, `/api/v1/agenda/*`, `/api/v1/patients_clinical/*`, `/api/v1/patient_timeline/*`), los permisos se re-namespace, y `ClinicalModule` quedó eliminado por completo.
 
-**Fuera de scope de Fase B (a considerar post-v2)**: squash total de migraciones con per-module Alembic branches (actualmente main linear). El test `test_alembic_roundtrip` existe y está marcado xfail hasta que se ejecute el squash.
+**Squash de migraciones — completado post-v2.0**: el chain monolítico de 29 migraciones quedó colapsado a 12 ficheros, uno por módulo bajo `<module>/migrations/versions/`. La cadena sigue siendo lineal (cada módulo tiene `down_revision` al previo) para simplicidad, pero la propiedad owner/location por módulo queda limpia y `test_alembic_roundtrip` ya pasa verde.
 
 ---
 

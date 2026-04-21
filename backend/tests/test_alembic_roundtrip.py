@@ -80,17 +80,6 @@ def _leftover_tables() -> list[str]:
     return list(_snapshot_tables().keys())
 
 
-@pytest.mark.xfail(
-    reason=(
-        "The Fase A main-linear chain has ordering gaps in downgrade paths "
-        "(e.g. `planned_treatment_items` is referenced by `treatment_media` "
-        "and `appointment_treatments` but its downgrade doesn't CASCADE). "
-        "The squash planned for a future etapa rebuilds each module as its "
-        "own Alembic branch with a clean initial migration, which will let "
-        "this test go green. Kept here so the infrastructure is in place."
-    ),
-    strict=False,
-)
 def test_upgrade_downgrade_upgrade_is_schema_stable() -> None:
     """upgrade → downgrade → upgrade must produce the same schema."""
     _alembic("upgrade", "head")
