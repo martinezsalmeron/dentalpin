@@ -37,6 +37,13 @@ from app.modules.odontogram.models import (  # noqa: F401
     TreatmentTooth,
 )
 from app.modules.patients.models import Patient  # noqa: F401
+from app.modules.schedules.models import (  # noqa: F401
+    ClinicOverride,
+    ClinicWeeklySchedule,
+    ProfessionalOverride,
+    ProfessionalWeeklySchedule,
+    ScheduleShift,
+)
 from app.modules.treatment_plan.models import (  # noqa: F401
     PlannedTreatmentItem,
     TreatmentMedia,

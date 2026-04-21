@@ -25,6 +25,12 @@ class Clinic(Base, TimestampMixin):
     address: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     phone: Mapped[str | None] = mapped_column(String(20))
     email: Mapped[str | None] = mapped_column(String(255))
+    # IANA timezone id (e.g. "Europe/Madrid"). Single source of truth
+    # for any module that needs local-time semantics — schedules,
+    # reports, future billing date-windows, etc.
+    timezone: Mapped[str] = mapped_column(
+        String(64), nullable=False, server_default="Europe/Madrid"
+    )
     settings: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     # Relationships

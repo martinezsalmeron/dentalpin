@@ -88,8 +88,30 @@ const clinicInfoForm = ref({
   postal_code: '',
   country: '',
   phone: '',
-  email: ''
+  email: '',
+  timezone: 'Europe/Madrid'
 })
+
+// Curated IANA timezone list for the clinic metadata form. Covers the
+// Spanish/European market + the Americas; users with exotic needs can
+// call the API with any IANA id.
+const timezoneOptions = [
+  { label: 'Europe/Madrid', value: 'Europe/Madrid' },
+  { label: 'Europe/London', value: 'Europe/London' },
+  { label: 'Europe/Paris', value: 'Europe/Paris' },
+  { label: 'Europe/Berlin', value: 'Europe/Berlin' },
+  { label: 'Europe/Lisbon', value: 'Europe/Lisbon' },
+  { label: 'Europe/Rome', value: 'Europe/Rome' },
+  { label: 'Atlantic/Canary', value: 'Atlantic/Canary' },
+  { label: 'America/New_York', value: 'America/New_York' },
+  { label: 'America/Chicago', value: 'America/Chicago' },
+  { label: 'America/Denver', value: 'America/Denver' },
+  { label: 'America/Los_Angeles', value: 'America/Los_Angeles' },
+  { label: 'America/Mexico_City', value: 'America/Mexico_City' },
+  { label: 'America/Buenos_Aires', value: 'America/Buenos_Aires' },
+  { label: 'America/Sao_Paulo', value: 'America/Sao_Paulo' },
+  { label: 'UTC', value: 'UTC' }
+]
 
 // Fetch users when admin visits the page
 onMounted(() => {
@@ -280,7 +302,8 @@ function openClinicInfoModal() {
     postal_code: c?.address?.postal_code || '',
     country: c?.address?.country || '',
     phone: c?.phone || '',
-    email: c?.email || ''
+    email: c?.email || '',
+    timezone: c?.timezone || 'Europe/Madrid'
   }
   showClinicInfoModal.value = true
 }
@@ -298,7 +321,8 @@ async function handleSaveClinicInfo() {
     tax_id: clinicInfoForm.value.tax_id || undefined,
     address,
     phone: clinicInfoForm.value.phone || undefined,
-    email: clinicInfoForm.value.email || undefined
+    email: clinicInfoForm.value.email || undefined,
+    timezone: clinicInfoForm.value.timezone || undefined
   }
   const result = await clinic.updateClinic(updateData)
   isSavingClinicInfo.value = false
@@ -1192,6 +1216,18 @@ async function handleSaveClinicInfo() {
                 />
               </UFormField>
             </div>
+
+            <UFormField
+              :label="t('settings.timezone')"
+              :help="t('settings.timezoneHelp')"
+            >
+              <USelect
+                v-model="clinicInfoForm.timezone"
+                :items="timezoneOptions"
+                value-key="value"
+                label-key="label"
+              />
+            </UFormField>
 
             <div class="flex justify-end gap-2 pt-4">
               <UButton

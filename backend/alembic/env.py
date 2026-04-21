@@ -84,6 +84,13 @@ from app.modules.patients_clinical.models import (  # noqa: F401
     SurgicalHistory,
     SystemicDisease,
 )
+from app.modules.schedules.models import (  # noqa: F401
+    ClinicOverride,
+    ClinicWeeklySchedule,
+    ProfessionalOverride,
+    ProfessionalWeeklySchedule,
+    ScheduleShift,
+)
 from app.modules.treatment_plan.models import (  # noqa: F401
     PlannedTreatmentItem,
     TreatmentMedia,

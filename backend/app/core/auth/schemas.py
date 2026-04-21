@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserRegister(BaseModel):
@@ -80,6 +80,23 @@ class ClinicMetadataUpdate(BaseModel):
     address: ClinicAddressUpdate | None = None
     phone: str | None = Field(default=None, max_length=20)
     email: EmailStr | None = None
+    timezone: str | None = Field(default=None, max_length=64)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(
+                f"Invalid timezone '{value}'. Must be an IANA id "
+                "(e.g. 'Europe/Madrid', 'America/New_York')."
+            ) from exc
+        return value
 
 
 class _ClinicCabinetBrief(BaseModel):
@@ -108,6 +125,7 @@ class ClinicMetadataResponse(BaseModel):
     address: dict | None
     phone: str | None
     email: str | None
+    timezone: str
     settings: dict
     cabinets: list[_ClinicCabinetBrief]
 

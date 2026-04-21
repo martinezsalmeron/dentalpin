@@ -567,6 +567,8 @@ async def update_clinic_metadata(
         existing_address = clinic.address or {}
         new_address = data.address.model_dump(exclude_unset=True)
         clinic.address = {**existing_address, **new_address}
+    if data.timezone is not None:
+        clinic.timezone = data.timezone
 
     await db.commit()
     await db.refresh(clinic)

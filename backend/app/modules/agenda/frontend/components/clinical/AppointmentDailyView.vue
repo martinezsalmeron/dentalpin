@@ -42,11 +42,74 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-// Time slots configuration (same as weekly view)
-const START_HOUR = 8
-const END_HOUR = 21
+// Time slots configuration. Narrowed to actual clinic hours via
+// schedules module; 8–21 fallback when that module is uninstalled.
+const startHour = ref(8)
+const endHour = ref(21)
 const SLOT_MINUTES = 15
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES
+
+const { compute: computeCalendarBounds } = useCalendarBounds()
+const { fetch: fetchAvailability } = useScheduleAvailability()
+
+interface BlockedSegment {
+  professionalId: string
+  startSlot: number
+  endSlot: number
+  state: 'clinic_closed' | 'professional_off'
+  reason: string | null
+}
+const blockedSegments = ref<BlockedSegment[]>([])
+
+async function refreshAvailability() {
+  const dateStr = formatLocalDate(props.currentDate)
+  const bounds = await computeCalendarBounds({ start: props.currentDate, end: props.currentDate })
+  startHour.value = bounds.startHour
+  endHour.value = bounds.endHour
+
+  // Per-professional blocked overlay (only daily view uses this).
+  const segments: BlockedSegment[] = []
+  for (const prof of props.professionals) {
+    const payload = await fetchAvailability({
+      start: dateStr,
+      end: dateStr,
+      professional_id: prof.id
+    })
+    if (!payload) continue
+    for (const range of payload.ranges) {
+      if (range.state === 'open') continue
+      const startDate = new Date(range.start)
+      const endDate = new Date(range.end)
+      if (startDate.toDateString() !== props.currentDate.toDateString()
+        && endDate.toDateString() !== props.currentDate.toDateString()) continue
+      const startSlot = Math.max(0, timeToSlotIndex(startDate))
+      const endSlot = Math.min(
+        (endHour.value - startHour.value) * SLOTS_PER_HOUR,
+        timeToSlotIndex(endDate)
+      )
+      if (endSlot <= startSlot) continue
+      segments.push({
+        professionalId: prof.id,
+        startSlot,
+        endSlot,
+        state: range.state,
+        reason: range.reason
+      })
+    }
+  }
+  blockedSegments.value = segments
+}
+
+function timeToSlotIndex(d: Date): number {
+  const mins = d.getHours() * 60 + d.getMinutes()
+  return (mins - startHour.value * 60) / SLOT_MINUTES
+}
+
+watch(
+  () => [props.currentDate, props.professionals.map(p => p.id).join(',')],
+  () => { void refreshAvailability() },
+  { immediate: true }
+)
 
 const { density: _calendarDensity } = useDensity()
 function getSlotHeight() {
@@ -88,7 +151,7 @@ onUnmounted(() => {
 // Generate time slots
 const timeSlots = computed(() => {
   const slots: string[] = []
-  for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+  for (let hour = startHour.value; hour < endHour.value; hour++) {
     for (let quarter = 0; quarter < SLOTS_PER_HOUR; quarter++) {
       const minutes = quarter * SLOT_MINUTES
       slots.push(`${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`)
@@ -135,11 +198,11 @@ function getSlotIndex(timeStr: string): number {
   const parts = timeStr.split(':').map(Number)
   const hours = parts[0] ?? 0
   const minutes = parts[1] ?? 0
-  return (hours - START_HOUR) * SLOTS_PER_HOUR + Math.floor(minutes / SLOT_MINUTES)
+  return (hours - startHour.value) * SLOTS_PER_HOUR + Math.floor(minutes / SLOT_MINUTES)
 }
 
 function slotIndexToTime(slotIndex: number): string {
-  const totalMinutes = START_HOUR * 60 + slotIndex * SLOT_MINUTES
+  const totalMinutes = startHour.value * 60 + slotIndex * SLOT_MINUTES
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
@@ -282,7 +345,7 @@ function handleDragMove(event: MouseEvent) {
   if (createDragState.value) {
     const deltaY = event.clientY - createDragState.value.startY
     const slotDelta = Math.floor(deltaY / getSlotHeight())
-    const maxSlot = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - 1
+    const maxSlot = (endHour.value - startHour.value) * SLOTS_PER_HOUR - 1
     createDragState.value.currentSlot = Math.max(
       createDragState.value.startSlot,
       Math.min(maxSlot, createDragState.value.startSlot + slotDelta)
@@ -306,7 +369,7 @@ function handleDragMove(event: MouseEvent) {
   } else if (dragState.value.type === 'move') {
     const newTop = Math.max(0, dragState.value.originalTop + deltaY)
     const slots = Math.round(newTop / getSlotHeight())
-    const maxSlots = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - Math.round(dragState.value.currentHeight / getSlotHeight())
+    const maxSlots = (endHour.value - startHour.value) * SLOTS_PER_HOUR - Math.round(dragState.value.currentHeight / getSlotHeight())
     dragState.value.currentTop = Math.min(slots, maxSlots) * getSlotHeight()
 
     // Calculate professional change
@@ -639,6 +702,18 @@ const allAppointmentsWithProfIndex = computed(() => {
                 :key="`appointments-${prof.id}`"
                 class="relative border-r border-subtle last:border-r-0"
               >
+                <!-- Blocked availability overlay (schedules module) -->
+                <div
+                  v-for="(seg, segIdx) in blockedSegments.filter(s => s.professionalId === prof.id)"
+                  :key="`blocked-${prof.id}-${segIdx}`"
+                  class="absolute inset-x-0 pointer-events-none z-10 schedules-blocked"
+                  :title="seg.reason || (seg.state === 'clinic_closed' ? 'Clínica cerrada' : 'No disponible')"
+                  :style="{
+                    top: `${seg.startSlot * getSlotHeight()}px`,
+                    height: `${(seg.endSlot - seg.startSlot) * getSlotHeight()}px`
+                  }"
+                />
+
                 <!-- Ghost block during drag-to-create -->
                 <div
                   v-if="createDragState && createDragState.professionalIndex === profIndex"
@@ -710,3 +785,15 @@ const allAppointmentsWithProfIndex = computed(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.schedules-blocked {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(148, 163, 184, 0.18),
+    rgba(148, 163, 184, 0.18) 6px,
+    rgba(148, 163, 184, 0.32) 6px,
+    rgba(148, 163, 184, 0.32) 12px
+  );
+}
+</style>

@@ -1,0 +1,83 @@
+{
+  "schedules": {
+    "nav": {
+      "clinicHours": "Horario de la clínica",
+      "professionalSchedules": "Horarios de profesionales"
+    },
+    "settingsCards": {
+      "clinicHoursTitle": "Horario de la clínica",
+      "clinicHoursDescription": "Define el horario de apertura semanal y los días especiales (festivos, horario reducido).",
+      "professionalHoursTitle": "Horarios de profesionales",
+      "professionalHoursDescription": "Configura el horario individual de cada profesional y gestiona vacaciones u otros períodos sin disponibilidad.",
+      "open": "Gestionar"
+    },
+    "clinicHours": {
+      "title": "Horario de la clínica",
+      "subtitle": "Define cuándo abre la clínica cada día de la semana.",
+      "weeklyTemplate": "Plantilla semanal",
+      "overrides": "Fechas especiales",
+      "addOverride": "Añadir fecha especial",
+      "editOverride": "Editar fecha especial",
+      "save": "Guardar cambios",
+      "saved": "Horario actualizado",
+      "savedError": "No se pudo guardar el horario"
+    },
+    "professionalHours": {
+      "title": "Horarios de profesionales",
+      "selectProfessional": "Selecciona un profesional",
+      "weeklyTemplate": "Horario semanal",
+      "overrides": "Ausencias y horarios especiales",
+      "addOverride": "Añadir ausencia",
+      "editOverride": "Editar ausencia",
+      "save": "Guardar cambios",
+      "saved": "Horario actualizado"
+    },
+    "weekday": {
+      "0": "Lunes",
+      "1": "Martes",
+      "2": "Miércoles",
+      "3": "Jueves",
+      "4": "Viernes",
+      "5": "Sábado",
+      "6": "Domingo",
+      "closed": "Cerrado",
+      "addShift": "Añadir turno",
+      "removeShift": "Quitar turno",
+      "start": "Inicio",
+      "end": "Fin"
+    },
+    "overrides": {
+      "startDate": "Fecha inicio",
+      "endDate": "Fecha fin",
+      "kind": "Tipo",
+      "reason": "Motivo",
+      "reasonPlaceholder": "Por ejemplo: Navidad, congreso...",
+      "closed": "Cerrado",
+      "customHours": "Horario especial",
+      "unavailable": "No disponible",
+      "noOverrides": "Sin fechas especiales programadas",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar este período?",
+      "add": "Añadir",
+      "save": "Guardar",
+      "cancel": "Cancelar"
+    },
+    "analytics": {
+      "occupancyTitle": "Ocupación por gabinete",
+      "utilizationTitle": "Utilización por profesional",
+      "peakHoursTitle": "Horas punta",
+      "bookedMinutes": "Minutos reservados",
+      "availableMinutes": "Minutos disponibles",
+      "rate": "Ocupación",
+      "noData": "Sin datos en el rango seleccionado"
+    },
+    "availability": {
+      "clinicClosed": "Clínica cerrada",
+      "professionalOff": "Profesional no disponible",
+      "outsideHours": "Fuera del horario configurado",
+      "confirmOutside": "Este slot está fuera del horario. ¿Crear la cita de todos modos?",
+      "confirm": "Crear de todos modos",
+      "cancel": "Cancelar"
+    }
+  }
+}

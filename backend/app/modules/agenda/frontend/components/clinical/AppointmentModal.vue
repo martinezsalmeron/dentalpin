@@ -33,6 +33,7 @@ const { createAppointment, updateAppointment, cancelAppointment } = useAppointme
 const { professionals, fetchProfessionals, getProfessionalColor } = useProfessionals()
 const { fetchSettings, getAutoSendStatus } = useNotificationSettings()
 const { sendConfirmation, sendReminder, isSending: isSendingEmail } = useNotificationSend()
+const scheduleAvailability = useScheduleAvailability()
 
 // Format date as YYYY-MM-DD in local timezone (not UTC)
 function formatLocalDate(date: Date): string {
@@ -404,13 +405,40 @@ async function handleSave() {
   try {
     // Build start_time ISO string
     const startTime = `${formData.date}T${formData.startTime}:00`
+    const endTime = calculateEndTime()
+
+    // Schedules-module enforcement (UI-only). The composable is
+    // 404-tolerant: if schedules is uninstalled it returns null and
+    // we skip the check. Otherwise warn the user when the slot is
+    // outside open hours and ask for confirmation.
+    const availability = await scheduleAvailability.fetch({
+      start: formData.date,
+      end: formData.date,
+      professional_id: selectedProfessionalId.value
+    })
+    if (availability) {
+      const slotStart = new Date(startTime).getTime()
+      const slotEnd = new Date(endTime).getTime()
+      const conflict = availability.ranges.find(r =>
+        r.state !== 'open'
+        && new Date(r.start).getTime() < slotEnd
+        && new Date(r.end).getTime() > slotStart
+      )
+      if (conflict) {
+        const confirmed = window.confirm(t('schedules.availability.confirmOutside'))
+        if (!confirmed) {
+          isSubmitting.value = false
+          return
+        }
+      }
+    }
 
     const appointmentData: AppointmentCreate = {
       patient_id: selectedPatient.value.id,
       professional_id: selectedProfessionalId.value,
       cabinet: formData.cabinet,
       start_time: startTime,
-      end_time: calculateEndTime(),
+      end_time: endTime,
       planned_item_ids: selectedTreatments.value.length > 0
         ? selectedTreatments.value.map(t => t.id)
         : undefined,

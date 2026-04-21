@@ -110,12 +110,43 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
 
 
 def get_role_permissions(role: str) -> list[str]:
-    """Get permissions for a role.
+    """Return the full list of granted permissions for ``role``.
 
-    This function is the single point that will change
-    when migrating to database-driven permissions.
+    Merges two sources:
+
+    1. The hardcoded core defaults in :data:`ROLE_PERMISSIONS` (core
+       permissions + legacy in-tree modules that were never designed
+       to be uninstalled).
+    2. ``manifest.role_permissions`` from every discovered module.
+       Entries are prefixed with ``{module_name}.`` — so a manifest
+       declaring ``{"dentist": ["clinic_hours.read"]}`` contributes
+       ``"<module>.clinic_hours.read"`` to the dentist role.
+
+    This lets installable/uninstallable modules declare their RBAC
+    entirely inside their own package. When such a module is
+    uninstalled and the registry no longer discovers it, those
+    permissions simply vanish — no edit to this file required.
     """
-    return ROLE_PERMISSIONS.get(role, [])
+    base = list(ROLE_PERMISSIONS.get(role, []))
+    seen = set(base)
+
+    # Local import to avoid a circular dependency at module-load time:
+    # the plugins registry imports auth models transitively.
+    from app.core.plugins.manifest import ManifestError
+    from app.core.plugins.registry import module_registry
+
+    for module in module_registry.list_modules():
+        try:
+            manifest = module.get_manifest()
+        except ManifestError:
+            continue
+        module_perms = manifest.role_permissions.get(role, ())
+        for perm in module_perms:
+            qualified = f"{module.name}.*" if perm == "*" else f"{module.name}.{perm}"
+            if qualified not in seen:
+                seen.add(qualified)
+                base.append(qualified)
+    return base
 
 
 def permission_matches(required: str, granted: str) -> bool:

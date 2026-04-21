@@ -1,0 +1,83 @@
+{
+  "schedules": {
+    "nav": {
+      "clinicHours": "Clinic hours",
+      "professionalSchedules": "Professional schedules"
+    },
+    "settingsCards": {
+      "clinicHoursTitle": "Clinic hours",
+      "clinicHoursDescription": "Define the clinic's weekly opening hours and special dates (holidays, reduced hours).",
+      "professionalHoursTitle": "Professional schedules",
+      "professionalHoursDescription": "Set individual schedules for each professional and manage vacations or other unavailable periods.",
+      "open": "Manage"
+    },
+    "clinicHours": {
+      "title": "Clinic hours",
+      "subtitle": "Define when the clinic is open each day of the week.",
+      "weeklyTemplate": "Weekly template",
+      "overrides": "Special dates",
+      "addOverride": "Add special date",
+      "editOverride": "Edit special date",
+      "save": "Save changes",
+      "saved": "Schedule updated",
+      "savedError": "Failed to save schedule"
+    },
+    "professionalHours": {
+      "title": "Professional schedules",
+      "selectProfessional": "Select a professional",
+      "weeklyTemplate": "Weekly schedule",
+      "overrides": "Absences and special hours",
+      "addOverride": "Add absence",
+      "editOverride": "Edit absence",
+      "save": "Save changes",
+      "saved": "Schedule updated"
+    },
+    "weekday": {
+      "0": "Monday",
+      "1": "Tuesday",
+      "2": "Wednesday",
+      "3": "Thursday",
+      "4": "Friday",
+      "5": "Saturday",
+      "6": "Sunday",
+      "closed": "Closed",
+      "addShift": "Add shift",
+      "removeShift": "Remove shift",
+      "start": "Start",
+      "end": "End"
+    },
+    "overrides": {
+      "startDate": "Start date",
+      "endDate": "End date",
+      "kind": "Type",
+      "reason": "Reason",
+      "reasonPlaceholder": "For example: Christmas, conference...",
+      "closed": "Closed",
+      "customHours": "Custom hours",
+      "unavailable": "Unavailable",
+      "noOverrides": "No special dates scheduled",
+      "delete": "Delete",
+      "confirmDelete": "Delete this period?",
+      "add": "Add",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "analytics": {
+      "occupancyTitle": "Occupancy by cabinet",
+      "utilizationTitle": "Utilization by professional",
+      "peakHoursTitle": "Peak hours",
+      "bookedMinutes": "Booked minutes",
+      "availableMinutes": "Available minutes",
+      "rate": "Occupancy",
+      "noData": "No data in the selected range"
+    },
+    "availability": {
+      "clinicClosed": "Clinic closed",
+      "professionalOff": "Professional unavailable",
+      "outsideHours": "Outside configured hours",
+      "confirmOutside": "This slot is outside working hours. Create the appointment anyway?",
+      "confirm": "Create anyway",
+      "cancel": "Cancel"
+    }
+  }
+}

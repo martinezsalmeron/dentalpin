@@ -48,11 +48,31 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-// Time slots configuration
-const START_HOUR = 8
-const END_HOUR = 21
+// Time slots configuration. START_HOUR/END_HOUR default to 8–21 and
+// get narrowed to the actual clinic opening hours when the schedules
+// module is installed (the composable is 404-tolerant — if schedules
+// is uninstalled it silently falls back to 8–21).
+const startHour = ref(8)
+const endHour = ref(21)
 const SLOT_MINUTES = 15
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES
+
+const { compute: computeCalendarBounds } = useCalendarBounds()
+
+async function refreshBounds() {
+  const weekEnd = new Date(props.currentWeekStart)
+  weekEnd.setDate(weekEnd.getDate() + 6)
+  const bounds = await computeCalendarBounds({
+    start: props.currentWeekStart,
+    end: weekEnd
+  })
+  startHour.value = bounds.startHour
+  endHour.value = bounds.endHour
+}
+
+watch(() => props.currentWeekStart, () => {
+  void refreshBounds()
+}, { immediate: true })
 
 const { density: _calendarDensity } = useDensity()
 function getSlotHeight() {
@@ -94,7 +114,7 @@ onUnmounted(() => {
 // Generate time slots
 const timeSlots = computed(() => {
   const slots: string[] = []
-  for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+  for (let hour = startHour.value; hour < endHour.value; hour++) {
     for (let quarter = 0; quarter < SLOTS_PER_HOUR; quarter++) {
       const minutes = quarter * SLOT_MINUTES
       slots.push(`${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`)
@@ -155,11 +175,11 @@ function getSlotIndex(timeStr: string): number {
   const parts = timeStr.split(':').map(Number)
   const hours = parts[0] ?? 0
   const minutes = parts[1] ?? 0
-  return (hours - START_HOUR) * SLOTS_PER_HOUR + Math.floor(minutes / SLOT_MINUTES)
+  return (hours - startHour.value) * SLOTS_PER_HOUR + Math.floor(minutes / SLOT_MINUTES)
 }
 
 function slotIndexToTime(slotIndex: number): string {
-  const totalMinutes = START_HOUR * 60 + slotIndex * SLOT_MINUTES
+  const totalMinutes = startHour.value * 60 + slotIndex * SLOT_MINUTES
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
@@ -350,7 +370,7 @@ function handleDragMove(event: MouseEvent) {
   if (createDragState.value) {
     const deltaY = event.clientY - createDragState.value.startY
     const slotDelta = Math.floor(deltaY / getSlotHeight())
-    const maxSlot = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - 1
+    const maxSlot = (endHour.value - startHour.value) * SLOTS_PER_HOUR - 1
     createDragState.value.currentSlot = Math.max(
       createDragState.value.startSlot,
       Math.min(maxSlot, createDragState.value.startSlot + slotDelta)
@@ -379,7 +399,7 @@ function handleDragMove(event: MouseEvent) {
     const newTop = Math.max(0, dragState.value.originalTop + deltaY)
     // Snap to slot boundaries
     const slots = Math.round(newTop / getSlotHeight())
-    const maxSlots = (END_HOUR - START_HOUR) * SLOTS_PER_HOUR - Math.round(dragState.value.currentHeight / getSlotHeight())
+    const maxSlots = (endHour.value - startHour.value) * SLOTS_PER_HOUR - Math.round(dragState.value.currentHeight / getSlotHeight())
     dragState.value.currentTop = Math.min(slots, maxSlots) * getSlotHeight()
 
     // Calculate day change based on horizontal movement

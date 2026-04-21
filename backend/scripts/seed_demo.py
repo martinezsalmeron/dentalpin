@@ -55,6 +55,8 @@ from app.modules.patients_clinical.models import (
 from app.modules.treatment_plan.models import PlannedTreatmentItem, TreatmentPlan
 from app.seeds.demo_data import (
     CLINIC_ID,
+    USER_DENTIST_ID,
+    USER_HYGIENIST_ID,
     generate_appointments_data,
     generate_budgets_data,
     generate_invoice_series_data,
@@ -76,6 +78,20 @@ async def check_existing_data(db: AsyncSession) -> bool:
     """Check if demo data already exists."""
     result = await db.execute(select(Clinic).where(Clinic.id == CLINIC_ID))
     return result.scalar_one_or_none() is not None
+
+
+async def _module_is_installed(db: AsyncSession, name: str) -> bool:
+    """True when ``core_module`` has the module in the ``installed`` state.
+
+    Optional-module seeds gate themselves on this so uninstalling a
+    module also silently skips its demo data on re-seed.
+    """
+    from app.core.plugins.db_models import ModuleRecord
+    from app.core.plugins.state import ModuleState
+
+    result = await db.execute(select(ModuleRecord).where(ModuleRecord.name == name))
+    record = result.scalar_one_or_none()
+    return record is not None and record.state == ModuleState.INSTALLED.value
 
 
 async def _load_catalog_map(db: AsyncSession) -> dict[str, dict]:
@@ -572,6 +588,25 @@ async def main(lang: str = "en") -> None:
             print("\n[9/9] Creating invoice series + invoices (derived from budgets)...")
             await seed_invoice_series(db)
             await seed_invoices(db, catalog_map, budgets_result)
+
+            # Optional modules — only seed when installed. Looked up by
+            # name in ``core_module`` so a future ``dentalpin modules
+            # uninstall schedules`` cleanly skips this step.
+            if await _module_is_installed(db, "schedules"):
+                print("\n[opt] Creating schedules demo (module installed)...")
+                from app.modules.schedules.seed import seed_schedules_demo
+
+                stats = await seed_schedules_demo(
+                    db,
+                    clinic_id=CLINIC_ID,
+                    dentist_id=USER_DENTIST_ID,
+                    hygienist_id=USER_HYGIENIST_ID,
+                )
+                print(
+                    f"  Clinic shifts: {stats['clinic_shifts']} | "
+                    f"Professional shifts: {stats['professional_shifts']} | "
+                    f"Overrides: {stats['overrides']}"
+                )
 
             await db.commit()
             print("\n" + "=" * 60)

@@ -25,6 +25,10 @@ dependencies = [
     "jinja2>=3.1.0",
     "apscheduler>=3.10.0",
     "aiofiles>=23.0.0",
+    # Shipped IANA timezone database so zoneinfo works regardless of
+    # which Python base image the backend runs on (Alpine ships with
+    # no system tzdata by default).
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +52,7 @@ treatment_plan = "app.modules.treatment_plan:TreatmentPlanModule"
 media = "app.modules.media:MediaModule"
 notifications = "app.modules.notifications:NotificationsModule"
 reports = "app.modules.reports:ReportsModule"
+schedules = "app.modules.schedules:SchedulesModule"
 
 [tool.setuptools.packages.find]
 where = ["."]

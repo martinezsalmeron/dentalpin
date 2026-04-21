@@ -506,16 +506,35 @@ frontend/
 
 The host sets `components: [{path: '~/components', pathPrefix: false}]`,
 which **overrides** Nuxt's default auto-scan. Each layer must declare
-its own components path so cross-layer auto-import works:
+its own components path so cross-layer auto-import works. The same
+applies to `@nuxtjs/i18n` v9: layer locale files are **not**
+auto-discovered — each layer that ships translations must declare its
+own `i18n` block. When two layers (host + module) register the same
+locale `code`, their JSON files are merged into a single locale object
+at build time, so each module contributes its own `<module>.*`
+namespaced keys:
 
 ```ts
 // <module>/frontend/nuxt.config.ts
 export default defineNuxtConfig({
   components: [
     { path: './components', pathPrefix: false }
-  ]
+  ],
+  // Drop this block only if the module ships no UI strings.
+  i18n: {
+    locales: [
+      { code: 'en', file: 'en.json' },
+      { code: 'es', file: 'es.json' }
+    ],
+    langDir: 'locales'
+  }
 })
 ```
+
+Place the JSON files at `<module>/frontend/i18n/locales/<code>.json`
+and namespace every top-level key under your module name
+(e.g. `"inventory": { "nav": { "items": "Items" } }`) to avoid
+collisions with the host and with other modules.
 
 TypeScript aliases inside layer files: `~` resolves per-layer, so use
 `~~` (rootDir, = host frontend root) to reach shared types:

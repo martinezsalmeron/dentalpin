@@ -11,7 +11,8 @@
     "/module_layers/patient_timeline/frontend",
     "/module_layers/patients_clinical/frontend",
     "/module_layers/reports/frontend",
-    "/module_layers/treatment_plan/frontend"
+    "/module_layers/treatment_plan/frontend",
+    "/module_layers/schedules/frontend"
   ],
   "modules": [
     {
@@ -61,6 +62,10 @@
     {
       "name": "treatment_plan",
       "path": "/module_layers/treatment_plan/frontend"
+    },
+    {
+      "name": "schedules",
+      "path": "/module_layers/schedules/frontend"
     }
   ],
   "version": 1

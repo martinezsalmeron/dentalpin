@@ -53,6 +53,7 @@ export interface ClinicUpdate {
   address?: ClinicAddress
   phone?: string
   email?: string
+  timezone?: string
 }
 
 export interface Clinic {
@@ -62,10 +63,10 @@ export interface Clinic {
   address?: Record<string, string>
   phone?: string
   email?: string
+  timezone: string
   settings: {
     slot_duration_min?: number
     currency?: string
-    timezone?: string
   }
   cabinets: Cabinet[]
   created_at: string

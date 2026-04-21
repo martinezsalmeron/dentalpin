@@ -624,6 +624,8 @@
     "postalCode": "Postal Code",
     "country": "Country",
     "phone": "Phone",
+    "timezone": "Timezone",
+    "timezoneHelp": "All schedules and appointments are interpreted in this timezone.",
     "editClinicInfo": "Edit information",
     "clinicUpdated": "Clinic information updated",
     "clinicUpdateError": "Error updating information",
