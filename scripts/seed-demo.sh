@@ -10,4 +10,4 @@
 set -e
 
 echo "Seeding demo data..."
-docker-compose exec -T backend bash -c "PYTHONPATH=/app python /app/scripts/seed_demo.py $*"
+docker compose exec -T backend bash -c "PYTHONPATH=/app python /app/scripts/seed_demo.py $*"

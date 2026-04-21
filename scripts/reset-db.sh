@@ -10,10 +10,10 @@ set -e
 echo "Resetting database..."
 
 # Reset alembic version
-docker-compose exec -T db psql -U dental -d dental_clinic -c "DELETE FROM alembic_version;" 2>/dev/null || true
+docker compose exec -T db psql -U dental -d dental_clinic -c "DELETE FROM alembic_version;" 2>/dev/null || true
 
 # Drop all tables (in correct order to handle foreign keys)
-docker-compose exec -T db psql -U dental -d dental_clinic << 'EOF'
+docker compose exec -T db psql -U dental -d dental_clinic << 'EOF'
 DO $$
 DECLARE
     r RECORD;
@@ -26,7 +26,7 @@ END $$;
 EOF
 
 # Run migrations
-docker-compose exec -T backend alembic upgrade head
+docker compose exec -T backend alembic upgrade head
 
 echo ""
 echo "Database reset complete!"

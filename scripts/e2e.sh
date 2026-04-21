@@ -2,7 +2,7 @@
 # Run the Playwright browser E2E suite against the live dev stack.
 #
 # Requirements:
-#   - docker-compose is up (backend, frontend, db)
+#   - the full stack is up (backend, frontend, db) via `docker compose up -d`
 #   - demo data is seeded (./scripts/seed-demo.sh)
 #   - Playwright browsers installed on host:
 #       (cd frontend && npx playwright install chromium)
