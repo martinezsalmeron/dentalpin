@@ -160,13 +160,40 @@ npm run dev
 ### Running tests
 
 ```bash
-# Backend (in Docker)
+# Backend unit + integration (in Docker)
 docker-compose exec backend python -m pytest -v
 
-# Frontend
+# Slow Alembic round-trip (opt-in, see docs/creating-modules.md)
+docker-compose exec backend python -m pytest -v -m alembic_roundtrip
+
+# Frontend unit (vitest)
 cd frontend
 npm run test
 ```
+
+**Browser E2E (Playwright)** lives in `frontend/tests/e2e/` and drives
+the full stack at `localhost:3000` → `:8000`. Runs on the host because
+the Alpine frontend container can't launch Chromium.
+
+```bash
+# One-time setup
+(cd frontend && npm install && npx playwright install chromium)
+
+# Make sure the stack is up + seeded first
+docker-compose up -d
+./scripts/seed-demo.sh
+
+# Full E2E suite (nav + RBAC + patient detail smoke)
+./scripts/e2e.sh
+
+# Single file
+./scripts/e2e.sh rbac
+
+# Interactive UI
+./scripts/e2e.sh --ui
+```
+
+Full runbook + fixture reference: [docs/e2e-testing.md](docs/e2e-testing.md).
 
 ## Architecture
 
