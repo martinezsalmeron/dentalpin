@@ -16,7 +16,7 @@ import type { ActiveModule, ApiResponse, NavigationItem } from '~/types'
 import {
   HOST_NAV,
   getModules as getStaticModules,
-  getNavigationItems as getStaticNav,
+  getNavigationItems as getStaticNav
 } from '~/utils/moduleRegistry'
 
 export function useModules() {
@@ -62,7 +62,7 @@ export function useModules() {
         name: m.name,
         label: m.name,
         icon: '',
-        navigation: m.navigation,
+        navigation: m.navigation
       }))
     }
     return getStaticModules()
@@ -90,6 +90,6 @@ export function useModules() {
     active,
     loading,
     error,
-    ensureLoaded,
+    ensureLoaded
   }
 }

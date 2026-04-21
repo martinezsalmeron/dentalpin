@@ -30,14 +30,14 @@ export const HOST_NAV: NavigationItem[] = [
     label: 'nav.dashboard',
     icon: 'i-lucide-home',
     to: '/',
-    order: 0,
+    order: 0
   },
   {
     label: 'nav.settings',
     icon: 'i-lucide-settings',
     to: '/settings',
-    order: 900,
-  },
+    order: 900
+  }
 ]
 
 // --- Static fallback (used only when /modules/-/active fails) -----------
@@ -46,7 +46,7 @@ registerModule({
   name: 'host',
   label: 'Host',
   icon: 'i-lucide-home',
-  navigation: HOST_NAV,
+  navigation: HOST_NAV
 })
 
 registerModule({

@@ -17,6 +17,7 @@ from app.core.auth.models import Clinic, ClinicMembership, User  # noqa: F401
 from app.core.plugins.loader import load_modules
 from app.database import Base, get_db
 from app.main import app
+from app.modules.agenda.models import Appointment  # noqa: F401
 from app.modules.budget.models import (  # noqa: F401
     Budget,
     BudgetHistory,
@@ -28,15 +29,14 @@ from app.modules.catalog.models import (  # noqa: F401
     TreatmentCategory,
     TreatmentOdontogramMapping,
 )
-from app.modules.agenda.models import Appointment  # noqa: F401
 from app.modules.media.models import Document  # noqa: F401
-from app.modules.patients.models import Patient  # noqa: F401
 from app.modules.odontogram.models import (  # noqa: F401
     OdontogramHistory,
     ToothRecord,
     Treatment,
     TreatmentTooth,
 )
+from app.modules.patients.models import Patient  # noqa: F401
 from app.modules.treatment_plan.models import (  # noqa: F401
     PlannedTreatmentItem,
     TreatmentMedia,

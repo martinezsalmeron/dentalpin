@@ -57,7 +57,7 @@ export function registerSlot(name: string, entry: SlotEntry): void {
   const deduped = current.filter(e => e.id !== entry.id)
   state.value = {
     ...state.value,
-    [name]: [...deduped, entry],
+    [name]: [...deduped, entry]
   }
 }
 
@@ -67,7 +67,7 @@ export function unregisterSlot(name: string, id: string): void {
   if (!current) return
   state.value = {
     ...state.value,
-    [name]: current.filter(e => e.id !== id),
+    [name]: current.filter(e => e.id !== id)
   }
 }
 
@@ -107,6 +107,6 @@ export function useModuleSlots() {
     register: registerSlot,
     unregister: unregisterSlot,
     clear: clearSlots,
-    resolve,
+    resolve
   }
 }

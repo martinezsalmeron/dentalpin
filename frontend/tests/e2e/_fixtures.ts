@@ -9,7 +9,7 @@ export const ROLES = {
   dentist: 'dentist@demo.clinic',
   hygienist: 'hygienist@demo.clinic',
   assistant: 'assistant@demo.clinic',
-  receptionist: 'receptionist@demo.clinic',
+  receptionist: 'receptionist@demo.clinic'
 } as const
 
 export type Role = keyof typeof ROLES
@@ -33,11 +33,11 @@ export async function login(page: Page, role: Role): Promise<void> {
 
   const form = new URLSearchParams({
     username: ROLES[role],
-    password: 'demo1234',
+    password: 'demo1234'
   })
   const response = await ctx.request.post(`${API_BASE}/api/v1/auth/login`, {
     data: form.toString(),
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    headers: { 'content-type': 'application/x-www-form-urlencoded' }
   })
   if (!response.ok()) {
     throw new Error(`login failed: ${response.status()} ${await response.text()}`)
@@ -50,13 +50,13 @@ export async function login(page: Page, role: Role): Promise<void> {
     {
       name: 'access_token',
       value: body.access_token,
-      url: page.url() !== 'about:blank' ? new URL(page.url()).origin : 'http://localhost:3000',
-    },
+      url: page.url() !== 'about:blank' ? new URL(page.url()).origin : 'http://localhost:3000'
+    }
   ])
 
   // Prime the session by landing on the dashboard.
   await page.goto('/')
-  await page.waitForURL((url) => url.pathname === '/', { timeout: 10_000 })
+  await page.waitForURL(url => url.pathname === '/', { timeout: 10_000 })
 }
 
 type RoleFixture = {
@@ -69,7 +69,7 @@ export const test = base.extend<RoleFixture>({
   loggedIn: async ({ page, role }, use) => {
     await login(page, role)
     await use(page)
-  },
+  }
 })
 
 export { expect }

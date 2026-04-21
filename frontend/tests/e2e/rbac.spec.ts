@@ -16,7 +16,7 @@ const LABELS = {
   plans: /plans|planes|treatment/i,
   quotes: /quotes|budgets|presupuestos/i,
   invoices: /invoices|facturas/i,
-  reports: /reports|informes/i,
+  reports: /reports|informes/i
 }
 
 test.describe('hygienist sees clinical + scheduling, no reports', () => {
@@ -52,7 +52,7 @@ test.describe('dentist has full clinical access', () => {
       LABELS.schedule,
       LABELS.plans,
       LABELS.quotes,
-      LABELS.invoices,
+      LABELS.invoices
     ]) {
       await expect(nav.getByRole('link', { name: label })).toBeVisible()
     }

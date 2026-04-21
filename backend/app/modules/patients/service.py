@@ -144,4 +144,3 @@ class PatientService:
             {"patient_id": str(patient.id)},
         )
         return patient
-

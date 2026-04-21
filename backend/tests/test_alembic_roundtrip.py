@@ -28,7 +28,6 @@ import pytest
 
 from app.config import settings
 
-
 pytestmark = pytest.mark.alembic_roundtrip
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]

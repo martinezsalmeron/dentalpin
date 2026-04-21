@@ -48,9 +48,7 @@ from .service import PatientsClinicalService
 router = APIRouter()
 
 
-async def _ensure_patient(
-    db: AsyncSession, clinic_id: UUID, patient_id: UUID
-) -> None:
+async def _ensure_patient(db: AsyncSession, clinic_id: UUID, patient_id: UUID) -> None:
     patient = await PatientService.get_patient(db, clinic_id, patient_id)
     if patient is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")

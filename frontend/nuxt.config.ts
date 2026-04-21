@@ -18,7 +18,6 @@ function loadModuleLayers(): string[] {
   } catch (err: unknown) {
     const code = (err as { code?: string }).code
     if (code !== 'ENOENT') {
-      // eslint-disable-next-line no-console
       console.warn('[nuxt.config] modules.json is malformed, using empty layers:', err)
     }
     return []

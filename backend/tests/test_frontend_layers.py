@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from app.core.plugins.base import BaseModule
 from app.core.plugins.frontend_layers import (
     MODULES_JSON_SCHEMA_VERSION,
     LayerEntry,
@@ -14,7 +15,6 @@ from app.core.plugins.frontend_layers import (
     resolve_layer_path,
     write_modules_json,
 )
-from app.core.plugins.base import BaseModule
 from tests.fixtures.sample_module import SampleModule
 
 

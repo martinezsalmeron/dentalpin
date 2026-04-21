@@ -1213,6 +1213,9 @@ async function handleSaveClinicInfo() {
     </UModal>
 
     <!-- Extension point for module-provided settings sections. -->
-    <ModuleSlot name="settings.sections" :ctx="{}" />
+    <ModuleSlot
+      name="settings.sections"
+      :ctx="{}"
+    />
   </div>
 </template>

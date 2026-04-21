@@ -19,7 +19,7 @@ const ADMIN_ROUTES = [
   { path: '/settings/catalog', selector: /catalog|catálogo|catalogo/i },
   { path: '/settings/vat-types', selector: /vat|iva/i },
   { path: '/settings/invoice-series', selector: /series|serie/i },
-  { path: '/settings/notifications', selector: /notifications|notificaciones/i },
+  { path: '/settings/notifications', selector: /notifications|notificaciones/i }
 ]
 
 test.describe('admin navigation smoke', () => {

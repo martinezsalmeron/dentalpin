@@ -35,9 +35,7 @@ class PatientsClinicalService:
     # --- Medical context (1:1) -----------------------------------------
 
     @staticmethod
-    async def get_medical_context(
-        db: AsyncSession, patient_id: UUID
-    ) -> MedicalContext | None:
+    async def get_medical_context(db: AsyncSession, patient_id: UUID) -> MedicalContext | None:
         result = await db.execute(
             select(MedicalContext).where(MedicalContext.patient_id == patient_id)
         )
@@ -147,9 +145,7 @@ class PatientsClinicalService:
     # --- Systemic disease ----------------------------------------------
 
     @staticmethod
-    async def list_systemic_diseases(
-        db: AsyncSession, patient_id: UUID
-    ) -> list[SystemicDisease]:
+    async def list_systemic_diseases(db: AsyncSession, patient_id: UUID) -> list[SystemicDisease]:
         result = await db.execute(
             select(SystemicDisease)
             .where(SystemicDisease.patient_id == patient_id)
@@ -167,12 +163,8 @@ class PatientsClinicalService:
         return disease
 
     @staticmethod
-    async def get_systemic_disease(
-        db: AsyncSession, disease_id: UUID
-    ) -> SystemicDisease | None:
-        result = await db.execute(
-            select(SystemicDisease).where(SystemicDisease.id == disease_id)
-        )
+    async def get_systemic_disease(db: AsyncSession, disease_id: UUID) -> SystemicDisease | None:
+        result = await db.execute(select(SystemicDisease).where(SystemicDisease.id == disease_id))
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -192,9 +184,7 @@ class PatientsClinicalService:
     # --- Surgical history ----------------------------------------------
 
     @staticmethod
-    async def list_surgical_history(
-        db: AsyncSession, patient_id: UUID
-    ) -> list[SurgicalHistory]:
+    async def list_surgical_history(db: AsyncSession, patient_id: UUID) -> list[SurgicalHistory]:
         result = await db.execute(
             select(SurgicalHistory)
             .where(SurgicalHistory.patient_id == patient_id)
@@ -212,12 +202,8 @@ class PatientsClinicalService:
         return surgery
 
     @staticmethod
-    async def get_surgical_history(
-        db: AsyncSession, surgery_id: UUID
-    ) -> SurgicalHistory | None:
-        result = await db.execute(
-            select(SurgicalHistory).where(SurgicalHistory.id == surgery_id)
-        )
+    async def get_surgical_history(db: AsyncSession, surgery_id: UUID) -> SurgicalHistory | None:
+        result = await db.execute(select(SurgicalHistory).where(SurgicalHistory.id == surgery_id))
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -237,9 +223,7 @@ class PatientsClinicalService:
     # --- Emergency contact (1:1) ---------------------------------------
 
     @staticmethod
-    async def get_emergency_contact(
-        db: AsyncSession, patient_id: UUID
-    ) -> EmergencyContact | None:
+    async def get_emergency_contact(db: AsyncSession, patient_id: UUID) -> EmergencyContact | None:
         result = await db.execute(
             select(EmergencyContact).where(EmergencyContact.patient_id == patient_id)
         )
@@ -251,9 +235,7 @@ class PatientsClinicalService:
     ) -> EmergencyContact:
         existing = await PatientsClinicalService.get_emergency_contact(db, patient_id)
         if existing is None:
-            existing = EmergencyContact(
-                patient_id=patient_id, clinic_id=clinic_id, **data
-            )
+            existing = EmergencyContact(patient_id=patient_id, clinic_id=clinic_id, **data)
             db.add(existing)
         else:
             for k, v in data.items():
@@ -262,18 +244,14 @@ class PatientsClinicalService:
         return existing
 
     @staticmethod
-    async def delete_emergency_contact(
-        db: AsyncSession, contact: EmergencyContact
-    ) -> None:
+    async def delete_emergency_contact(db: AsyncSession, contact: EmergencyContact) -> None:
         await db.delete(contact)
         await db.flush()
 
     # --- Legal guardian (1:1) ------------------------------------------
 
     @staticmethod
-    async def get_legal_guardian(
-        db: AsyncSession, patient_id: UUID
-    ) -> LegalGuardian | None:
+    async def get_legal_guardian(db: AsyncSession, patient_id: UUID) -> LegalGuardian | None:
         result = await db.execute(
             select(LegalGuardian).where(LegalGuardian.patient_id == patient_id)
         )
@@ -437,9 +415,7 @@ class PatientsClinicalService:
             (SystemicDisease, "systemic_diseases"),
             (SurgicalHistory, "surgical_history"),
         ):
-            existing = await db.execute(
-                select(table_cls).where(table_cls.patient_id == patient_id)
-            )
+            existing = await db.execute(select(table_cls).where(table_cls.patient_id == patient_id))
             for row in existing.scalars():
                 await db.delete(row)
 

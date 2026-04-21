@@ -111,9 +111,7 @@ def collect_layers(modules: list[BaseModule]) -> list[LayerEntry]:
         path = resolve_layer_path(module)
         if path is None:
             continue
-        entries.append(
-            LayerEntry(module_name=module.name, path=_translate_for_frontend(path))
-        )
+        entries.append(LayerEntry(module_name=module.name, path=_translate_for_frontend(path)))
     return entries
 
 

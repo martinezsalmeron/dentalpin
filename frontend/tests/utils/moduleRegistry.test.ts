@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-// We need to test the module registry logic without side effects from the actual registration
-// So we'll test the logic in isolation
+// Tests the static fallback registry in `~/utils/moduleRegistry`.
+// In normal runtime the sidebar is backend-driven via
+// `GET /api/v1/modules/-/active`; this registry is only consulted if
+// that fetch fails. Post Fase B the registry registers two entries:
+// `host` (dashboard + settings) and `clinical` (the full nav tree).
 
 describe('moduleRegistry', () => {
   describe('getModules', () => {
@@ -11,29 +14,32 @@ describe('moduleRegistry', () => {
       const modules = getModules()
       expect(modules).toBeDefined()
       expect(Array.isArray(modules)).toBe(true)
-      // Clinical and settings modules are registered by default
       expect(modules.length).toBeGreaterThanOrEqual(2)
     })
 
-    it('should include clinical module', async () => {
+    it('should include host module with dashboard + settings', async () => {
+      const { getModules } = await import('~/utils/moduleRegistry')
+
+      const modules = getModules()
+      const host = modules.find(m => m.name === 'host')
+
+      expect(host).toBeDefined()
+      const paths = host?.navigation.map(n => n.to) ?? []
+      expect(paths).toContain('/')
+      expect(paths).toContain('/settings')
+    })
+
+    it('should include clinical module with patients + appointments', async () => {
       const { getModules } = await import('~/utils/moduleRegistry')
 
       const modules = getModules()
       const clinical = modules.find(m => m.name === 'clinical')
 
       expect(clinical).toBeDefined()
-      expect(clinical?.label).toBe('Clinical')
       expect(clinical?.navigation.length).toBeGreaterThan(0)
-    })
-
-    it('should include settings module', async () => {
-      const { getModules } = await import('~/utils/moduleRegistry')
-
-      const modules = getModules()
-      const settings = modules.find(m => m.name === 'settings')
-
-      expect(settings).toBeDefined()
-      expect(settings?.label).toBe('Settings')
+      const paths = clinical?.navigation.map(n => n.to) ?? []
+      expect(paths).toContain('/patients')
+      expect(paths).toContain('/appointments')
     })
   })
 
