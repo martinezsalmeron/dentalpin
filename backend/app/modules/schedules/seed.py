@@ -132,9 +132,7 @@ async def _seed_professional_weekly(
             ProfessionalWeeklySchedule.user_id == user_id,
         )
     )
-    weekly = ProfessionalWeeklySchedule(
-        clinic_id=clinic_id, user_id=user_id, is_active=True
-    )
+    weekly = ProfessionalWeeklySchedule(clinic_id=clinic_id, user_id=user_id, is_active=True)
     db.add(weekly)
     await db.flush()
 
