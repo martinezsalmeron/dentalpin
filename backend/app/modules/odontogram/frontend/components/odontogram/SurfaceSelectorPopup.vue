@@ -85,7 +85,23 @@ const toothName = computed(() => {
 })
 
 // Lateral view dimensions from viewBox
-const lateralViewBox = computed(() => lateralPaths.value.viewBox)
+// Crop viewBox to crown + gum area only (hide root and root canal)
+// to keep the popup compact.
+const CROWN_TOP_PADDING = 6
+const CROWN_BOTTOM_PADDING = 4
+const lateralViewBox = computed(() => {
+  const vb = lateralPaths.value.viewBox.split(' ').map(Number)
+  const vbWidth = vb[2] || 60
+  const vbHeight = vb[3] || 100
+
+  // gumLine format: "M 0,<y> Q ..." — y marks top of the crown
+  const match = lateralPaths.value.gumLine.match(/M\s*\d+(?:\.\d+)?\s*,\s*(\d+(?:\.\d+)?)/)
+  const gumY = match && match[1] ? parseFloat(match[1]) : vbHeight * 0.65
+
+  const cropY = Math.max(0, gumY - CROWN_TOP_PADDING)
+  const cropH = vbHeight - cropY + CROWN_BOTTOM_PADDING
+  return `0 ${cropY} ${vbWidth} ${cropH}`
+})
 const lateralDimensions = computed(() => {
   const vb = lateralViewBox.value.split(' ').map(Number)
   const vbWidth = vb[2] || 60
@@ -312,30 +328,6 @@ watch(() => props.open, (isOpen) => {
                 stroke="var(--odontogram-gum)"
                 stroke-width="1.5"
               />
-
-              <!-- Roots -->
-              <template v-if="'root' in lateralPaths && lateralPaths.root">
-                <path
-                  :d="lateralPaths.root"
-                  fill="var(--odontogram-root-fill)"
-                  stroke="var(--odontogram-outline)"
-                  stroke-width="1.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </template>
-              <template v-else-if="'roots' in lateralPaths && lateralPaths.roots">
-                <path
-                  v-for="(rootPath, idx) in lateralPaths.roots"
-                  :key="idx"
-                  :d="rootPath"
-                  fill="var(--odontogram-root-fill)"
-                  stroke="var(--odontogram-outline)"
-                  stroke-width="1.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </template>
 
               <!-- Crown -->
               <path
