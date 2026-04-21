@@ -226,6 +226,10 @@ jobs:
       - name: Install Playwright + browsers
         working-directory: frontend
         run: |
+          # The frontend container wrote node_modules/ as root via the
+          # bind mount; reclaim ownership so the host runner can npm
+          # install Playwright alongside the container's install.
+          sudo chown -R "$USER" . || true
           npm install
           npx playwright install --with-deps chromium
 
