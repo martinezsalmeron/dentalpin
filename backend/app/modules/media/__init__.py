@@ -57,6 +57,9 @@ class MediaModule(BaseModule):
             EventType.PATIENT_ARCHIVED: self._on_patient_archived,
         }
 
+    def get_tools(self) -> list:
+        return []
+
     async def _on_patient_archived(self, db: AsyncSession, data: dict) -> None:
         """Cascade soft-delete documents when patient is archived."""
         from uuid import UUID

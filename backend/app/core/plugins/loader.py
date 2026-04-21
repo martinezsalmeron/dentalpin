@@ -170,7 +170,8 @@ def discover_modules() -> list[BaseModule]:
 
 
 def _mount_modules(app: FastAPI, modules: list[BaseModule]) -> None:
-    """Mount routers + subscribe event handlers for a resolved list."""
+    """Mount routers + subscribe event handlers + register tools."""
+    from app.core.agents.tools.registry import tool_registry
     from app.core.events import event_bus
 
     for module in modules:
@@ -186,6 +187,8 @@ def _mount_modules(app: FastAPI, modules: list[BaseModule]) -> None:
         for event_type, handler in handlers.items():
             event_bus.subscribe(event_type, handler)
             logger.info("Subscribed %s to event: %s", module.name, event_type)
+
+        tool_registry.register_from(module)
 
 
 def load_modules(app: FastAPI) -> None:

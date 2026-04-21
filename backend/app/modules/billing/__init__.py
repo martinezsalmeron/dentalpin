@@ -72,3 +72,6 @@ class BillingModule(BaseModule):
         return {
             "budget.completed": InvoiceService.on_budget_completed,
         }
+
+    def get_tools(self) -> list:
+        return []

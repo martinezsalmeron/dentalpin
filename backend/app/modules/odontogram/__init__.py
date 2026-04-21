@@ -56,3 +56,6 @@ class OdontogramModule(BaseModule):
         # Propagation from plan -> treatment performed now lives directly in
         # TreatmentPlanService.complete_item, so no subscriptions are needed here.
         return {}
+
+    def get_tools(self) -> list:
+        return []

@@ -46,6 +46,9 @@ class _HeadlessModule(BaseModule):
     def get_permissions(self) -> list[str]:
         return []
 
+    def get_tools(self) -> list:
+        return []
+
 
 def test_resolve_layer_path_for_fixture() -> None:
     module = SampleModule()

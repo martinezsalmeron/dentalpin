@@ -55,3 +55,6 @@ class SampleModule(BaseModule):
 
     def get_permissions(self) -> list[str]:
         return ["read"]
+
+    def get_tools(self) -> list:
+        return []

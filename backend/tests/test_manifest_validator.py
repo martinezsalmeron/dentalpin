@@ -52,6 +52,9 @@ class _StubModule(BaseModule):
     def get_permissions(self) -> list[str]:
         return self.permissions_override
 
+    def get_tools(self) -> list:
+        return []
+
 
 def test_rejects_invalid_version_format() -> None:
     mod = _StubModule.build(

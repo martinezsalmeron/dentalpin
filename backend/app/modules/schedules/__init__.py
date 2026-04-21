@@ -111,3 +111,6 @@ class SchedulesModule(BaseModule):
             "appointment.updated": on_appointment_updated,
             "appointment.cancelled": on_appointment_cancelled,
         }
+
+    def get_tools(self) -> list:
+        return []

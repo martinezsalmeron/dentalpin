@@ -642,15 +642,42 @@ Small, well-scoped features for new contributors.
 
 ### AI Infrastructure 🔴 P0
 
-| Component | Description |
-|-----------|-------------|
-| `ToolRegistry` | Modules register AI-invokable actions |
-| `ContextProvider` | Relevant context per interaction |
-| EventBus integration | AI listens and reacts to events |
-| LLM abstraction | Anthropic, OpenAI, Ollama |
-| Token tracking | Cost management and rate limiting |
-| RBAC integration | AI respects same permissions as UI |
-| Audit log | Every AI action is traceable |
+Tracked in issue #42. Phase 1 landed the core contract; Phase 2/3 extend the system with UX, a reference agent, and scheduling.
+
+**Phase 1 — Core Contract ✅ (shipped)**
+
+| Component | Status | Description |
+|-----------|--------|-------------|
+| `ToolRegistry` | ✅ | Namespaced registry, JSON Schema helper, single-chokepoint `call()` |
+| `BaseAgent` + `AgentContext` | ✅ | Abstract base, mode enum, execution context |
+| `BaseModule.get_tools()` | ✅ | Mandatory abstract on every module (all 13 stubbed) |
+| `BaseModule.get_agents()` | ✅ | Default `[]`, override to register agent classes |
+| Guardrails | ✅ | Rate limits, blocked tools, require-approval patterns, auto-approval for DESTRUCTIVE / supervised-WRITE |
+| Audit log | ✅ | `agent_audit_logs` table, every tool attempt recorded |
+| Approval queue (backend) | ✅ | `agent_approval_queue` + service + endpoints |
+| `agents.*` RBAC | ✅ | `agents.view/supervise/configure/manage` permissions |
+| Docs | ✅ | `docs/creating-modules.md` §12 "AI agent integration" |
+
+**Phase 2 — UX + First Agent 🟠 P1**
+
+- [ ] **Frontend approval UI** — `/approvals` page, pending-count badge in navbar, approve/reject modal with notes field. Use `ListRow` + `StatusBadge`.
+- [ ] **Reference Appointment Reminder Agent** — standalone module at `backend/app/modules/agents/reminder/`. Add `anthropic` SDK to `backend/requirements.txt`. Demonstrates tool discovery, multi-turn tool loop, audit trail.
+- [ ] **Cron / scheduling trigger** — APScheduler in-process or external cron hitting `POST /api/v1/agents/{id}/run`. Decide when building the reminder agent.
+- [ ] **Per-module tool retrofit** — wrap existing service methods as Tools, module by module, as real agents need them. Start with `agenda` (appointments) + `patients` (search) since the reminder agent needs them.
+
+**Phase 3 — Hardening 🟡 P2**
+
+- [ ] Per-clinic guardrail configuration UI (admin) — edit rate limits, blocked patterns, require-approval patterns from settings
+- [ ] `AgentMemory` production backends — Redis for short-term session memory, Postgres for long-term
+- [ ] LLM abstraction layer — optional, only if a second provider appears or cost tracking needs a central chokepoint
+- [ ] Distributed rate-limit store — replace in-process counters once DentalPin runs with multiple backend workers
+- [ ] Token / cost metering per clinic — billing dashboard
+
+**Non-goals (deferred indefinitely)**
+
+- LLM provider abstraction in core — each agent imports its own SDK
+- Multi-agent coordination — agents communicate via the existing event bus, not a custom protocol
+- Vector DB / RAG primitives — add only when a concrete agent requires them
 
 ---
 

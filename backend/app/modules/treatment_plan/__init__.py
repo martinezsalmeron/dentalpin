@@ -86,3 +86,6 @@ class TreatmentPlanModule(BaseModule):
             EventType.BUDGET_ACCEPTED: on_budget_accepted,
             EventType.ODONTOGRAM_TREATMENT_PERFORMED: on_treatment_performed,
         }
+
+    def get_tools(self) -> list:
+        return []

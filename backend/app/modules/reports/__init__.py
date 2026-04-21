@@ -62,3 +62,6 @@ class ReportsModule(BaseModule):
             "budgets.read",  # View budget reports
             "scheduling.read",  # View scheduling reports
         ]
+
+    def get_tools(self) -> list:
+        return []

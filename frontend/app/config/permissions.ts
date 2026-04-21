@@ -70,6 +70,12 @@ export const PERMISSIONS = {
   treatmentPlans: {
     read: 'treatment_plan.plans.read',
     write: 'treatment_plan.plans.write'
+  },
+  agents: {
+    view: 'agents.view',
+    supervise: 'agents.supervise',
+    configure: 'agents.configure',
+    manage: 'agents.manage'
   }
 } as const
 

@@ -30,6 +30,12 @@ from alembic import context
 from app.config import settings
 
 # Import all models to register them with Base.metadata
+from app.core.agents.models import (  # noqa: F401
+    Agent,
+    AgentApprovalQueue,
+    AgentAuditLog,
+    AgentSession,
+)
 from app.core.auth.models import Clinic, ClinicMembership, User  # noqa: F401
 from app.core.plugins.alembic_paths import discover_version_locations
 from app.core.plugins.db_models import (  # noqa: F401

@@ -12,6 +12,9 @@ from sqlalchemy.orm import DeclarativeBase
 from .manifest import Manifest
 
 if TYPE_CHECKING:
+    from app.core.agents.base import BaseAgent
+    from app.core.agents.tools.tool import Tool
+
     from .context import ModuleContext
 
 
@@ -85,6 +88,34 @@ class BaseModule(ABC):
         Format: ``'resource.action'`` (no module prefix). The registry
         namespaces them automatically, e.g. ``'patients.read'`` from
         ``clinical`` becomes ``'clinical.patients.read'``.
+        """
+        return []
+
+    # --- AI agent contract ----------------------------------------------
+
+    @abstractmethod
+    def get_tools(self) -> list[Tool]:
+        """Return callable actions this module exposes to AI agents.
+
+        Return ``[]`` if the module does not expose any tools yet. Tool
+        names are namespaced automatically: a tool named
+        ``create_appointment`` from module ``agenda`` is registered as
+        ``agenda.create_appointment`` in the global
+        :class:`~app.core.agents.tools.registry.ToolRegistry`.
+
+        Every new write-capable module MUST eventually expose its
+        mutating service methods here so AI agents can invoke them
+        through the audited chokepoint rather than calling service
+        functions directly. See ``docs/creating-modules.md`` for the
+        full contract.
+        """
+
+    def get_agents(self) -> list[type[BaseAgent]]:
+        """Return :class:`~app.core.agents.base.BaseAgent` subclasses
+        this module registers.
+
+        Default is an empty list. Override only if the module ships
+        agents itself (as opposed to merely exposing tools).
         """
         return []
 

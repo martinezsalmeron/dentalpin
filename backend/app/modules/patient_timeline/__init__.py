@@ -81,3 +81,6 @@ class PatientTimelineModule(BaseModule):
             # Documents
             EventType.DOCUMENT_UPLOADED: events.on_document_uploaded,
         }
+
+    def get_tools(self) -> list:
+        return []

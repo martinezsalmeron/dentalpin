@@ -138,6 +138,11 @@ from app.core.plugins.router import router as modules_router  # noqa: E402
 
 app.include_router(modules_router, prefix="/api/v1")
 
+# Mount AI agents infrastructure router (approval queue, audit, agent CRUD).
+from app.core.agents.router import router as agents_router  # noqa: E402
+
+app.include_router(agents_router, prefix="/api/v1")
+
 
 @app.get("/health")
 async def health_check() -> dict:

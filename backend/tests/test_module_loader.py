@@ -34,6 +34,9 @@ class _StubModule(BaseModule):
     def get_router(self) -> APIRouter:
         return APIRouter()
 
+    def get_tools(self) -> list:
+        return []
+
 
 def test_topo_sort_linear_chain() -> None:
     a = _StubModule("a")

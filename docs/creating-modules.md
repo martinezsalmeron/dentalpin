@@ -922,6 +922,206 @@ def upgrade() -> None:
 
 ---
 
+## 12. AI agent integration
+
+Every module in DentalPin participates in the AI agent contract. The
+contract is intentionally thin so modules can start as "agent-aware"
+without committing to LLMs or long-running autonomy up front.
+
+### What the contract requires of every module
+
+```python
+class MyModule(BaseModule):
+    # ... models, router, permissions, events ...
+
+    def get_tools(self) -> list[Tool]:
+        """Callable actions this module exposes to AI agents."""
+        return []
+```
+
+`get_tools()` is **mandatory** on every `BaseModule` subclass. Return
+`[]` until your module has at least one action worth exposing — but
+you MUST implement the method. The loader refuses to start if any
+module omits it.
+
+Why mandatory and not opt-in: the contract must be the default so a
+future agent can trust that *any* discovered module either exposes a
+valid (possibly empty) tool list or fails fast at boot.
+
+### When to expose a tool
+
+A module SHOULD expose a tool for every:
+
+- public service method that **mutates state** a human would mutate
+  through the UI (create, update, archive, cancel, send, issue, …);
+- public service method that **reads domain data** an agent needs to
+  plan an action (search, list, get-by-id, get-related, …).
+
+A module SHOULD NOT expose a tool for:
+
+- internal helpers (anything prefixed with `_`);
+- event handlers (agents react to events via tools, not by subscribing);
+- queries an agent cannot meaningfully combine (low-level DB joins,
+  internal caches).
+
+### Declaring a tool
+
+```python
+from pydantic import BaseModel
+from app.core.agents import Tool, ToolCategory
+
+
+class SearchPatientsArgs(BaseModel):
+    """Arguments an LLM fills in when calling the tool."""
+    query: str
+    limit: int = 20
+
+
+async def _search_patients(ctx, params: SearchPatientsArgs):
+    return await PatientService.list_patients(
+        ctx.db, ctx.clinic_id,
+        search=params.query, page=1, page_size=params.limit,
+    )
+
+
+class PatientsModule(BaseModule):
+    def get_tools(self) -> list[Tool]:
+        return [
+            Tool(
+                name="search_patients",
+                description=(
+                    "Search patients by name, phone or email. Returns "
+                    "up to `limit` matches in this clinic."
+                ),
+                parameters=SearchPatientsArgs,
+                handler=_search_patients,
+                permissions=["patients.read"],
+                category=ToolCategory.READ,
+            ),
+        ]
+```
+
+Rules:
+
+- **Namespacing is automatic.** The registry registers this tool as
+  `patients.search_patients` — do NOT prefix the `name` field yourself.
+- **Permissions reuse the existing RBAC strings.** Do not invent a
+  per-tool permission grammar; declare the same string a router handler
+  already uses via `require_permission(...)`.
+- **Descriptions are LLM-facing prose, not code comments.** Write the
+  `description` so an LLM that has never seen your module can pick the
+  right tool. Be explicit about what the tool does and does NOT do.
+- **Parameters must be a Pydantic V2 model.** The registry serializes
+  it to JSON Schema for Anthropic / OpenAI function-calling APIs.
+- **Handlers receive `ctx: AgentContext`.** Filter every query by
+  `ctx.clinic_id` exactly as routers do — the multi-tenancy rule
+  applies identically inside agent tools.
+
+### Categorize every tool
+
+```python
+ToolCategory.READ         # never mutates state
+ToolCategory.WRITE        # mutates but is recoverable
+ToolCategory.DESTRUCTIVE  # deletes, sends external messages, issues money
+```
+
+`DESTRUCTIVE` tools automatically require human approval even in
+autonomous mode. `WRITE` tools require approval when the agent runs
+in supervised mode. Pick the most conservative category that is still
+truthful — calling `send_invoice` a `WRITE` just because it's not a
+DELETE is a bug. External side-effects (emails, SMS, webhook calls,
+money movement) are `DESTRUCTIVE`.
+
+### Building an agent
+
+Modules that *ship* an agent (not just tools) expose it via
+`get_agents()`:
+
+```python
+from app.core.agents import BaseAgent, AgentMode
+
+
+class ReminderAgent(BaseAgent):
+    name = "appointment_reminder"
+    mode = AgentMode.AUTONOMOUS
+    allowed_tools = [
+        "agenda.list_upcoming_appointments",
+        "notifications.send_sms",
+    ]
+
+    async def process(self, ctx):
+        # Pick your LLM SDK (anthropic, openai, …). Core does not
+        # abstract the provider.
+        import anthropic
+        client = anthropic.AsyncAnthropic()
+
+        schemas = ctx.tools.schemas_for(self.allowed_tools, dialect="anthropic")
+        messages = [{"role": "user", "content": "Send reminders for tomorrow."}]
+        while True:
+            resp = await client.messages.create(
+                model="claude-sonnet-4-6", tools=schemas, messages=messages,
+                max_tokens=2048,
+            )
+            if resp.stop_reason != "tool_use":
+                break
+            for block in resp.content:
+                if block.type == "tool_use":
+                    # Every tool call MUST go through the registry.
+                    result = await ctx.tools.call(ctx, block.name, block.input)
+                    messages.append({"role": "assistant", "content": resp.content})
+                    messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": str(result.data or result.error),
+                        }],
+                    })
+        return AgentResult(ok=True, summary="reminders sent")
+
+
+class AgendaModule(BaseModule):
+    def get_agents(self) -> list[type[BaseAgent]]:
+        return [ReminderAgent]
+```
+
+Rules:
+
+- **Never call service functions directly from inside an agent.** Go
+  through `ctx.tools.call(ctx, qualified_name, arguments)`. That is
+  the only path where permissions, guardrails, and audit logging run.
+- **Subset tools explicitly.** `allowed_tools` is a hard list — the
+  agent cannot invoke anything outside it, even if the registry has
+  other tools.
+- **Pick a mode honestly.** Default to `SUPERVISED` for any agent that
+  writes. Only mark `AUTONOMOUS` once you are convinced the guardrails
+  + audit story is sufficient for the risk.
+- **No LLM abstraction in core.** Each agent imports its own SDK. Core
+  guarantees the contract (tools + registry + audit), nothing else.
+
+### Contract checklist for agent-ready modules
+
+- [ ] `get_tools()` is implemented (even if empty)
+- [ ] Every write operation the UI exposes is also exposed as a Tool
+- [ ] Every tool declares at least one permission string that matches
+      an existing RBAC entry
+- [ ] Destructive tools are classified `ToolCategory.DESTRUCTIVE`
+- [ ] Tool descriptions read well to someone who has never seen the
+      module
+- [ ] Handlers filter every query by `ctx.clinic_id`
+- [ ] State-changing operations publish events via `event_bus` so
+      other agents can react
+- [ ] If the module ships an agent, `get_agents()` lists its classes
+
+### Where to go deeper
+
+- `backend/app/core/agents/` — the contract itself. Start with
+  `tools/registry.py` to see the call chokepoint.
+- `docs/design/module-system-architecture.md` — why tools and events
+  are two separate extension points.
+
+---
+
 ## 13. Pre-publish checklist
 
 Before tagging a community module release:

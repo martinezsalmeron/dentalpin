@@ -21,6 +21,11 @@ CORE_PERMISSIONS: Final[list[str]] = [
     "admin.users.write",
     "admin.clinic.read",
     "admin.clinic.write",
+    # AI agent infrastructure
+    "agents.view",
+    "agents.supervise",
+    "agents.configure",
+    "agents.manage",
 ]
 
 # Role -> permissions mapping
@@ -48,6 +53,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "notifications.send",
         "reports.billing.read",
         "reports.scheduling.read",
+        "agents.view",
+        "agents.supervise",
     ],
     "hygienist": [
         "patients.read",

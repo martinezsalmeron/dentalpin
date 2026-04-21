@@ -84,6 +84,9 @@ class BudgetModule(BaseModule):
             EventType.TREATMENT_PLAN_BUDGET_SYNC_REQUESTED: self._on_sync_requested,
         }
 
+    def get_tools(self) -> list:
+        return []
+
     async def _on_treatment_added_to_plan(self, data: dict[str, Any]) -> None:
         """Create BudgetItem when a treatment is added to a plan.
 

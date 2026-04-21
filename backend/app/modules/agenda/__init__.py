@@ -68,3 +68,6 @@ class AgendaModule(BaseModule):
             "cabinets.read",
             "cabinets.write",
         ]
+
+    def get_tools(self) -> list:
+        return []
