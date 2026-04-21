@@ -45,7 +45,11 @@ from .service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address, enabled=not settings.TESTING)
+# Rate limiting guards production. Dev + test disable it so local flows
+# (manual clicking, Playwright E2E, pytest) don't run into 5/minute
+# caps after a handful of reloads.
+_limiter_enabled = settings.ENVIRONMENT == "production" and not settings.TESTING
+limiter = Limiter(key_func=get_remote_address, enabled=_limiter_enabled)
 
 
 @router.post("/register", response_model=TokenResponse)

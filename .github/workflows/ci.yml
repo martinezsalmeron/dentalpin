@@ -166,3 +166,71 @@ jobs:
       - name: Run tests
         working-directory: frontend
         run: npm run test
+
+  e2e:
+    # Browser E2E smoke. Boots the full stack inside the runner via
+    # docker-compose, seeds demo data, then drives it with Playwright
+    # from the host. Slow (~5 min). Required on main + PRs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      POSTGRES_PASSWORD: testpass
+      SECRET_KEY: ci-secret-key-for-e2e
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write .env
+        run: |
+          cat > .env <<EOF
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          SECRET_KEY=${SECRET_KEY}
+          ENVIRONMENT=development
+          EOF
+
+      - name: Boot stack
+        run: docker compose up -d db backend frontend
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/health > /dev/null; then
+              echo "backend ready"; break
+            fi
+            sleep 2
+          done
+
+      - name: Seed demo data
+        run: ./scripts/seed-demo.sh --lang es
+
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 60); do
+            if [ "$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000/login)" = "200" ]; then
+              echo "frontend ready"; break
+            fi
+            sleep 2
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright + browsers
+        working-directory: frontend
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E
+        working-directory: frontend
+        run: npx playwright test --reporter=list
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
