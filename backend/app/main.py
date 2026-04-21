@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="DentalPin API",
     description="Open source dental clinic management software",
-    version="0.1.0",
+    version="2.0.0",
     lifespan=lifespan,
     redirect_slashes=False,
     docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
@@ -142,7 +142,7 @@ app.include_router(modules_router, prefix="/api/v1")
 @app.get("/health")
 async def health_check() -> dict:
     """Health check endpoint."""
-    return {"status": "healthy", "version": "0.1.0"}
+    return {"status": "healthy", "version": "2.0.0"}
 
 
 @app.get("/api/v1")
@@ -150,6 +150,6 @@ async def api_root() -> dict:
     """API root endpoint."""
     return {
         "message": "DentalPin API",
-        "version": "0.1.0",
+        "version": "2.0.0",
         "docs": "/docs" if settings.ENVIRONMENT == "development" else None,
     }

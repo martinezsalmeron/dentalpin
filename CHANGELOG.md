@@ -11,9 +11,14 @@ frontend as a Nuxt layer under its own Python package.
 
 ## [Unreleased]
 
-Preparing the v2.0 tag. Covers the full Fase B refactor (B.1 → B.6)
-plus the hardening pass in B.7. `main` is stable against the 12-module
-layout; the `clinical` module is gone.
+_Nothing yet._
+
+## [2.0.0] - 2026-04-21
+
+First release on the post-Fase-B module architecture. Covers the
+full Fase B refactor (B.1 → B.6), the hardening pass (B.7), and the
+Playwright E2E smoke suite (B.8). `main` is stable against the
+12-module layout; the `clinical` module is gone.
 
 ### Added
 
@@ -45,6 +50,11 @@ layout; the `clinical` module is gone.
 - CI pipeline gains `manifest-consistency` and `frontend-typecheck`
   jobs (Nuxt `prepare` pass that catches broken Vue/TS imports across
   module layers).
+- Playwright browser E2E suite under `frontend/tests/e2e/` — 16
+  smoke tests covering admin navigation across every module layer,
+  patient detail rendering, and per-role sidebar visibility. CI `e2e`
+  job boots docker-compose + seeds demo + runs Playwright.
+  `./scripts/e2e.sh` wrapper for local runs.
 
 ### Changed
 
@@ -69,6 +79,9 @@ layout; the `clinical` module is gone.
 - Dashboard + Settings sidebar entries are host-owned (see
   `frontend/app/utils/moduleRegistry.ts::HOST_NAV`); modules no
   longer publish `/` or `/settings`.
+- Auth rate limiter only activates in `ENVIRONMENT=production`.
+  Dev + test runs were tripping the 5/min `/login` cap during manual
+  reloads and Playwright runs; production semantics unchanged.
 
 ### Removed
 
