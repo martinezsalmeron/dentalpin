@@ -640,7 +640,7 @@
       "subtitleWaiting": "{count} waiting · avg {avg} min",
       "subtitleInChair": "{busy} busy · {free} free"
     },
-    "cabinet": {
+    "cabinetAssignment": {
       "assignLater": "Assign later",
       "unassigned": "Unassigned",
       "assign": "Assign cabinet",
@@ -1756,6 +1756,25 @@
         "punctuality_on_time": "On time (±5)",
         "punctuality_late_short": "Late (5-15)",
         "punctuality_late_long": "Late (>15)"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "activity": "Activity",
+        "quality": "Quality"
+      },
+      "hero": {
+        "inPeriod": "in period"
+      },
+      "filters": {
+        "cabinet": "Cabinet",
+        "professional": "Professional",
+        "custom": "Custom range",
+        "all": "All",
+        "clear": "Clear filters"
+      },
+      "empty": {
+        "title": "No data for this period",
+        "desc": "Try a wider date range or remove filters."
       }
     }
   },

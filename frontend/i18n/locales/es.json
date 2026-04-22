@@ -661,7 +661,7 @@
       "subtitleWaiting": "{count} esperando · media {avg} min",
       "subtitleInChair": "{busy} ocupados · {free} libres"
     },
-    "cabinet": {
+    "cabinetAssignment": {
       "assignLater": "Asignar después",
       "unassigned": "Sin asignar",
       "assign": "Asignar gabinete",
@@ -1698,6 +1698,25 @@
         "punctuality_on_time": "Puntual (±5)",
         "punctuality_late_short": "Tarde (5-15)",
         "punctuality_late_long": "Tarde (>15)"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "activity": "Actividad",
+        "quality": "Calidad"
+      },
+      "hero": {
+        "inPeriod": "en el período"
+      },
+      "filters": {
+        "cabinet": "Gabinete",
+        "professional": "Profesional",
+        "custom": "Rango personalizado",
+        "all": "Todos",
+        "clear": "Quitar filtros"
+      },
+      "empty": {
+        "title": "Sin datos en este período",
+        "desc": "Prueba un rango más amplio o elimina filtros."
       }
     }
   },

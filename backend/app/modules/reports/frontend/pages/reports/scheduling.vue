@@ -27,7 +27,16 @@ const {
   getDayOfWeekLabel
 } = useReports()
 
-// State
+const { cabinets } = useClinic()
+const {
+  professionals,
+  fetchProfessionals,
+  getProfessionalColor,
+  getProfessionalInitials,
+  getProfessionalFullName
+} = useProfessionals()
+
+// ─── State ───────────────────────────────────────────────────────────
 const isLoading = ref(false)
 const summary = ref<SchedulingSummary | null>(null)
 const firstVisits = ref<FirstVisitsSummary | null>(null)
@@ -39,24 +48,25 @@ const punctuality = ref<PunctualityStats | null>(null)
 const durationVariance = ref<DurationVarianceStats | null>(null)
 const funnel = ref<AppointmentFunnel | null>(null)
 
-// Date range
+// ─── Date range ──────────────────────────────────────────────────────
 const today = new Date()
 const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-const dateFrom = ref(firstDayOfMonth.toISOString().split('T')[0])
-const dateTo = ref(today.toISOString().split('T')[0])
+const dateFrom = ref(firstDayOfMonth.toISOString().split('T')[0] as string)
+const dateTo = ref(today.toISOString().split('T')[0] as string)
 
-// Quick date range options
 const dateRangeOptions = computed(() => [
   { label: t('reports.billing.thisMonth'), value: 'month' },
   { label: t('reports.billing.thisQuarter'), value: 'quarter' },
   { label: t('reports.billing.thisYear'), value: 'year' },
   { label: t('reports.billing.lastMonth'), value: 'last_month' },
   { label: t('reports.billing.lastQuarter'), value: 'last_quarter' },
-  { label: t('reports.billing.lastYear'), value: 'last_year' }
+  { label: t('reports.billing.lastYear'), value: 'last_year' },
+  { label: t('reports.scheduling.filters.custom'), value: 'custom' }
 ])
 const selectedRange = ref('month')
 
 watch(selectedRange, (range) => {
+  if (range === 'custom') return
   const now = new Date()
   let from: Date
   let to: Date
@@ -96,11 +106,29 @@ watch(selectedRange, (range) => {
       return
   }
 
-  dateFrom.value = from.toISOString().split('T')[0]
-  dateTo.value = to.toISOString().split('T')[0]
+  dateFrom.value = from.toISOString().split('T')[0] as string
+  dateTo.value = to.toISOString().split('T')[0] as string
 })
 
-// Load all report data
+// ─── Filters ─────────────────────────────────────────────────────────
+const selectedCabinetId = ref<string | null>(null)
+const selectedProfessionalId = ref<string | null>(null)
+
+const analyticsFilters = computed(() => ({
+  cabinetId: selectedCabinetId.value,
+  professionalId: selectedProfessionalId.value
+}))
+
+// ─── Tabs ────────────────────────────────────────────────────────────
+const activeTab = ref<'overview' | 'activity' | 'quality'>('overview')
+
+const tabOptions = computed(() => [
+  { value: 'overview', label: t('reports.scheduling.tabs.overview'), icon: 'i-lucide-layout-dashboard' },
+  { value: 'activity', label: t('reports.scheduling.tabs.activity'), icon: 'i-lucide-activity' },
+  { value: 'quality', label: t('reports.scheduling.tabs.quality'), icon: 'i-lucide-gauge' }
+])
+
+// ─── Data load ───────────────────────────────────────────────────────
 async function loadReports() {
   isLoading.value = true
 
@@ -121,10 +149,10 @@ async function loadReports() {
       fetchHoursByProfessional(dateFrom.value, dateTo.value),
       fetchCabinetUtilization(dateFrom.value, dateTo.value),
       fetchByDayOfWeek(dateFrom.value, dateTo.value),
-      fetchWaitingTimes(dateFrom.value, dateTo.value),
-      fetchPunctuality(dateFrom.value, dateTo.value),
-      fetchDurationVariance(dateFrom.value, dateTo.value),
-      fetchFunnel(dateFrom.value, dateTo.value)
+      fetchWaitingTimes(dateFrom.value, dateTo.value, analyticsFilters.value),
+      fetchPunctuality(dateFrom.value, dateTo.value, analyticsFilters.value),
+      fetchDurationVariance(dateFrom.value, dateTo.value, analyticsFilters.value),
+      fetchFunnel(dateFrom.value, dateTo.value, analyticsFilters.value)
     ])
 
     summary.value = summaryData
@@ -143,16 +171,16 @@ async function loadReports() {
   }
 }
 
-// Reload when dates change
-watch([dateFrom, dateTo], () => {
+watch([dateFrom, dateTo, selectedCabinetId, selectedProfessionalId], () => {
   loadReports()
 })
 
-onMounted(() => {
-  loadReports()
+onMounted(async () => {
+  await fetchProfessionals()
+  await loadReports()
 })
 
-// Format percentage
+// ─── Formatters ──────────────────────────────────────────────────────
 function formatPercent(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—'
   return `${value.toFixed(1)}%`
@@ -170,21 +198,32 @@ function formatSignedMinutes(value: number | null | undefined): string {
   return `${sign}${Math.round(value * 10) / 10} min`
 }
 
-// Get max value for bar charts
-const maxDayCount = computed(() => {
-  return Math.max(...dayOfWeekStats.value.map(d => d.appointment_count), 1)
+// ─── Derived: hero ───────────────────────────────────────────────────
+const noShowSurface = computed(() => {
+  const rate = summary.value?.no_show_rate ?? 0
+  return rate > 10 ? 'alert-surface-danger' : 'alert-surface-warning'
 })
 
+// ─── Derived: bar chart maxes ────────────────────────────────────────
+const maxHours = computed(() =>
+  Math.max(...hoursByProfessional.value.map(p => p.total_minutes), 1)
+)
+const maxCabinetMinutes = computed(() =>
+  Math.max(...cabinetUtilization.value.map(c => c.total_minutes), 1)
+)
+const maxDayCount = computed(() =>
+  Math.max(...dayOfWeekStats.value.map(d => d.appointment_count), 1)
+)
 const maxWaitBucket = computed(() => {
   if (!waitingStats.value) return 1
   return Math.max(...waitingStats.value.distribution.map(b => b.count), 1)
 })
-
 const maxPunctualityBucket = computed(() => {
   if (!punctuality.value) return 1
   return Math.max(...punctuality.value.distribution.map(b => b.count), 1)
 })
 
+// ─── Derived: funnel ─────────────────────────────────────────────────
 const funnelStageLabels: Record<string, string> = {
   scheduled: 'appointments.status.scheduled',
   confirmed: 'appointments.status.confirmed',
@@ -209,11 +248,37 @@ const funnelRows = computed(() => {
   const max = Math.max(...Object.values(funnel.value.counts_by_status), 1)
   return order.map((stage) => ({
     stage,
-    labelKey: funnelStageLabels[stage],
+    labelKey: funnelStageLabels[stage] as string,
     count: funnel.value!.counts_by_status[stage] ?? 0,
     widthPct: ((funnel.value!.counts_by_status[stage] ?? 0) / max) * 100
   }))
 })
+
+// ─── Cabinet chips ───────────────────────────────────────────────────
+const cabinetChips = computed(() =>
+  cabinets.value.map(c => ({
+    id: c.id,
+    label: c.name,
+    color: c.color
+  }))
+)
+
+function toggleCabinet(id: string) {
+  selectedCabinetId.value = selectedCabinetId.value === id ? null : id
+}
+
+function toggleProfessional(id: string) {
+  selectedProfessionalId.value = selectedProfessionalId.value === id ? null : id
+}
+
+function clearFilters() {
+  selectedCabinetId.value = null
+  selectedProfessionalId.value = null
+}
+
+const hasActiveAnalyticsFilter = computed(() =>
+  selectedCabinetId.value !== null || selectedProfessionalId.value !== null
+)
 
 function goBack() {
   router.push('/reports')
@@ -222,29 +287,26 @@ function goBack() {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-4">
+    <!-- Page header -->
+    <PageHeader
+      :title="t('reports.scheduling.title')"
+      :subtitle="t('reports.scheduling.description')"
+    >
+      <template #actions>
         <UButton
           variant="ghost"
           color="neutral"
           icon="i-lucide-arrow-left"
           @click="goBack"
-        />
-        <div>
-          <h1 class="text-display text-default">
-            {{ t('reports.scheduling.title') }}
-          </h1>
-          <p class="text-caption text-subtle">
-            {{ t('reports.scheduling.description') }}
-          </p>
-        </div>
-      </div>
-    </div>
+        >
+          {{ t('common.back') }}
+        </UButton>
+      </template>
+    </PageHeader>
 
-    <!-- Date Range Filters -->
-    <UCard>
-      <div class="flex flex-wrap items-end gap-4">
+    <!-- Filter bar -->
+    <div class="space-y-3">
+      <div class="flex flex-wrap items-end gap-3">
         <UFormField :label="t('reports.billing.period')">
           <USelectMenu
             v-model="selectedRange"
@@ -254,546 +316,657 @@ function goBack() {
           />
         </UFormField>
 
-        <UFormField :label="t('reports.billing.from')">
-          <UInput
-            v-model="dateFrom"
-            type="date"
-          />
-        </UFormField>
+        <template v-if="selectedRange === 'custom'">
+          <UFormField :label="t('reports.billing.from')">
+            <UInput
+              v-model="dateFrom"
+              type="date"
+            />
+          </UFormField>
+          <UFormField :label="t('reports.billing.to')">
+            <UInput
+              v-model="dateTo"
+              type="date"
+            />
+          </UFormField>
+        </template>
 
-        <UFormField :label="t('reports.billing.to')">
-          <UInput
-            v-model="dateTo"
-            type="date"
-          />
-        </UFormField>
-
-        <UButton
-          :loading="isLoading"
-          @click="loadReports"
-        >
-          {{ t('reports.billing.refresh') }}
-        </UButton>
+        <div class="ml-auto flex items-center gap-2">
+          <UButton
+            v-if="hasActiveAnalyticsFilter"
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-x"
+            size="sm"
+            @click="clearFilters"
+          >
+            {{ t('reports.scheduling.filters.clear') }}
+          </UButton>
+          <UButton
+            :loading="isLoading"
+            variant="soft"
+            icon="i-lucide-refresh-cw"
+            @click="loadReports"
+          >
+            {{ t('reports.billing.refresh') }}
+          </UButton>
+        </div>
       </div>
-    </UCard>
 
-    <!-- Loading state -->
+      <!-- Cabinet & professional chips -->
+      <div
+        v-if="cabinetChips.length > 0 || professionals.length > 0"
+        class="flex flex-col gap-2"
+      >
+        <div
+          v-if="cabinetChips.length > 0"
+          class="flex flex-wrap items-center gap-1.5"
+        >
+          <span class="text-caption text-subtle mr-1">
+            {{ t('reports.scheduling.filters.cabinet') }}
+          </span>
+          <FilterChip
+            :label="t('reports.scheduling.filters.all')"
+            :selected="selectedCabinetId === null"
+            @toggle="selectedCabinetId = null"
+          />
+          <FilterChip
+            v-for="c in cabinetChips"
+            :key="c.id"
+            :label="c.label"
+            :selected="selectedCabinetId === c.id"
+            :color="c.color"
+            @toggle="toggleCabinet(c.id)"
+          />
+        </div>
+
+        <div
+          v-if="professionals.length > 0"
+          class="flex flex-wrap items-center gap-1.5"
+        >
+          <span class="text-caption text-subtle mr-1">
+            {{ t('reports.scheduling.filters.professional') }}
+          </span>
+          <FilterChip
+            :label="t('reports.scheduling.filters.all')"
+            :selected="selectedProfessionalId === null"
+            @toggle="selectedProfessionalId = null"
+          />
+          <FilterChip
+            v-for="p in professionals"
+            :key="p.id"
+            :label="getProfessionalFullName(p)"
+            :selected="selectedProfessionalId === p.id"
+            :color="getProfessionalColor(p.id)"
+            :initials="getProfessionalInitials(p)"
+            @toggle="toggleProfessional(p.id)"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Skeleton (first load only) -->
     <div
-      v-if="isLoading"
-      class="flex justify-center py-12"
+      v-if="isLoading && !summary"
+      class="space-y-6"
     >
-      <UIcon
-        name="i-lucide-loader-2"
-        class="h-8 w-8 animate-spin text-primary-accent"
-      />
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <USkeleton
+          v-for="i in 4"
+          :key="i"
+          class="h-24 rounded-token-lg"
+        />
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <USkeleton class="h-64 rounded-token-lg" />
+        <USkeleton class="h-64 rounded-token-lg" />
+      </div>
+      <USkeleton class="h-48 rounded-token-lg" />
     </div>
 
     <template v-else>
-      <!-- Summary Cards -->
+      <!-- Hero strip -->
       <div
         v-if="summary"
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"
       >
-        <UCard>
-          <div class="text-center">
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.totalAppointments') }}
-            </p>
-            <p class="text-display text-default">
-              {{ summary.total_appointments }}
-            </p>
-          </div>
-        </UCard>
+        <div class="bg-surface-muted rounded-token-md px-4 py-3">
+          <p class="text-caption text-subtle">
+            {{ t('reports.scheduling.labels.totalAppointments') }}
+          </p>
+          <p class="text-display text-default tnum">
+            {{ summary.total_appointments }}
+          </p>
+          <p class="text-caption text-subtle">
+            {{ t('reports.scheduling.hero.inPeriod') }}
+          </p>
+        </div>
 
-        <UCard>
-          <div class="text-center">
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.completionRate') }}
-            </p>
-            <p class="text-display text-default text-success-accent">
-              {{ formatPercent(summary.completion_rate) }}
-            </p>
-            <p class="text-caption text-subtle">
-              {{ summary.completed }} {{ t('reports.scheduling.labels.completed') }}
-            </p>
-          </div>
-        </UCard>
+        <div class="alert-surface-success rounded-token-md px-4 py-3">
+          <p class="text-caption opacity-75">
+            {{ t('reports.scheduling.labels.completionRate') }}
+          </p>
+          <p class="text-display tnum">
+            {{ formatPercent(summary.completion_rate) }}
+          </p>
+          <p class="text-caption opacity-75">
+            {{ summary.completed }} {{ t('reports.scheduling.labels.completed') }}
+          </p>
+        </div>
 
-        <UCard>
-          <div class="text-center">
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.cancellationRate') }}
-            </p>
-            <p
-              class="text-display text-default"
-              :class="summary.cancellation_rate > 20 ? 'text-danger-accent' : 'text-warning-accent'"
-            >
-              {{ formatPercent(summary.cancellation_rate) }}
-            </p>
-            <p class="text-caption text-subtle">
-              {{ summary.cancelled }} {{ t('reports.scheduling.labels.cancelled') }}
-            </p>
-          </div>
-        </UCard>
+        <div
+          :class="noShowSurface"
+          class="rounded-token-md px-4 py-3"
+        >
+          <p class="text-caption opacity-75">
+            {{ t('reports.scheduling.labels.noShowRate') }}
+          </p>
+          <p class="text-display tnum">
+            {{ formatPercent(summary.no_show_rate) }}
+          </p>
+          <p class="text-caption opacity-75">
+            {{ summary.no_show }} {{ t('reports.scheduling.labels.noShows') }}
+          </p>
+        </div>
 
-        <UCard>
-          <div class="text-center">
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.noShowRate') }}
-            </p>
-            <p
-              class="text-display text-default"
-              :class="summary.no_show_rate > 10 ? 'text-danger-accent' : 'text-warning-accent'"
-            >
-              {{ formatPercent(summary.no_show_rate) }}
-            </p>
-            <p class="text-caption text-subtle">
-              {{ summary.no_show }} {{ t('reports.scheduling.labels.noShows') }}
-            </p>
-          </div>
-        </UCard>
+        <div class="alert-surface-info rounded-token-md px-4 py-3">
+          <p class="text-caption opacity-75">
+            {{ t('reports.scheduling.features.firstVisits') }}
+          </p>
+          <p class="text-display tnum">
+            {{ firstVisits?.new_patients ?? 0 }}
+          </p>
+          <p class="text-caption opacity-75">
+            {{ formatPercent(firstVisits?.first_visit_rate) }} {{ t('reports.scheduling.labels.ofTotalAppointments') }}
+          </p>
+        </div>
       </div>
 
-      <!-- First Visits Card -->
+      <!-- Tabs -->
+      <div class="flex items-center">
+        <SegmentedControl
+          v-model="activeTab"
+          :options="tabOptions"
+          size="md"
+        />
+      </div>
+
+      <!-- Overview tab -->
       <div
-        v-if="firstVisits"
-        class="grid grid-cols-1 md:grid-cols-3 gap-4"
+        v-if="activeTab === 'overview'"
+        class="space-y-6"
       >
-        <UCard>
-          <div class="text-center">
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.features.firstVisits') }}
-            </p>
-            <p class="text-display text-default text-purple-600">
-              {{ firstVisits.new_patients }}
-            </p>
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.newPatients') }}
-            </p>
-          </div>
-        </UCard>
-
-        <UCard>
-          <div class="text-center">
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.firstVisitRate') }}
-            </p>
-            <p class="text-display text-default text-info-accent">
-              {{ formatPercent(firstVisits.first_visit_rate) }}
-            </p>
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.ofTotalAppointments') }}
-            </p>
-          </div>
-        </UCard>
-
-        <UCard>
-          <div class="text-center">
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.appointmentsInPeriod') }}
-            </p>
-            <p class="text-display text-default">
-              {{ firstVisits.total_appointments }}
-            </p>
-            <p class="text-caption text-subtle">
-              {{ t('reports.scheduling.labels.excludingCancelled') }}
-            </p>
-          </div>
-        </UCard>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Hours by Professional -->
-        <UCard>
-          <template #header>
-            <h3 class="font-semibold text-default">
-              {{ t('reports.scheduling.features.hoursWorked') }}
-            </h3>
-          </template>
-
-          <div
-            v-if="hoursByProfessional.length > 0"
-            class="space-y-4"
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Hours by professional -->
+          <SectionCard
+            icon="i-lucide-user-round"
+            icon-role="primary"
+            :title="t('reports.scheduling.features.hoursWorked')"
           >
             <div
-              v-for="prof in hoursByProfessional"
-              :key="prof.professional_id || 'unknown'"
-              class="flex items-center justify-between"
+              v-if="hoursByProfessional.length > 0"
+              class="space-y-1"
             >
-              <div class="flex items-center gap-2">
-                <UAvatar
-                  :alt="prof.professional_name"
-                  size="sm"
-                />
-                <div>
-                  <p class="text-muted">
-                    {{ prof.professional_name }}
-                  </p>
-                  <p class="text-caption text-subtle">
-                    {{ prof.appointment_count }} {{ t('reports.scheduling.labels.appointments') }}
-                  </p>
-                </div>
-              </div>
-              <div class="text-right">
-                <p class="font-semibold text-default">
-                  {{ formatHours(prof.total_minutes) }}
-                </p>
-                <div class="flex items-center gap-2 text-caption text-subtle">
-                  <span class="text-success-accent">{{ prof.completed_count }} ✓</span>
-                  <span class="text-danger-accent">{{ prof.cancelled_count }} ✗</span>
-                  <span class="text-warning-accent">{{ prof.no_show_count }} ⊘</span>
-                </div>
-              </div>
+              <ListRow
+                v-for="prof in hoursByProfessional"
+                :key="prof.professional_id || 'unknown'"
+              >
+                <template #leading>
+                  <UAvatar
+                    :alt="prof.professional_name"
+                    size="sm"
+                  />
+                </template>
+                <template #title>
+                  {{ prof.professional_name }}
+                </template>
+                <template #subtitle>
+                  <span class="tnum">{{ prof.appointment_count }}</span>
+                  {{ t('reports.scheduling.labels.appointments') }}
+                  <span class="mx-1 text-subtle">·</span>
+                  <span class="text-success-accent tnum">{{ prof.completed_count }} ✓</span>
+                  <span class="text-danger-accent tnum ml-1">{{ prof.cancelled_count }} ✗</span>
+                  <span class="text-warning-accent tnum ml-1">{{ prof.no_show_count }} ⊘</span>
+                </template>
+                <template #meta>
+                  <div class="flex flex-col items-end gap-1 w-24">
+                    <span class="text-ui text-default font-semibold tnum">
+                      {{ formatHours(prof.total_minutes) }}
+                    </span>
+                    <div class="w-full h-1 rounded-full bg-surface-sunken overflow-hidden">
+                      <div
+                        class="h-full bg-[var(--color-primary)] transition-all"
+                        :style="{ width: `${(prof.total_minutes / maxHours) * 100}%` }"
+                      />
+                    </div>
+                  </div>
+                </template>
+              </ListRow>
             </div>
-          </div>
-          <p
-            v-else
-            class="text-subtle text-center py-4"
-          >
-            {{ t('reports.billing.noData') }}
-          </p>
-        </UCard>
+            <EmptyState
+              v-else
+              icon="i-lucide-users"
+              :title="t('reports.scheduling.empty.title')"
+              :description="t('reports.scheduling.empty.desc')"
+            />
+          </SectionCard>
 
-        <!-- Cabinet Utilization -->
-        <UCard>
-          <template #header>
-            <h3 class="font-semibold text-default">
-              {{ t('reports.scheduling.features.cabinetUtilization') }}
-            </h3>
-          </template>
-
-          <div
-            v-if="cabinetUtilization.length > 0"
-            class="space-y-4"
+          <!-- Cabinet utilization -->
+          <SectionCard
+            icon="i-lucide-armchair"
+            icon-role="primary"
+            :title="t('reports.scheduling.features.cabinetUtilization')"
           >
             <div
-              v-for="cabinet in cabinetUtilization"
-              :key="cabinet.cabinet"
-              class="flex items-center justify-between"
+              v-if="cabinetUtilization.length > 0"
+              class="space-y-1"
             >
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-lucide-armchair"
-                  class="h-5 w-5 text-purple-500"
-                />
-                <div>
-                  <p class="text-muted">
-                    {{ cabinet.cabinet }}
-                  </p>
-                  <p class="text-caption text-subtle">
-                    {{ cabinet.appointment_count }} {{ t('reports.scheduling.labels.appointments') }}
-                  </p>
-                </div>
-              </div>
-              <div class="text-right">
-                <p class="font-semibold text-default">
-                  {{ formatHours(cabinet.total_minutes) }}
-                </p>
-                <p class="text-caption text-subtle">
-                  {{ cabinet.completed_count }} {{ t('reports.scheduling.labels.completed') }}
-                </p>
-              </div>
+              <ListRow
+                v-for="cabinet in cabinetUtilization"
+                :key="cabinet.cabinet"
+              >
+                <template #leading>
+                  <UIcon
+                    name="i-lucide-armchair"
+                    class="h-5 w-5 text-muted"
+                  />
+                </template>
+                <template #title>
+                  {{ cabinet.cabinet }}
+                </template>
+                <template #subtitle>
+                  <span class="tnum">{{ cabinet.appointment_count }}</span>
+                  {{ t('reports.scheduling.labels.appointments') }}
+                  <span class="mx-1 text-subtle">·</span>
+                  <span class="text-success-accent tnum">{{ cabinet.completed_count }}</span>
+                  {{ t('reports.scheduling.labels.completed') }}
+                </template>
+                <template #meta>
+                  <div class="flex flex-col items-end gap-1 w-24">
+                    <span class="text-ui text-default font-semibold tnum">
+                      {{ formatHours(cabinet.total_minutes) }}
+                    </span>
+                    <div class="w-full h-1 rounded-full bg-surface-sunken overflow-hidden">
+                      <div
+                        class="h-full bg-[var(--color-primary)] transition-all"
+                        :style="{ width: `${(cabinet.total_minutes / maxCabinetMinutes) * 100}%` }"
+                      />
+                    </div>
+                  </div>
+                </template>
+              </ListRow>
             </div>
-          </div>
-          <p
-            v-else
-            class="text-subtle text-center py-4"
-          >
-            {{ t('reports.billing.noData') }}
-          </p>
-        </UCard>
+            <EmptyState
+              v-else
+              icon="i-lucide-armchair"
+              :title="t('reports.scheduling.empty.title')"
+              :description="t('reports.scheduling.empty.desc')"
+            />
+          </SectionCard>
+        </div>
 
-        <!-- Day of Week Distribution -->
-        <UCard class="lg:col-span-2">
-          <template #header>
-            <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-default">
-                {{ t('reports.scheduling.labels.byDayOfWeek') }}
-              </h3>
-              <!-- Legend -->
-              <div class="flex items-center gap-4 text-xs">
-                <div class="flex items-center gap-1">
-                  <div class="w-3 h-3 rounded bg-[var(--color-success-accent)]" />
-                  <span class="text-muted dark:text-subtle">{{ t('reports.scheduling.labels.completed') }}</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <div class="w-3 h-3 rounded bg-[var(--color-danger-accent)]" />
-                  <span class="text-muted dark:text-subtle">{{ t('reports.scheduling.labels.cancelled') }}</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <div class="w-3 h-3 rounded bg-[var(--color-warning-accent)]" />
-                  <span class="text-muted dark:text-subtle">{{ t('reports.scheduling.labels.noShows') }}</span>
-                </div>
-              </div>
+        <!-- Day of week -->
+        <SectionCard
+          icon="i-lucide-calendar-days"
+          icon-role="primary"
+          :title="t('reports.scheduling.labels.byDayOfWeek')"
+        >
+          <template #actions>
+            <div class="flex items-center gap-3 text-caption">
+              <span class="flex items-center gap-1 text-muted">
+                <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-success-accent)]" />
+                {{ t('reports.scheduling.labels.completed') }}
+              </span>
+              <span class="flex items-center gap-1 text-muted">
+                <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-danger-accent)]" />
+                {{ t('reports.scheduling.labels.cancelled') }}
+              </span>
+              <span class="flex items-center gap-1 text-muted">
+                <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-warning-accent)]" />
+                {{ t('reports.scheduling.labels.noShows') }}
+              </span>
             </div>
           </template>
 
           <div
             v-if="dayOfWeekStats.length > 0"
-            class="space-y-3"
+            class="space-y-2"
           >
             <div
               v-for="day in dayOfWeekStats"
               :key="day.day_of_week"
-              class="flex items-center gap-4"
+              class="flex items-center gap-3"
             >
-              <div class="w-24 text-sm text-muted">
+              <div class="w-24 text-ui text-muted">
                 {{ getDayOfWeekLabel(day.day_name) }}
               </div>
-              <div class="flex-1">
-                <div class="flex items-center gap-2">
-                  <!-- Stacked bar container -->
+              <div class="flex-1 bg-surface-sunken rounded-full h-3 overflow-hidden">
+                <div
+                  class="flex h-3"
+                  :style="{ width: `${(day.appointment_count / maxDayCount) * 100}%` }"
+                >
                   <div
-                    class="flex-1 bg-surface-sunken rounded-full h-4 overflow-hidden"
-                  >
-                    <div
-                      class="flex h-4"
-                      :style="{ width: `${(day.appointment_count / maxDayCount) * 100}%` }"
-                    >
-                      <!-- Completed (green) -->
-                      <div
-                        v-if="day.completed_count > 0"
-                        class="bg-[var(--color-success-accent)] h-4 transition-all"
-                        :style="{ width: `${(day.completed_count / day.appointment_count) * 100}%` }"
-                        :title="`${day.completed_count} ${t('reports.scheduling.labels.completed')}`"
-                      />
-                      <!-- Cancelled (red) -->
-                      <div
-                        v-if="day.cancelled_count > 0"
-                        class="bg-[var(--color-danger-accent)] h-4 transition-all"
-                        :style="{ width: `${(day.cancelled_count / day.appointment_count) * 100}%` }"
-                        :title="`${day.cancelled_count} ${t('reports.scheduling.labels.cancelled')}`"
-                      />
-                      <!-- No-show (amber) -->
-                      <div
-                        v-if="day.no_show_count > 0"
-                        class="bg-[var(--color-warning-accent)] h-4 transition-all"
-                        :style="{ width: `${(day.no_show_count / day.appointment_count) * 100}%` }"
-                        :title="`${day.no_show_count} ${t('reports.scheduling.labels.noShows')}`"
-                      />
-                      <!-- Other statuses (gray) -->
-                      <div
-                        v-if="day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count > 0"
-                        class="bg-[var(--color-text-subtle)] h-4 transition-all"
-                        :style="{ width: `${((day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count) / day.appointment_count) * 100}%` }"
-                        :title="`${day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count} ${t('reports.scheduling.labels.pending')}`"
-                      />
-                    </div>
-                  </div>
-                  <span class="text-sm font-medium w-12 text-right text-default">
-                    {{ day.appointment_count }}
-                  </span>
+                    v-if="day.completed_count > 0"
+                    class="bg-[var(--color-success-accent)] transition-all"
+                    :style="{ width: `${(day.completed_count / day.appointment_count) * 100}%` }"
+                    :title="`${day.completed_count} ${t('reports.scheduling.labels.completed')}`"
+                  />
+                  <div
+                    v-if="day.cancelled_count > 0"
+                    class="bg-[var(--color-danger-accent)] transition-all"
+                    :style="{ width: `${(day.cancelled_count / day.appointment_count) * 100}%` }"
+                    :title="`${day.cancelled_count} ${t('reports.scheduling.labels.cancelled')}`"
+                  />
+                  <div
+                    v-if="day.no_show_count > 0"
+                    class="bg-[var(--color-warning-accent)] transition-all"
+                    :style="{ width: `${(day.no_show_count / day.appointment_count) * 100}%` }"
+                    :title="`${day.no_show_count} ${t('reports.scheduling.labels.noShows')}`"
+                  />
+                  <div
+                    v-if="day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count > 0"
+                    class="bg-[var(--color-border-strong)] transition-all"
+                    :style="{ width: `${((day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count) / day.appointment_count) * 100}%` }"
+                    :title="`${day.appointment_count - day.completed_count - day.cancelled_count - day.no_show_count} ${t('reports.scheduling.labels.pending')}`"
+                  />
                 </div>
               </div>
+              <span class="w-10 text-right text-ui text-default tnum">
+                {{ day.appointment_count }}
+              </span>
             </div>
           </div>
-          <p
+          <EmptyState
             v-else
-            class="text-subtle text-center py-4"
-          >
-            {{ t('reports.billing.noData') }}
-          </p>
-        </UCard>
+            icon="i-lucide-calendar-days"
+            :title="t('reports.scheduling.empty.title')"
+            :description="t('reports.scheduling.empty.desc')"
+          />
+        </SectionCard>
       </div>
 
-      <!-- Status Breakdown (Additional Info) -->
-      <UCard v-if="summary">
-        <template #header>
-          <h3 class="font-semibold text-default">
-            {{ t('reports.scheduling.labels.statusBreakdown') }}
-          </h3>
-        </template>
+      <!-- Activity tab -->
+      <div
+        v-if="activeTab === 'activity'"
+        class="space-y-6"
+      >
+        <SectionCard
+          v-if="funnel"
+          icon="i-lucide-filter"
+          icon-role="primary"
+          :title="t('reports.scheduling.analytics.funnel')"
+        >
+          <template #subtitle>
+            {{ t('reports.scheduling.analytics.funnelDesc') }}
+          </template>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          <div class="text-center p-3 bg-surface-muted rounded-lg">
-            <UIcon name="i-lucide-calendar" class="h-6 w-6 mx-auto text-subtle mb-1" />
-            <p class="text-h1 text-default">{{ summary.scheduled }}</p>
-            <p class="text-caption text-subtle">{{ t('appointments.status.scheduled') }}</p>
-          </div>
-
-          <div class="text-center p-3 bg-surface-muted rounded-lg">
-            <UIcon name="i-lucide-calendar-check" class="h-6 w-6 mx-auto text-info-accent mb-1" />
-            <p class="text-h1 text-default">{{ summary.confirmed }}</p>
-            <p class="text-caption text-subtle">{{ t('appointments.status.confirmed') }}</p>
-          </div>
-
-          <div class="text-center p-3 bg-surface-muted rounded-lg">
-            <UIcon name="i-lucide-door-open" class="h-6 w-6 mx-auto text-warning-accent mb-1" />
-            <p class="text-h1 text-default">{{ summary.checked_in }}</p>
-            <p class="text-caption text-subtle">{{ t('appointments.status.checked_in') }}</p>
-          </div>
-
-          <div class="text-center p-3 bg-surface-muted rounded-lg">
-            <UIcon name="i-lucide-stethoscope" class="h-6 w-6 mx-auto text-warning-accent mb-1" />
-            <p class="text-h1 text-default">{{ summary.in_treatment }}</p>
-            <p class="text-caption text-subtle">{{ t('appointments.status.in_treatment') }}</p>
-          </div>
-
-          <div class="text-center p-3 bg-surface-muted rounded-lg">
-            <UIcon name="i-lucide-check-circle" class="h-6 w-6 mx-auto text-success-accent mb-1" />
-            <p class="text-h1 text-default">{{ summary.completed }}</p>
-            <p class="text-caption text-subtle">{{ t('appointments.status.completed') }}</p>
-          </div>
-
-          <div class="text-center p-3 bg-surface-muted rounded-lg">
-            <UIcon name="i-lucide-x-circle" class="h-6 w-6 mx-auto text-danger-accent mb-1" />
-            <p class="text-h1 text-default">{{ summary.cancelled }}</p>
-            <p class="text-caption text-subtle">{{ t('appointments.status.cancelled') }}</p>
-          </div>
-
-          <div class="text-center p-3 bg-surface-muted rounded-lg">
-            <UIcon name="i-lucide-user-x" class="h-6 w-6 mx-auto text-warning-accent mb-1" />
-            <p class="text-h1 text-default">{{ summary.no_show }}</p>
-            <p class="text-caption text-subtle">{{ t('appointments.status.no_show') }}</p>
-          </div>
-        </div>
-      </UCard>
-
-      <!-- Funnel -->
-      <UCard v-if="funnel">
-        <template #header>
-          <h3 class="text-h3 text-default">{{ t('reports.scheduling.analytics.funnel') }}</h3>
-          <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.funnelDesc') }}</p>
-        </template>
-        <div class="space-y-2">
-          <div v-for="row in funnelRows" :key="row.stage" class="flex items-center gap-3">
-            <span class="w-32 text-ui text-default">{{ t(row.labelKey) }}</span>
-            <div class="flex-1 bg-surface-muted rounded-full h-4 overflow-hidden">
-              <div
-                class="h-full bg-primary-500 transition-all"
-                :style="{ width: `${row.widthPct}%` }"
-              />
-            </div>
-            <span class="w-12 text-right text-ui text-default">{{ row.count }}</span>
-          </div>
-        </div>
-        <template #footer>
-          <div class="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.completionRate') }}</p>
-              <p class="text-h2 text-success-accent">{{ formatPercent(funnel.completion_rate) }}</p>
-            </div>
-            <div>
-              <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.noShowRate') }}</p>
-              <p class="text-h2 text-danger-accent">{{ formatPercent(funnel.no_show_rate) }}</p>
-            </div>
-            <div>
-              <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.cancellationRate') }}</p>
-              <p class="text-h2 text-subtle">{{ formatPercent(funnel.cancellation_rate) }}</p>
-            </div>
-          </div>
-        </template>
-      </UCard>
-
-      <!-- Waiting times -->
-      <UCard v-if="waitingStats">
-        <template #header>
-          <h3 class="text-h3 text-default">{{ t('reports.scheduling.analytics.waitingTimes') }}</h3>
-          <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.waitingTimesDesc') }}</p>
-        </template>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.samples') }}</p>
-            <p class="text-h1 text-default">{{ waitingStats.sample_size }}</p>
-          </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.average') }}</p>
-            <p class="text-h1 text-default">{{ formatMinutes(waitingStats.avg_minutes) }}</p>
-          </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.median') }}</p>
-            <p class="text-h1 text-default">{{ formatMinutes(waitingStats.median_minutes) }}</p>
-          </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.p90') }}</p>
-            <p class="text-h1 text-default">{{ formatMinutes(waitingStats.p90_minutes) }}</p>
-          </div>
-        </div>
-        <div v-if="waitingStats.sample_size > 0" class="space-y-2">
           <div
-            v-for="bucket in waitingStats.distribution"
-            :key="bucket.label"
-            class="flex items-center gap-3"
+            v-if="funnel.total > 0"
+            class="space-y-2"
           >
-            <span class="w-20 text-ui text-default tnum">{{ bucket.label }} min</span>
-            <div class="flex-1 bg-surface-muted rounded-full h-3 overflow-hidden">
-              <div
-                class="h-full bg-amber-500 transition-all"
-                :style="{ width: `${(bucket.count / maxWaitBucket) * 100}%` }"
-              />
+            <div
+              v-for="row in funnelRows"
+              :key="row.stage"
+              class="flex items-center gap-3"
+            >
+              <span class="w-32 text-ui text-muted">
+                {{ t(row.labelKey) }}
+              </span>
+              <div class="flex-1 bg-surface-sunken rounded-full h-3 overflow-hidden">
+                <div
+                  class="h-full bg-[var(--color-primary)] transition-all"
+                  :style="{ width: `${row.widthPct}%` }"
+                />
+              </div>
+              <span class="w-10 text-right text-ui text-default tnum">
+                {{ row.count }}
+              </span>
             </div>
-            <span class="w-10 text-right text-ui text-default">{{ bucket.count }}</span>
           </div>
-        </div>
-      </UCard>
+          <EmptyState
+            v-else
+            icon="i-lucide-filter"
+            :title="t('reports.scheduling.empty.title')"
+            :description="t('reports.scheduling.empty.desc')"
+          />
 
-      <!-- Punctuality -->
-      <UCard v-if="punctuality">
-        <template #header>
-          <h3 class="text-h3 text-default">{{ t('reports.scheduling.analytics.punctuality') }}</h3>
-          <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.punctualityDesc') }}</p>
-        </template>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.samples') }}</p>
-            <p class="text-h1 text-default">{{ punctuality.sample_size }}</p>
+          <template #footer>
+            <div class="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p class="text-caption text-subtle">
+                  {{ t('reports.scheduling.analytics.completionRate') }}
+                </p>
+                <p class="text-h2 text-success-accent tnum">
+                  {{ formatPercent(funnel.completion_rate) }}
+                </p>
+              </div>
+              <div>
+                <p class="text-caption text-subtle">
+                  {{ t('reports.scheduling.analytics.noShowRate') }}
+                </p>
+                <p class="text-h2 text-danger-accent tnum">
+                  {{ formatPercent(funnel.no_show_rate) }}
+                </p>
+              </div>
+              <div>
+                <p class="text-caption text-subtle">
+                  {{ t('reports.scheduling.analytics.cancellationRate') }}
+                </p>
+                <p class="text-h2 text-warning-accent tnum">
+                  {{ formatPercent(funnel.cancellation_rate) }}
+                </p>
+              </div>
+            </div>
+          </template>
+        </SectionCard>
+      </div>
+
+      <!-- Quality tab -->
+      <div
+        v-if="activeTab === 'quality'"
+        class="space-y-6"
+      >
+        <!-- Waiting times -->
+        <SectionCard
+          v-if="waitingStats"
+          icon="i-lucide-hourglass"
+          icon-role="primary"
+          :title="t('reports.scheduling.analytics.waitingTimes')"
+        >
+          <template #subtitle>
+            {{ t('reports.scheduling.analytics.waitingTimesDesc') }}
+          </template>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.samples') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ waitingStats.sample_size }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.average') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ formatMinutes(waitingStats.avg_minutes) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.median') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ formatMinutes(waitingStats.median_minutes) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.p90') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ formatMinutes(waitingStats.p90_minutes) }}
+              </p>
+            </div>
           </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.avgDelta') }}</p>
-            <p class="text-h1 text-default">{{ formatSignedMinutes(punctuality.avg_delta_minutes) }}</p>
-          </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.medianDelta') }}</p>
-            <p class="text-h1 text-default">{{ formatSignedMinutes(punctuality.median_delta_minutes) }}</p>
-          </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.onTime') }}</p>
-            <p class="text-h1 text-success-accent">{{ formatPercent(punctuality.on_time_pct) }}</p>
-          </div>
-        </div>
-        <div v-if="punctuality.sample_size > 0" class="space-y-2">
+
           <div
-            v-for="bucket in punctuality.distribution"
-            :key="bucket.label"
-            class="flex items-center gap-3"
+            v-if="waitingStats.sample_size > 0"
+            class="space-y-2"
           >
-            <span class="w-24 text-ui text-default tnum">{{ t(`reports.scheduling.analytics.punctuality_${bucket.label}`) }}</span>
-            <div class="flex-1 bg-surface-muted rounded-full h-3 overflow-hidden">
-              <div
-                class="h-full bg-blue-500 transition-all"
-                :style="{ width: `${(bucket.count / maxPunctualityBucket) * 100}%` }"
-              />
+            <div
+              v-for="bucket in waitingStats.distribution"
+              :key="bucket.label"
+              class="flex items-center gap-3"
+            >
+              <span class="w-20 text-ui text-muted tnum">
+                {{ bucket.label }} min
+              </span>
+              <div class="flex-1 bg-surface-sunken rounded-full h-2 overflow-hidden">
+                <div
+                  class="h-full bg-[var(--color-primary)] transition-all"
+                  :style="{ width: `${(bucket.count / maxWaitBucket) * 100}%` }"
+                />
+              </div>
+              <span class="w-10 text-right text-ui text-default tnum">
+                {{ bucket.count }}
+              </span>
             </div>
-            <span class="w-10 text-right text-ui text-default">{{ bucket.count }}</span>
           </div>
-        </div>
-      </UCard>
+          <EmptyState
+            v-else
+            icon="i-lucide-hourglass"
+            :title="t('reports.scheduling.empty.title')"
+            :description="t('reports.scheduling.empty.desc')"
+          />
+        </SectionCard>
 
-      <!-- Duration variance -->
-      <UCard v-if="durationVariance">
-        <template #header>
-          <h3 class="text-h3 text-default">{{ t('reports.scheduling.analytics.durationVariance') }}</h3>
-          <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.durationVarianceDesc') }}</p>
-        </template>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.samples') }}</p>
-            <p class="text-h1 text-default">{{ durationVariance.sample_size }}</p>
+        <!-- Punctuality -->
+        <SectionCard
+          v-if="punctuality"
+          icon="i-lucide-clock"
+          icon-role="info"
+          :title="t('reports.scheduling.analytics.punctuality')"
+        >
+          <template #subtitle>
+            {{ t('reports.scheduling.analytics.punctualityDesc') }}
+          </template>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.samples') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ punctuality.sample_size }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.avgDelta') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ formatSignedMinutes(punctuality.avg_delta_minutes) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.medianDelta') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ formatSignedMinutes(punctuality.median_delta_minutes) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.onTime') }}
+              </p>
+              <p class="text-h1 text-success-accent tnum">
+                {{ formatPercent(punctuality.on_time_pct) }}
+              </p>
+            </div>
           </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.avgOverrun') }}</p>
-            <p class="text-h1 text-default">{{ formatPercent(durationVariance.avg_overrun_pct) }}</p>
+
+          <div
+            v-if="punctuality.sample_size > 0"
+            class="space-y-2"
+          >
+            <div
+              v-for="bucket in punctuality.distribution"
+              :key="bucket.label"
+              class="flex items-center gap-3"
+            >
+              <span class="w-28 text-ui text-muted">
+                {{ t(`reports.scheduling.analytics.punctuality_${bucket.label}`) }}
+              </span>
+              <div class="flex-1 bg-surface-sunken rounded-full h-2 overflow-hidden">
+                <div
+                  class="h-full bg-[var(--color-info-accent)] transition-all"
+                  :style="{ width: `${(bucket.count / maxPunctualityBucket) * 100}%` }"
+                />
+              </div>
+              <span class="w-10 text-right text-ui text-default tnum">
+                {{ bucket.count }}
+              </span>
+            </div>
           </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.overrunCount') }}</p>
-            <p class="text-h1 text-warning-accent">{{ durationVariance.overrun_count }}</p>
+          <EmptyState
+            v-else
+            icon="i-lucide-clock"
+            :title="t('reports.scheduling.empty.title')"
+            :description="t('reports.scheduling.empty.desc')"
+          />
+        </SectionCard>
+
+        <!-- Duration variance -->
+        <SectionCard
+          v-if="durationVariance"
+          icon="i-lucide-gauge"
+          icon-role="warning"
+          :title="t('reports.scheduling.analytics.durationVariance')"
+        >
+          <template #subtitle>
+            {{ t('reports.scheduling.analytics.durationVarianceDesc') }}
+          </template>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.samples') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ durationVariance.sample_size }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.avgOverrun') }}
+              </p>
+              <p class="text-h1 text-default tnum">
+                {{ formatPercent(durationVariance.avg_overrun_pct) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.overrunCount') }}
+              </p>
+              <p class="text-h1 text-warning-accent tnum">
+                {{ durationVariance.overrun_count }}
+              </p>
+            </div>
+            <div>
+              <p class="text-caption text-subtle">
+                {{ t('reports.scheduling.analytics.underCount') }}
+              </p>
+              <p class="text-h1 text-success-accent tnum">
+                {{ durationVariance.under_count }}
+              </p>
+            </div>
           </div>
-          <div class="text-center">
-            <p class="text-caption text-subtle">{{ t('reports.scheduling.analytics.underCount') }}</p>
-            <p class="text-h1 text-success-accent">{{ durationVariance.under_count }}</p>
-          </div>
-        </div>
-      </UCard>
+        </SectionCard>
+      </div>
     </template>
   </div>
 </template>
