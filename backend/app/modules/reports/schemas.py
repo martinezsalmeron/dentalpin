@@ -176,10 +176,73 @@ class SchedulingSummary(BaseModel):
     no_show: int
     scheduled: int
     confirmed: int
-    in_progress: int
+    checked_in: int
+    in_treatment: int
     completion_rate: float = Field(description="Percentage 0-100")
     cancellation_rate: float = Field(description="Percentage 0-100")
     no_show_rate: float = Field(description="Percentage 0-100")
+
+
+# ---- Appointment lifecycle analytics (issue #49) -------------------------
+
+
+class AnalyticsBucket(BaseModel):
+    """A single bar in a distribution chart."""
+
+    label: str
+    count: int
+
+
+class WaitingTimeStats(BaseModel):
+    """Time between ``checked_in`` and ``in_treatment``."""
+
+    period_start: date
+    period_end: date
+    sample_size: int
+    avg_minutes: float | None
+    median_minutes: float | None
+    p90_minutes: float | None
+    distribution: list[AnalyticsBucket]
+
+
+class PunctualityStats(BaseModel):
+    """Delta between scheduled ``start_time`` and ``checked_in`` timestamp.
+
+    Negative = early, positive = late. ``on_time_pct`` is the share of
+    check-ins with ``|delta| <= 5`` minutes.
+    """
+
+    period_start: date
+    period_end: date
+    sample_size: int
+    avg_delta_minutes: float | None
+    median_delta_minutes: float | None
+    on_time_pct: float | None
+    distribution: list[AnalyticsBucket]
+
+
+class DurationVarianceStats(BaseModel):
+    """Planned vs actual treatment duration."""
+
+    period_start: date
+    period_end: date
+    sample_size: int
+    avg_overrun_pct: float | None
+    avg_delta_minutes: float | None
+    overrun_count: int
+    under_count: int
+
+
+class AppointmentFunnel(BaseModel):
+    """Counts per current status + completion/no-show/cancellation rates."""
+
+    period_start: date
+    period_end: date
+    total: int
+    counts_by_status: dict[str, int]
+    completion_rate: float | None
+    no_show_rate: float | None
+    cancellation_rate: float | None
 
 
 class FirstVisitsSummary(BaseModel):

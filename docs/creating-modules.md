@@ -892,6 +892,26 @@ async def on_completed(db: AsyncSession, data: dict) -> None:
     # Do work
 ```
 
+### Appointment status lifecycle (issue #49)
+
+The agenda module publishes both **specific** and **generic** events on
+every status transition. Subscribe to whichever fits your use case:
+
+| Event | When |
+|-------|------|
+| `APPOINTMENT_STATUS_CHANGED` | Every transition. Payload carries `from_status`, `to_status`, `changed_at`, `changed_by`. Prefer this for cross-cutting concerns (analytics, timelines). |
+| `APPOINTMENT_CONFIRMED` | `scheduled → confirmed` |
+| `APPOINTMENT_CHECKED_IN` | `(scheduled|confirmed) → checked_in` |
+| `APPOINTMENT_IN_TREATMENT` | `checked_in → in_treatment` |
+| `APPOINTMENT_COMPLETED` | `in_treatment → completed` |
+| `APPOINTMENT_CANCELLED` | Any non-terminal → `cancelled` |
+| `APPOINTMENT_NO_SHOW` | `(scheduled|confirmed) → no_show` |
+
+The full audit trail is also available through
+`GET /api/v1/agenda/appointments/{id}/transitions` — consumers that need
+historical context should reach for the API rather than trying to
+reconstruct state from events.
+
 ### Seed data that depends on a record from another module
 
 ```yaml

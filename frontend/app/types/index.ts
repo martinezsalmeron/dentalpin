@@ -193,6 +193,25 @@ export interface AppointmentTreatmentBrief {
 }
 
 // Appointment types
+export type AppointmentStatus
+  = | 'scheduled'
+    | 'confirmed'
+    | 'checked_in'
+    | 'in_treatment'
+    | 'completed'
+    | 'cancelled'
+    | 'no_show'
+
+export interface AppointmentStatusEvent {
+  id: string
+  from_status: AppointmentStatus | null
+  to_status: AppointmentStatus
+  changed_at: string
+  changed_by: string | null
+  changed_by_name: string | null
+  note: string | null
+}
+
 export interface Appointment {
   id: string
   clinic_id: string
@@ -203,13 +222,16 @@ export interface Appointment {
   end_time: string
   treatment_type?: string // Legacy field
   treatments?: AppointmentTreatmentBrief[] // New: treatments from catalog
-  status: 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
+  status: AppointmentStatus
+  current_status_since: string
   notes?: string
   color?: string
   created_at: string
   updated_at: string
   patient?: Patient
   professional?: User
+  // Populated only on GET /appointments/{id} and after POST transitions.
+  history?: AppointmentStatusEvent[] | null
 }
 
 export interface AppointmentCreate {

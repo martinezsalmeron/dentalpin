@@ -179,6 +179,57 @@ async def on_appointment_no_show(data: dict) -> None:
     )
 
 
+async def on_appointment_confirmed(data: dict) -> None:
+    treatment = data.get("treatment_type") or "Consulta"
+    await _record(
+        event_type=EventType.APPOINTMENT_CONFIRMED,
+        event_category="visit",
+        source_table="appointments",
+        data=data,
+        source_id_key="appointment_id",
+        title=f"Cita confirmada: {treatment}",
+        event_data={"professional_id": data.get("professional_id")},
+        occurred_at_key="changed_at",
+        created_by_key="changed_by",
+    )
+
+
+async def on_appointment_checked_in(data: dict) -> None:
+    treatment = data.get("treatment_type") or "Consulta"
+    await _record(
+        event_type=EventType.APPOINTMENT_CHECKED_IN,
+        event_category="visit",
+        source_table="appointments",
+        data=data,
+        source_id_key="appointment_id",
+        title=f"Paciente llegó a la clínica ({treatment})",
+        event_data={
+            "cabinet": data.get("cabinet"),
+            "professional_id": data.get("professional_id"),
+        },
+        occurred_at_key="changed_at",
+        created_by_key="changed_by",
+    )
+
+
+async def on_appointment_in_treatment(data: dict) -> None:
+    treatment = data.get("treatment_type") or "Consulta"
+    await _record(
+        event_type=EventType.APPOINTMENT_IN_TREATMENT,
+        event_category="visit",
+        source_table="appointments",
+        data=data,
+        source_id_key="appointment_id",
+        title=f"Paciente en gabinete ({treatment})",
+        event_data={
+            "cabinet": data.get("cabinet"),
+            "professional_id": data.get("professional_id"),
+        },
+        occurred_at_key="changed_at",
+        created_by_key="changed_by",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Treatments
 # ---------------------------------------------------------------------------

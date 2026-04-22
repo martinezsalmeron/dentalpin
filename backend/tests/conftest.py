@@ -17,7 +17,12 @@ from app.core.auth.models import Clinic, ClinicMembership, User  # noqa: F401
 from app.core.plugins.loader import load_modules
 from app.database import Base, get_db
 from app.main import app
-from app.modules.agenda.models import Appointment  # noqa: F401
+from app.modules.agenda.models import (  # noqa: F401
+    Appointment,
+    AppointmentStatusEvent,
+    AppointmentTreatment,
+    Cabinet,
+)
 from app.modules.budget.models import (  # noqa: F401
     Budget,
     BudgetHistory,
@@ -146,7 +151,6 @@ async def test_clinic(
 
     # Default cabinet so appointment-oriented tests resolve cabinet FK
     # without extra setup.
-    from app.modules.agenda.models import Cabinet
 
     db_session.add(
         Cabinet(

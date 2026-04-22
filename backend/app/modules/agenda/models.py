@@ -6,11 +6,33 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
+
+# Canonical status set. Mirrored in the frontend composable
+# ``useAppointmentStatus.ts`` and kept in sync via a parity test.
+APPOINTMENT_STATUSES: tuple[str, ...] = (
+    "scheduled",
+    "confirmed",
+    "checked_in",
+    "in_treatment",
+    "completed",
+    "cancelled",
+    "no_show",
+)
 
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
@@ -67,6 +89,12 @@ class Appointment(Base, TimestampMixin):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     treatment_type: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20), default="scheduled")
+    # Timestamp of the latest status transition. Denormalized so the
+    # calendar can render "waiting 12 min" without joining the history
+    # table on every card. Kept in sync by ``AppointmentService.transition``.
+    current_status_since: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     notes: Mapped[str | None] = mapped_column(Text)
     color: Mapped[str | None] = mapped_column(String(7))
 
@@ -81,6 +109,12 @@ class Appointment(Base, TimestampMixin):
         order_by="AppointmentTreatment.display_order",
     )
 
+    status_events: Mapped[list[AppointmentStatusEvent]] = relationship(
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+        order_by="AppointmentStatusEvent.changed_at",
+    )
+
     __table_args__ = (
         Index(
             "idx_appointment_slot",
@@ -90,6 +124,10 @@ class Appointment(Base, TimestampMixin):
             "start_time",
             unique=True,
             postgresql_where=(status != "cancelled"),
+        ),
+        CheckConstraint(
+            "status IN (" + ", ".join(f"'{s}'" for s in APPOINTMENT_STATUSES) + ")",
+            name="ck_appointment_status_valid",
         ),
     )
 
@@ -117,3 +155,38 @@ class AppointmentTreatment(Base):
     appointment: Mapped[Appointment] = relationship(back_populates="treatments")
     planned_item: Mapped[PlannedTreatmentItem] = relationship()
     catalog_item: Mapped[TreatmentCatalogItem | None] = relationship()
+
+
+class AppointmentStatusEvent(Base):
+    """Append-only audit trail for appointment status transitions.
+
+    One row per transition. ``from_status`` is NULL only for the synthetic
+    "created" event (first row for each appointment). ``changed_by`` is
+    nullable to tolerate backfill rows from the initial migration where
+    the acting user cannot be recovered.
+    """
+
+    __tablename__ = "appointment_status_events"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
+    appointment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("appointments.id", ondelete="CASCADE"), index=True
+    )
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    changed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    appointment: Mapped[Appointment] = relationship(back_populates="status_events")
+    actor: Mapped[User | None] = relationship()
+
+    __table_args__ = (
+        Index(
+            "ix_appointment_status_events_appointment_changed_at",
+            "appointment_id",
+            "changed_at",
+        ),
+    )

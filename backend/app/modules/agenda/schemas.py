@@ -5,12 +5,22 @@ Patient-related schemas come from ``app.modules.patients.schemas``.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
 from app.modules.patients.schemas import PatientBrief
+
+AppointmentStatus = Literal[
+    "scheduled",
+    "confirmed",
+    "checked_in",
+    "in_treatment",
+    "completed",
+    "cancelled",
+    "no_show",
+]
 
 # --- Professional brief -------------------------------------------------
 
@@ -133,6 +143,47 @@ class AppointmentUpdate(BaseModel):
     color: str | None = Field(default=None, max_length=7)
 
 
+class AppointmentStatusTransition(BaseModel):
+    """Request body for ``POST /appointments/{id}/transitions``."""
+
+    to_status: AppointmentStatus
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AppointmentStatusEventResponse(BaseModel):
+    """Audit trail entry for an appointment status transition."""
+
+    id: UUID
+    from_status: str | None
+    to_status: str
+    changed_at: datetime
+    changed_by: UUID | None
+    changed_by_name: str | None = None
+    note: str | None
+
+    @model_validator(mode="before")
+    @classmethod
+    def derive_actor_name(cls, data: Any) -> Any:
+        if hasattr(data, "id"):
+            actor = getattr(data, "actor", None)
+            name = None
+            if actor is not None:
+                name = f"{actor.first_name} {actor.last_name}".strip()
+            return {
+                "id": data.id,
+                "from_status": data.from_status,
+                "to_status": data.to_status,
+                "changed_at": data.changed_at,
+                "changed_by": data.changed_by,
+                "changed_by_name": name,
+                "note": data.note,
+            }
+        return data
+
+    class Config:
+        from_attributes = True
+
+
 class AppointmentResponse(BaseModel):
     id: UUID
     clinic_id: UUID
@@ -144,6 +195,7 @@ class AppointmentResponse(BaseModel):
     end_time: datetime
     treatment_type: str | None
     status: str
+    current_status_since: datetime
     notes: str | None
     color: str | None
     created_at: datetime
@@ -151,6 +203,9 @@ class AppointmentResponse(BaseModel):
     patient: PatientBrief | None = None
     professional: ProfessionalBrief | None = None
     treatments: list[AppointmentTreatmentBrief] = []
+    # Only populated on detail endpoints (GET /appointments/{id}) to keep
+    # list responses lean. List endpoints leave this as None.
+    history: list[AppointmentStatusEventResponse] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -176,6 +231,7 @@ class AppointmentResponse(BaseModel):
                 "end_time": data.end_time,
                 "treatment_type": data.treatment_type,
                 "status": data.status,
+                "current_status_since": data.current_status_since,
                 "notes": data.notes,
                 "color": data.color,
                 "created_at": data.created_at,
@@ -183,6 +239,7 @@ class AppointmentResponse(BaseModel):
                 "patient": data.patient,
                 "professional": data.professional,
                 "treatments": treatments_list,
+                "history": None,
             }
         return data
 

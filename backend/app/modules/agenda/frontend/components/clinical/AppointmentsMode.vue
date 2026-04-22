@@ -49,7 +49,8 @@ function getStatusColor(appointmentStatus: string): BadgeColor {
       return 'info'
     case 'confirmed':
       return 'success'
-    case 'in_progress':
+    case 'checked_in':
+    case 'in_treatment':
       return 'warning'
     case 'completed':
       return 'neutral'

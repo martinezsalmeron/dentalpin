@@ -5,7 +5,7 @@ Moved from ``app.modules.clinical.service`` in Fase B.2 chunk 1.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -20,7 +20,34 @@ from app.modules.odontogram.models import Treatment
 from app.modules.patients.models import Patient
 from app.modules.treatment_plan.models import PlannedTreatmentItem
 
-from .models import Appointment, AppointmentTreatment, Cabinet
+from .models import (
+    Appointment,
+    AppointmentStatusEvent,
+    AppointmentTreatment,
+    Cabinet,
+)
+
+# Canonical state machine. Mirrored in the frontend composable
+# ``useAppointmentStatus.ts`` and kept in sync via a parity test
+# (``tests/test_state_machine_parity.py``). Terminal states map to the
+# empty set.
+VALID_TRANSITIONS: dict[str, set[str]] = {
+    "scheduled": {"confirmed", "checked_in", "cancelled", "no_show"},
+    "confirmed": {"checked_in", "cancelled", "no_show"},
+    "checked_in": {"in_treatment", "cancelled"},
+    "in_treatment": {"completed", "cancelled"},
+    "completed": set(),
+    "cancelled": set(),
+    "no_show": set(),
+}
+
+
+class InvalidTransitionError(ValueError):
+    """Raised when a requested status transition is not allowed."""
+
+
+class AlreadyInStateError(ValueError):
+    """Raised when a transition targets the appointment's current state."""
 
 
 class CabinetService:
@@ -158,6 +185,25 @@ class AppointmentService:
         return list(result.scalars().all()), total
 
     @staticmethod
+    async def list_status_events(
+        db: AsyncSession, clinic_id: UUID, appointment_id: UUID
+    ) -> list[AppointmentStatusEvent]:
+        """Return the full audit trail for an appointment in chronological
+        order. ``clinic_id`` is enforced here so the history endpoint stays
+        multi-tenant safe.
+        """
+        result = await db.execute(
+            select(AppointmentStatusEvent)
+            .options(selectinload(AppointmentStatusEvent.actor))
+            .where(
+                AppointmentStatusEvent.appointment_id == appointment_id,
+                AppointmentStatusEvent.clinic_id == clinic_id,
+            )
+            .order_by(AppointmentStatusEvent.changed_at)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
     async def get_appointment(
         db: AsyncSession, clinic_id: UUID, appointment_id: UUID
     ) -> Appointment | None:
@@ -277,8 +323,18 @@ class AppointmentService:
         data["cabinet"] = cab.name
 
     @staticmethod
-    async def create_appointment(db: AsyncSession, clinic_id: UUID, data: dict) -> Appointment:
-        """Create an appointment. Raises IntegrityError on slot conflict."""
+    async def create_appointment(
+        db: AsyncSession,
+        clinic_id: UUID,
+        data: dict,
+        created_by: UUID | None = None,
+    ) -> Appointment:
+        """Create an appointment. Raises IntegrityError on slot conflict.
+
+        Records the synthetic initial status event (``from_status=None``,
+        ``to_status=<status>``) so downstream analytics can always count on
+        the history being complete from first principles.
+        """
         planned_item_ids = data.pop("planned_item_ids", None)
 
         await AppointmentService._resolve_cabinet(db, clinic_id, data)
@@ -288,6 +344,9 @@ class AppointmentService:
                 db, clinic_id, data["patient_id"], planned_item_ids
             )
 
+        now = datetime.now(UTC)
+        data.setdefault("current_status_since", now)
+
         appointment = Appointment(clinic_id=clinic_id, **data)
         db.add(appointment)
 
@@ -296,6 +355,17 @@ class AppointmentService:
         except IntegrityError:
             await db.rollback()
             raise
+
+        db.add(
+            AppointmentStatusEvent(
+                clinic_id=clinic_id,
+                appointment_id=appointment.id,
+                from_status=None,
+                to_status=appointment.status,
+                changed_at=appointment.current_status_since,
+                changed_by=created_by,
+            )
+        )
 
         if planned_item_ids:
             for order, planned_item_id in enumerate(planned_item_ids):
@@ -341,10 +411,19 @@ class AppointmentService:
 
     @staticmethod
     async def update_appointment(
-        db: AsyncSession, appointment: Appointment, data: dict
+        db: AsyncSession,
+        appointment: Appointment,
+        data: dict,
+        changed_by: UUID | None = None,
     ) -> Appointment:
-        """Update an appointment."""
-        old_status = appointment.status
+        """Update an appointment.
+
+        When ``data`` carries a ``status`` field, the status change is funneled
+        through :meth:`transition` so the audit trail, ``current_status_since``
+        and the bus events stay consistent with every other path that mutates
+        status.
+        """
+        requested_status = data.pop("status", None)
 
         planned_item_ids = data.pop("planned_item_ids", None)
 
@@ -401,25 +480,10 @@ class AppointmentService:
                             treatment.planned_item.treatment, ["teeth", "catalog_item"]
                         )
 
-        new_status = appointment.status
-        if old_status != new_status:
-            payload = {
-                "appointment_id": str(appointment.id),
-                "clinic_id": str(appointment.clinic_id),
-                "patient_id": (str(appointment.patient_id) if appointment.patient_id else None),
-                "professional_id": str(appointment.professional_id),
-                "treatment_type": appointment.treatment_type,
-                "cabinet": appointment.cabinet,
-                "start_time": appointment.start_time.isoformat(),
-                "end_time": appointment.end_time.isoformat(),
-                "notes": appointment.notes,
-            }
-            if new_status == "completed":
-                event_bus.publish(EventType.APPOINTMENT_COMPLETED, payload)
-            elif new_status == "cancelled":
-                event_bus.publish(EventType.APPOINTMENT_CANCELLED, payload)
-            elif new_status == "no_show":
-                event_bus.publish(EventType.APPOINTMENT_NO_SHOW, payload)
+        if requested_status is not None and requested_status != appointment.status:
+            await AppointmentService.transition(
+                db, appointment, requested_status, changed_by=changed_by
+            )
         else:
             event_bus.publish(
                 EventType.APPOINTMENT_UPDATED,
@@ -433,23 +497,99 @@ class AppointmentService:
         return appointment
 
     @staticmethod
-    async def cancel_appointment(db: AsyncSession, appointment: Appointment) -> Appointment:
-        """Cancel an appointment."""
-        appointment.status = "cancelled"
+    async def cancel_appointment(
+        db: AsyncSession,
+        appointment: Appointment,
+        changed_by: UUID | None = None,
+    ) -> Appointment:
+        """Cancel an appointment (delegates to :meth:`transition`)."""
+        if appointment.status == "cancelled":
+            return appointment
+        try:
+            return await AppointmentService.transition(
+                db, appointment, "cancelled", changed_by=changed_by
+            )
+        except InvalidTransitionError:
+            # Terminal states (completed / no_show) are not cancellable by
+            # contract — surface a 400 at the router layer.
+            raise
+
+    @staticmethod
+    async def transition(
+        db: AsyncSession,
+        appointment: Appointment,
+        to_status: str,
+        changed_by: UUID | None = None,
+        note: str | None = None,
+    ) -> Appointment:
+        """Transition an appointment to ``to_status``.
+
+        - Validates against :data:`VALID_TRANSITIONS`.
+        - Appends a row to ``appointment_status_events``.
+        - Updates ``appointment.status`` and ``current_status_since``.
+        - Publishes the specific bus event (completed / cancelled / no_show)
+          so existing subscribers keep working. The generic
+          ``APPOINTMENT_STATUS_CHANGED`` event is wired in chunk 2.
+
+        Raises :class:`AlreadyInStateError` if ``to_status`` equals the
+        current status, and :class:`InvalidTransitionError` otherwise.
+        """
+        from_status = appointment.status
+
+        if to_status == from_status:
+            raise AlreadyInStateError(f"Appointment is already in status '{to_status}'")
+        allowed = VALID_TRANSITIONS.get(from_status, set())
+        if to_status not in allowed:
+            raise InvalidTransitionError(f"Cannot transition from '{from_status}' to '{to_status}'")
+
+        now = datetime.now(UTC)
+        event = AppointmentStatusEvent(
+            clinic_id=appointment.clinic_id,
+            appointment_id=appointment.id,
+            from_status=from_status,
+            to_status=to_status,
+            changed_at=now,
+            changed_by=changed_by,
+            note=note,
+        )
+        db.add(event)
+
+        appointment.status = to_status
+        appointment.current_status_since = now
         await db.flush()
 
-        event_bus.publish(
-            EventType.APPOINTMENT_CANCELLED,
-            {
-                "appointment_id": str(appointment.id),
-                "clinic_id": str(appointment.clinic_id),
-                "patient_id": (str(appointment.patient_id) if appointment.patient_id else None),
-                "professional_id": str(appointment.professional_id),
-                "treatment_type": appointment.treatment_type,
-                "cabinet": appointment.cabinet,
-                "start_time": appointment.start_time.isoformat(),
-                "end_time": appointment.end_time.isoformat(),
-            },
-        )
+        payload = {
+            "appointment_id": str(appointment.id),
+            "clinic_id": str(appointment.clinic_id),
+            "patient_id": (str(appointment.patient_id) if appointment.patient_id else None),
+            "professional_id": str(appointment.professional_id),
+            "treatment_type": appointment.treatment_type,
+            "cabinet": appointment.cabinet,
+            "start_time": appointment.start_time.isoformat(),
+            "end_time": appointment.end_time.isoformat(),
+            "notes": appointment.notes,
+            "from_status": from_status,
+            "to_status": to_status,
+            "changed_at": now.isoformat(),
+            "changed_by": str(changed_by) if changed_by else None,
+            "note": note,
+        }
+
+        # Always publish the generic transition event — the recommended
+        # subscription for new consumers.
+        event_bus.publish(EventType.APPOINTMENT_STATUS_CHANGED, payload)
+
+        # Specific events are kept for backward compatibility with existing
+        # subscribers (patient_timeline, billing hooks, etc.).
+        specific = {
+            "confirmed": EventType.APPOINTMENT_CONFIRMED,
+            "checked_in": EventType.APPOINTMENT_CHECKED_IN,
+            "in_treatment": EventType.APPOINTMENT_IN_TREATMENT,
+            "completed": EventType.APPOINTMENT_COMPLETED,
+            "cancelled": EventType.APPOINTMENT_CANCELLED,
+            "no_show": EventType.APPOINTMENT_NO_SHOW,
+        }.get(to_status)
+        if specific is not None:
+            event_bus.publish(specific, payload)
 
         return appointment

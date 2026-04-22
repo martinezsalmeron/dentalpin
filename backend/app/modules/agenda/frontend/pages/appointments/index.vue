@@ -15,7 +15,7 @@ const initialPatientId = ref<string | undefined>(
 )
 
 // View mode state
-const viewMode = ref<'week' | 'day'>('week')
+const viewMode = ref<'week' | 'day' | 'kanban'>('week')
 
 // Week state (for weekly view)
 const currentWeekStart = ref<Date>(getMonday(new Date()))
@@ -516,6 +516,7 @@ watch(viewMode, async (mode) => {
   if (mode === 'week') {
     await loadWeekAppointments()
   } else {
+    // Daily + kanban views share the same one-day window.
     await loadDayAppointments()
   }
 })
@@ -530,16 +531,17 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col w-full min-w-0 overflow-hidden">
     <PageHeader :title="t('appointments.title')">
       <template #actions>
         <SegmentedControl
           :model-value="viewMode"
           :options="[
             { value: 'week', label: t('appointments.weeklyView'), icon: 'i-lucide-calendar-days' },
-            { value: 'day', label: t('appointments.dailyView'), icon: 'i-lucide-calendar' }
+            { value: 'day', label: t('appointments.dailyView'), icon: 'i-lucide-calendar' },
+            { value: 'kanban', label: t('appointments.kanbanView'), icon: 'i-lucide-kanban-square' }
           ]"
-          @update:model-value="(v) => (viewMode = v as 'week' | 'day')"
+          @update:model-value="(v) => (viewMode = v as 'week' | 'day' | 'kanban')"
         />
         <UButton
           color="primary"
@@ -609,7 +611,7 @@ onMounted(async () => {
     </div>
 
     <!-- Calendar -->
-    <div class="flex-1 min-h-0">
+    <div class="flex-1 min-h-0 min-w-0">
       <!-- Weekly view -->
       <AppointmentCalendar
         v-if="viewMode === 'week'"
@@ -630,7 +632,7 @@ onMounted(async () => {
 
       <!-- Daily view -->
       <AppointmentDailyView
-        v-else
+        v-else-if="viewMode === 'day'"
         :appointments="filteredAppointments"
         :professionals="professionalsWithColors"
         :current-date="currentDate"
@@ -643,6 +645,18 @@ onMounted(async () => {
         @appointment-move="handleDailyAppointmentMove"
         @appointment-resize="handleDailyAppointmentResize"
         @highlight-cleared="clearHighlight"
+      />
+
+      <!-- Kanban view -->
+      <AppointmentKanbanView
+        v-else
+        :appointments="filteredAppointments"
+        :cabinets="clinic.cabinets.value"
+        :professionals="professionalsWithColors"
+        :current-date="currentDate"
+        :is-loading="isLoading"
+        @appointment-click="handleAppointmentClick"
+        @date-change="handleDateChange"
       />
     </div>
 

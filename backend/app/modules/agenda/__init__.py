@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from app.core.plugins import BaseModule
 
-from .models import Appointment, AppointmentTreatment, Cabinet
+from .models import Appointment, AppointmentStatusEvent, AppointmentTreatment, Cabinet
 from .router import router
 
 
@@ -13,7 +13,7 @@ class AgendaModule(BaseModule):
 
     manifest = {
         "name": "agenda",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "summary": "Appointments, scheduling, cabinets.",
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
@@ -56,7 +56,7 @@ class AgendaModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [Cabinet, Appointment, AppointmentTreatment]
+        return [Cabinet, Appointment, AppointmentTreatment, AppointmentStatusEvent]
 
     def get_router(self) -> APIRouter:
         return router

@@ -52,8 +52,11 @@ class SchedulingReportService:
                     func.sum(case((Appointment.status == "confirmed", 1), else_=0)), 0
                 ).label("confirmed"),
                 func.coalesce(
-                    func.sum(case((Appointment.status == "in_progress", 1), else_=0)), 0
-                ).label("in_progress"),
+                    func.sum(case((Appointment.status == "checked_in", 1), else_=0)), 0
+                ).label("checked_in"),
+                func.coalesce(
+                    func.sum(case((Appointment.status == "in_treatment", 1), else_=0)), 0
+                ).label("in_treatment"),
             ).where(
                 Appointment.clinic_id == clinic_id,
                 func.date(Appointment.start_time) >= date_from,
@@ -77,7 +80,8 @@ class SchedulingReportService:
             "no_show": totals.no_show,
             "scheduled": totals.scheduled,
             "confirmed": totals.confirmed,
-            "in_progress": totals.in_progress,
+            "checked_in": totals.checked_in,
+            "in_treatment": totals.in_treatment,
             "completion_rate": round(completion_rate, 1),
             "cancellation_rate": round(cancellation_rate, 1),
             "no_show_rate": round(no_show_rate, 1),

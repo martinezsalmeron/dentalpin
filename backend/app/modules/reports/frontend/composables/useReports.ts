@@ -57,10 +57,57 @@ export interface SchedulingSummary {
   no_show: number
   scheduled: number
   confirmed: number
-  in_progress: number
+  checked_in: number
+  in_treatment: number
   completion_rate: number
   cancellation_rate: number
   no_show_rate: number
+}
+
+// Appointment lifecycle analytics (issue #49)
+export interface AnalyticsBucket {
+  label: string
+  count: number
+}
+
+export interface WaitingTimeStats {
+  period_start: string
+  period_end: string
+  sample_size: number
+  avg_minutes: number | null
+  median_minutes: number | null
+  p90_minutes: number | null
+  distribution: AnalyticsBucket[]
+}
+
+export interface PunctualityStats {
+  period_start: string
+  period_end: string
+  sample_size: number
+  avg_delta_minutes: number | null
+  median_delta_minutes: number | null
+  on_time_pct: number | null
+  distribution: AnalyticsBucket[]
+}
+
+export interface DurationVarianceStats {
+  period_start: string
+  period_end: string
+  sample_size: number
+  avg_overrun_pct: number | null
+  avg_delta_minutes: number | null
+  overrun_count: number
+  under_count: number
+}
+
+export interface AppointmentFunnel {
+  period_start: string
+  period_end: string
+  total: number
+  counts_by_status: Record<string, number>
+  completion_rate: number | null
+  no_show_rate: number | null
+  cancellation_rate: number | null
 }
 
 export interface FirstVisitsSummary {
@@ -335,6 +382,81 @@ export function useReports() {
     }
   }
 
+  function _buildAnalyticsQuery(
+    dateFrom: string,
+    dateTo: string,
+    filters?: { cabinetId?: string | null, professionalId?: string | null }
+  ): string {
+    const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo })
+    if (filters?.cabinetId) params.set('cabinet_id', filters.cabinetId)
+    if (filters?.professionalId) params.set('professional_id', filters.professionalId)
+    return params.toString()
+  }
+
+  async function fetchWaitingTimes(
+    dateFrom: string,
+    dateTo: string,
+    filters?: { cabinetId?: string | null, professionalId?: string | null }
+  ): Promise<WaitingTimeStats | null> {
+    try {
+      const response = await api.get<ApiResponse<WaitingTimeStats>>(
+        `/api/v1/reports/scheduling/waiting-times?${_buildAnalyticsQuery(dateFrom, dateTo, filters)}`
+      )
+      return response.data
+    } catch (e) {
+      console.error('Failed to fetch waiting times:', e)
+      return null
+    }
+  }
+
+  async function fetchPunctuality(
+    dateFrom: string,
+    dateTo: string,
+    filters?: { cabinetId?: string | null, professionalId?: string | null }
+  ): Promise<PunctualityStats | null> {
+    try {
+      const response = await api.get<ApiResponse<PunctualityStats>>(
+        `/api/v1/reports/scheduling/punctuality?${_buildAnalyticsQuery(dateFrom, dateTo, filters)}`
+      )
+      return response.data
+    } catch (e) {
+      console.error('Failed to fetch punctuality:', e)
+      return null
+    }
+  }
+
+  async function fetchDurationVariance(
+    dateFrom: string,
+    dateTo: string,
+    filters?: { cabinetId?: string | null, professionalId?: string | null }
+  ): Promise<DurationVarianceStats | null> {
+    try {
+      const response = await api.get<ApiResponse<DurationVarianceStats>>(
+        `/api/v1/reports/scheduling/duration-variance?${_buildAnalyticsQuery(dateFrom, dateTo, filters)}`
+      )
+      return response.data
+    } catch (e) {
+      console.error('Failed to fetch duration variance:', e)
+      return null
+    }
+  }
+
+  async function fetchFunnel(
+    dateFrom: string,
+    dateTo: string,
+    filters?: { cabinetId?: string | null, professionalId?: string | null }
+  ): Promise<AppointmentFunnel | null> {
+    try {
+      const response = await api.get<ApiResponse<AppointmentFunnel>>(
+        `/api/v1/reports/scheduling/funnel?${_buildAnalyticsQuery(dateFrom, dateTo, filters)}`
+      )
+      return response.data
+    } catch (e) {
+      console.error('Failed to fetch funnel:', e)
+      return null
+    }
+  }
+
   // ============================================================================
   // Helpers
   // ============================================================================
@@ -422,6 +544,10 @@ export function useReports() {
     fetchHoursByProfessional,
     fetchCabinetUtilization,
     fetchByDayOfWeek,
+    fetchWaitingTimes,
+    fetchPunctuality,
+    fetchDurationVariance,
+    fetchFunnel,
     // Helpers
     formatCurrency,
     getBudgetStatusLabel,

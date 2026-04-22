@@ -61,6 +61,9 @@ class PatientTimelineModule(BaseModule):
         return {
             # Visits
             EventType.APPOINTMENT_SCHEDULED: events.on_appointment_scheduled,
+            EventType.APPOINTMENT_CONFIRMED: events.on_appointment_confirmed,
+            EventType.APPOINTMENT_CHECKED_IN: events.on_appointment_checked_in,
+            EventType.APPOINTMENT_IN_TREATMENT: events.on_appointment_in_treatment,
             EventType.APPOINTMENT_COMPLETED: events.on_appointment_completed,
             EventType.APPOINTMENT_CANCELLED: events.on_appointment_cancelled,
             EventType.APPOINTMENT_NO_SHOW: events.on_appointment_no_show,

@@ -444,7 +444,7 @@ async def seed_appointments(db: AsyncSession, plans_result: dict) -> dict:
     """Create appointments anchored to plan items + their AppointmentTreatment rows."""
     from sqlalchemy import select
 
-    from app.modules.agenda.models import Cabinet
+    from app.modules.agenda.models import AppointmentStatusEvent, Cabinet
 
     data = generate_appointments_data(plans_result)
 
@@ -458,7 +458,37 @@ async def seed_appointments(db: AsyncSession, plans_result: dict) -> dict:
         if cab_id is None:
             raise RuntimeError(f"Demo seed: cabinet {key} not found")
         appt_dict["cabinet_id"] = cab_id
+        appt_dict.setdefault("current_status_since", appt_dict["start_time"])
         db.add(Appointment(**appt_dict))
+    await db.flush()
+
+    # Seed the synthetic initial status event for each appointment so
+    # analytics have a complete audit trail from the start. For appointments
+    # already past ``scheduled`` we also emit a second event so the timeline
+    # captures *that* the transition happened, even though intermediate
+    # steps are unknown for seeded rows.
+    for appt_dict in data["appointments"]:
+        db.add(
+            AppointmentStatusEvent(
+                clinic_id=appt_dict["clinic_id"],
+                appointment_id=appt_dict["id"],
+                from_status=None,
+                to_status="scheduled",
+                changed_at=appt_dict["start_time"],
+                changed_by=None,
+            )
+        )
+        if appt_dict.get("status") and appt_dict["status"] != "scheduled":
+            db.add(
+                AppointmentStatusEvent(
+                    clinic_id=appt_dict["clinic_id"],
+                    appointment_id=appt_dict["id"],
+                    from_status="scheduled",
+                    to_status=appt_dict["status"],
+                    changed_at=appt_dict["start_time"],
+                    changed_by=None,
+                )
+            )
     await db.flush()
 
     for at_dict in data["appointment_treatments"]:

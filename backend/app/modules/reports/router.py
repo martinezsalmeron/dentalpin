@@ -2,6 +2,7 @@
 
 from datetime import date
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from app.core.schemas import ApiResponse
 from app.database import get_db
 
 from .schemas import (
+    AppointmentFunnel,
     BillingSummary,
     BudgetByProfessional,
     BudgetByStatus,
@@ -18,16 +20,24 @@ from .schemas import (
     BudgetSummary,
     CabinetUtilization,
     DayOfWeekStats,
+    DurationVarianceStats,
     FirstVisitsSummary,
     HoursByProfessional,
     NumberingGap,
     OverdueInvoice,
     PaymentMethodSummary,
     ProfessionalBillingSummary,
+    PunctualityStats,
     SchedulingSummary,
     VatSummaryItem,
+    WaitingTimeStats,
 )
-from .services import BillingReportService, BudgetReportService, SchedulingReportService
+from .services import (
+    AppointmentLifecycleService,
+    BillingReportService,
+    BudgetReportService,
+    SchedulingReportService,
+)
 
 router = APIRouter(tags=["reports"])
 
@@ -269,3 +279,130 @@ async def get_by_day_of_week(
     """Get appointment distribution by day of week."""
     data = await SchedulingReportService.get_by_day_of_week(db, ctx.clinic_id, date_from, date_to)
     return ApiResponse(data=[DayOfWeekStats(**item) for item in data])
+
+
+# ---- Appointment lifecycle analytics (issue #49) -------------------------
+
+
+@router.get(
+    "/scheduling/waiting-times",
+    response_model=ApiResponse[WaitingTimeStats],
+)
+async def get_waiting_times(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("reports.scheduling.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    cabinet_id: UUID | None = Query(default=None),
+    professional_id: UUID | None = Query(default=None),
+) -> ApiResponse[WaitingTimeStats]:
+    """Average / median / p90 time from ``checked_in`` to ``in_treatment``."""
+    try:
+        data = await AppointmentLifecycleService.waiting_times(
+            db,
+            ctx.clinic_id,
+            date_from,
+            date_to,
+            cabinet_id=cabinet_id,
+            professional_id=professional_id,
+        )
+    except ValueError as e:
+        from fastapi import HTTPException
+        from fastapi import status as http_status
+
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return ApiResponse(data=WaitingTimeStats(**data))
+
+
+@router.get(
+    "/scheduling/punctuality",
+    response_model=ApiResponse[PunctualityStats],
+)
+async def get_punctuality(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("reports.scheduling.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    cabinet_id: UUID | None = Query(default=None),
+    professional_id: UUID | None = Query(default=None),
+) -> ApiResponse[PunctualityStats]:
+    """Patient punctuality (check-in vs scheduled start time)."""
+    try:
+        data = await AppointmentLifecycleService.punctuality(
+            db,
+            ctx.clinic_id,
+            date_from,
+            date_to,
+            cabinet_id=cabinet_id,
+            professional_id=professional_id,
+        )
+    except ValueError as e:
+        from fastapi import HTTPException
+        from fastapi import status as http_status
+
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return ApiResponse(data=PunctualityStats(**data))
+
+
+@router.get(
+    "/scheduling/duration-variance",
+    response_model=ApiResponse[DurationVarianceStats],
+)
+async def get_duration_variance(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("reports.scheduling.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    cabinet_id: UUID | None = Query(default=None),
+    professional_id: UUID | None = Query(default=None),
+) -> ApiResponse[DurationVarianceStats]:
+    """Planned vs actual treatment duration (in-treatment → completed)."""
+    try:
+        data = await AppointmentLifecycleService.duration_variance(
+            db,
+            ctx.clinic_id,
+            date_from,
+            date_to,
+            cabinet_id=cabinet_id,
+            professional_id=professional_id,
+        )
+    except ValueError as e:
+        from fastapi import HTTPException
+        from fastapi import status as http_status
+
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return ApiResponse(data=DurationVarianceStats(**data))
+
+
+@router.get(
+    "/scheduling/funnel",
+    response_model=ApiResponse[AppointmentFunnel],
+)
+async def get_appointment_funnel(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("reports.scheduling.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    cabinet_id: UUID | None = Query(default=None),
+    professional_id: UUID | None = Query(default=None),
+) -> ApiResponse[AppointmentFunnel]:
+    """Counts per status + completion / no-show / cancellation rates."""
+    try:
+        data = await AppointmentLifecycleService.funnel(
+            db,
+            ctx.clinic_id,
+            date_from,
+            date_to,
+            cabinet_id=cabinet_id,
+            professional_id=professional_id,
+        )
+    except ValueError as e:
+        from fastapi import HTTPException
+        from fastapi import status as http_status
+
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return ApiResponse(data=AppointmentFunnel(**data))

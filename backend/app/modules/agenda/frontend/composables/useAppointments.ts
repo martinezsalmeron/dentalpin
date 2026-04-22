@@ -1,4 +1,4 @@
-import type { Appointment, AppointmentCreate, AppointmentUpdate, PaginatedResponse, ApiResponse } from '~~/app/types'
+import type { Appointment, AppointmentCreate, AppointmentStatus, AppointmentUpdate, PaginatedResponse, ApiResponse } from '~~/app/types'
 
 export function useAppointments() {
   const api = useApi()
@@ -74,6 +74,46 @@ export function useAppointments() {
     return await updateAppointment(id, { status })
   }
 
+  /**
+   * Transition an appointment through the status lifecycle. Updates the
+   * local list optimistically (``status`` + ``current_status_since``) and
+   * rolls back on failure. Returns the server's authoritative response.
+   */
+  async function transition(
+    id: string,
+    to: AppointmentStatus,
+    note?: string
+  ): Promise<Appointment> {
+    const previous = appointments.value.find(apt => apt.id === id)
+    const optimisticSince = new Date().toISOString()
+
+    if (previous) {
+      appointments.value = appointments.value.map(apt =>
+        apt.id === id
+          ? { ...apt, status: to, current_status_since: optimisticSince }
+          : apt
+      )
+    }
+
+    try {
+      const response = await api.post<ApiResponse<Appointment>>(
+        `/api/v1/agenda/appointments/${id}/transitions`,
+        { to_status: to, note: note ?? null }
+      )
+      appointments.value = appointments.value.map(apt =>
+        apt.id === id ? response.data : apt
+      )
+      return response.data
+    } catch (err) {
+      if (previous) {
+        appointments.value = appointments.value.map(apt =>
+          apt.id === id ? previous : apt
+        )
+      }
+      throw err
+    }
+  }
+
   return {
     appointments: readonly(appointments),
     isLoading: readonly(isLoading),
@@ -82,6 +122,7 @@ export function useAppointments() {
     createAppointment,
     updateAppointment,
     cancelAppointment,
-    updateAppointmentStatus
+    updateAppointmentStatus,
+    transition
   }
 }

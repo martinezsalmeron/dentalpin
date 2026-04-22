@@ -1,7 +1,13 @@
 """Report services."""
 
+from .appointment_lifecycle import AppointmentLifecycleService
 from .billing import BillingReportService
 from .budget import BudgetReportService
 from .scheduling import SchedulingReportService
 
-__all__ = ["BillingReportService", "BudgetReportService", "SchedulingReportService"]
+__all__ = [
+    "AppointmentLifecycleService",
+    "BillingReportService",
+    "BudgetReportService",
+    "SchedulingReportService",
+]

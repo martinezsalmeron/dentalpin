@@ -53,7 +53,8 @@ export const PATIENT_STATUS_ROLE: Record<PatientStatus, SemanticRole> = {
 export type AppointmentStatus
   = | 'scheduled'
     | 'confirmed'
-    | 'in_progress'
+    | 'checked_in'
+    | 'in_treatment'
     | 'completed'
     | 'cancelled'
     | 'no_show'
@@ -61,7 +62,8 @@ export type AppointmentStatus
 export const APPOINTMENT_STATUS_ROLE: Record<AppointmentStatus, SemanticRole> = {
   scheduled: 'info',
   confirmed: 'primary',
-  in_progress: 'warning',
+  checked_in: 'warning',
+  in_treatment: 'warning',
   completed: 'success',
   cancelled: 'neutral',
   no_show: 'danger'

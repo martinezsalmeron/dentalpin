@@ -282,7 +282,8 @@ function getStatusClass(status: Appointment['status']): string {
     case 'scheduled':
     case 'confirmed':
       return `${baseClass} text-default`
-    case 'in_progress':
+    case 'checked_in':
+    case 'in_treatment':
       return `${baseClass} text-default`
     case 'completed':
       return `${baseClass} text-muted opacity-70`
@@ -299,8 +300,10 @@ function getStatusIcon(status: Appointment['status']): string {
   switch (status) {
     case 'confirmed':
       return 'i-lucide-check'
-    case 'in_progress':
-      return 'i-lucide-play'
+    case 'checked_in':
+      return 'i-lucide-door-open'
+    case 'in_treatment':
+      return 'i-lucide-stethoscope'
     case 'completed':
       return 'i-lucide-check-check'
     case 'cancelled':
@@ -759,7 +762,7 @@ const allAppointmentsWithDayIndex = computed(() => {
                 <div
                   v-for="{ appointment } in allAppointmentsWithDayIndex.filter(a => a.dayIndex === dayIndex)"
                   :key="appointment.id"
-                  class="absolute rounded overflow-hidden pointer-events-auto select-none shadow-sm"
+                  class="group absolute rounded overflow-hidden pointer-events-auto select-none shadow-sm"
                   :class="[
                     getStatusClass(appointment.status),
                     dragState?.appointmentId === appointment.id ? 'cursor-grabbing ring-2 ring-primary-500' : 'cursor-grab hover:ring-2 hover:ring-primary-500',
@@ -780,7 +783,15 @@ const allAppointmentsWithDayIndex = computed(() => {
                     >
                       {{ getProfessionalInitials(appointment.professional_id) }}
                     </div>
-                    <div class="flex items-center gap-1 min-h-[18px] pr-5">
+                    <!-- Quick-action dropdown (shown on hover) -->
+                    <div
+                      class="absolute top-0.5 left-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                      @click.stop
+                      @mousedown.stop
+                    >
+                      <AppointmentQuickActions :appointment="appointment" dense />
+                    </div>
+                    <div class="flex items-center gap-1 min-h-[18px] pr-5 pl-5">
                       <UIcon
                         v-if="getStatusIcon(appointment.status)"
                         :name="getStatusIcon(appointment.status)"

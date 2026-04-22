@@ -23,12 +23,19 @@ from .models import Appointment
 from .schemas import (
     AppointmentCreate,
     AppointmentResponse,
+    AppointmentStatusEventResponse,
+    AppointmentStatusTransition,
     AppointmentUpdate,
     CabinetCreate,
     CabinetResponse,
     CabinetUpdate,
 )
-from .service import AppointmentService, CabinetService
+from .service import (
+    AlreadyInStateError,
+    AppointmentService,
+    CabinetService,
+    InvalidTransitionError,
+)
 
 router = APIRouter()
 
@@ -98,7 +105,10 @@ async def create_appointment(
 
     try:
         appointment = await AppointmentService.create_appointment(
-            db, ctx.clinic_id, data.model_dump(exclude_unset=True)
+            db,
+            ctx.clinic_id,
+            data.model_dump(exclude_unset=True),
+            created_by=ctx.user_id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -121,14 +131,17 @@ async def get_appointment(
     _: Annotated[None, Depends(require_permission("agenda.appointments.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[AppointmentResponse]:
-    """Get an appointment by ID."""
+    """Get an appointment by ID, including the status audit trail."""
     appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
     if not appointment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found",
         )
-    return ApiResponse(data=AppointmentResponse.model_validate(appointment))
+    events = await AppointmentService.list_status_events(db, ctx.clinic_id, appointment.id)
+    response = AppointmentResponse.model_validate(appointment)
+    response.history = [AppointmentStatusEventResponse.model_validate(e) for e in events]
+    return ApiResponse(data=response)
 
 
 @router.put("/appointments/{appointment_id}", response_model=ApiResponse[AppointmentResponse])
@@ -165,7 +178,10 @@ async def update_appointment(
 
     try:
         appointment = await AppointmentService.update_appointment(
-            db, appointment, data.model_dump(exclude_unset=True)
+            db,
+            appointment,
+            data.model_dump(exclude_unset=True),
+            changed_by=ctx.user_id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -195,7 +211,77 @@ async def delete_appointment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found",
         )
-    await AppointmentService.cancel_appointment(db, appointment)
+    try:
+        await AppointmentService.cancel_appointment(db, appointment, changed_by=ctx.user_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+
+@router.post(
+    "/appointments/{appointment_id}/transitions",
+    response_model=ApiResponse[AppointmentResponse],
+)
+async def transition_appointment(
+    appointment_id: UUID,
+    data: AppointmentStatusTransition,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[AppointmentResponse]:
+    """Advance (or cancel) an appointment's status.
+
+    Returns the full appointment with its ``history`` populated so the
+    frontend can update the detail view in one round-trip.
+    """
+    appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
+    if not appointment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Appointment not found",
+        )
+    try:
+        await AppointmentService.transition(
+            db, appointment, data.to_status, changed_by=ctx.user_id, note=data.note
+        )
+    except AlreadyInStateError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        ) from e
+    except InvalidTransitionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    events = await AppointmentService.list_status_events(db, ctx.clinic_id, appointment.id)
+    response = AppointmentResponse.model_validate(appointment)
+    response.history = [AppointmentStatusEventResponse.model_validate(e) for e in events]
+    return ApiResponse(data=response)
+
+
+@router.get(
+    "/appointments/{appointment_id}/transitions",
+    response_model=ApiResponse[list[AppointmentStatusEventResponse]],
+)
+async def list_appointment_transitions(
+    appointment_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[AppointmentStatusEventResponse]]:
+    """Return the full status audit trail for an appointment (asc)."""
+    appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
+    if not appointment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Appointment not found",
+        )
+    events = await AppointmentService.list_status_events(db, ctx.clinic_id, appointment.id)
+    return ApiResponse(data=[AppointmentStatusEventResponse.model_validate(e) for e in events])
 
 
 # --- Cabinets (real table) ----------------------------------------------
