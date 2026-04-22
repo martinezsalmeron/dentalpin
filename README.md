@@ -28,6 +28,16 @@ We're not just building software—we're building the foundation for an ecosyste
 
 Clinics deserve better than closed, expensive software from the last decade. DentalPin is the open alternative.
 
+## Live Demo
+
+Try DentalPin without installing anything:
+
+- **URL:** https://demo.dentalpin.com/
+- **User:** `admin@demo.clinic`
+- **Password:** `demo1234`
+
+> **Note:** This is a public demo instance. The database is reset every night and all changes you make will be lost.
+
 ## Screenshots
 
 ### Dashboard
