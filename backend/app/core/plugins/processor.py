@@ -87,6 +87,10 @@ class PendingProcessor:
         return processed
 
     async def _sync_frontend_layers(self) -> None:
+        if settings.ENVIRONMENT == "production":
+            # Module layers are baked into the frontend image at build time.
+            return
+
         from .base import BaseModule as _BaseModule
         from .frontend_layers import (
             DEFAULT_FRONTEND_ROOT,

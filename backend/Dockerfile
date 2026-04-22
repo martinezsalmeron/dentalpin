@@ -24,11 +24,12 @@ COPY . .
 # Create non-root user and storage directory
 RUN useradd -m -u 1000 appuser \
     && mkdir -p /app/storage \
+    && chmod +x /app/docker-entrypoint.sh \
     && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
