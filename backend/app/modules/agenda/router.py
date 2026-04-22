@@ -6,6 +6,7 @@ Mounts at ``/api/v1/agenda/*``. Appointments use the
 into their own table + permission namespace.
 """
 
+from datetime import date as date_type
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
@@ -19,8 +20,11 @@ from app.core.auth.dependencies import ClinicContext, get_clinic_context, requir
 from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
+from .kanban_service import KanbanDayService
 from .models import Appointment
 from .schemas import (
+    AppointmentCabinetAssignment,
+    AppointmentCabinetEventResponse,
     AppointmentCreate,
     AppointmentResponse,
     AppointmentStatusEventResponse,
@@ -29,10 +33,12 @@ from .schemas import (
     CabinetCreate,
     CabinetResponse,
     CabinetUpdate,
+    KanbanDaySnapshot,
 )
 from .service import (
     AlreadyInStateError,
     AppointmentService,
+    CabinetRequiredError,
     CabinetService,
     InvalidTransitionError,
 )
@@ -251,6 +257,11 @@ async def transition_appointment(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         ) from e
+    except CabinetRequiredError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except InvalidTransitionError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -282,6 +293,97 @@ async def list_appointment_transitions(
         )
     events = await AppointmentService.list_status_events(db, ctx.clinic_id, appointment.id)
     return ApiResponse(data=[AppointmentStatusEventResponse.model_validate(e) for e in events])
+
+
+@router.patch(
+    "/appointments/{appointment_id}/cabinet",
+    response_model=ApiResponse[AppointmentResponse],
+)
+async def assign_appointment_cabinet(
+    appointment_id: UUID,
+    data: AppointmentCabinetAssignment,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[AppointmentResponse]:
+    """Assign, reassign, or (with ``cabinet_id=null``) unassign a cabinet.
+
+    Returns the updated appointment with its cabinet history populated so
+    the frontend can update the detail view in one round-trip.
+    """
+    appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
+    if not appointment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Appointment not found",
+        )
+    try:
+        await AppointmentService.assign_cabinet(
+            db,
+            appointment,
+            data.cabinet_id,
+            changed_by=ctx.user_id,
+            note=data.note,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Time slot is already occupied in that cabinet",
+        ) from e
+
+    events = await AppointmentService.list_cabinet_events(db, ctx.clinic_id, appointment.id)
+    response = AppointmentResponse.model_validate(appointment)
+    response.cabinet_history = [AppointmentCabinetEventResponse.model_validate(e) for e in events]
+    return ApiResponse(data=response)
+
+
+@router.get(
+    "/appointments/{appointment_id}/cabinet-history",
+    response_model=ApiResponse[list[AppointmentCabinetEventResponse]],
+)
+async def list_appointment_cabinet_history(
+    appointment_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[AppointmentCabinetEventResponse]]:
+    """Return the cabinet assignment audit trail (asc)."""
+    appointment = await AppointmentService.get_appointment(db, ctx.clinic_id, appointment_id)
+    if not appointment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Appointment not found",
+        )
+    events = await AppointmentService.list_cabinet_events(db, ctx.clinic_id, appointment.id)
+    return ApiResponse(data=[AppointmentCabinetEventResponse.model_validate(e) for e in events])
+
+
+# --- Kanban day snapshot (issue #51) -----------------------------------
+
+
+@router.get(
+    "/kanban/day",
+    response_model=ApiResponse[KanbanDaySnapshot],
+)
+async def get_kanban_day(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("agenda.appointments.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    target: date_type | None = Query(
+        default=None,
+        alias="date",
+        description="Day to snapshot (defaults to today, clinic UTC)",
+    ),
+) -> ApiResponse[KanbanDaySnapshot]:
+    """Return the professionals strip state for the kanban board."""
+    target_date = target or datetime.utcnow().date()
+    data = await KanbanDayService.snapshot(db, ctx.clinic_id, target_date)
+    return ApiResponse(data=KanbanDaySnapshot(**data))
 
 
 # --- Cabinets (real table) ----------------------------------------------

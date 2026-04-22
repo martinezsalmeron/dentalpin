@@ -185,7 +185,13 @@ const cardStyle = computed(() => ({
         :style="{ backgroundColor: cabinet.color, color: '#fff' }"
         size="xs"
       />
-      <div v-else />
+      <UBadge
+        v-else
+        :label="t('appointments.cabinet.unassigned')"
+        color="warning"
+        variant="subtle"
+        size="xs"
+      />
       <span class="text-xs" :class="timerClass">{{ timerLabel }}</span>
     </div>
     <div class="sr-only">{{ statusLabel(appointment.status) }}</div>

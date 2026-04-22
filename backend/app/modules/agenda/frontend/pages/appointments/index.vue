@@ -66,9 +66,12 @@ watch(professionals, (profs) => {
 const filteredAppointments = computed(() => {
   let result = appointments.value
 
-  // Filter by cabinet
+  // Filter by cabinet — unassigned appointments (#51) always pass the
+  // cabinet filter so the receptionist can still see and drop-assign them.
   if (selectedCabinets.value.length > 0) {
-    result = result.filter(apt => selectedCabinets.value.includes(apt.cabinet))
+    result = result.filter(
+      apt => apt.cabinet === null || selectedCabinets.value.includes(apt.cabinet)
+    )
   }
 
   // Filter by professional
@@ -127,6 +130,17 @@ function toggleProfessional(professionalId: string) {
     selectedProfessionals.value.push(professionalId)
   } else {
     selectedProfessionals.value.splice(index, 1)
+  }
+}
+
+// #51: clicking a pill on the kanban professionals strip focuses the
+// board on that single pro. Null = clear the filter and restore the
+// full selection.
+function handleProfessionalFilter(professionalId: string | null) {
+  if (professionalId === null) {
+    selectedProfessionals.value = professionals.value.map(p => p.id)
+  } else {
+    selectedProfessionals.value = [professionalId]
   }
 }
 
@@ -657,6 +671,7 @@ onMounted(async () => {
         :is-loading="isLoading"
         @appointment-click="handleAppointmentClick"
         @date-change="handleDateChange"
+        @professional-filter="handleProfessionalFilter"
       />
     </div>
 

@@ -4,7 +4,7 @@ Moved from ``app.modules.clinical.schemas`` in Fase B.2 chunk 1.
 Patient-related schemas come from ``app.modules.patients.schemas``.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -150,6 +150,58 @@ class AppointmentStatusTransition(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class AppointmentCabinetAssignment(BaseModel):
+    """Request body for ``PATCH /appointments/{id}/cabinet``.
+
+    ``cabinet_id = None`` unassigns the cabinet (the patient moves back to
+    Sala de espera). Supplying the same id currently on the appointment
+    is a no-op.
+    """
+
+    cabinet_id: UUID | None = None
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AppointmentCabinetEventResponse(BaseModel):
+    """Audit trail entry for a cabinet (re)assignment."""
+
+    id: UUID
+    from_cabinet_id: UUID | None
+    from_cabinet_name: str | None = None
+    to_cabinet_id: UUID | None
+    to_cabinet_name: str | None = None
+    changed_at: datetime
+    changed_by: UUID | None
+    changed_by_name: str | None = None
+    note: str | None
+
+    @model_validator(mode="before")
+    @classmethod
+    def derive_names(cls, data: Any) -> Any:
+        if hasattr(data, "id"):
+            from_cab = getattr(data, "from_cabinet", None)
+            to_cab = getattr(data, "to_cabinet", None)
+            actor = getattr(data, "actor", None)
+            actor_name = None
+            if actor is not None:
+                actor_name = f"{actor.first_name} {actor.last_name}".strip()
+            return {
+                "id": data.id,
+                "from_cabinet_id": data.from_cabinet_id,
+                "from_cabinet_name": from_cab.name if from_cab else None,
+                "to_cabinet_id": data.to_cabinet_id,
+                "to_cabinet_name": to_cab.name if to_cab else None,
+                "changed_at": data.changed_at,
+                "changed_by": data.changed_by,
+                "changed_by_name": actor_name,
+                "note": data.note,
+            }
+        return data
+
+    class Config:
+        from_attributes = True
+
+
 class AppointmentStatusEventResponse(BaseModel):
     """Audit trail entry for an appointment status transition."""
 
@@ -189,8 +241,10 @@ class AppointmentResponse(BaseModel):
     clinic_id: UUID
     patient_id: UUID | None
     professional_id: UUID
-    cabinet: str  # Denormalized name for legacy UI callers.
-    cabinet_id: UUID
+    cabinet: str | None = None  # Denormalized name for legacy UI callers.
+    cabinet_id: UUID | None = None
+    cabinet_assigned_at: datetime | None = None
+    cabinet_assigned_by: UUID | None = None
     start_time: datetime
     end_time: datetime
     treatment_type: str | None
@@ -204,8 +258,9 @@ class AppointmentResponse(BaseModel):
     professional: ProfessionalBrief | None = None
     treatments: list[AppointmentTreatmentBrief] = []
     # Only populated on detail endpoints (GET /appointments/{id}) to keep
-    # list responses lean. List endpoints leave this as None.
+    # list responses lean. List endpoints leave these as None.
     history: list[AppointmentStatusEventResponse] | None = None
+    cabinet_history: list[AppointmentCabinetEventResponse] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -227,6 +282,8 @@ class AppointmentResponse(BaseModel):
                 "professional_id": data.professional_id,
                 "cabinet": data.cabinet,
                 "cabinet_id": data.cabinet_id,
+                "cabinet_assigned_at": data.cabinet_assigned_at,
+                "cabinet_assigned_by": data.cabinet_assigned_by,
                 "start_time": data.start_time,
                 "end_time": data.end_time,
                 "treatment_type": data.treatment_type,
@@ -240,6 +297,7 @@ class AppointmentResponse(BaseModel):
                 "professional": data.professional,
                 "treatments": treatments_list,
                 "history": None,
+                "cabinet_history": None,
             }
         return data
 
@@ -277,3 +335,28 @@ class CabinetResponse(CabinetBase):
 
     class Config:
         from_attributes = True
+
+
+# --- Kanban day (issue #51) --------------------------------------------
+
+
+ProfessionalState = Literal["free", "in_treatment", "on_break", "off"]
+
+
+class KanbanProfessionalState(BaseModel):
+    """A single pill on the professionals strip of the kanban board."""
+
+    id: UUID
+    first_name: str
+    last_name: str
+    state: ProfessionalState
+    current_appointment_id: UUID | None = None
+    current_cabinet_id: UUID | None = None
+
+
+class KanbanDaySnapshot(BaseModel):
+    """One-day operational snapshot for the kanban board header."""
+
+    date: date
+    clinic_id: UUID
+    professionals: list[KanbanProfessionalState]

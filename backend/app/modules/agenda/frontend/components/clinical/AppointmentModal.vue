@@ -85,12 +85,20 @@ watch(selectedTreatments, (treatments) => {
   }
 })
 
-// Cabinet options from clinic
+// Cabinet options from clinic. Leading "assign later" entry (#51) —
+// cabinets are optional at booking and decided at check-in.
 const cabinetOptions = computed(() => {
-  return clinic.cabinets.value.map(cab => ({
-    value: cab.name,
-    label: cab.name
-  }))
+  const assignLater = {
+    value: '',
+    label: t('appointments.cabinet.assignLater')
+  }
+  return [
+    assignLater,
+    ...clinic.cabinets.value.map(cab => ({
+      value: cab.name,
+      label: cab.name
+    }))
+  ]
 })
 
 // Professional options
@@ -108,7 +116,9 @@ const modalTitle = computed(() =>
 )
 
 const canSave = computed(() => {
-  return selectedPatient.value && formData.date && formData.startTime && formData.cabinet && selectedProfessionalId.value
+  // Cabinet is optional (#51) — only patient + date + start time +
+  // professional are required to book.
+  return selectedPatient.value && formData.date && formData.startTime && selectedProfessionalId.value
 })
 
 // Email notification computed properties
@@ -247,7 +257,8 @@ watch(() => props.open, async (isOpen) => {
     selectedProfessionalId.value = apt.professional_id
     formData.date = apt.start_time.split('T')[0] ?? ''
     formData.startTime = apt.start_time.split('T')[1]?.substring(0, 5) ?? '09:00'
-    formData.cabinet = apt.cabinet
+    // null cabinet (#51) maps to the "assign later" option.
+    formData.cabinet = apt.cabinet ?? ''
     formData.notes = apt.notes || ''
 
     // Map each AppointmentTreatmentBrief into a PlannedTreatmentItem shape so the
@@ -359,7 +370,8 @@ watch(() => props.open, async (isOpen) => {
     } else {
       formData.duration = clinic.slotDuration.value || 30
     }
-    formData.cabinet = clinic.cabinets.value[0]?.name || ''
+    // Default to unassigned (#51): the cabinet is decided at check-in.
+    formData.cabinet = ''
     formData.notes = ''
     selectedTreatments.value = []
     // Reset email checkbox for create mode
@@ -433,10 +445,17 @@ async function handleSave() {
       }
     }
 
+    // Empty cabinet string means "assign later" (#51) — normalise to null
+    // so the API stores NULL and downstream UIs can identify unassigned
+    // appointments unambiguously.
+    const cabinetValue = formData.cabinet && formData.cabinet.trim() !== ''
+      ? formData.cabinet
+      : null
+
     const appointmentData: AppointmentCreate = {
       patient_id: selectedPatient.value.id,
       professional_id: selectedProfessionalId.value,
-      cabinet: formData.cabinet,
+      cabinet: cabinetValue,
       start_time: startTime,
       end_time: endTime,
       planned_item_ids: selectedTreatments.value.length > 0

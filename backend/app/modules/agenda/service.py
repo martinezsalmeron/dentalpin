@@ -22,6 +22,7 @@ from app.modules.treatment_plan.models import PlannedTreatmentItem
 
 from .models import (
     Appointment,
+    AppointmentCabinetEvent,
     AppointmentStatusEvent,
     AppointmentTreatment,
     Cabinet,
@@ -48,6 +49,10 @@ class InvalidTransitionError(ValueError):
 
 class AlreadyInStateError(ValueError):
     """Raised when a transition targets the appointment's current state."""
+
+
+class CabinetRequiredError(ValueError):
+    """Raised when moving to ``in_treatment`` without a cabinet assigned."""
 
 
 class CabinetService:
@@ -204,6 +209,27 @@ class AppointmentService:
         return list(result.scalars().all())
 
     @staticmethod
+    async def list_cabinet_events(
+        db: AsyncSession, clinic_id: UUID, appointment_id: UUID
+    ) -> list[AppointmentCabinetEvent]:
+        """Return the cabinet assignment history for an appointment
+        (chronological, multi-tenant-safe)."""
+        result = await db.execute(
+            select(AppointmentCabinetEvent)
+            .options(
+                selectinload(AppointmentCabinetEvent.actor),
+                selectinload(AppointmentCabinetEvent.from_cabinet),
+                selectinload(AppointmentCabinetEvent.to_cabinet),
+            )
+            .where(
+                AppointmentCabinetEvent.appointment_id == appointment_id,
+                AppointmentCabinetEvent.clinic_id == clinic_id,
+            )
+            .order_by(AppointmentCabinetEvent.changed_at)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
     async def get_appointment(
         db: AsyncSession, clinic_id: UUID, appointment_id: UUID
     ) -> Appointment | None:
@@ -299,10 +325,12 @@ class AppointmentService:
 
     @staticmethod
     async def _resolve_cabinet(db: AsyncSession, clinic_id: UUID, data: dict) -> None:
-        """Ensure ``data`` ends up with matching cabinet_id + cabinet (name).
+        """Ensure ``data`` ends up with matching ``cabinet_id`` + ``cabinet``.
 
-        Accepts either cabinet_id or cabinet; rejects both if absent.
-        Mutates ``data`` in place. Raises ValueError when unresolved.
+        Accepts either ``cabinet_id`` or the ``cabinet`` name; if neither
+        is provided, leaves both as ``None`` — cabinet assignment is now
+        deferred-by-design (issue #51). Raises ``ValueError`` only when a
+        non-null reference can't be resolved.
         """
         cabinet_id = data.get("cabinet_id")
         cabinet_name = data.get("cabinet")
@@ -316,11 +344,14 @@ class AppointmentService:
             cab = await CabinetService.get_by_name(db, clinic_id, cabinet_name)
             if cab is None:
                 raise ValueError(f"Cabinet not found: {cabinet_name}")
-        else:
-            raise ValueError("Either cabinet_id or cabinet (name) is required")
 
-        data["cabinet_id"] = cab.id
-        data["cabinet"] = cab.name
+        if cab is not None:
+            data["cabinet_id"] = cab.id
+            data["cabinet"] = cab.name
+        else:
+            # Deferred assignment — the appointment exists without a chair.
+            data["cabinet_id"] = None
+            data["cabinet"] = None
 
     @staticmethod
     async def create_appointment(
@@ -347,6 +378,13 @@ class AppointmentService:
         now = datetime.now(UTC)
         data.setdefault("current_status_since", now)
 
+        # If the caller pre-assigned a cabinet (the happy path when the
+        # chair is known up-front), stamp the denormalized audit columns so
+        # the UI doesn't need to join the event table.
+        if data.get("cabinet_id") is not None:
+            data.setdefault("cabinet_assigned_at", now)
+            data.setdefault("cabinet_assigned_by", created_by)
+
         appointment = Appointment(clinic_id=clinic_id, **data)
         db.add(appointment)
 
@@ -366,6 +404,21 @@ class AppointmentService:
                 changed_by=created_by,
             )
         )
+
+        # Seed the cabinet audit trail for pre-assigned appointments —
+        # deferred ones get their first event when the receptionist drops
+        # the card on a cabinet in the kanban.
+        if appointment.cabinet_id is not None:
+            db.add(
+                AppointmentCabinetEvent(
+                    clinic_id=clinic_id,
+                    appointment_id=appointment.id,
+                    from_cabinet_id=None,
+                    to_cabinet_id=appointment.cabinet_id,
+                    changed_at=now,
+                    changed_by=created_by,
+                )
+            )
 
         if planned_item_ids:
             for order, planned_item_id in enumerate(planned_item_ids):
@@ -427,9 +480,29 @@ class AppointmentService:
 
         planned_item_ids = data.pop("planned_item_ids", None)
 
-        # Resolve cabinet change (accepts cabinet_id or cabinet name).
-        if data.get("cabinet_id") or data.get("cabinet"):
-            await AppointmentService._resolve_cabinet(db, appointment.clinic_id, data)
+        # Cabinet changes go through assign_cabinet() so the audit trail
+        # + bus event fire. Pop the fields here and apply after the core
+        # update has flushed. A null explicit in data means "unassign" —
+        # the service distinguishes that from "field not present" via
+        # sentinel below.
+        _cabinet_unset = object()
+        requested_cabinet_id = data.pop("cabinet_id", _cabinet_unset)
+        requested_cabinet_name = data.pop("cabinet", _cabinet_unset)
+        cabinet_change_requested = not (
+            requested_cabinet_id is _cabinet_unset and requested_cabinet_name is _cabinet_unset
+        )
+        resolved_cabinet_id: UUID | None = None
+        if cabinet_change_requested:
+            tmp: dict = {
+                "cabinet_id": (
+                    None if requested_cabinet_id is _cabinet_unset else requested_cabinet_id
+                ),
+                "cabinet": (
+                    None if requested_cabinet_name is _cabinet_unset else requested_cabinet_name
+                ),
+            }
+            await AppointmentService._resolve_cabinet(db, appointment.clinic_id, tmp)
+            resolved_cabinet_id = tmp["cabinet_id"]
 
         if planned_item_ids:
             patient_id = data.get("patient_id") or appointment.patient_id
@@ -479,6 +552,11 @@ class AppointmentService:
                         await db.refresh(
                             treatment.planned_item.treatment, ["teeth", "catalog_item"]
                         )
+
+        if cabinet_change_requested and resolved_cabinet_id != appointment.cabinet_id:
+            await AppointmentService.assign_cabinet(
+                db, appointment, resolved_cabinet_id, changed_by=changed_by
+            )
 
         if requested_status is not None and requested_status != appointment.status:
             await AppointmentService.transition(
@@ -542,6 +620,14 @@ class AppointmentService:
         if to_status not in allowed:
             raise InvalidTransitionError(f"Cannot transition from '{from_status}' to '{to_status}'")
 
+        # Operational rule: a patient can't be "in treatment" without a
+        # chair. The kanban UI forces the user to drop the card on a
+        # specific cabinet box — if they somehow call the API directly
+        # without one, fail loudly with a dedicated exception so the
+        # frontend toast reads "Assign a cabinet first".
+        if to_status == "in_treatment" and appointment.cabinet_id is None:
+            raise CabinetRequiredError("A cabinet must be assigned before moving to 'in_treatment'")
+
         now = datetime.now(UTC)
         event = AppointmentStatusEvent(
             clinic_id=appointment.clinic_id,
@@ -591,5 +677,76 @@ class AppointmentService:
         }.get(to_status)
         if specific is not None:
             event_bus.publish(specific, payload)
+
+        return appointment
+
+    @staticmethod
+    async def assign_cabinet(
+        db: AsyncSession,
+        appointment: Appointment,
+        cabinet_id: UUID | None,
+        changed_by: UUID | None = None,
+        note: str | None = None,
+    ) -> Appointment:
+        """Assign, reassign, or unassign (``cabinet_id=None``) a cabinet.
+
+        - Resolves the target cabinet (validates it exists and belongs to
+          the clinic). Detects slot conflicts with other non-cancelled
+          appointments and raises ``IntegrityError`` via DB constraint.
+        - Inserts an ``AppointmentCabinetEvent`` row.
+        - Updates the denormalized audit columns on ``Appointment``.
+        - Publishes ``APPOINTMENT_CABINET_CHANGED`` on the bus.
+
+        Early-returns without touching anything if the target equals the
+        current cabinet — a no-op from the operational perspective.
+        """
+        from_cabinet_id = appointment.cabinet_id
+        if cabinet_id == from_cabinet_id:
+            return appointment
+
+        target_cabinet: Cabinet | None = None
+        if cabinet_id is not None:
+            target_cabinet = await CabinetService.get_cabinet(db, appointment.clinic_id, cabinet_id)
+            if target_cabinet is None:
+                raise ValueError(f"Cabinet not found: {cabinet_id}")
+
+        now = datetime.now(UTC)
+        db.add(
+            AppointmentCabinetEvent(
+                clinic_id=appointment.clinic_id,
+                appointment_id=appointment.id,
+                from_cabinet_id=from_cabinet_id,
+                to_cabinet_id=cabinet_id,
+                changed_at=now,
+                changed_by=changed_by,
+                note=note,
+            )
+        )
+
+        appointment.cabinet_id = cabinet_id
+        appointment.cabinet = target_cabinet.name if target_cabinet else None
+        appointment.cabinet_assigned_at = now if cabinet_id is not None else None
+        appointment.cabinet_assigned_by = changed_by if cabinet_id is not None else None
+
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise
+
+        event_bus.publish(
+            EventType.APPOINTMENT_CABINET_CHANGED,
+            {
+                "appointment_id": str(appointment.id),
+                "clinic_id": str(appointment.clinic_id),
+                "patient_id": (str(appointment.patient_id) if appointment.patient_id else None),
+                "professional_id": str(appointment.professional_id),
+                "from_cabinet_id": (str(from_cabinet_id) if from_cabinet_id else None),
+                "to_cabinet_id": str(cabinet_id) if cabinet_id else None,
+                "changed_at": now.isoformat(),
+                "changed_by": str(changed_by) if changed_by else None,
+                "note": note,
+            },
+        )
 
         return appointment

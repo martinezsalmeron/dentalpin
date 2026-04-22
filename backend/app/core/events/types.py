@@ -28,6 +28,12 @@ class EventType:
     APPOINTMENT_CONFIRMED = "appointment.confirmed"
     APPOINTMENT_CHECKED_IN = "appointment.checked_in"
     APPOINTMENT_IN_TREATMENT = "appointment.in_treatment"
+    # Cabinet (re)assignment — published by AppointmentService.assign_cabinet.
+    # Consumers that care about where a patient physically is (real-time
+    # kanban, occupancy dashboards) subscribe to this event. The payload
+    # carries from_cabinet_id / to_cabinet_id / changed_at / changed_by;
+    # either cabinet id can be null (first assignment or an unassign).
+    APPOINTMENT_CABINET_CHANGED = "appointment.cabinet_changed"
 
     # Treatment events (for future use)
     TREATMENT_COMPLETED = "treatment.completed"

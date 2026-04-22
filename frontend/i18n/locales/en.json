@@ -632,12 +632,30 @@
       "done": "Completed",
       "missed": "No show / Cancelled",
       "free": "Free",
+      "inactive": "Inactive",
       "empty": "No appointments",
       "nextIn": "Next at {time}",
       "subtitleCount": "{count} appointments",
       "subtitleEmpty": "No appointments",
       "subtitleWaiting": "{count} waiting · avg {avg} min",
       "subtitleInChair": "{busy} busy · {free} free"
+    },
+    "cabinet": {
+      "assignLater": "Assign later",
+      "unassigned": "Unassigned",
+      "assign": "Assign cabinet",
+      "reassign": "Reassign cabinet",
+      "unassign": "Unassign cabinet",
+      "requiredForTreatment": "Assign a cabinet before moving to treatment"
+    },
+    "professionals": {
+      "strip": "Professionals",
+      "state": {
+        "free": "Free",
+        "in_treatment": "In chair",
+        "on_break": "On break",
+        "off": "Off"
+      }
     },
     "noProfessionals": "No professionals configured",
     "overlapWarning": "Overlaps detected",

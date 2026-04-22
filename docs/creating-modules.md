@@ -906,11 +906,23 @@ every status transition. Subscribe to whichever fits your use case:
 | `APPOINTMENT_COMPLETED` | `in_treatment → completed` |
 | `APPOINTMENT_CANCELLED` | Any non-terminal → `cancelled` |
 | `APPOINTMENT_NO_SHOW` | `(scheduled|confirmed) → no_show` |
+| `APPOINTMENT_CABINET_CHANGED` | Cabinet assigned / reassigned / unassigned. Payload carries `from_cabinet_id`, `to_cabinet_id` (either may be null), `changed_at`, `changed_by`. |
 
 The full audit trail is also available through
-`GET /api/v1/agenda/appointments/{id}/transitions` — consumers that need
-historical context should reach for the API rather than trying to
-reconstruct state from events.
+`GET /api/v1/agenda/appointments/{id}/transitions` (status events) and
+`GET /api/v1/agenda/appointments/{id}/cabinet-history` (cabinet events).
+Consumers that need historical context should reach for the API rather
+than trying to reconstruct state from events.
+
+### Deferred cabinet assignment (issue #51)
+
+``cabinet_id`` is **nullable** on ``appointments``. A booking without a
+chair is legal — the receptionist decides the cabinet when the patient
+arrives by dropping the card onto a cabinet box in the kanban. The
+transition to ``in_treatment`` is blocked if no cabinet is assigned (the
+service raises ``CabinetRequiredError`` → ``400``). Use
+``PATCH /agenda/appointments/{id}/cabinet`` with ``{cabinet_id: null}``
+to unassign.
 
 ### Seed data that depends on a record from another module
 

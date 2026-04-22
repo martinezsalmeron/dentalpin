@@ -25,14 +25,28 @@ const props = defineProps<{
 const emit = defineEmits<{
   'appointment-click': [appointment: Appointment]
   'date-change': [date: Date]
+  'professional-filter': [professionalId: string | null]
 }>()
 
 const { t, locale } = useI18n()
 const toast = useToast()
-const { fetchAppointments, transition, updateAppointment } = useAppointments()
+const { fetchAppointments, transition, assignCabinet } = useAppointments()
 const { canTransition, statusColour, statusLabel } = useAppointmentStatus()
 // Manual 30-second tick — @vueuse/core is not a dependency in this repo.
 const now = ref(new Date())
+
+// Professional pill filter: click a pill to focus the board on one pro;
+// click the same pill again to clear. Single-select (not multi) to keep
+// the strip unambiguous.
+const pillFilteredId = ref<string | null>(null)
+const stripRef = ref<{ refresh?: () => Promise<void> } | null>(null)
+
+function onPillClick(professionalId: string) {
+  pillFilteredId.value = pillFilteredId.value === professionalId
+    ? null
+    : professionalId
+  emit('professional-filter', pillFilteredId.value)
+}
 
 // Columns: 5 operational buckets, not 7 per-status columns. Grouping
 // sched+confirmed and no_show+cancelled keeps the board readable on a
@@ -136,22 +150,41 @@ function appointmentsForColumn(col: ColumnDef): Appointment[] {
 
 // Cabinet sub-grouping inside "in chair" — answers "which cabinets are
 // occupied right now?" at a glance. Each cabinet block shows either the
-// patient card or a "Libre" placeholder.
+// patient card or a "Libre" placeholder. The computed ``state`` drives
+// the accent colour: green (free + active), blue (in use), gray
+// (inactive).
+type CabinetState = 'free' | 'in_use' | 'inactive'
+
 const inChairByCabinet = computed(() => {
   const grouped = new Map<string, Appointment | null>()
   for (const c of props.cabinets) {
     grouped.set(c.name, null)
   }
   for (const apt of dayAppointments.value) {
-    if (apt.status === 'in_treatment') {
+    if (apt.status === 'in_treatment' && apt.cabinet) {
       grouped.set(apt.cabinet, apt)
     }
   }
-  return Array.from(grouped.entries()).map(([cabName, apt]) => ({
-    cabinet: props.cabinets.find(c => c.name === cabName) ?? { name: cabName, color: '#6B7280' },
-    appointment: apt
-  }))
+  return Array.from(grouped.entries()).map(([cabName, apt]) => {
+    const cabinet = props.cabinets.find(c => c.name === cabName) ?? {
+      name: cabName,
+      color: '#6B7280'
+    }
+    const isActive = (cabinet as { is_active?: boolean }).is_active !== false
+    const state: CabinetState = !isActive
+      ? 'inactive'
+      : apt !== null
+        ? 'in_use'
+        : 'free'
+    return { cabinet, appointment: apt, state }
+  })
 })
+
+const CABINET_STATE_ACCENT: Record<CabinetState, string> = {
+  free: '#22C55E',
+  in_use: '#2563EB',
+  inactive: '#9CA3AF'
+}
 
 // Next upcoming appointment per cabinet (to show when the cabinet is free).
 function nextForCabinet(cabinetName: string): Appointment | null {
@@ -221,6 +254,10 @@ function canDropOn(apt: Appointment, col: ColumnDef): boolean {
   return targets.some(t => canTransition(apt.status, t))
 }
 
+function cabinetIdByName(name: string): string | null {
+  return props.cabinets.find(c => c.name === name)?.id ?? null
+}
+
 async function onDrop(col: ColumnDef, e: DragEvent, cabinetName?: string) {
   e.preventDefault()
   if (!drag.value) return
@@ -229,10 +266,12 @@ async function onDrop(col: ColumnDef, e: DragEvent, cabinetName?: string) {
   drag.value = null
   if (!apt) return
 
-  // Case A: moving inside "in chair" onto a different cabinet.
+  // Case A: moving within "in chair" — the patient is already being
+  // treated, we're just physically moving them to another cabinet.
   if (col.id === 'in_chair' && col.statuses.includes(apt.status)) {
     if (cabinetName && cabinetName !== apt.cabinet) {
-      await assignCabinet(apt, cabinetName)
+      const cabId = cabinetIdByName(cabinetName)
+      if (cabId) await safeAssign(aptId, cabId)
     }
     return
   }
@@ -244,8 +283,14 @@ async function onDrop(col: ColumnDef, e: DragEvent, cabinetName?: string) {
   if (!target) return
 
   try {
+    // When dropping on a specific cabinet inside "in chair", assign the
+    // cabinet FIRST and then transition — the transition to in_treatment
+    // requires a cabinet (backend rule from #51). If the second step
+    // fails we leave the cabinet assignment in place per the product
+    // decision: less confusing than an auto-unassign rollback.
     if (col.id === 'in_chair' && cabinetName && cabinetName !== apt.cabinet) {
-      await assignCabinet(apt, cabinetName)
+      const cabId = cabinetIdByName(cabinetName)
+      if (cabId) await safeAssign(aptId, cabId)
     }
     await transition(aptId, target)
   } catch {
@@ -253,12 +298,12 @@ async function onDrop(col: ColumnDef, e: DragEvent, cabinetName?: string) {
   }
 }
 
-async function assignCabinet(apt: Appointment, cabinetName: string) {
+async function safeAssign(aptId: string, cabinetId: string | null) {
   try {
-    await updateAppointment(apt.id, { cabinet: cabinetName })
+    await assignCabinet(aptId, cabinetId)
   } catch {
     toast.add({ title: t('appointments.conflict'), color: 'error' })
-    throw new Error('cabinet_update_failed')
+    throw new Error('cabinet_assign_failed')
   }
 }
 
@@ -404,6 +449,16 @@ function isInvalidHint(col: ColumnDef): boolean {
       <h2 class="text-h2 text-default capitalize truncate ml-4">{{ formattedDate() }}</h2>
     </div>
 
+    <!-- Professionals strip (#51): one pill per working pro today, live
+         state derived from appointments + schedules. -->
+    <ProfessionalsStrip
+      ref="stripRef"
+      :current-date="currentDate"
+      :professionals="professionals"
+      :filtered-id="pillFilteredId"
+      @pill-click="onPillClick"
+    />
+
     <!-- Loading -->
     <div v-if="isLoading" class="flex items-center justify-center py-12">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin" :style="{ color: 'var(--color-primary)' }" />
@@ -459,7 +514,8 @@ function isInvalidHint(col: ColumnDef): boolean {
             <div
               v-for="entry in inChairByCabinet"
               :key="entry.cabinet.name"
-              class="rounded-md ring-1 ring-[var(--color-border)] bg-surface p-2"
+              class="rounded-md ring-1 ring-[var(--color-border)] bg-surface p-2 border-l-4 transition-shadow"
+              :style="{ borderLeftColor: CABINET_STATE_ACCENT[entry.state] }"
               :class="{ 'ring-2 ring-[var(--color-primary)]': drag && isDropHint(col, entry.cabinet.name) }"
               @dragover.stop="onDragOverColumn(col, $event, entry.cabinet.name)"
               @drop.stop="onDrop(col, $event, entry.cabinet.name)"
@@ -470,7 +526,7 @@ function isInvalidHint(col: ColumnDef): boolean {
                 <span
                   v-if="!entry.appointment"
                   class="ml-auto text-caption text-subtle italic"
-                >{{ t('appointments.kanban.free') }}</span>
+                >{{ entry.state === 'inactive' ? t('appointments.kanban.inactive') : t('appointments.kanban.free') }}</span>
               </div>
               <AppointmentCard
                 v-if="entry.appointment"

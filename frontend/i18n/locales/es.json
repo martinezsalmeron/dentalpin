@@ -653,12 +653,30 @@
       "done": "Finalizadas",
       "missed": "No asistió / Cancelada",
       "free": "Libre",
+      "inactive": "Inactivo",
       "empty": "Sin citas",
       "nextIn": "Siguiente a las {time}",
       "subtitleCount": "{count} citas",
       "subtitleEmpty": "Sin citas",
       "subtitleWaiting": "{count} esperando · media {avg} min",
       "subtitleInChair": "{busy} ocupados · {free} libres"
+    },
+    "cabinet": {
+      "assignLater": "Asignar después",
+      "unassigned": "Sin asignar",
+      "assign": "Asignar gabinete",
+      "reassign": "Reasignar gabinete",
+      "unassign": "Desasignar gabinete",
+      "requiredForTreatment": "Asigna un gabinete antes de pasar a tratamiento"
+    },
+    "professionals": {
+      "strip": "Profesionales",
+      "state": {
+        "free": "Libre",
+        "in_treatment": "En gabinete",
+        "on_break": "En pausa",
+        "off": "Fuera"
+      }
     },
     "noProfessionals": "No hay profesionales configurados",
     "overlapWarning": "Se detectaron solapamientos",

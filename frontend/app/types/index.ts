@@ -212,12 +212,29 @@ export interface AppointmentStatusEvent {
   note: string | null
 }
 
+export interface AppointmentCabinetEvent {
+  id: string
+  from_cabinet_id: string | null
+  from_cabinet_name: string | null
+  to_cabinet_id: string | null
+  to_cabinet_name: string | null
+  changed_at: string
+  changed_by: string | null
+  changed_by_name: string | null
+  note: string | null
+}
+
 export interface Appointment {
   id: string
   clinic_id: string
   patient_id?: string
   professional_id: string
-  cabinet: string
+  // Cabinet is optional now (#51): a booked appointment may exist without
+  // a cabinet decision until the patient arrives.
+  cabinet: string | null
+  cabinet_id: string | null
+  cabinet_assigned_at: string | null
+  cabinet_assigned_by: string | null
   start_time: string
   end_time: string
   treatment_type?: string // Legacy field
@@ -232,12 +249,14 @@ export interface Appointment {
   professional?: User
   // Populated only on GET /appointments/{id} and after POST transitions.
   history?: AppointmentStatusEvent[] | null
+  cabinet_history?: AppointmentCabinetEvent[] | null
 }
 
 export interface AppointmentCreate {
   patient_id: string
   professional_id: string
-  cabinet: string
+  cabinet?: string | null
+  cabinet_id?: string | null
   start_time: string
   end_time: string
   treatment_type?: string // Legacy field

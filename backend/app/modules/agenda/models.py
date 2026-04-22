@@ -83,8 +83,20 @@ class Appointment(Base, TimestampMixin):
     # Denormalized cabinet name (kept in sync on Cabinet rename). The
     # authoritative reference is ``cabinet_id`` — the string lets
     # legacy filters keep working during the frontend migration.
-    cabinet: Mapped[str] = mapped_column(String(50))
-    cabinet_id: Mapped[UUID] = mapped_column(ForeignKey("cabinets.id"), index=True)
+    # Both are nullable: a booked appointment may exist without a cabinet
+    # decision until the patient arrives. The cabinet is assigned on the
+    # kanban board when transitioning to ``in_treatment``.
+    cabinet: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    cabinet_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("cabinets.id"), index=True, nullable=True
+    )
+    # When / by whom the current cabinet was last assigned. Denormalized
+    # from ``appointment_cabinet_events``; kept in sync by
+    # :meth:`AppointmentService.assign_cabinet`.
+    cabinet_assigned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    cabinet_assigned_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     treatment_type: Mapped[str | None] = mapped_column(String(100))
@@ -100,8 +112,9 @@ class Appointment(Base, TimestampMixin):
 
     clinic: Mapped[Clinic] = relationship(back_populates="appointments")
     patient: Mapped[Patient | None] = relationship(back_populates="appointments")
-    professional: Mapped[User] = relationship()
-    cabinet_ref: Mapped[Cabinet] = relationship()
+    professional: Mapped[User] = relationship(foreign_keys=[professional_id])
+    cabinet_assigner: Mapped[User | None] = relationship(foreign_keys=[cabinet_assigned_by])
+    cabinet_ref: Mapped[Cabinet | None] = relationship()
 
     treatments: Mapped[list[AppointmentTreatment]] = relationship(
         back_populates="appointment",
@@ -113,6 +126,12 @@ class Appointment(Base, TimestampMixin):
         back_populates="appointment",
         cascade="all, delete-orphan",
         order_by="AppointmentStatusEvent.changed_at",
+    )
+
+    cabinet_events: Mapped[list[AppointmentCabinetEvent]] = relationship(
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+        order_by="AppointmentCabinetEvent.changed_at",
     )
 
     __table_args__ = (
@@ -186,6 +205,42 @@ class AppointmentStatusEvent(Base):
     __table_args__ = (
         Index(
             "ix_appointment_status_events_appointment_changed_at",
+            "appointment_id",
+            "changed_at",
+        ),
+    )
+
+
+class AppointmentCabinetEvent(Base):
+    """Append-only audit trail for cabinet assignments.
+
+    Kept separate from ``appointment_status_events`` so analytics queries
+    stay simple (one event table per concern). ``from_cabinet_id`` is NULL
+    on the very first assignment; ``to_cabinet_id`` is NULL on an unassign.
+    """
+
+    __tablename__ = "appointment_cabinet_events"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
+    appointment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("appointments.id", ondelete="CASCADE"), index=True
+    )
+    from_cabinet_id: Mapped[UUID | None] = mapped_column(ForeignKey("cabinets.id"), nullable=True)
+    to_cabinet_id: Mapped[UUID | None] = mapped_column(ForeignKey("cabinets.id"), nullable=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    changed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    appointment: Mapped[Appointment] = relationship(back_populates="cabinet_events")
+    actor: Mapped[User | None] = relationship(foreign_keys=[changed_by])
+    from_cabinet: Mapped[Cabinet | None] = relationship(foreign_keys=[from_cabinet_id])
+    to_cabinet: Mapped[Cabinet | None] = relationship(foreign_keys=[to_cabinet_id])
+
+    __table_args__ = (
+        Index(
+            "ix_appointment_cabinet_events_appointment_changed_at",
             "appointment_id",
             "changed_at",
         ),

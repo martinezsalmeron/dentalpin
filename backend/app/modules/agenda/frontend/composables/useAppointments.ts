@@ -75,6 +75,50 @@ export function useAppointments() {
   }
 
   /**
+   * Assign, reassign or unassign (``cabinet_id=null``) a cabinet.
+   * Optimistic local update + rollback on failure.
+   */
+  async function assignCabinet(
+    id: string,
+    cabinetId: string | null,
+    note?: string
+  ): Promise<Appointment> {
+    const previous = appointments.value.find(apt => apt.id === id)
+    const optimisticNow = new Date().toISOString()
+
+    if (previous) {
+      appointments.value = appointments.value.map(apt =>
+        apt.id === id
+          ? {
+              ...apt,
+              cabinet_id: cabinetId,
+              cabinet: cabinetId === null ? null : apt.cabinet,
+              cabinet_assigned_at: cabinetId === null ? null : optimisticNow
+            }
+          : apt
+      )
+    }
+
+    try {
+      const response = await api.patch<ApiResponse<Appointment>>(
+        `/api/v1/agenda/appointments/${id}/cabinet`,
+        { cabinet_id: cabinetId, note: note ?? null }
+      )
+      appointments.value = appointments.value.map(apt =>
+        apt.id === id ? response.data : apt
+      )
+      return response.data
+    } catch (err) {
+      if (previous) {
+        appointments.value = appointments.value.map(apt =>
+          apt.id === id ? previous : apt
+        )
+      }
+      throw err
+    }
+  }
+
+  /**
    * Transition an appointment through the status lifecycle. Updates the
    * local list optimistically (``status`` + ``current_status_since``) and
    * rolls back on failure. Returns the server's authoritative response.
@@ -123,6 +167,7 @@ export function useAppointments() {
     updateAppointment,
     cancelAppointment,
     updateAppointmentStatus,
-    transition
+    transition,
+    assignCabinet
   }
 }
