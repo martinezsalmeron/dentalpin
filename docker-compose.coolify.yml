@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dental_clinic}
+      POSTGRES_USER: ${POSTGRES_USER:-dental}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dental} -d ${POSTGRES_DB:-dental_clinic}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      SERVICE_FQDN_BACKEND_8000: ${BACKEND_FQDN}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dental}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dental_clinic}
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+      ALLOWED_ORIGINS: ${FRONTEND_URL}
+      STORAGE_BACKEND: local
+      STORAGE_LOCAL_PATH: /app/storage
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.prod
+      args:
+        API_BASE_URL: ${BACKEND_URL}
+    environment:
+      SERVICE_FQDN_FRONTEND_3000: ${FRONTEND_FQDN}
+      NUXT_PUBLIC_API_BASE_URL: ${BACKEND_URL}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  storage_data:

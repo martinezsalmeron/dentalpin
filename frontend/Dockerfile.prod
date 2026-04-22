@@ -1,0 +1,30 @@
+FROM node:20-alpine AS builder
+
+ARG API_BASE_URL=http://localhost:8000
+ENV API_BASE_URL=$API_BASE_URL
+
+WORKDIR /app
+
+COPY frontend/package*.json ./
+RUN npm install --no-audit --no-fund
+
+COPY backend/app/modules /module_layers
+
+COPY frontend/ ./
+
+RUN npm run build
+
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/.output /app/.output
+
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=3000
+
+EXPOSE 3000
+
+CMD ["node", ".output/server/index.mjs"]
