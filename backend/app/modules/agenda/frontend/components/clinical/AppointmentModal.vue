@@ -43,6 +43,12 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+// Sentinel value for the "assign later" cabinet option. Reka UI's
+// SelectItem rejects empty strings (it reserves them for the
+// placeholder state), so we round-trip this token and normalise it
+// to null on submit.
+const UNASSIGNED_CABINET = '__unassigned__'
+
 // Form state
 const isSubmitting = ref(false)
 const selectedPatient = ref<Patient | null>(null)
@@ -53,7 +59,7 @@ const formData = reactive({
   date: '',
   startTime: '09:00',
   duration: 30,
-  cabinet: '',
+  cabinet: UNASSIGNED_CABINET,
   notes: ''
 })
 
@@ -89,8 +95,8 @@ watch(selectedTreatments, (treatments) => {
 // cabinets are optional at booking and decided at check-in.
 const cabinetOptions = computed(() => {
   const assignLater = {
-    value: '',
-    label: t('appointments.cabinet.assignLater')
+    value: UNASSIGNED_CABINET,
+    label: t('appointments.cabinetAssignment.assignLater')
   }
   return [
     assignLater,
@@ -258,7 +264,7 @@ watch(() => props.open, async (isOpen) => {
     formData.date = apt.start_time.split('T')[0] ?? ''
     formData.startTime = apt.start_time.split('T')[1]?.substring(0, 5) ?? '09:00'
     // null cabinet (#51) maps to the "assign later" option.
-    formData.cabinet = apt.cabinet ?? ''
+    formData.cabinet = apt.cabinet ?? UNASSIGNED_CABINET
     formData.notes = apt.notes || ''
 
     // Map each AppointmentTreatmentBrief into a PlannedTreatmentItem shape so the
@@ -371,7 +377,7 @@ watch(() => props.open, async (isOpen) => {
       formData.duration = clinic.slotDuration.value || 30
     }
     // Default to unassigned (#51): the cabinet is decided at check-in.
-    formData.cabinet = ''
+    formData.cabinet = UNASSIGNED_CABINET
     formData.notes = ''
     selectedTreatments.value = []
     // Reset email checkbox for create mode
@@ -445,10 +451,10 @@ async function handleSave() {
       }
     }
 
-    // Empty cabinet string means "assign later" (#51) — normalise to null
-    // so the API stores NULL and downstream UIs can identify unassigned
-    // appointments unambiguously.
-    const cabinetValue = formData.cabinet && formData.cabinet.trim() !== ''
+    // The "assign later" sentinel (#51) means no cabinet yet — normalise
+    // to null so the API stores NULL and downstream UIs can identify
+    // unassigned appointments unambiguously.
+    const cabinetValue = formData.cabinet && formData.cabinet !== UNASSIGNED_CABINET
       ? formData.cabinet
       : null
 
@@ -622,10 +628,7 @@ function closeModal() {
                 />
               </UFormField>
 
-              <UFormField
-                :label="t('appointments.cabinet')"
-                required
-              >
+              <UFormField :label="t('appointments.cabinet')">
                 <USelect
                   v-model="formData.cabinet"
                   :items="cabinetOptions"

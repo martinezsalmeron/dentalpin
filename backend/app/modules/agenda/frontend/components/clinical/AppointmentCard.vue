@@ -187,7 +187,7 @@ const cardStyle = computed(() => ({
       />
       <UBadge
         v-else
-        :label="t('appointments.cabinet.unassigned')"
+        :label="t('appointments.cabinetAssignment.unassigned')"
         color="warning"
         variant="subtle"
         size="xs"
