@@ -3,6 +3,15 @@
     "name": "DentalPin",
     "tagline": "Dental clinic management"
   },
+  "demo": {
+    "bannerMessage": "Public demo — do not enter real patient data. The database is reset periodically.",
+    "bannerDismiss": "Dismiss",
+    "credentialsTitle": "Demo credentials",
+    "credentialsNote": "For evaluation only — shown because this is a public demo instance.",
+    "copyEmail": "Copy email",
+    "copyPassword": "Copy password",
+    "copied": "Copied to clipboard"
+  },
   "nav": {
     "dashboard": "Home",
     "patients": "Patients",

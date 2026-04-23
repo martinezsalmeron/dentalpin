@@ -3,6 +3,15 @@
     "name": "DentalPin",
     "tagline": "Gestión de clínica dental"
   },
+  "demo": {
+    "bannerMessage": "Demo pública — no introduzcas datos reales de pacientes. La base de datos se reinicia periódicamente.",
+    "bannerDismiss": "Cerrar",
+    "credentialsTitle": "Credenciales de la demo",
+    "credentialsNote": "Solo para evaluación — visibles porque esta es una instancia de demo pública.",
+    "copyEmail": "Copiar correo",
+    "copyPassword": "Copiar contraseña",
+    "copied": "Copiado al portapapeles"
+  },
   "nav": {
     "dashboard": "Inicio",
     "patients": "Pacientes",

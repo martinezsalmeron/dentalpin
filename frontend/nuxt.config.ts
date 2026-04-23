@@ -62,7 +62,8 @@ export default defineNuxtConfig({
     apiBaseUrlServer: process.env.API_BASE_URL_SERVER || 'http://backend:8000',
     public: {
       // Client-side (browser)
-      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000'
+      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000',
+      demoMode: process.env.NUXT_PUBLIC_DEMO_MODE === 'true'
     }
   },
   srcDir: 'app',

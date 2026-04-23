@@ -131,6 +131,8 @@ async function onSubmit() {
       </form>
     </UCard>
 
+    <DemoCredentialsHint />
+
     <p class="text-center text-caption text-subtle mt-6">
       &copy; {{ new Date().getFullYear() }} DentalPin
     </p>
