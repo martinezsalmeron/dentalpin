@@ -29,9 +29,16 @@
     "email": "Email",
     "password": "Password",
     "loginButton": "Sign in",
-    "invalidCredentials": "Invalid credentials",
+    "loginSuccess": "Signed in successfully",
+    "invalidCredentials": "Incorrect email or password",
+    "emailRequired": "Enter your email",
+    "passwordRequired": "Enter your password",
+    "emailInvalid": "Invalid email address",
+    "accountInactive": "Your account is inactive. Contact your administrator",
+    "tooManyAttempts": "Too many attempts. Try again in a few minutes",
     "sessionExpired": "Your session has expired",
-    "networkError": "Connection error"
+    "networkError": "Could not connect to the server",
+    "unknownError": "Unexpected error. Please try again"
   },
   "actions": {
     "edit": "Edit",

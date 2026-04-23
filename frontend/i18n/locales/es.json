@@ -29,9 +29,16 @@
     "email": "Correo electrónico",
     "password": "Contraseña",
     "loginButton": "Entrar",
-    "invalidCredentials": "Credenciales inválidas",
+    "loginSuccess": "Sesión iniciada correctamente",
+    "invalidCredentials": "Correo o contraseña incorrectos",
+    "emailRequired": "Introduce tu correo electrónico",
+    "passwordRequired": "Introduce tu contraseña",
+    "emailInvalid": "El correo electrónico no es válido",
+    "accountInactive": "Tu cuenta está desactivada. Contacta con el administrador",
+    "tooManyAttempts": "Demasiados intentos. Inténtalo de nuevo en unos minutos",
     "sessionExpired": "Tu sesión ha expirado",
-    "networkError": "Error de conexión"
+    "networkError": "No se pudo conectar con el servidor",
+    "unknownError": "Error inesperado. Inténtalo de nuevo"
   },
   "actions": {
     "edit": "Editar",

@@ -7,43 +7,95 @@ const { t } = useI18n()
 const auth = useAuth()
 const toast = useToast()
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 const isLoading = ref(false)
 const formState = reactive({
   email: '',
   password: ''
 })
 const errorMessage = ref('')
+const emailError = ref('')
+const passwordError = ref('')
+
+function validate(): boolean {
+  emailError.value = ''
+  passwordError.value = ''
+
+  const email = formState.email.trim()
+  if (!email) {
+    emailError.value = t('auth.emailRequired')
+  } else if (!EMAIL_RE.test(email)) {
+    emailError.value = t('auth.emailInvalid')
+  }
+
+  if (!formState.password) {
+    passwordError.value = t('auth.passwordRequired')
+  }
+
+  return !emailError.value && !passwordError.value
+}
+
+function mapError(err: unknown): string {
+  const e = err as {
+    statusCode?: number
+    status?: number
+    message?: string
+    data?: { message?: string }
+  }
+  const status = e.statusCode ?? e.status
+
+  switch (status) {
+    case 400:
+    case 401:
+      return t('auth.invalidCredentials')
+    case 403:
+      return t('auth.accountInactive')
+    case 422:
+      return t('auth.invalidCredentials')
+    case 429:
+      return t('auth.tooManyAttempts')
+  }
+
+  if (!status || status === 0 || (e.message && /network|fetch|failed/i.test(e.message))) {
+    return t('auth.networkError')
+  }
+  return t('auth.unknownError')
+}
 
 async function onSubmit() {
   errorMessage.value = ''
-  isLoading.value = true
+  if (!validate()) return
 
+  isLoading.value = true
   try {
     await auth.login({
-      email: formState.email,
+      email: formState.email.trim(),
       password: formState.password
     })
 
     toast.add({
-      title: t('common.success'),
-      description: `${t('auth.login')} ${t('common.success').toLowerCase()}`,
+      title: t('auth.loginSuccess'),
       color: 'success'
     })
 
     await navigateTo('/')
   } catch (error: unknown) {
     console.error('Login error:', error)
-    const fetchError = error as { statusCode?: number, message?: string, data?: { message?: string } }
-
-    if (fetchError.statusCode === 401) {
-      errorMessage.value = t('auth.invalidCredentials')
-    } else {
-      errorMessage.value = fetchError.data?.message || fetchError.message || t('auth.networkError')
-    }
+    errorMessage.value = mapError(error)
   } finally {
     isLoading.value = false
   }
 }
+
+watch(() => formState.email, () => {
+  if (emailError.value) emailError.value = ''
+  if (errorMessage.value) errorMessage.value = ''
+})
+watch(() => formState.password, () => {
+  if (passwordError.value) passwordError.value = ''
+  if (errorMessage.value) errorMessage.value = ''
+})
 </script>
 
 <template>
@@ -89,7 +141,7 @@ async function onSubmit() {
         <UFormField
           :label="t('auth.email')"
           name="email"
-          required
+          :error="emailError"
         >
           <UInput
             v-model="formState.email"
@@ -99,13 +151,14 @@ async function onSubmit() {
             icon="i-lucide-mail"
             autocomplete="email"
             :disabled="isLoading"
+            :aria-invalid="!!emailError"
           />
         </UFormField>
 
         <UFormField
           :label="t('auth.password')"
           name="password"
-          required
+          :error="passwordError"
         >
           <UInput
             v-model="formState.password"
@@ -115,6 +168,7 @@ async function onSubmit() {
             icon="i-lucide-lock"
             autocomplete="current-password"
             :disabled="isLoading"
+            :aria-invalid="!!passwordError"
           />
         </UFormField>
 
