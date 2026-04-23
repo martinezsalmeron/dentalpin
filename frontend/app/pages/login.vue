@@ -151,7 +151,6 @@ watch(() => formState.password, () => {
             icon="i-lucide-mail"
             autocomplete="email"
             :disabled="isLoading"
-            :aria-invalid="!!emailError"
           />
         </UFormField>
 
@@ -168,7 +167,6 @@ watch(() => formState.password, () => {
             icon="i-lucide-lock"
             autocomplete="current-password"
             :disabled="isLoading"
-            :aria-invalid="!!passwordError"
           />
         </UFormField>
 
