@@ -675,14 +675,64 @@
     "selectPendingTreatment": "Select pending treatment"
   },
   "dashboard": {
-    "title": "Home",
-    "todayAppointments": "Today's appointments",
-    "appointmentsCount": "{count} appointment | {count} appointments",
-    "nextAppointment": "Next",
-    "recentPatients": "Recent patients",
+    "greetings": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
     "welcome": "Welcome to DentalPin",
     "welcomeMessage": "Start by creating your first patient.",
-    "noAppointmentsToday": "No appointments scheduled for today"
+    "quickActions": {
+      "newAppointment": "New appointment",
+      "newPatient": "New patient",
+      "search": "Search patient",
+      "searchPlaceholder": "Search by name, phone or email"
+    },
+    "timeline": {
+      "title": "Today",
+      "empty": "No appointments scheduled for today",
+      "now": "Now",
+      "openSchedule": "Open schedule"
+    },
+    "todayKpi": {
+      "title": "Appointments today",
+      "completed": "completed",
+      "inProgress": "in progress",
+      "upcoming": "upcoming",
+      "cancelled": "cancelled",
+      "noShow": "no-shows",
+      "empty": "No appointments today"
+    },
+    "inClinic": {
+      "title": "In clinic now",
+      "inTreatment": "{n} in chair",
+      "waiting": "{n} waiting",
+      "empty": "No one in clinic"
+    },
+    "unconfirmed": {
+      "title": "Unconfirmed for tomorrow",
+      "empty": "All tomorrow's appointments confirmed",
+      "confirm": "Confirm",
+      "confirmError": "Could not confirm"
+    },
+    "overdue": {
+      "title": "Overdue payments",
+      "daysOverdue": "{n} day overdue | {n} days overdue",
+      "viewAll": "View all",
+      "empty": "No overdue invoices"
+    },
+    "recent": {
+      "title": "Recent patients",
+      "empty": "No patients yet"
+    },
+    "weekGlance": {
+      "title": "Week at a glance",
+      "subtitle": "Last 7 days vs previous 7",
+      "appointments": "Appointments",
+      "completed": "Completed",
+      "invoiced": "Invoiced",
+      "empty": "No data this week"
+    }
   },
   "settings": {
     "title": "Settings",

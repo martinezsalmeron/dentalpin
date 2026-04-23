@@ -541,6 +541,10 @@ onMounted(async () => {
     loadWeekAppointments(),
     fetchProfessionals()
   ])
+  if (route.query.new === '1') {
+    openCreateModal()
+    router.replace({ query: { ...route.query, new: undefined } })
+  }
 })
 </script>
 

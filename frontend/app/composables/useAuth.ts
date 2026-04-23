@@ -12,8 +12,11 @@ export function useAuth() {
   // State
   const user = useState<User | null>('auth:user', () => null)
   const permissions = useState<string[]>('auth:permissions', () => [])
+  // Cookie lifetime matches refresh token; JWT expiry is enforced by the
+  // backend, and a 401 triggers refresh in useApi. Matching the access
+  // cookie's maxAge to the 15min JWT TTL caused premature logouts.
   const accessToken = useCookie('access_token', {
-    maxAge: 60 * 15, // 15 minutes
+    maxAge: 60 * 60 * 24 * 7, // 7 days
     secure: import.meta.env.PROD,
     sameSite: 'lax'
   })
@@ -113,6 +116,9 @@ export function useAuth() {
   async function init(): Promise<void> {
     if (accessToken.value && !user.value) {
       await fetchUser()
+    } else if (!accessToken.value && refreshToken.value) {
+      // Access cookie gone but refresh still valid — recover session.
+      await refresh()
     }
   }
 

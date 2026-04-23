@@ -6,6 +6,7 @@ const { t } = useI18n()
 const api = useApi()
 const toast = useToast()
 const router = useRouter()
+const route = useRoute()
 
 const searchQuery = ref('')
 const debouncedSearch = ref('')
@@ -45,6 +46,13 @@ function onSearchDebounced(val: string) {
 // Create patient modal
 const isCreateModalOpen = ref(false)
 const isSubmitting = ref(false)
+
+onMounted(() => {
+  if (route.query.new === '1') {
+    isCreateModalOpen.value = true
+    router.replace({ query: { ...route.query, new: undefined } })
+  }
+})
 const newPatient = reactive<PatientCreate>({
   first_name: '',
   last_name: '',

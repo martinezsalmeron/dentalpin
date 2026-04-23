@@ -696,14 +696,64 @@
     "selectPendingTreatment": "Seleccionar tratamiento pendiente"
   },
   "dashboard": {
-    "title": "Inicio",
-    "todayAppointments": "Citas hoy",
-    "appointmentsCount": "{count} cita | {count} citas",
-    "nextAppointment": "Próxima",
-    "recentPatients": "Pacientes recientes",
+    "greetings": {
+      "morning": "Buenos días",
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches"
+    },
     "welcome": "Bienvenido a DentalPin",
     "welcomeMessage": "Comienza creando tu primer paciente.",
-    "noAppointmentsToday": "No hay citas programadas para hoy"
+    "quickActions": {
+      "newAppointment": "Nueva cita",
+      "newPatient": "Nuevo paciente",
+      "search": "Buscar paciente",
+      "searchPlaceholder": "Busca por nombre, teléfono o email"
+    },
+    "timeline": {
+      "title": "Hoy",
+      "empty": "No hay citas programadas para hoy",
+      "now": "Ahora",
+      "openSchedule": "Abrir agenda"
+    },
+    "todayKpi": {
+      "title": "Citas hoy",
+      "completed": "completadas",
+      "inProgress": "en curso",
+      "upcoming": "próximas",
+      "cancelled": "canceladas",
+      "noShow": "no presentadas",
+      "empty": "Sin citas hoy"
+    },
+    "inClinic": {
+      "title": "Ahora en clínica",
+      "inTreatment": "{n} en sala",
+      "waiting": "{n} en espera",
+      "empty": "Nadie en clínica"
+    },
+    "unconfirmed": {
+      "title": "Por confirmar mañana",
+      "empty": "Todas las citas de mañana confirmadas",
+      "confirm": "Confirmar",
+      "confirmError": "No se pudo confirmar"
+    },
+    "overdue": {
+      "title": "Pagos vencidos",
+      "daysOverdue": "{n} día vencido | {n} días vencidos",
+      "viewAll": "Ver todas",
+      "empty": "Sin facturas vencidas"
+    },
+    "recent": {
+      "title": "Pacientes recientes",
+      "empty": "No hay pacientes aún"
+    },
+    "weekGlance": {
+      "title": "La semana en un vistazo",
+      "subtitle": "Últimos 7 días vs 7 anteriores",
+      "appointments": "Citas",
+      "completed": "Completadas",
+      "invoiced": "Facturado",
+      "empty": "Sin datos esta semana"
+    }
   },
   "settings": {
     "title": "Configuración",
