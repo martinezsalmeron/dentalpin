@@ -421,24 +421,35 @@ def _has_branch(module: BaseModule) -> bool:
 
 
 def _alembic_cmd(args: list[str]) -> str | None:
-    """Run an Alembic command in-process and return the resulting head.
+    """Run an Alembic command in a subprocess and return the target head.
 
-    Runs in the backend container via the same Python interpreter so we
-    don't spawn a subprocess. Returns the head revision name after the
-    command completed (or ``None`` if not determinable).
+    Previously this called ``alembic.command.X`` in-process, but our
+    ``alembic/env.py`` uses ``asyncio.run()`` to run async migrations —
+    which crashes with ``RuntimeError: asyncio.run() cannot be called
+    from a running event loop`` when the lifespan invokes it. A
+    subprocess gives Alembic a fresh interpreter with no parent loop.
+
+    ``args`` is forwarded verbatim to the ``alembic`` CLI (e.g.
+    ``["upgrade", "schedules@head"]`` or ``["downgrade", "base"]``).
     """
+    cfg_path = Path(__file__).resolve().parents[3] / "alembic.ini"
+    backend_root = cfg_path.parent
+
+    try:
+        subprocess.run(
+            ["alembic", "-c", str(cfg_path), *args],
+            cwd=str(backend_root),
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"alembic {' '.join(args)} failed with exit code {exc.returncode}"
+        ) from exc
+
+    # Resolve the current head so the caller can persist applied_revision.
+    # We still import ScriptDirectory in-process (no asyncio involved).
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
-    from alembic import command
-
-    # Production layout: alembic.ini sits at backend/alembic.ini.
-    cfg_path = Path(__file__).resolve().parents[3] / "alembic.ini"
-    cfg = Config(str(cfg_path))
-
-    command_name, *command_args = args
-    getattr(command, command_name)(cfg, *command_args)
-
-    script = ScriptDirectory.from_config(cfg)
-    head = script.get_current_head()
-    return head
+    script = ScriptDirectory.from_config(Config(str(cfg_path)))
+    return script.get_current_head()

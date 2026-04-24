@@ -219,12 +219,18 @@ async def restart_backend(
     background_tasks: BackgroundTasks,
     _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
 ) -> ApiResponse[dict[str, Any]]:
-    """Send SIGTERM to the backend process so Docker respawns it.
+    """Send SIGTERM to container PID 1 so Docker respawns the process.
 
     The endpoint returns immediately; the actual shutdown runs in a
     background task with a small delay so the HTTP response flushes
     first. The container must have ``restart: unless-stopped`` set for
     the respawn to happen (see ``docker-compose.yml``).
+
+    We target PID 1 rather than ``os.getpid()`` because under uvicorn's
+    ``--reload`` (dev mode) the supervisor is PID 1 and the app worker
+    is a child — killing only the worker leaves the supervisor idle
+    without spawning a replacement. In production (no ``--reload``)
+    PID 1 *is* the worker, so the same kill works identically.
     """
     background_tasks.add_task(_graceful_exit)
     return ApiResponse(
@@ -235,5 +241,10 @@ async def restart_backend(
 
 async def _graceful_exit() -> None:
     await asyncio.sleep(0.5)
-    logger.info("Sending SIGTERM to self (pid=%s) for module restart", os.getpid())
-    os.kill(os.getpid(), signal.SIGTERM)
+    logger.info("Sending SIGTERM to PID 1 (current pid=%s) for module restart", os.getpid())
+    try:
+        os.kill(1, signal.SIGTERM)
+    except PermissionError:
+        # Fallback: signal self. Works in prod where we are PID 1.
+        logger.warning("No permission to signal PID 1; signalling self instead")
+        os.kill(os.getpid(), signal.SIGTERM)
