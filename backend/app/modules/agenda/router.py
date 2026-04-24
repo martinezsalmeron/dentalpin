@@ -29,6 +29,8 @@ from .schemas import (
     AppointmentResponse,
     AppointmentStatusEventResponse,
     AppointmentStatusTransition,
+    AppointmentTreatmentNoteUpdate,
+    AppointmentTreatmentResponse,
     AppointmentUpdate,
     CabinetCreate,
     CabinetResponse,
@@ -492,3 +494,36 @@ async def delete_cabinet(
 
     await CabinetService.delete_cabinet(db, cabinet)
     await db.commit()
+
+
+# --- Visit-level clinical note ------------------------------------------
+
+
+@router.patch(
+    "/appointment-treatments/{appointment_treatment_id}",
+    response_model=ApiResponse[AppointmentTreatmentResponse],
+)
+async def update_appointment_treatment_note(
+    appointment_treatment_id: UUID,
+    data: AppointmentTreatmentNoteUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.notes.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[AppointmentTreatmentResponse]:
+    """Update visit-level clinical note + completion flag on an AppointmentTreatment.
+
+    Permission lives under ``treatment_plan.notes`` because conceptually this
+    is the visit-level anchor of the three-level clinical-notes model even
+    though the row is owned by the agenda module.
+    """
+    row = await AppointmentService.update_appointment_treatment_note(
+        db,
+        ctx.clinic_id,
+        appointment_treatment_id,
+        ctx.user_id,
+        notes=data.notes,
+        completed_in_appointment=data.completed_in_appointment,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Appointment treatment not found")
+    return ApiResponse(data=AppointmentTreatmentResponse.model_validate(row))

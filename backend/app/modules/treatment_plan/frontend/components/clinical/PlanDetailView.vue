@@ -11,6 +11,7 @@
 
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { TreatmentPlanDetail } from '~~/app/types'
+import PlanNotesTimeline from './notes/PlanNotesTimeline.vue'
 
 const props = withDefaults(defineProps<{
   plan: TreatmentPlanDetail
@@ -254,10 +255,17 @@ const canConfirm = computed(() => isDraft.value && pendingCount.value > 0)
 // ============================================================================
 
 const odontogramRef = ref<{ refetchTreatments: () => Promise<void> } | null>(null)
+const notesTimelineRef = ref<{ refresh: () => Promise<void> } | null>(null)
 
-async function handleCompleteItem(itemId: string) {
-  await completeItem(props.plan.id, itemId)
+async function handleCompleteItem(
+  itemId: string,
+  payload: { noteBody: string | null }
+) {
+  await completeItem(props.plan.id, itemId, {
+    note_body: payload.noteBody ?? null
+  })
   await odontogramRef.value?.refetchTreatments()
+  await notesTimelineRef.value?.refresh()
   emit('updated')
 }
 
@@ -458,7 +466,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
     <!-- Two-column layout -->
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
       <!-- Left column: Odontogram (wider) -->
-      <UCard class="lg:col-span-3">
+      <UCard class="lg:col-span-3 self-start">
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon
@@ -483,81 +491,101 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
         />
       </UCard>
 
-      <!-- Right column: Treatment list (narrower). Pulses briefly when first item lands. -->
-      <UCard
-        class="lg:col-span-2 plan-list-card"
-        :class="{ 'plan-list-pulse': listPulse }"
-      >
-        <template #header>
-          <div class="flex items-center justify-between">
+      <!-- Right column: Treatment list + clinical notes, stacked and auto-height. -->
+      <div class="lg:col-span-2 flex flex-col gap-4 self-start">
+        <UCard
+          class="plan-list-card"
+          :class="{ 'plan-list-pulse': listPulse }"
+        >
+          <template #header>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <UIcon
+                  name="i-lucide-list-checks"
+                  class="w-5 h-5"
+                />
+                <span class="font-medium">{{ t('clinical.plans.treatments') }}</span>
+              </div>
+              <UBadge
+                v-if="pendingCount > 0"
+                color="primary"
+                variant="subtle"
+              >
+                {{ pendingCount }} {{ t('clinical.plans.pending') }}
+              </UBadge>
+            </div>
+          </template>
+
+          <PlanTreatmentList
+            :items="plan.items"
+            :highlighted-items="highlightedItems"
+            :readonly="effectiveReadonly"
+            :allow-complete="isLocked && !readonly"
+            :plan-status="plan.status"
+            @item-hover="hoveredItemId = $event"
+            @item-complete="handleCompleteItem"
+            @item-remove="handleRemoveItem"
+            @reorder="handleReorder"
+          />
+
+          <!-- Sticky confirm-plan CTA: only in draft, adapts to whether items exist. -->
+          <template
+            v-if="!readonly && isDraft"
+            #footer
+          >
+            <div class="confirm-cta">
+              <div
+                v-if="!canConfirm"
+                class="confirm-cta-empty"
+              >
+                <UIcon
+                  name="i-lucide-info"
+                  class="w-4 h-4"
+                />
+                <span>{{ t('clinical.plans.confirmCta.empty') }}</span>
+              </div>
+              <template v-else>
+                <div class="confirm-cta-text">
+                  <div class="confirm-cta-title">
+                    {{ t('clinical.plans.confirmCta.titleWithItems') }}
+                  </div>
+                  <div class="confirm-cta-subtitle">
+                    {{ t('clinical.plans.confirmCta.subtitleWithItems') }}
+                  </div>
+                </div>
+                <UButton
+                  color="primary"
+                  size="lg"
+                  block
+                  icon="i-lucide-check-circle-2"
+                  :loading="loading"
+                  @click="openActivateModal"
+                >
+                  {{ t('treatmentPlans.actions.confirm') }}
+                </UButton>
+              </template>
+            </div>
+          </template>
+        </UCard>
+
+        <UCard>
+          <template #header>
             <div class="flex items-center gap-2">
               <UIcon
-                name="i-lucide-list-checks"
+                name="i-lucide-notebook-pen"
                 class="w-5 h-5"
               />
-              <span class="font-medium">{{ t('clinical.plans.treatments') }}</span>
+              <span class="font-medium">{{ t('treatmentPlans.notes.title') }}</span>
             </div>
-            <UBadge
-              v-if="pendingCount > 0"
-              color="primary"
-              variant="subtle"
-            >
-              {{ pendingCount }} {{ t('clinical.plans.pending') }}
-            </UBadge>
-          </div>
-        </template>
-
-        <PlanTreatmentList
-          :items="plan.items"
-          :highlighted-items="highlightedItems"
-          :readonly="effectiveReadonly"
-          :allow-complete="isLocked && !readonly"
-          :plan-status="plan.status"
-          @item-hover="hoveredItemId = $event"
-          @item-complete="handleCompleteItem"
-          @item-remove="handleRemoveItem"
-          @reorder="handleReorder"
-        />
-
-        <!-- Sticky confirm-plan CTA: only in draft, adapts to whether items exist. -->
-        <template
-          v-if="!readonly && isDraft"
-          #footer
-        >
-          <div class="confirm-cta">
-            <div
-              v-if="!canConfirm"
-              class="confirm-cta-empty"
-            >
-              <UIcon
-                name="i-lucide-info"
-                class="w-4 h-4"
-              />
-              <span>{{ t('clinical.plans.confirmCta.empty') }}</span>
-            </div>
-            <template v-else>
-              <div class="confirm-cta-text">
-                <div class="confirm-cta-title">
-                  {{ t('clinical.plans.confirmCta.titleWithItems') }}
-                </div>
-                <div class="confirm-cta-subtitle">
-                  {{ t('clinical.plans.confirmCta.subtitleWithItems') }}
-                </div>
-              </div>
-              <UButton
-                color="primary"
-                size="lg"
-                block
-                icon="i-lucide-check-circle-2"
-                :loading="loading"
-                @click="openActivateModal"
-              >
-                {{ t('treatmentPlans.actions.confirm') }}
-              </UButton>
-            </template>
-          </div>
-        </template>
-      </UCard>
+          </template>
+          <PlanNotesTimeline
+            ref="notesTimelineRef"
+            :plan-id="plan.id"
+            :items="plan.items"
+            :readonly="readonly"
+          />
+        </UCard>
+      </div>
     </div>
 
     <!-- Cancel plan confirmation modal -->

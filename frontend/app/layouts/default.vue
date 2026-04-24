@@ -4,6 +4,7 @@ const auth = useAuth()
 const clinic = useClinic()
 const { navigationItems, ensureLoaded } = useModules()
 const { init: initDensity } = useDensity()
+const { isTablet } = useBreakpoint()
 const route = useRoute()
 
 // Pull the backend-driven nav on mount + on every route change, so
@@ -22,17 +23,25 @@ watch(
   () => route.path,
   () => {
     ensureLoaded()
+    // Close mobile drawer on any navigation
+    if (mobileNavOpen.value) mobileNavOpen.value = false
   }
 )
 
-// Sidebar state
+// Sidebar state (desktop/tablet)
 const isSidebarCollapsed = useState('sidebar:collapsed', () => false)
+
+// Mobile drawer state (ephemeral — does not persist)
+const mobileNavOpen = ref(false)
 
 // Persist sidebar + init density on client
 onMounted(() => {
   const savedState = localStorage.getItem('sidebar:collapsed')
   if (savedState !== null) {
     isSidebarCollapsed.value = savedState === 'true'
+  } else if (isTablet.value) {
+    // Tablet default: collapsed sidebar for more canvas space
+    isSidebarCollapsed.value = true
   }
   initDensity()
 })
@@ -70,9 +79,9 @@ function isActive(to: string): boolean {
 
 <template>
   <div class="min-h-screen flex bg-canvas">
-    <!-- Sidebar: warm muted surface, no right border (separation by colour) -->
+    <!-- Desktop/tablet sidebar (hidden on mobile) -->
     <aside
-      class="fixed inset-y-0 left-0 z-50 flex flex-col bg-surface-muted transition-[width] duration-150 ease-out"
+      class="hidden md:flex fixed inset-y-0 left-0 z-50 flex-col bg-surface-muted transition-[width] duration-150 ease-out"
       :class="isSidebarCollapsed ? 'w-16' : 'w-60'"
     >
       <!-- Logo -->
@@ -150,16 +159,111 @@ function isActive(to: string): boolean {
       </div>
     </aside>
 
+    <!-- Mobile drawer nav -->
+    <USlideover
+      v-model:open="mobileNavOpen"
+      side="left"
+      :title="t('nav.menu', 'Menú')"
+      :ui="{ content: 'w-72 max-w-[80vw] bg-surface-muted' }"
+    >
+      <template #content>
+        <div class="flex flex-col h-full">
+          <!-- Logo -->
+          <div class="flex items-center justify-between h-14 px-4">
+            <NuxtLink
+              to="/"
+              class="flex items-center gap-2 overflow-hidden"
+              aria-label="DentalPin"
+              @click="mobileNavOpen = false"
+            >
+              <img
+                src="/logo-icon.svg"
+                alt=""
+                width="32"
+                height="32"
+                class="shrink-0"
+              >
+              <span class="text-h2 text-default truncate">DentalPin</span>
+            </NuxtLink>
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              icon="i-lucide-x"
+              :aria-label="t('nav.close', 'Cerrar')"
+              @click="mobileNavOpen = false"
+            />
+          </div>
+
+          <!-- Navigation -->
+          <nav class="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
+            <NuxtLink
+              v-for="item in navigationItems"
+              :key="item.to"
+              :to="item.to"
+              class="group flex items-center gap-3 px-3 py-3 rounded-token-md text-ui transition-colors"
+              :class="[
+                isActive(item.to)
+                  ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-soft-text)]'
+                  : 'text-muted hover:bg-surface hover:text-default'
+              ]"
+            >
+              <UIcon
+                :name="item.icon"
+                class="w-5 h-5 shrink-0"
+              />
+              <span class="truncate">{{ item.label }}</span>
+            </NuxtLink>
+          </nav>
+
+          <!-- User section -->
+          <div class="px-3 py-3 border-t border-subtle">
+            <div
+              v-if="auth.user.value"
+              class="flex items-center gap-3"
+            >
+              <UAvatar
+                :alt="auth.user.value.first_name"
+                size="sm"
+                class="shrink-0"
+              />
+              <div class="flex-1 min-w-0">
+                <p class="text-ui text-default truncate">
+                  {{ auth.user.value.first_name }} {{ auth.user.value.last_name }}
+                </p>
+                <p class="text-caption text-subtle truncate">
+                  {{ auth.user.value.email }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </USlideover>
+
     <!-- Main column -->
     <div
       class="flex-1 flex flex-col min-w-0 transition-[margin] duration-150 ease-out"
-      :class="isSidebarCollapsed ? 'ml-16' : 'ml-60'"
+      :class="isSidebarCollapsed ? 'md:ml-16' : 'md:ml-60'"
     >
       <DemoBanner />
 
       <!-- Header -->
-      <header class="sticky top-0 z-40 flex items-center h-14 px-4 bg-surface border-b border-subtle">
+      <header class="sticky top-0 z-40 flex items-center h-14 px-3 sm:px-4 bg-surface border-b border-subtle">
+        <!-- Mobile hamburger -->
         <UButton
+          class="md:hidden"
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          icon="i-lucide-menu"
+          :aria-label="t('nav.openMenu', 'Abrir menú')"
+          @click="mobileNavOpen = true"
+        />
+
+        <!-- Desktop sidebar toggle -->
+        <UButton
+          class="hidden md:inline-flex"
           variant="ghost"
           color="neutral"
           size="sm"
@@ -169,12 +273,12 @@ function isActive(to: string): boolean {
         />
 
         <!-- Clinic name -->
-        <div class="ml-4 flex items-center gap-2">
+        <div class="ml-3 sm:ml-4 flex items-center gap-2 min-w-0">
           <UIcon
             name="i-lucide-building-2"
-            class="w-4 h-4 text-subtle"
+            class="w-4 h-4 text-subtle shrink-0"
           />
-          <span class="text-ui text-muted">
+          <span class="text-ui text-muted truncate">
             {{ clinic.clinicName.value || 'Clínica' }}
           </span>
         </div>
@@ -199,7 +303,7 @@ function isActive(to: string): boolean {
       </header>
 
       <!-- Page content -->
-      <main class="flex-1 p-6 min-w-0 overflow-x-hidden">
+      <main class="flex-1 p-3 sm:p-4 md:p-6 min-w-0 overflow-x-hidden">
         <slot />
       </main>
     </div>

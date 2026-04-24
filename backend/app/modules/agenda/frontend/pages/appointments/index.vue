@@ -8,6 +8,7 @@ const router = useRouter()
 const clinic = useClinic()
 const { appointments, isLoading, fetchAppointments, updateAppointment } = useAppointments()
 const { professionals, fetchProfessionals, getProfessionalColor } = useProfessionals()
+const { isMobile } = useBreakpoint()
 
 // Query params for pre-selecting patient from treatment plan flow
 const initialPatientId = ref<string | undefined>(
@@ -418,7 +419,7 @@ async function handleSaved() {
     initialPatientId.value = undefined
     router.replace({ query: {} })
   }
-  if (viewMode.value === 'week') {
+  if (!isMobile.value && viewMode.value === 'week') {
     await loadWeekAppointments()
   } else {
     await loadDayAppointments()
@@ -432,7 +433,7 @@ async function handleCancelled() {
     initialPatientId.value = undefined
     router.replace({ query: {} })
   }
-  if (viewMode.value === 'week') {
+  if (!isMobile.value && viewMode.value === 'week') {
     await loadWeekAppointments()
   } else {
     await loadDayAppointments()
@@ -538,12 +539,23 @@ watch(viewMode, async (mode) => {
 // Load initial data
 onMounted(async () => {
   await Promise.all([
-    loadWeekAppointments(),
+    isMobile.value ? loadDayAppointments() : loadWeekAppointments(),
     fetchProfessionals()
   ])
   if (route.query.new === '1') {
     openCreateModal()
     router.replace({ query: { ...route.query, new: undefined } })
+  }
+})
+
+// Reload on mobile/desktop toggle so we have the right data window
+watch(isMobile, async (mobile) => {
+  if (mobile) {
+    await loadDayAppointments()
+  } else if (viewMode.value === 'week') {
+    await loadWeekAppointments()
+  } else {
+    await loadDayAppointments()
   }
 })
 </script>
@@ -553,6 +565,7 @@ onMounted(async () => {
     <PageHeader :title="t('appointments.title')">
       <template #actions>
         <SegmentedControl
+          v-if="!isMobile"
           :model-value="viewMode"
           :options="[
             { value: 'week', label: t('appointments.weeklyView'), icon: 'i-lucide-calendar-days' },
@@ -562,6 +575,7 @@ onMounted(async () => {
           @update:model-value="(v) => (viewMode = v as 'week' | 'day' | 'kanban')"
         />
         <UButton
+          v-if="!isMobile"
           color="primary"
           variant="soft"
           icon="i-lucide-plus"
@@ -572,8 +586,11 @@ onMounted(async () => {
       </template>
     </PageHeader>
 
-    <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-x-6 gap-y-[var(--density-gap,0.75rem)] mb-[var(--density-gap,1rem)] shrink-0">
+    <!-- Filters (hidden on mobile to save space; mobile uses simple day view) -->
+    <div
+      v-if="!isMobile"
+      class="flex flex-wrap items-center gap-x-6 gap-y-[var(--density-gap,0.75rem)] mb-[var(--density-gap,1rem)] shrink-0"
+    >
       <div
         v-if="cabinetFilterOptions.length > 0"
         class="flex items-center gap-2 flex-wrap"
@@ -630,9 +647,23 @@ onMounted(async () => {
 
     <!-- Calendar -->
     <div class="flex-1 min-h-0 min-w-0">
+      <!-- Mobile day view (replaces all desktop views on <md) -->
+      <AppointmentMobileDayView
+        v-if="isMobile"
+        :appointments="filteredAppointments"
+        :professionals="professionalsWithColors"
+        :current-date="currentDate"
+        :is-loading="isLoading"
+        :highlighted-appointment-id="highlightedAppointmentId"
+        @appointment-click="handleAppointmentClick"
+        @date-change="handleDateChange"
+        @create-at="(d) => { currentDate = d; openCreateModal() }"
+        @highlight-cleared="clearHighlight"
+      />
+
       <!-- Weekly view -->
       <AppointmentCalendar
-        v-if="viewMode === 'week'"
+        v-else-if="viewMode === 'week'"
         :appointments="filteredAppointments"
         :cabinets="clinic.cabinets.value"
         :professionals="professionalsWithColors"

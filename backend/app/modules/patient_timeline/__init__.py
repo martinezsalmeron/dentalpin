@@ -83,6 +83,13 @@ class PatientTimelineModule(BaseModule):
             EventType.PATIENT_MEDICAL_UPDATED: events.on_medical_updated,
             # Documents
             EventType.DOCUMENT_UPLOADED: events.on_document_uploaded,
+            # Clinical notes
+            EventType.TREATMENT_PLAN_NOTE_CREATED: events.on_plan_note_created,
+            EventType.TREATMENT_PLAN_ITEM_NOTE_CREATED: events.on_item_note_created,
+            EventType.AGENDA_VISIT_NOTE_UPDATED: events.on_visit_note_updated,
+            EventType.TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE: (
+                events.on_item_completed_without_note
+            ),
         }
 
     def get_tools(self) -> list:

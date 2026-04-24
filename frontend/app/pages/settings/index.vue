@@ -382,7 +382,7 @@ async function handleSaveClinicInfo() {
           v-else-if="clinic.currentClinic.value"
           class="space-y-3"
         >
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="text-sm font-medium text-muted">
                 {{ t('settings.clinicName') }}
@@ -410,7 +410,7 @@ async function handleSaveClinicInfo() {
             </p>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="text-sm font-medium text-muted">
                 {{ t('settings.phone') }}
@@ -721,27 +721,28 @@ async function handleSaveClinicInfo() {
         <div
           v-for="user in users"
           :key="user.id"
-          class="flex items-center justify-between py-3"
+          class="flex items-center justify-between gap-3 py-3 flex-wrap sm:flex-nowrap"
         >
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 min-w-0 flex-1">
             <UAvatar
               :alt="user.first_name"
               size="sm"
+              class="shrink-0"
             />
-            <div>
-              <p class="font-medium text-default">
+            <div class="min-w-0">
+              <p class="font-medium text-default truncate">
                 {{ user.first_name }} {{ user.last_name }}
                 <span
                   v-if="isCurrentUser(user.id)"
                   class="text-caption text-subtle"
                 >{{ t('settings.youTag') }}</span>
               </p>
-              <p class="text-caption text-subtle">
+              <p class="text-caption text-subtle truncate">
                 {{ user.email }}
               </p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 shrink-0">
             <UBadge
               :color="getRoleBadgeColor(user.role as UserRole)"
               variant="subtle"
@@ -795,7 +796,7 @@ async function handleSaveClinicInfo() {
             class="space-y-4"
             @submit.prevent="handleCreateUser"
           >
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('common.firstName')">
                 <UInput
                   v-model="newUser.first_name"
@@ -876,7 +877,7 @@ async function handleSaveClinicInfo() {
             class="space-y-4"
             @submit.prevent="handleUpdateUser"
           >
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('common.firstName')">
                 <UInput
                   v-model="editUserData.first_name"
@@ -1174,7 +1175,7 @@ async function handleSaveClinicInfo() {
             class="space-y-4"
             @submit.prevent="handleSaveClinicInfo"
           >
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('settings.clinicName')">
                 <UInput
                   v-model="clinicInfoForm.name"
@@ -1190,7 +1191,7 @@ async function handleSaveClinicInfo() {
               <UInput v-model="clinicInfoForm.street" />
             </UFormField>
 
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <UFormField :label="t('settings.postalCode')">
                 <UInput v-model="clinicInfoForm.postal_code" />
               </UFormField>
@@ -1202,7 +1203,7 @@ async function handleSaveClinicInfo() {
               </UFormField>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('settings.phone')">
                 <UInput
                   v-model="clinicInfoForm.phone"

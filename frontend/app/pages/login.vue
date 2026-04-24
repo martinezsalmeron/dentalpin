@@ -141,7 +141,7 @@ watch(() => formState.password, () => {
         <UFormField
           :label="t('auth.email')"
           name="email"
-          :error="emailError"
+          :error="emailError || undefined"
         >
           <UInput
             v-model="formState.email"
@@ -157,7 +157,7 @@ watch(() => formState.password, () => {
         <UFormField
           :label="t('auth.password')"
           name="password"
-          :error="passwordError"
+          :error="passwordError || undefined"
         >
           <UInput
             v-model="formState.password"

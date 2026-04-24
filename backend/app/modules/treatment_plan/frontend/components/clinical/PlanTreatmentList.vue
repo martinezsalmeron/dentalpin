@@ -11,6 +11,7 @@
 
 import type { PlannedTreatmentItem } from '~~/app/types'
 import { VueDraggable } from 'vue-draggable-plus'
+import CompletionNudgeModal from './notes/CompletionNudgeModal.vue'
 
 const props = defineProps<{
   items: PlannedTreatmentItem[]
@@ -30,7 +31,12 @@ const completeEnabled = computed(() => !props.readonly || props.allowComplete)
 
 const emit = defineEmits<{
   'item-hover': [itemId: string | null]
-  'item-complete': [itemId: string]
+  /**
+   * Fired after the clinician confirms item completion. ``noteBody`` is the
+   * rich-text HTML to persist as a plan_item-level clinical note; when ``null``
+   * the backend emits ``item_completed_without_note`` for audit/compliance.
+   */
+  'item-complete': [itemId: string, payload: { noteBody: string | null }]
   'item-remove': [itemId: string]
   /** Fired after the user reorders pending items (drag or keyboard). */
   'reorder': [itemIds: string[]]
@@ -47,10 +53,8 @@ function openConfirmModal(item: PlannedTreatmentItem) {
   showConfirmModal.value = true
 }
 
-function confirmComplete() {
-  if (itemToComplete.value) {
-    emit('item-complete', itemToComplete.value.id)
-  }
+function handleNudgeConfirm(payload: { itemId: string; noteBody: string | null }) {
+  emit('item-complete', payload.itemId, { noteBody: payload.noteBody })
   showConfirmModal.value = false
   itemToComplete.value = null
 }
@@ -346,67 +350,14 @@ function formatCurrency(amount: number | undefined): string {
       </template>
     </UAccordion>
 
-    <!-- Confirmation Modal -->
-    <UModal v-model:open="showConfirmModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[var(--color-success-soft)] flex items-center justify-center">
-                <UIcon
-                  name="i-lucide-check"
-                  class="w-5 h-5 text-success-accent"
-                />
-              </div>
-              <h3 class="text-h2 text-default">
-                {{ t('treatmentPlans.confirmations.completeItem') }}
-              </h3>
-            </div>
-          </template>
-
-          <div
-            v-if="itemToComplete"
-            class="space-y-3"
-          >
-            <div class="p-3 bg-surface-muted rounded-lg">
-              <p class="font-medium text-default">
-                {{ getItemName(itemToComplete) }}
-              </p>
-              <p
-                v-if="hasToothInfo(itemToComplete)"
-                class="text-sm text-muted mt-1"
-              >
-                {{ formatToothInfo(itemToComplete) }}
-              </p>
-            </div>
-            <p class="text-sm text-muted">
-              {{ t('treatmentPlans.confirmations.completeItemDescription') }}
-            </p>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                @click="cancelComplete"
-              >
-                {{ t('actions.cancel') }}
-              </UButton>
-              <UButton
-                color="success"
-                variant="solid"
-                icon="i-lucide-check"
-                class="font-semibold"
-                @click="confirmComplete"
-              >
-                {{ t('treatmentPlans.actions.complete') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
+    <!-- Completion nudge — prompt for a clinical note before flipping the item to completed -->
+    <CompletionNudgeModal
+      :open="showConfirmModal"
+      :item="itemToComplete"
+      @update:open="showConfirmModal = $event"
+      @confirm="handleNudgeConfirm"
+      @cancel="cancelComplete"
+    />
   </div>
 </template>
 

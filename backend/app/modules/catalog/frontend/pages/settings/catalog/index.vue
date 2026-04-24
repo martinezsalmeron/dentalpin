@@ -353,10 +353,10 @@ const categoryOptions = computed(() => [
                   <th class="text-right py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.price') }}
                   </th>
-                  <th class="text-center py-2 px-4 font-medium text-muted text-sm">
+                  <th class="hidden sm:table-cell text-center py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.vatType') }}
                   </th>
-                  <th class="text-center py-2 px-4 font-medium text-muted text-sm">
+                  <th class="hidden md:table-cell text-center py-2 px-4 font-medium text-muted text-sm">
                     {{ t('catalog.duration') }}
                   </th>
                   <th class="text-right py-2 px-4 font-medium text-muted text-sm" />
@@ -399,7 +399,7 @@ const categoryOptions = computed(() => [
                   <td class="py-2.5 px-4 text-right font-medium">
                     {{ catalog.formatPrice(item.default_price, item.currency) }}
                   </td>
-                  <td class="py-2.5 px-4 text-center">
+                  <td class="hidden sm:table-cell py-2.5 px-4 text-center">
                     <UBadge
                       :color="getVatTypeBadgeColor(item.vat_type)"
                       variant="subtle"
@@ -408,7 +408,7 @@ const categoryOptions = computed(() => [
                       {{ getVatTypeLabel(item.vat_type) }}
                     </UBadge>
                   </td>
-                  <td class="py-2.5 px-4 text-center text-muted dark:text-subtle">
+                  <td class="hidden md:table-cell py-2.5 px-4 text-center text-muted dark:text-subtle">
                     {{ item.default_duration_minutes ? `${item.default_duration_minutes} min` : '-' }}
                   </td>
                   <td class="py-2.5 px-4 text-right">
@@ -499,16 +499,16 @@ const categoryOptions = computed(() => [
               <th class="text-left py-3 px-4 font-medium text-muted">
                 {{ t('catalog.name') }}
               </th>
-              <th class="text-left py-3 px-4 font-medium text-muted">
+              <th class="hidden md:table-cell text-left py-3 px-4 font-medium text-muted">
                 {{ t('catalog.category') }}
               </th>
               <th class="text-right py-3 px-4 font-medium text-muted">
                 {{ t('catalog.price') }}
               </th>
-              <th class="text-center py-3 px-4 font-medium text-muted">
+              <th class="hidden sm:table-cell text-center py-3 px-4 font-medium text-muted">
                 {{ t('catalog.vatType') }}
               </th>
-              <th class="text-center py-3 px-4 font-medium text-muted">
+              <th class="hidden lg:table-cell text-center py-3 px-4 font-medium text-muted">
                 {{ t('catalog.duration') }}
               </th>
               <th class="text-right py-3 px-4 font-medium text-muted" />
@@ -548,13 +548,13 @@ const categoryOptions = computed(() => [
                   {{ t('common.inactive') }}
                 </UBadge>
               </td>
-              <td class="py-3 px-4 text-muted dark:text-subtle">
+              <td class="hidden md:table-cell py-3 px-4 text-muted dark:text-subtle">
                 {{ getCategoryName(item.category_id) }}
               </td>
               <td class="py-3 px-4 text-right font-medium">
                 {{ catalog.formatPrice(item.default_price, item.currency) }}
               </td>
-              <td class="py-3 px-4 text-center">
+              <td class="hidden sm:table-cell py-3 px-4 text-center">
                 <UBadge
                   :color="getVatTypeBadgeColor(item.vat_type)"
                   variant="subtle"
@@ -563,7 +563,7 @@ const categoryOptions = computed(() => [
                   {{ getVatTypeLabel(item.vat_type) }}
                 </UBadge>
               </td>
-              <td class="py-3 px-4 text-center text-muted dark:text-subtle">
+              <td class="hidden lg:table-cell py-3 px-4 text-center text-muted dark:text-subtle">
                 {{ item.default_duration_minutes ? `${item.default_duration_minutes} min` : '-' }}
               </td>
               <td class="py-3 px-4 text-right">

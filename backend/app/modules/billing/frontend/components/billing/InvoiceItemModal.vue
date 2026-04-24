@@ -282,7 +282,7 @@ watch(() => props.open, async (isOpen) => {
             </UFormField>
 
             <!-- Quantity and tooth number -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('invoice.itemQuantity')">
                 <UInput
                   v-model.number="form.quantity"
@@ -345,7 +345,7 @@ watch(() => props.open, async (isOpen) => {
             </UFormField>
 
             <!-- Discount -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('budget.discountType')">
                 <USelectMenu
                   v-model="form.discount_type"

@@ -102,7 +102,7 @@ const allMissing = computed(() =>
 
     <div
       v-if="pending"
-      class="grid grid-cols-3 gap-4"
+      class="grid grid-cols-1 sm:grid-cols-3 gap-4"
     >
       <USkeleton
         v-for="i in 3"
@@ -119,7 +119,7 @@ const allMissing = computed(() =>
 
     <div
       v-else
-      class="grid grid-cols-3 gap-4"
+      class="grid grid-cols-1 sm:grid-cols-3 gap-4"
     >
       <div
         v-for="k in kpis"

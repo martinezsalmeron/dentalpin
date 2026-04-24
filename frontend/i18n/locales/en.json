@@ -21,7 +21,11 @@
     "invoices": "Invoices",
     "reports": "Reports",
     "settings": "Settings",
-    "catalog": "Catalog"
+    "catalog": "Catalog",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "close": "Close",
+    "toggleSidebar": "Toggle sidebar"
   },
   "auth": {
     "login": "Log in",
@@ -191,9 +195,28 @@
       "procedure": "Procedure"
     },
     "timeline": {
-      "empty": "No activity recorded",
+      "empty": "No activity recorded yet",
+      "emptyFiltered": "No events in this category",
+      "clearFilter": "Show all activity",
       "endOfTimeline": "End of timeline",
       "totalEntries": "{count} entry | {count} entries",
+      "groups": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This week",
+        "thisMonth": "This month",
+        "earlier": "Earlier"
+      },
+      "author": "by {name}",
+      "meta": {
+        "cabinet": "Room {name}",
+        "teeth": "Teeth: {list}",
+        "total": "Total: {amount}",
+        "number": "No. {value}",
+        "via": "Via {channel}",
+        "template": "Template: {key}",
+        "docType": "Type: {type}"
+      },
       "categories": {
         "all": "All",
         "visit": "Visits",
@@ -201,7 +224,8 @@
         "financial": "Financial",
         "communication": "Communications",
         "medical": "Medical history",
-        "document": "Documents"
+        "document": "Documents",
+        "note": "Clinical notes"
       }
     },
     "alerts": {
@@ -688,7 +712,9 @@
     "noPendingTreatments": "No pending treatments",
     "createPlanFirst": "Create a treatment plan for this patient",
     "addTreatmentFromPlan": "Add treatment from plan",
-    "selectPendingTreatment": "Select pending treatment"
+    "selectPendingTreatment": "Select pending treatment",
+    "emptyDay": "No appointments for this day",
+    "noPatient": "No patient"
   },
   "dashboard": {
     "greetings": {
@@ -1139,6 +1165,60 @@
       "create": "Error creating treatment plan",
       "update": "Error updating treatment plan",
       "delete": "Error deleting treatment plan"
+    },
+    "notes": {
+      "title": "Clinical notes",
+      "empty": "No clinical notes yet",
+      "addNote": "Add note",
+      "edit": "Edit note",
+      "delete": "Delete note",
+      "attachments": "Attachments",
+      "author": "Author",
+      "createdAt": "Created",
+      "templatePicker": "Templates",
+      "bodyPlaceholder": "Write the clinical note…",
+      "saved": "Note saved",
+      "deleted": "Note deleted"
+    },
+    "completionNudge": {
+      "title": "Complete treatment",
+      "description": "Add a clinical note capturing what happened at this visit before marking it completed.",
+      "completeWithNote": "Complete with note",
+      "skip": "Skip note",
+      "skipConfirm": "Complete without a clinical note?"
+    },
+    "visitNote": {
+      "title": "Visit clinical note",
+      "save": "Save note",
+      "empty": "No visit note yet"
+    },
+    "clinicalNotesTab": "Clinical notes",
+    "filterBy": {
+      "plan": "Plan",
+      "item": "Treatment",
+      "visit": "Visit",
+      "all": "All"
+    },
+    "byPlan": {
+      "empty": "This patient has no clinical notes in any treatment plan",
+      "planNotesLabel": "Plan notes",
+      "noNotesForTreatment": "No notes for this treatment",
+      "noNotesForPlan": "No notes in this plan"
+    },
+    "noteTemplates": {
+      "endo": {
+        "singleVisit": "Endodontics — single visit",
+        "multiVisit": "Endodontics — multi-visit"
+      },
+      "perio": {
+        "scaling": "Scaling / root planing"
+      },
+      "implant": {
+        "placement": "Implant placement"
+      },
+      "general": {
+        "followUp": "General follow-up"
+      }
     }
   },
   "budget": {

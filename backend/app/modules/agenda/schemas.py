@@ -36,6 +36,29 @@ class ProfessionalBrief(BaseModel):
         from_attributes = True
 
 
+class AppointmentTreatmentNoteUpdate(BaseModel):
+    """PATCH body for updating visit-level clinical notes."""
+
+    notes: str | None = None
+    completed_in_appointment: bool | None = None
+
+
+class AppointmentTreatmentResponse(BaseModel):
+    """Response for a single AppointmentTreatment (visit bridge row)."""
+
+    id: UUID
+    appointment_id: UUID
+    planned_treatment_item_id: UUID | None = None
+    catalog_item_id: UUID | None = None
+    display_order: int = 0
+    completed_in_appointment: bool = False
+    notes: str | None = None
+    created_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
 # --- Treatment brief ----------------------------------------------------
 
 

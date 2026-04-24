@@ -5,6 +5,7 @@ Moved from ``app.modules.clinical.service`` in Fase B.2 chunk 1.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -41,6 +42,17 @@ VALID_TRANSITIONS: dict[str, set[str]] = {
     "cancelled": set(),
     "no_show": set(),
 }
+
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+
+
+def _plain_excerpt(text: str, limit: int = 200) -> str:
+    """Strip HTML + collapse whitespace for event/timeline payload excerpts."""
+    stripped = _HTML_TAG_RE.sub(" ", text or "")
+    collapsed = _WS_RE.sub(" ", stripped).strip()
+    return collapsed[:limit]
 
 
 class InvalidTransitionError(ValueError):
@@ -750,3 +762,67 @@ class AppointmentService:
         )
 
         return appointment
+
+    # ------------------------------------------------------------------
+    # Visit-level clinical note (AppointmentTreatment.notes)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def update_appointment_treatment_note(
+        db: AsyncSession,
+        clinic_id: UUID,
+        appointment_treatment_id: UUID,
+        user_id: UUID,
+        *,
+        notes: str | None = None,
+        completed_in_appointment: bool | None = None,
+    ) -> AppointmentTreatment | None:
+        """Update visit-level clinical note on an AppointmentTreatment.
+
+        Publishes ``AGENDA_VISIT_NOTE_UPDATED`` so ``patient_timeline`` and
+        other subscribers can record the change without importing agenda.
+        """
+        result = await db.execute(
+            select(AppointmentTreatment, Appointment)
+            .join(Appointment, AppointmentTreatment.appointment_id == Appointment.id)
+            .where(
+                AppointmentTreatment.id == appointment_treatment_id,
+                Appointment.clinic_id == clinic_id,
+            )
+        )
+        row = result.first()
+        if row is None:
+            return None
+        apt_treatment, appointment = row
+
+        changed = False
+        if notes is not None:
+            apt_treatment.notes = notes
+            changed = True
+        if completed_in_appointment is not None:
+            apt_treatment.completed_in_appointment = completed_in_appointment
+            changed = True
+        if not changed:
+            return apt_treatment
+
+        await db.flush()
+
+        if notes is not None:
+            excerpt = _plain_excerpt(notes)
+            event_bus.publish(
+                EventType.AGENDA_VISIT_NOTE_UPDATED,
+                {
+                    "clinic_id": str(clinic_id),
+                    "patient_id": str(appointment.patient_id) if appointment.patient_id else None,
+                    "appointment_id": str(appointment.id),
+                    "appointment_treatment_id": str(apt_treatment.id),
+                    "plan_item_id": str(apt_treatment.planned_treatment_item_id)
+                    if apt_treatment.planned_treatment_item_id
+                    else None,
+                    "user_id": str(user_id),
+                    "body_excerpt": excerpt,
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                },
+            )
+
+        return apt_treatment

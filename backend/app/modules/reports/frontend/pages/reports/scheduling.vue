@@ -731,7 +731,7 @@ function goBack() {
           />
 
           <template #footer>
-            <div class="grid grid-cols-3 gap-4 text-center">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div>
                 <p class="text-caption text-subtle">
                   {{ t('reports.scheduling.analytics.completionRate') }}

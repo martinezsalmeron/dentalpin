@@ -166,7 +166,7 @@ const isEmpty = computed(() => !pending.value && todayAppointments.value.length 
       v-else
       class="relative overflow-x-auto"
     >
-      <div class="min-w-[640px]">
+      <div class="min-w-[480px] md:min-w-[640px]">
         <div class="relative h-5 border-b border-[var(--color-border-subtle)] mb-3">
           <span
             v-for="h in hourMarkers"

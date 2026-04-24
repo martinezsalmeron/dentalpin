@@ -1,5 +1,24 @@
 import type { ApiResponse, TimelineCategory, TimelineEntry, TimelineResponse } from '~~/app/types'
 
+// High-impact events get stronger visual emphasis in the UI (accent bar, denser
+// hover). Everything else renders in the default, low-key style.
+const HIGH_IMPACT_EVENT_TYPES = new Set([
+  'appointment.completed',
+  'treatment_plan.treatment_completed',
+  'odontogram.treatment.performed',
+  'budget.accepted',
+  'invoice.paid',
+  'patient.medical_updated'
+])
+
+// Events that should render denser/smaller — operational chatter rather than
+// clinical milestones.
+const LOW_IMPACT_EVENT_TYPES = new Set([
+  'email.sent',
+  'email.failed',
+  'appointment.confirmed'
+])
+
 export function usePatientTimeline(patientId: Ref<string | undefined>) {
   const api = useApi()
   const { t } = useI18n()
@@ -9,7 +28,12 @@ export function usePatientTimeline(patientId: Ref<string | undefined>) {
   const page = ref(1)
   const pageSize = ref(20)
   const hasMore = ref(false)
-  const selectedCategory = ref<TimelineCategory | null>(null)
+  // Shared across components so the filter survives navigation between
+  // patients within the same session.
+  const selectedCategory = useState<TimelineCategory | null>(
+    'patient-timeline:category',
+    () => null
+  )
 
   const isLoading = ref(false)
   const isLoadingMore = ref(false)
@@ -70,16 +94,22 @@ export function usePatientTimeline(patientId: Ref<string | undefined>) {
     fetchTimeline(true)
   }
 
-  // Get icon for event type
   function getEventIcon(eventType: string): string {
     const icons: Record<string, string> = {
       'appointment.scheduled': 'i-lucide-calendar',
+      'appointment.confirmed': 'i-lucide-calendar-check-2',
+      'appointment.checked_in': 'i-lucide-door-open',
+      'appointment.in_treatment': 'i-lucide-stethoscope',
       'appointment.completed': 'i-lucide-calendar-check',
       'appointment.cancelled': 'i-lucide-calendar-x',
       'appointment.no_show': 'i-lucide-calendar-off',
       'odontogram.treatment.performed': 'i-lucide-stethoscope',
       'treatment_plan.created': 'i-lucide-clipboard-list',
       'treatment_plan.treatment_completed': 'i-lucide-clipboard-check',
+      'treatment_plan.item_completed_without_note': 'i-lucide-alert-triangle',
+      'treatment_plan.plan_note_created': 'i-lucide-sticky-note',
+      'treatment_plan.item_note_created': 'i-lucide-notebook-pen',
+      'agenda.visit_note_updated': 'i-lucide-file-edit',
       'budget.sent': 'i-lucide-send',
       'budget.accepted': 'i-lucide-file-check',
       'invoice.issued': 'i-lucide-receipt',
@@ -92,7 +122,6 @@ export function usePatientTimeline(patientId: Ref<string | undefined>) {
     return icons[eventType] || 'i-lucide-circle-dot'
   }
 
-  // Get color for category
   function getCategoryColor(category: TimelineCategory): string {
     const colors: Record<string, string> = {
       visit: 'primary',
@@ -100,23 +129,34 @@ export function usePatientTimeline(patientId: Ref<string | undefined>) {
       financial: 'warning',
       communication: 'info',
       medical: 'error',
-      document: 'neutral'
+      document: 'neutral',
+      // Notes reuse the neutral palette; the sticky-note icon and the
+      // "Notas clínicas" category chip give it a distinct identity without
+      // introducing a new Tailwind color alias.
+      note: 'neutral'
     }
     return colors[category] || 'neutral'
   }
 
-  // Category filter options
+  function isHighImpact(eventType: string): boolean {
+    return HIGH_IMPACT_EVENT_TYPES.has(eventType)
+  }
+
+  function isLowImpact(eventType: string): boolean {
+    return LOW_IMPACT_EVENT_TYPES.has(eventType)
+  }
+
   const categoryOptions = computed(() => [
     { label: t('patients.timeline.categories.all'), value: null },
     { label: t('patients.timeline.categories.visit'), value: 'visit' as TimelineCategory },
     { label: t('patients.timeline.categories.treatment'), value: 'treatment' as TimelineCategory },
+    { label: t('patients.timeline.categories.note'), value: 'note' as TimelineCategory },
     { label: t('patients.timeline.categories.financial'), value: 'financial' as TimelineCategory },
-    { label: t('patients.timeline.categories.communication'), value: 'communication' as TimelineCategory },
     { label: t('patients.timeline.categories.medical'), value: 'medical' as TimelineCategory },
-    { label: t('patients.timeline.categories.document'), value: 'document' as TimelineCategory }
+    { label: t('patients.timeline.categories.document'), value: 'document' as TimelineCategory },
+    { label: t('patients.timeline.categories.communication'), value: 'communication' as TimelineCategory }
   ])
 
-  // Watch patientId and fetch when it changes
   watch(patientId, (newId) => {
     if (newId) {
       fetchTimeline(true)
@@ -138,11 +178,12 @@ export function usePatientTimeline(patientId: Ref<string | undefined>) {
     isLoadingMore,
     error,
     categoryOptions,
-    // Methods
     fetchTimeline,
     loadMore,
     setCategory,
     getEventIcon,
-    getCategoryColor
+    getCategoryColor,
+    isHighImpact,
+    isLowImpact
   }
 }

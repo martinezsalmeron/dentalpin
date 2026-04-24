@@ -96,7 +96,7 @@ watch(() => props.patientId, loadData)
   <div class="space-y-6">
     <!-- Loading state -->
     <div v-if="isLoading">
-      <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <USkeleton
           v-for="i in 6"
           :key="i"
@@ -113,7 +113,7 @@ watch(() => props.patientId, loadData)
       <!-- Summary metrics - 3x2 grid -->
       <div
         v-if="summary"
-        class="grid grid-cols-3 gap-4"
+        class="grid grid-cols-1 sm:grid-cols-3 gap-4"
       >
         <!-- Row 1: Budget metrics -->
         <div class="bg-surface-muted/50 rounded-lg p-4 border border-default">

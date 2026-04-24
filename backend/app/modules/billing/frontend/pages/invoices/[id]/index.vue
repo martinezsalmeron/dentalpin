@@ -509,7 +509,7 @@ function goToCreditNoteFor() {
               </h3>
             </template>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <dt class="text-caption text-subtle">
                   {{ t('invoice.issueDate') }}

@@ -227,7 +227,7 @@ async function createPatient() {
             class="space-y-4"
             @submit.prevent="createPatient"
           >
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField
                 :label="t('patients.firstName')"
                 required
@@ -250,7 +250,7 @@ async function createPatient() {
               </UFormField>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('patients.phone')">
                 <UInput
                   v-model="newPatient.phone"

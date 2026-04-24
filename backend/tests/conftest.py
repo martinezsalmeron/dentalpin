@@ -51,6 +51,8 @@ from app.modules.schedules.models import (  # noqa: F401
     ScheduleShift,
 )
 from app.modules.treatment_plan.models import (  # noqa: F401
+    ClinicalNote,
+    ClinicalNoteAttachment,
     PlannedTreatmentItem,
     TreatmentMedia,
     TreatmentPlan,

@@ -526,7 +526,7 @@ function getItemName(item: BudgetItem): string {
             <!-- View mode -->
             <div
               v-if="!isEditing"
-              class="grid grid-cols-2 gap-4"
+              class="grid grid-cols-1 sm:grid-cols-2 gap-4"
             >
               <div>
                 <span class="text-caption text-subtle">{{ t('budget.validFrom') }}</span>
@@ -562,7 +562,7 @@ function getItemName(item: BudgetItem): string {
               class="space-y-4"
               @submit.prevent="saveEdits"
             >
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <UFormField :label="t('budget.validFrom')">
                   <UInput
                     v-model="editForm.valid_from"
@@ -577,7 +577,7 @@ function getItemName(item: BudgetItem): string {
                 </UFormField>
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <UFormField :label="t('budget.discountType')">
                   <USelect
                     v-model="editForm.global_discount_type"

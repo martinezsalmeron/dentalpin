@@ -592,7 +592,7 @@ function closeModal() {
             </UFormField>
 
             <!-- Date and Time -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField
                 :label="t('appointments.date')"
                 required
@@ -617,7 +617,7 @@ function closeModal() {
             </div>
 
             <!-- Duration and Cabinet -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <UFormField :label="t('appointments.duration')">
                 <USelect
                   v-model="formData.duration"

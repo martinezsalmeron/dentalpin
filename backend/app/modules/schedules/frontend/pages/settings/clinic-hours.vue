@@ -216,7 +216,7 @@ onMounted(load)
             />
           </UFormField>
 
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <UFormField :label="t('schedules.overrides.startDate')">
               <UInput v-model="overrideForm.start_date" type="date" />
             </UFormField>

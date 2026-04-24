@@ -435,3 +435,81 @@ async def on_document_uploaded(data: dict) -> None:
         title=f"Documento: {title}",
         event_data={"document_type": data.get("document_type")},
     )
+
+
+# ---------------------------------------------------------------------------
+# Clinical notes
+# ---------------------------------------------------------------------------
+
+
+async def on_plan_note_created(data: dict) -> None:
+    """Record a plan-level clinical note on the patient timeline."""
+    data = {**data, "source_id": data.get("note_id")}
+    excerpt = data.get("body_excerpt") or ""
+    await _record(
+        event_type=EventType.TREATMENT_PLAN_NOTE_CREATED,
+        event_category="note",
+        source_table="clinical_notes",
+        data=data,
+        source_id_key="source_id",
+        title="Nota clínica en plan de tratamiento",
+        description=excerpt or None,
+        event_data={"plan_id": data.get("plan_id")},
+        created_by_key="user_id",
+    )
+
+
+async def on_item_note_created(data: dict) -> None:
+    """Record a plan-item-level clinical note on the patient timeline."""
+    data = {**data, "source_id": data.get("note_id")}
+    excerpt = data.get("body_excerpt") or ""
+    await _record(
+        event_type=EventType.TREATMENT_PLAN_ITEM_NOTE_CREATED,
+        event_category="note",
+        source_table="clinical_notes",
+        data=data,
+        source_id_key="source_id",
+        title="Nota clínica en tratamiento",
+        description=excerpt or None,
+        event_data={
+            "plan_id": data.get("plan_id"),
+            "plan_item_id": data.get("plan_item_id"),
+        },
+        created_by_key="user_id",
+    )
+
+
+async def on_visit_note_updated(data: dict) -> None:
+    """Record a visit-level clinical note (AppointmentTreatment.notes)."""
+    data = {**data, "source_id": data.get("appointment_treatment_id")}
+    excerpt = data.get("body_excerpt") or ""
+    await _record(
+        event_type=EventType.AGENDA_VISIT_NOTE_UPDATED,
+        event_category="note",
+        source_table="appointment_treatments",
+        data=data,
+        source_id_key="source_id",
+        title="Nota clínica de visita",
+        description=excerpt or None,
+        event_data={
+            "appointment_id": data.get("appointment_id"),
+            "plan_item_id": data.get("plan_item_id"),
+        },
+        created_by_key="user_id",
+    )
+
+
+async def on_item_completed_without_note(data: dict) -> None:
+    """Audit a plan-item completion where the clinician skipped the note."""
+    data = {**data, "source_id": data.get("plan_item_id")}
+    item_name = data.get("item_name") or "Tratamiento"
+    await _record(
+        event_type=EventType.TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE,
+        event_category="treatment",
+        source_table="planned_treatment_items",
+        data=data,
+        source_id_key="source_id",
+        title=f"{item_name} completado sin nota",
+        event_data={"plan_id": data.get("plan_id")},
+        created_by_key="user_id",
+    )

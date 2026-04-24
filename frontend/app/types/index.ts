@@ -1763,7 +1763,7 @@ export interface PatientExtendedUpdate extends PatientUpdate {
 }
 
 // Timeline Types
-export type TimelineCategory = 'visit' | 'treatment' | 'financial' | 'communication' | 'medical' | 'document'
+export type TimelineCategory = 'visit' | 'treatment' | 'financial' | 'communication' | 'medical' | 'document' | 'note'
 
 export interface TimelineEntry {
   id: string
@@ -1915,6 +1915,99 @@ export interface PlannedTreatmentItemUpdate {
 export interface CompleteItemRequest {
   completed_without_appointment?: boolean
   notes?: string
+  note_body?: string | null
+  attachment_document_ids?: string[]
+}
+
+// Clinical notes + polymorphic attachments
+export type ClinicalNoteOwnerType = 'plan' | 'plan_item'
+export type AttachmentOwnerType = ClinicalNoteOwnerType | 'appointment_treatment'
+
+export interface NoteAttachment {
+  id: string
+  document_id: string
+  owner_type: AttachmentOwnerType
+  owner_id: string
+  note_id: string | null
+  display_order: number
+  created_at: string
+}
+
+export interface ClinicalNote {
+  id: string
+  clinic_id: string
+  owner_type: ClinicalNoteOwnerType
+  owner_id: string
+  body: string
+  author_id: string
+  created_at: string
+  updated_at: string
+  attachments: NoteAttachment[]
+}
+
+export interface ClinicalNoteCreate {
+  owner_type: ClinicalNoteOwnerType
+  owner_id: string
+  body: string
+  attachment_document_ids?: string[]
+}
+
+export interface ClinicalNoteUpdate {
+  body: string
+}
+
+export interface NoteAttachmentCreate {
+  owner_type: AttachmentOwnerType
+  owner_id: string
+  document_id: string
+  note_id?: string | null
+  display_order?: number
+}
+
+export interface ClinicalNoteEntry {
+  source: 'plan' | 'plan_item' | 'visit'
+  note_id: string | null
+  owner_id: string
+  plan_item_id: string | null
+  body: string
+  author_id: string | null
+  created_at: string
+  updated_at: string | null
+  attachments: NoteAttachment[]
+}
+
+export interface PlanItemNotesGroup {
+  plan_item: PlannedTreatmentItem
+  notes: ClinicalNoteEntry[]
+}
+
+export interface PlanNotesGroup {
+  plan: TreatmentPlan
+  plan_notes: ClinicalNoteEntry[]
+  treatments: PlanItemNotesGroup[]
+}
+
+export interface NoteTemplate {
+  id: string
+  category: string
+  i18n_key: string
+  body: string
+}
+
+export interface AppointmentTreatmentNoteUpdate {
+  notes?: string | null
+  completed_in_appointment?: boolean | null
+}
+
+export interface AppointmentTreatmentNoteResponse {
+  id: string
+  appointment_id: string
+  planned_treatment_item_id: string | null
+  catalog_item_id: string | null
+  display_order: number
+  completed_in_appointment: boolean
+  notes: string | null
+  created_at: string | null
 }
 
 // Treatment Plan

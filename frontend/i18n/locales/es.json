@@ -21,7 +21,11 @@
     "invoices": "Facturas",
     "reports": "Informes",
     "settings": "Configuración",
-    "catalog": "Catálogo"
+    "catalog": "Catálogo",
+    "menu": "Menú",
+    "openMenu": "Abrir menú",
+    "close": "Cerrar",
+    "toggleSidebar": "Alternar barra lateral"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -218,9 +222,28 @@
       "procedure": "Procedimiento"
     },
     "timeline": {
-      "empty": "No hay actividad registrada",
+      "empty": "Aún sin actividad registrada",
+      "emptyFiltered": "Sin eventos en esta categoría",
+      "clearFilter": "Ver toda la actividad",
       "endOfTimeline": "Fin del historial",
       "totalEntries": "{count} entrada | {count} entradas",
+      "groups": {
+        "today": "Hoy",
+        "yesterday": "Ayer",
+        "thisWeek": "Esta semana",
+        "thisMonth": "Este mes",
+        "earlier": "Anterior"
+      },
+      "author": "por {name}",
+      "meta": {
+        "cabinet": "Gabinete {name}",
+        "teeth": "Dientes: {list}",
+        "total": "Total: {amount}",
+        "number": "Nº {value}",
+        "via": "Vía {channel}",
+        "template": "Plantilla: {key}",
+        "docType": "Tipo: {type}"
+      },
       "categories": {
         "all": "Todas",
         "visit": "Visitas",
@@ -228,7 +251,8 @@
         "financial": "Financiero",
         "communication": "Comunicaciones",
         "medical": "Historial médico",
-        "document": "Documentos"
+        "document": "Documentos",
+        "note": "Notas clínicas"
       }
     },
     "alerts": {
@@ -709,7 +733,9 @@
     "noPendingTreatments": "No hay tratamientos pendientes",
     "createPlanFirst": "Crea un plan de tratamiento para este paciente",
     "addTreatmentFromPlan": "Añadir tratamiento del plan",
-    "selectPendingTreatment": "Seleccionar tratamiento pendiente"
+    "selectPendingTreatment": "Seleccionar tratamiento pendiente",
+    "emptyDay": "No hay citas este día",
+    "noPatient": "Sin paciente"
   },
   "dashboard": {
     "greetings": {
@@ -1161,6 +1187,60 @@
       "create": "Error al crear plan de tratamiento",
       "update": "Error al actualizar plan de tratamiento",
       "delete": "Error al eliminar plan de tratamiento"
+    },
+    "notes": {
+      "title": "Notas clínicas",
+      "empty": "Aún no hay notas clínicas",
+      "addNote": "Añadir nota",
+      "edit": "Editar nota",
+      "delete": "Eliminar nota",
+      "attachments": "Adjuntos",
+      "author": "Autor",
+      "createdAt": "Creada",
+      "templatePicker": "Plantillas",
+      "bodyPlaceholder": "Escribe la nota clínica…",
+      "saved": "Nota guardada",
+      "deleted": "Nota eliminada"
+    },
+    "completionNudge": {
+      "title": "Completar tratamiento",
+      "description": "Añade una nota clínica con lo que ocurrió en esta visita antes de marcarlo como completado.",
+      "completeWithNote": "Completar con nota",
+      "skip": "Omitir nota",
+      "skipConfirm": "¿Completar sin dejar constancia clínica?"
+    },
+    "visitNote": {
+      "title": "Nota clínica de visita",
+      "save": "Guardar nota",
+      "empty": "Sin nota clínica todavía"
+    },
+    "clinicalNotesTab": "Notas clínicas",
+    "filterBy": {
+      "plan": "Plan",
+      "item": "Tratamiento",
+      "visit": "Visita",
+      "all": "Todas"
+    },
+    "byPlan": {
+      "empty": "Este paciente no tiene notas clínicas en sus planes de tratamiento",
+      "planNotesLabel": "Notas del plan",
+      "noNotesForTreatment": "Sin notas para este tratamiento",
+      "noNotesForPlan": "Sin notas en este plan"
+    },
+    "noteTemplates": {
+      "endo": {
+        "singleVisit": "Endodoncia en una sesión",
+        "multiVisit": "Endodoncia en varias sesiones"
+      },
+      "perio": {
+        "scaling": "Tartrectomía / raspado"
+      },
+      "implant": {
+        "placement": "Colocación de implante"
+      },
+      "general": {
+        "followUp": "Seguimiento general"
+      }
     }
   },
   "budget": {

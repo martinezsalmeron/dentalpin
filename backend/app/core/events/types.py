@@ -87,3 +87,11 @@ class EventType:
     TREATMENT_PLAN_TREATMENT_REMOVED = "treatment_plan.treatment_removed"
     TREATMENT_PLAN_TREATMENT_COMPLETED = "treatment_plan.treatment_completed"
     TREATMENT_PLAN_BUDGET_SYNC_REQUESTED = "treatment_plan.budget_sync_requested"
+
+    # Clinical note events (treatment_plan module)
+    TREATMENT_PLAN_NOTE_CREATED = "treatment_plan.plan_note_created"
+    TREATMENT_PLAN_ITEM_NOTE_CREATED = "treatment_plan.item_note_created"
+    TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE = "treatment_plan.item_completed_without_note"
+
+    # Visit-level note event (agenda module — reuses AppointmentTreatment.notes)
+    AGENDA_VISIT_NOTE_UPDATED = "agenda.visit_note_updated"

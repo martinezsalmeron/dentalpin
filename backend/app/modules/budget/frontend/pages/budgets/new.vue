@@ -115,7 +115,7 @@ async function handleCreate() {
         </UFormField>
 
         <!-- Validity dates -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField
             :label="t('budget.validFrom')"
             required

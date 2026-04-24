@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.events import event_bus
+from app.core.events.types import EventType
 from app.modules.odontogram.models import Treatment
 from app.modules.patients.models import Patient
 
@@ -594,8 +595,17 @@ class TreatmentPlanService:
         user_id: UUID,
         completed_without_appointment: bool = True,
         notes: str | None = None,
+        note_body: str | None = None,
+        attachment_document_ids: list[UUID] | None = None,
     ) -> PlannedTreatmentItem | None:
-        """Mark a plan item as completed and perform the underlying Treatment."""
+        """Mark a plan item as completed and perform the underlying Treatment.
+
+        ``note_body`` (rich-text HTML) creates a ``clinical_notes`` entry at
+        plan_item level in the same transaction. ``attachment_document_ids``
+        links already-uploaded Documents to that note. If no note body is
+        provided, a ``item_completed_without_note`` event is published for
+        compliance auditing via patient_timeline.
+        """
         result = await db.execute(
             select(PlannedTreatmentItem)
             .where(
@@ -654,6 +664,33 @@ class TreatmentPlanService:
                 "occurred_at": item.completed_at.isoformat() if item.completed_at else None,
             },
         )
+
+        # Clinical note capture / skip audit.
+        if note_body and note_body.strip():
+            from .notes_service import NoteService
+
+            await NoteService.create(
+                db,
+                clinic_id=clinic_id,
+                user_id=user_id,
+                owner_type="plan_item",
+                owner_id=item_id,
+                body=note_body,
+                attachment_document_ids=attachment_document_ids or [],
+            )
+        else:
+            event_bus.publish(
+                EventType.TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE,
+                {
+                    "clinic_id": str(clinic_id),
+                    "patient_id": patient_id_str,
+                    "plan_id": str(plan_id),
+                    "plan_item_id": str(item_id),
+                    "user_id": str(user_id),
+                    "item_name": item_name,
+                    "occurred_at": item.completed_at.isoformat() if item.completed_at else None,
+                },
+            )
 
         await TreatmentPlanService._check_and_complete_plan(db, clinic_id, plan_id)
         return item

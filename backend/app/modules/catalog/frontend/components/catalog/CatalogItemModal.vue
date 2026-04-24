@@ -387,7 +387,7 @@ function handleClose() {
                 <p class="text-xs text-muted mb-3">
                   {{ t('catalog.surfacePrices.help') }}
                 </p>
-                <div class="grid grid-cols-5 gap-2">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                   <UFormField
                     v-for="tier in SURFACE_TIERS"
                     :key="tier"

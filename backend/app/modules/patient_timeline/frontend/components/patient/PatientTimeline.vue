@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import type { TimelineEntry } from '~~/app/types'
+import { resolveSlot } from '~~/app/composables/useModuleSlots'
+import { PERMISSIONS } from '~~/app/config/permissions'
+
 interface Props {
   patientId: string
 }
 
 const props = defineProps<Props>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const { can } = usePermissions()
 
 const patientIdRef = computed(() => props.patientId)
 
@@ -20,27 +25,227 @@ const {
   loadMore,
   setCategory,
   getEventIcon,
-  getCategoryColor
+  getCategoryColor,
+  isHighImpact,
+  isLowImpact
 } = usePatientTimeline(patientIdRef)
 
-// Format date for display
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+// Professionals lookup — populates names for created_by and professional_id chips.
+// Uses an endpoint that dentists, hygienists, receptionists can all call,
+// unlike useUsers() which is admin-only.
+const { professionals, fetchProfessionals, getProfessionalById, getProfessionalFullName } = useProfessionals()
+onMounted(() => {
+  if (professionals.value.length === 0) fetchProfessionals()
+})
 
-  if (diffDays === 0) {
-    return t('common.today') + ' ' + date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-  } else if (diffDays === 1) {
-    return t('common.yesterday') + ' ' + date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-  } else if (diffDays < 7) {
-    return date.toLocaleDateString('es-ES', { weekday: 'long', hour: '2-digit', minute: '2-digit' })
-  } else {
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-  }
+// Module extension point — other modules (e.g. treatment_plan) register
+// richer views per category via the slot registry. When the user selects the
+// "treatment" filter and a module has opted in, we render the slot INSTEAD of
+// the generic event list so clinicians can see full clinical-note bodies
+// grouped by plan/treatment. Keeps this module free of cross-module imports.
+const treatmentSlotCtx = computed(() => ({ patientId: props.patientId }))
+const treatmentSlotEntries = computed(() =>
+  resolveSlot('patient.timeline.treatments', treatmentSlotCtx.value, { can })
+)
+const showTreatmentSlot = computed(
+  () => selectedCategory.value === 'treatment' && treatmentSlotEntries.value.length > 0
+)
+
+// ---- Date formatting ---------------------------------------------------
+
+const localeCode = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'))
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString(localeCode.value, { hour: '2-digit', minute: '2-digit' })
 }
 
-// Intersection observer for infinite scroll
+function formatEntryDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  const bucket = bucketForDate(date)
+  if (bucket === 'today') return `${t('patients.timeline.groups.today')} · ${formatTime(date)}`
+  if (bucket === 'yesterday') return `${t('patients.timeline.groups.yesterday')} · ${formatTime(date)}`
+  if (bucket === 'thisWeek') {
+    return date.toLocaleDateString(localeCode.value, {
+      weekday: 'long', hour: '2-digit', minute: '2-digit'
+    })
+  }
+  return date.toLocaleDateString(localeCode.value, {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  })
+}
+
+type Bucket = 'today' | 'yesterday' | 'thisWeek' | 'thisMonth' | 'earlier'
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+function bucketForDate(date: Date): Bucket {
+  const now = new Date()
+  const todayStart = startOfDay(now)
+  const entryStart = startOfDay(date)
+  const diffDays = Math.round((todayStart.getTime() - entryStart.getTime()) / 86400000)
+  if (diffDays <= 0) return 'today'
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7) return 'thisWeek'
+  // same calendar month
+  if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) {
+    return 'thisMonth'
+  }
+  return 'earlier'
+}
+
+const BUCKET_ORDER: Bucket[] = ['today', 'yesterday', 'thisWeek', 'thisMonth', 'earlier']
+
+interface Group {
+  bucket: Bucket
+  label: string
+  entries: TimelineEntry[]
+}
+
+const groupedEntries = computed<Group[]>(() => {
+  const groups = new Map<Bucket, TimelineEntry[]>()
+  for (const entry of entries.value) {
+    const b = bucketForDate(new Date(entry.occurred_at))
+    if (!groups.has(b)) groups.set(b, [])
+    groups.get(b)!.push(entry)
+  }
+  return BUCKET_ORDER
+    .filter(b => groups.has(b))
+    .map(b => ({
+      bucket: b,
+      label: t(`patients.timeline.groups.${b}`),
+      entries: groups.get(b)!
+    }))
+})
+
+// ---- Event metadata chips ---------------------------------------------
+
+interface MetaChip {
+  icon: string
+  label: string
+}
+
+const currencyFormatter = computed(() =>
+  new Intl.NumberFormat(localeCode.value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
+)
+
+function formatMoney(value: unknown): string | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  if (!isFinite(n)) return null
+  return currencyFormatter.value.format(n)
+}
+
+function getEventMeta(entry: TimelineEntry): MetaChip[] {
+  const data = (entry.event_data ?? {}) as Record<string, unknown>
+  const chips: MetaChip[] = []
+
+  // Professional name (appointments, treatments)
+  const professionalId = typeof data.professional_id === 'string' ? data.professional_id : null
+  if (professionalId) {
+    const prof = getProfessionalById(professionalId)
+    if (prof) {
+      chips.push({ icon: 'i-lucide-user-round', label: getProfessionalFullName(prof) })
+    }
+  }
+
+  const cabinet = typeof data.cabinet === 'string' ? data.cabinet : null
+  if (cabinet) {
+    chips.push({
+      icon: 'i-lucide-door-closed',
+      label: t('patients.timeline.meta.cabinet', { name: cabinet })
+    })
+  }
+
+  const teeth = Array.isArray(data.tooth_numbers) ? data.tooth_numbers : null
+  if (teeth && teeth.length > 0) {
+    chips.push({
+      icon: 'i-lucide-tooth',
+      label: t('patients.timeline.meta.teeth', { list: teeth.join(', ') })
+    })
+  }
+
+  const budgetNumber = typeof data.budget_number === 'string' ? data.budget_number : null
+  if (budgetNumber) {
+    chips.push({
+      icon: 'i-lucide-hash',
+      label: t('patients.timeline.meta.number', { value: budgetNumber })
+    })
+  }
+
+  const invoiceNumber = typeof data.invoice_number === 'string' ? data.invoice_number : null
+  if (invoiceNumber) {
+    chips.push({
+      icon: 'i-lucide-hash',
+      label: t('patients.timeline.meta.number', { value: invoiceNumber })
+    })
+  }
+
+  const totalMoney = formatMoney(data.total)
+  if (totalMoney) {
+    chips.push({
+      icon: 'i-lucide-euro',
+      label: t('patients.timeline.meta.total', { amount: totalMoney })
+    })
+  }
+
+  const sendMethod = typeof data.send_method === 'string' ? data.send_method : null
+  if (sendMethod) {
+    chips.push({
+      icon: 'i-lucide-send',
+      label: t('patients.timeline.meta.via', { channel: sendMethod })
+    })
+  }
+
+  const templateKey = typeof data.template_key === 'string' ? data.template_key : null
+  if (templateKey && entry.event_category === 'communication') {
+    chips.push({
+      icon: 'i-lucide-file-text',
+      label: t('patients.timeline.meta.template', { key: templateKey })
+    })
+  }
+
+  const docType = typeof data.document_type === 'string' ? data.document_type : null
+  if (docType) {
+    chips.push({
+      icon: 'i-lucide-file',
+      label: t('patients.timeline.meta.docType', { type: docType })
+    })
+  }
+
+  return chips
+}
+
+// ---- Navigation to source ---------------------------------------------
+
+// Only sources that have their own standalone page are clickable. Everything
+// else (appointments, plans, notes, documents) already lives on this very
+// patient record, so clicking would navigate to the page the user is on.
+function getEntryLink(entry: TimelineEntry): string | null {
+  if (entry.source_table === 'budgets' && can(PERMISSIONS.budget.read)) {
+    return `/budgets/${entry.source_id}`
+  }
+  if (entry.source_table === 'invoices' && can(PERMISSIONS.billing.read)) {
+    return `/invoices/${entry.source_id}`
+  }
+  return null
+}
+
+async function onEntryClick(entry: TimelineEntry) {
+  const link = getEntryLink(entry)
+  if (link) await navigateTo(link)
+}
+
+// ---- Author --------------------------------------------------------------
+
+function getAuthorName(createdBy: string | undefined): string | null {
+  if (!createdBy) return null
+  const prof = getProfessionalById(createdBy)
+  return prof ? getProfessionalFullName(prof) : null
+}
+
+// ---- Intersection observer for infinite scroll ------------------------
+
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 
 onMounted(() => {
@@ -78,9 +283,18 @@ onMounted(() => {
       </UButton>
     </div>
 
+    <!-- Module-provided view for the active category (e.g. grouped clinical
+         notes for "treatment"). When a module registers into
+         patient.timeline.treatments, it takes over this region. -->
+    <ModuleSlot
+      v-if="showTreatmentSlot"
+      name="patient.timeline.treatments"
+      :ctx="treatmentSlotCtx"
+    />
+
     <!-- Loading State -->
     <div
-      v-if="isLoading"
+      v-else-if="isLoading"
       class="space-y-4"
     >
       <USkeleton
@@ -90,74 +304,137 @@ onMounted(() => {
       />
     </div>
 
-    <!-- Empty State -->
+    <!-- Empty State — contextual -->
     <div
       v-else-if="entries.length === 0"
       class="text-center py-12 text-subtle"
     >
       <UIcon
-        name="i-lucide-clock"
+        :name="selectedCategory ? 'i-lucide-filter-x' : 'i-lucide-clock'"
         class="w-12 h-12 mx-auto mb-4 opacity-50"
       />
-      <p>{{ t('patients.timeline.empty') }}</p>
+      <p class="mb-3">
+        {{ selectedCategory ? t('patients.timeline.emptyFiltered') : t('patients.timeline.empty') }}
+      </p>
+      <UButton
+        v-if="selectedCategory"
+        variant="outline"
+        size="sm"
+        @click="setCategory(null)"
+      >
+        {{ t('patients.timeline.clearFilter') }}
+      </UButton>
     </div>
 
-    <!-- Timeline Entries -->
+    <!-- Timeline Entries — grouped by time bucket -->
     <div
       v-else
       class="relative"
     >
-      <!-- Timeline line -->
+      <!-- Timeline rail -->
       <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-surface-sunken" />
 
-      <div class="space-y-4">
-        <div
-          v-for="entry in entries"
-          :key="entry.id"
-          class="relative pl-10"
+      <div class="space-y-6">
+        <section
+          v-for="group in groupedEntries"
+          :key="group.bucket"
+          class="space-y-3"
         >
-          <!-- Timeline dot -->
-          <div
-            class="absolute left-2 w-5 h-5 rounded-full flex items-center justify-center"
-            :class="`bg-${getCategoryColor(entry.event_category)}-100 dark:bg-${getCategoryColor(entry.event_category)}-900`"
-          >
-            <UIcon
-              :name="getEventIcon(entry.event_type)"
-              class="w-3 h-3"
-              :class="`text-${getCategoryColor(entry.event_category)}-600 dark:text-${getCategoryColor(entry.event_category)}-400`"
-            />
-          </div>
+          <!-- Group header -->
+          <h3 class="relative pl-10 text-caption font-medium text-muted uppercase tracking-wide">
+            {{ group.label }}
+          </h3>
 
-          <!-- Entry Card -->
-          <UCard
-            class="ml-2"
-            :ui="{ body: { padding: 'p-3' } }"
-          >
-            <div class="flex items-start justify-between">
-              <div>
-                <h4 class="font-medium">
-                  {{ entry.title }}
-                </h4>
-                <p
-                  v-if="entry.description"
-                  class="text-caption text-subtle mt-1"
-                >
-                  {{ entry.description }}
-                </p>
-              </div>
-              <UBadge
-                :color="getCategoryColor(entry.event_category)"
-                variant="subtle"
-                size="xs"
+          <div class="space-y-3">
+            <div
+              v-for="entry in group.entries"
+              :key="entry.id"
+              class="relative pl-10"
+            >
+              <!-- Timeline dot -->
+              <div
+                class="absolute left-2 top-1 w-5 h-5 rounded-full flex items-center justify-center"
+                :class="`bg-${getCategoryColor(entry.event_category)}-100 dark:bg-${getCategoryColor(entry.event_category)}-900`"
               >
-                {{ t(`patients.timeline.categories.${entry.event_category}`) }}
-              </UBadge>
+                <UIcon
+                  :name="getEventIcon(entry.event_type)"
+                  class="w-3 h-3"
+                  :class="`text-${getCategoryColor(entry.event_category)}-600 dark:text-${getCategoryColor(entry.event_category)}-400`"
+                />
+              </div>
+
+              <!-- Entry Card -->
+              <UCard
+                class="ml-2 transition-colors"
+                :class="[
+                  isHighImpact(entry.event_type) ? `border-l-4 border-l-${getCategoryColor(entry.event_category)}-500` : '',
+                  isLowImpact(entry.event_type) ? 'opacity-85' : '',
+                  getEntryLink(entry) ? 'cursor-pointer hover:bg-surface-muted' : ''
+                ]"
+                :ui="{ body: isLowImpact(entry.event_type) ? 'p-2' : 'p-3' }"
+                @click="onEntryClick(entry)"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <h4
+                      :class="[
+                        isHighImpact(entry.event_type) ? 'font-semibold text-default' : 'font-medium',
+                        isLowImpact(entry.event_type) ? 'text-sm' : ''
+                      ]"
+                    >
+                      {{ entry.title }}
+                    </h4>
+                    <p
+                      v-if="entry.description"
+                      class="text-caption text-muted mt-1 whitespace-pre-line"
+                    >
+                      {{ entry.description }}
+                    </p>
+
+                    <!-- Meta chips from event_data -->
+                    <div
+                      v-if="getEventMeta(entry).length > 0"
+                      class="mt-2 flex flex-wrap gap-1.5"
+                    >
+                      <span
+                        v-for="(chip, idx) in getEventMeta(entry)"
+                        :key="idx"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-sunken text-caption text-muted"
+                      >
+                        <UIcon
+                          :name="chip.icon"
+                          class="w-3 h-3"
+                        />
+                        {{ chip.label }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <UIcon
+                    v-if="getEntryLink(entry)"
+                    name="i-lucide-chevron-right"
+                    class="w-4 h-4 text-subtle shrink-0 mt-1"
+                  />
+                </div>
+
+                <!-- Footer: date + optional author -->
+                <div class="mt-2 flex items-center justify-between text-caption text-subtle">
+                  <span>{{ formatEntryDate(entry.occurred_at) }}</span>
+                  <span
+                    v-if="getAuthorName(entry.created_by)"
+                    class="inline-flex items-center gap-1"
+                  >
+                    <UIcon
+                      name="i-lucide-user-round"
+                      class="w-3 h-3"
+                    />
+                    {{ t('patients.timeline.author', { name: getAuthorName(entry.created_by) }) }}
+                  </span>
+                </div>
+              </UCard>
             </div>
-            <div class="mt-2 text-caption text-subtle">
-              {{ formatDate(entry.occurred_at) }}
-            </div>
-          </UCard>
-        </div>
+          </div>
+        </section>
 
         <!-- Load More Trigger -->
         <div

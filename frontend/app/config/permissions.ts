@@ -71,6 +71,10 @@ export const PERMISSIONS = {
     read: 'treatment_plan.plans.read',
     write: 'treatment_plan.plans.write'
   },
+  clinicalNotes: {
+    read: 'treatment_plan.notes.read',
+    write: 'treatment_plan.notes.write'
+  },
   agents: {
     view: 'agents.view',
     supervise: 'agents.supervise',

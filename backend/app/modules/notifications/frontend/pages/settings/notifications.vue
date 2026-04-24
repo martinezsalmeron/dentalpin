@@ -438,7 +438,7 @@ if (!isAdmin.value) {
           <!-- SMTP details if configured -->
           <div
             v-if="smtpSettings?.host && smtpSettings.provider === 'smtp'"
-            class="grid grid-cols-2 gap-4 text-sm"
+            class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm"
           >
             <div>
               <span class="text-muted">{{ t('notifications.smtp.host') }}:</span>
@@ -554,7 +554,7 @@ if (!isAdmin.value) {
 
             <!-- SMTP Configuration (only shown when provider is smtp) -->
             <template v-if="smtpForm.provider === 'smtp'">
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <UFormField :label="t('notifications.smtp.host')">
                   <UInput
                     v-model="smtpForm.host"
@@ -574,7 +574,7 @@ if (!isAdmin.value) {
                 </UFormField>
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <UFormField :label="t('notifications.smtp.username')">
                   <UInput
                     v-model="smtpForm.username"
@@ -613,7 +613,7 @@ if (!isAdmin.value) {
                 </UFormField>
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <UFormField :label="t('notifications.smtp.fromEmail')">
                   <UInput
                     v-model="smtpForm.from_email"

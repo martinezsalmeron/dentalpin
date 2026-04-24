@@ -15,7 +15,13 @@ from fastapi import APIRouter
 from app.core.events.types import EventType
 from app.core.plugins import BaseModule
 
-from .models import PlannedTreatmentItem, TreatmentMedia, TreatmentPlan
+from .models import (
+    ClinicalNote,
+    ClinicalNoteAttachment,
+    PlannedTreatmentItem,
+    TreatmentMedia,
+    TreatmentPlan,
+)
 from .router import router
 
 
@@ -44,8 +50,13 @@ class TreatmentPlanModule(BaseModule):
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["*"],
-            "hygienist": ["plans.read"],
-            "assistant": ["plans.read", "plans.write"],
+            "hygienist": ["plans.read", "notes.read", "notes.write"],
+            "assistant": [
+                "plans.read",
+                "plans.write",
+                "notes.read",
+                "notes.write",
+            ],
             "receptionist": [],
         },
         "frontend": {
@@ -63,7 +74,13 @@ class TreatmentPlanModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [TreatmentPlan, PlannedTreatmentItem, TreatmentMedia]
+        return [
+            TreatmentPlan,
+            PlannedTreatmentItem,
+            TreatmentMedia,
+            ClinicalNote,
+            ClinicalNoteAttachment,
+        ]
 
     def get_router(self) -> APIRouter:
         return router
@@ -72,6 +89,8 @@ class TreatmentPlanModule(BaseModule):
         return [
             "plans.read",
             "plans.write",
+            "notes.read",
+            "notes.write",
         ]
 
     def get_event_handlers(self) -> dict[str, Any]:
