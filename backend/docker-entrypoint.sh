@@ -2,8 +2,30 @@
 set -e
 
 if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
-  echo "[entrypoint] Running alembic upgrade head..."
-  alembic upgrade head
+  # One-time heal for the Fase C schedules-branch rewire (issue #56):
+  # DBs bootstrapped while schedules lived on the main linear chain have
+  # the schedules tables but no row in alembic_version for the new
+  # branch. Stamp sch_0001 so "alembic upgrade heads" is a no-op instead
+  # of re-creating tables that already exist.
+  PG_URL="$(python -c 'from app.config import settings; print(settings.DATABASE_URL.replace("postgresql+asyncpg://","postgresql://"))')"
+  psql "$PG_URL" -v ON_ERROR_STOP=1 <<'SQL' || true
+DO $$
+BEGIN
+  IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'clinic_weekly_schedules'
+     )
+     AND NOT EXISTS (SELECT 1 FROM alembic_version WHERE version_num = 'sch_0001')
+  THEN
+    INSERT INTO alembic_version(version_num) VALUES ('sch_0001');
+    RAISE NOTICE 'Stamped sch_0001 for pre-branch schedules tables';
+  END IF;
+END
+$$;
+SQL
+
+  echo "[entrypoint] Running alembic upgrade heads..."
+  alembic upgrade heads
 fi
 
 if [ "${SEED_ON_STARTUP:-0}" = "1" ]; then

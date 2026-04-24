@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "sch_0001"
-down_revision: str | None = "notif_0001"
-branch_labels: str | Sequence[str] | None = None
+down_revision: str | None = "0001"
+branch_labels: str | Sequence[str] | None = ("schedules",)
 depends_on: str | Sequence[str] | None = None
 
 

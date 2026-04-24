@@ -1,11 +1,15 @@
 """Round-trip migration test.
 
-Asserts that the Alembic chain can go ``base → head → base → head``
+Asserts that the Alembic graph can go ``base → heads → base → heads``
 without leaving drift in the schema. This is the guardrail for the
 post-Fase-B module layout: every model ``get_models()`` declaration
 must produce exactly the same tables Alembic upgrades create, and
 every ``downgrade`` must leave the database empty enough that
-``upgrade head`` can run again cleanly.
+``upgrade heads`` can run again cleanly.
+
+Uses the plural ``heads`` form because modules that are genuinely
+removable (issue #56) live on their own Alembic branch, so the graph
+has more than one head.
 
 Alembic commands are invoked via subprocess because ``env.py`` runs
 ``asyncio.run(...)`` internally — calling that from within pytest's
@@ -81,15 +85,15 @@ def _leftover_tables() -> list[str]:
 
 def test_upgrade_downgrade_upgrade_is_schema_stable() -> None:
     """upgrade → downgrade → upgrade must produce the same schema."""
-    _alembic("upgrade", "head")
+    _alembic("upgrade", "heads")
     before = _snapshot_tables()
-    assert before, "expected at least one table after upgrade head"
+    assert before, "expected at least one table after upgrade heads"
 
     _alembic("downgrade", "base")
     leftover = _leftover_tables()
     assert leftover == [], f"downgrade base left tables behind: {leftover}"
 
-    _alembic("upgrade", "head")
+    _alembic("upgrade", "heads")
     after = _snapshot_tables()
 
     assert before == after, (

@@ -26,7 +26,7 @@ END $$;
 EOF
 
 # Run migrations
-docker compose exec -T backend alembic upgrade head
+docker compose exec -T backend alembic upgrade heads
 
 # Restart the backend so the module registry reconciles against the
 # fresh schema. Without this, `core_module` stays empty until the next
