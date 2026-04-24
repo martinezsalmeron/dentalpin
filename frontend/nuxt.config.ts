@@ -72,7 +72,16 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: ['nprogress']
+      // Pre-bundle deps that Vite otherwise discovers at runtime. Runtime
+      // discovery triggers a full page reload, which in CI races Playwright's
+      // `goto` and causes net::ERR_ABORTED on the very first visit to any
+      // route that uses these packages.
+      include: [
+        'nprogress',
+        '@vueuse/core',
+        '@vue/devtools-core',
+        '@vue/devtools-kit'
+      ]
     }
   },
 
