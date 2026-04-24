@@ -21,10 +21,17 @@ test.describe('patient detail', () => {
     await loggedIn.goto('/patients')
     await expect(loggedIn.getByRole('heading', { name: /patients|pacientes/i }).first()).toBeVisible()
 
-    // Click the first row in the patient list.
-    const firstPatient = loggedIn.locator('a[href^="/patients/"]').first()
-    await firstPatient.click()
-    await loggedIn.waitForURL(/\/patients\/[0-9a-f-]+/)
+    // Wait for the list to hydrate — clicking a NuxtLink before its client-side
+    // handler is attached can fall through to the browser default, which then
+    // races with the SPA router and occasionally bounces back to /patients.
+    // Scope to <main> so we never match the sidebar nav item (/patients).
+    const firstPatient = loggedIn.locator('main a[href^="/patients/"]').first()
+    await expect(firstPatient).toBeVisible({ timeout: 15_000 })
+
+    await Promise.all([
+      loggedIn.waitForURL(/\/patients\/[0-9a-f-]+/, { timeout: 20_000 }),
+      firstPatient.click()
+    ])
 
     // 1. Identity — patient name is in the sidebar quick-info card.
     const identity = loggedIn.locator('[data-testid="patient-quick-info"], h1, h2').first()
