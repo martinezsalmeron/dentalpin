@@ -673,6 +673,31 @@ async function handleSaveClinicInfo() {
           </UButton>
         </NuxtLink>
       </UCard>
+
+      <!-- Modules (admin only) -->
+      <UCard v-if="isAdmin">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-lucide-puzzle"
+              class="w-5 h-5 text-primary-accent"
+            />
+            <h2 class="font-semibold text-default">
+              {{ t('settings.modules.title') }}
+            </h2>
+          </div>
+        </template>
+
+        <p class="text-caption text-subtle mb-4">
+          {{ t('settings.modules.description') }}
+        </p>
+
+        <NuxtLink to="/settings/modules">
+          <UButton icon="i-lucide-arrow-right">
+            {{ t('settings.modules.title') }}
+          </UButton>
+        </NuxtLink>
+      </UCard>
     </div>
 
     <!-- User Management (Admin only) -->

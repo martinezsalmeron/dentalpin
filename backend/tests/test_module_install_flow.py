@@ -29,8 +29,35 @@ async def _reconcile(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_uninstall_blocked_for_legacy_module(db_session: AsyncSession) -> None:
+async def test_uninstall_blocked_for_non_removable_module(db_session: AsyncSession) -> None:
+    """Non-removable modules must reject uninstall even when they ship an
+    Alembic branch — ``billing`` has its own ``bil_0001`` branch that the
+    service auto-resolves during reconcile."""
     await _reconcile(db_session)
+
+    svc = ModuleService(db_session)
+    with pytest.raises(ModuleOperationError, match="removable=False"):
+        await svc.uninstall("billing")
+
+
+@pytest.mark.asyncio
+async def test_uninstall_blocked_for_legacy_module_without_branch(
+    db_session: AsyncSession,
+) -> None:
+    """Modules whose migrations live in the main linear chain (no
+    per-module ``migrations/versions`` dir) have ``base_revision=None``
+    even after reconcile, so uninstall falls back to the legacy guard."""
+    await _reconcile(db_session)
+
+    # Force a pristine state by wiping base_revision and marking removable.
+    from app.core.plugins.db_models import ModuleRecord
+
+    billing = (
+        await db_session.execute(select(ModuleRecord).where(ModuleRecord.name == "billing"))
+    ).scalar_one()
+    billing.base_revision = None
+    billing.removable = True
+    await db_session.commit()
 
     svc = ModuleService(db_session)
     with pytest.raises(ModuleOperationError, match="no Alembic branch"):

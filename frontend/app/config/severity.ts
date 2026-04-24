@@ -159,3 +159,26 @@ export const ALERT_SEVERITY_ROLE: Record<AlertSeverity, SemanticRole> = {
   medium: 'info',
   low: 'neutral'
 }
+
+// ---------------------------------------------------------------------------
+// Module lifecycle state (admin module manager)
+// ---------------------------------------------------------------------------
+
+export type ModuleStateKey
+  = | 'installed'
+    | 'uninstalled'
+    | 'to_install'
+    | 'to_upgrade'
+    | 'to_remove'
+    | 'disabled'
+    | 'error'
+
+export const MODULE_STATE_ROLE: Record<ModuleStateKey, SemanticRole> = {
+  installed: 'success',
+  uninstalled: 'neutral',
+  to_install: 'info',
+  to_upgrade: 'info',
+  to_remove: 'warning',
+  disabled: 'neutral',
+  error: 'danger'
+}

@@ -80,6 +80,10 @@ export const PERMISSIONS = {
     supervise: 'agents.supervise',
     configure: 'agents.configure',
     manage: 'agents.manage'
+  },
+  admin: {
+    clinicRead: 'admin.clinic.read',
+    clinicWrite: 'admin.clinic.write'
   }
 } as const
 
@@ -88,6 +92,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/patients': PERMISSIONS.patients.read,
   '/appointments': PERMISSIONS.appointments.read,
   '/settings/users': PERMISSIONS.users.write,
+  '/settings/modules': PERMISSIONS.admin.clinicRead,
   '/settings/notifications': PERMISSIONS.notifications.settingsRead,
   '/treatment-plans': PERMISSIONS.treatmentPlans.read,
   '/budgets': PERMISSIONS.budget.read,

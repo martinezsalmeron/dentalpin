@@ -9,18 +9,21 @@ Install, uninstall and upgrade flows arrive in Etapa 3.
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .base import BaseModule
-from .db_models import ModuleRecord
+from .db_models import ModuleOperationLog, ModuleRecord
 from .loader import discover_modules
 from .manifest import Manifest, ManifestError
+from .operation_log import LogEntry, log_entry_from_row
 from .registry import module_registry
 from .state import ModuleCategory, ModuleState
 
@@ -144,6 +147,13 @@ class ModuleService:
                 )
                 continue
 
+            # Resolve the Alembic branch head for modules that ship their
+            # own migrations — without this, uninstall cannot safely
+            # downgrade because the processor only populates
+            # ``base_revision`` during the install flow, which auto-
+            # installed modules never go through.
+            branch_head = _resolve_module_branch_head(module)
+
             record = existing.get(module.name)
             if record is None:
                 self.db.add(
@@ -157,6 +167,8 @@ class ModuleService:
                         installed_at=now,
                         last_state_change=now,
                         manifest_snapshot=manifest.to_snapshot(),
+                        base_revision=branch_head,
+                        applied_revision=branch_head,
                     )
                 )
                 logger.info("Reconciled: inserted new module %s", manifest.name)
@@ -176,6 +188,14 @@ class ModuleService:
             record.category = manifest.category.value
             record.removable = manifest.removable
             record.auto_install = manifest.auto_install
+
+            # Backfill base_revision for modules reconciled before this
+            # logic existed — enables uninstall of already-installed
+            # removable modules.
+            if record.base_revision is None and branch_head is not None:
+                record.base_revision = branch_head
+                if record.applied_revision is None:
+                    record.applied_revision = branch_head
 
         await self.db.commit()
 
@@ -305,6 +325,24 @@ class ModuleService:
             manifest_errors=manifest_errors,
             errored_modules=errored,
         )
+
+    async def operation_log(self, name: str, *, limit: int = 20) -> list[LogEntry]:
+        """Return the most recent log entries for ``name`` (desc by id).
+
+        Raises :class:`ModuleOperationError` if the module is unknown to
+        the DB. ``limit`` is clamped by the caller.
+        """
+        records = await self._load_existing_records()
+        if name not in records:
+            raise ModuleOperationError(f"Unknown module: '{name}'")
+
+        result = await self.db.execute(
+            select(ModuleOperationLog)
+            .where(ModuleOperationLog.module_name == name)
+            .order_by(ModuleOperationLog.id.desc())
+            .limit(limit)
+        )
+        return [log_entry_from_row(row) for row in result.scalars()]
 
     async def orphan(self, name: str) -> bool:
         """Mark a missing-from-disk module as ``uninstalled`` for recovery."""
@@ -506,6 +544,58 @@ class ModuleService:
         except ManifestError as exc:
             logger.error("Manifest error for %s: %s", module.name, exc)
             return None
+
+
+def _resolve_module_branch_head(module: BaseModule) -> str | None:
+    """Return the tip revision of ``module``'s own Alembic branch, if any.
+
+    Modules that ship a ``migrations/versions`` directory alongside their
+    code are the "owners" of every revision file inside it. The head of
+    the module's branch is the module-owned revision that comes first
+    when Alembic walks the full graph from ``heads`` to ``base`` (i.e.
+    the latest descendant of every module revision).
+
+    Returns ``None`` when:
+
+    * the module lives in the legacy main linear chain (no per-module
+      migrations dir),
+    * the module's migrations dir exists but has zero revision files,
+    * the Alembic graph can't be loaded (missing alembic.ini).
+    """
+    spec = importlib.util.find_spec(type(module).__module__)
+    if spec is None or spec.origin is None:
+        return None
+    versions_dir = (Path(spec.origin).parent / "migrations" / "versions").resolve()
+    if not versions_dir.is_dir():
+        return None
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    cfg_path = Path(__file__).resolve().parents[3] / "alembic.ini"
+    if not cfg_path.is_file():
+        return None
+
+    try:
+        script = ScriptDirectory.from_config(Config(str(cfg_path)))
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.warning("Could not load Alembic ScriptDirectory: %s", exc)
+        return None
+
+    # walk_revisions yields revisions from head → base. The first one
+    # whose source file lives in this module's versions dir is, by
+    # definition, the latest module-owned revision — the branch head.
+    for rev in script.walk_revisions():
+        rev_path_str = getattr(rev, "path", None)
+        if not rev_path_str:
+            continue
+        try:
+            rev_dir = Path(rev_path_str).resolve().parent
+        except (OSError, ValueError):
+            continue
+        if rev_dir == versions_dir:
+            return rev.revision
+    return None
 
 
 async def rediscover_and_reconcile(db: AsyncSession) -> None:

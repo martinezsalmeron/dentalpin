@@ -315,6 +315,72 @@ export interface ActiveModule {
   permissions: string[]
 }
 
+// --- Module lifecycle (admin) — backend /api/v1/modules/* ----------------
+
+export type ModuleState
+  = | 'installed'
+    | 'uninstalled'
+    | 'to_install'
+    | 'to_upgrade'
+    | 'to_remove'
+    | 'disabled'
+    | 'error'
+
+export type ModuleCategory = 'official' | 'community'
+
+// Shape returned by GET /api/v1/modules and /api/v1/modules/{name}.
+export interface ModuleInfo {
+  name: string
+  version: string
+  state: ModuleState
+  category: ModuleCategory
+  removable: boolean
+  auto_install: boolean
+  installed_at: string | null
+  last_state_change: string
+  base_revision: string | null
+  applied_revision: string | null
+  error_message: string | null
+  error_at: string | null
+  summary: string
+  depends: string[]
+  in_disk: boolean
+}
+
+// Shape returned by GET /api/v1/modules/-/status.
+export interface ModuleStatus {
+  by_state: Record<string, number>
+  pending: string[]
+  errored: string[]
+  total: number
+}
+
+// Shape returned by GET /api/v1/modules/-/doctor.
+export interface ModuleDoctorReport {
+  ok: boolean
+  orphans: string[]
+  missing_dependencies: Array<{ module: string, missing: string }>
+  manifest_errors: Array<{ module: string, error: string }>
+  errored_modules: Array<{ module: string, error: string }>
+}
+
+// Shape returned by mutating endpoints (install/uninstall/upgrade).
+export interface ModuleOperationResult {
+  scheduled: string[]
+  requires_restart: boolean
+}
+
+// Shape returned by GET /api/v1/modules/{name}/-/operations.
+export interface ModuleOperationLogEntry {
+  id: number
+  module_name: string
+  operation: 'install' | 'uninstall' | 'upgrade'
+  step: string
+  status: 'started' | 'completed' | 'failed'
+  details: Record<string, unknown> | null
+  created_at: string
+}
+
 // Permission config for centralized management
 export interface PermissionConfig {
   routes: Record<string, string> // path -> permission
