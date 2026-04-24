@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -37,6 +38,18 @@ class LogEntry:
     step: Step
     status: Status
     details: dict[str, Any] | None
+    created_at: datetime
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "module_name": self.module_name,
+            "operation": self.operation,
+            "step": self.step,
+            "status": self.status,
+            "details": self.details,
+            "created_at": self.created_at.isoformat(),
+        }
 
 
 class OperationLog:
@@ -87,14 +100,20 @@ class OperationLog:
         await self._finalize(log_id, "failed", payload)
 
     async def last_for_module(self, db: AsyncSession, module_name: str) -> LogEntry | None:
+        entries = await self.recent_for_module(db, module_name, limit=1)
+        return entries[0] if entries else None
+
+    async def recent_for_module(
+        self, db: AsyncSession, module_name: str, *, limit: int = 20
+    ) -> list[LogEntry]:
+        """Return most recent log entries for ``module_name`` in desc order."""
         result = await db.execute(
             select(ModuleOperationLog)
             .where(ModuleOperationLog.module_name == module_name)
             .order_by(ModuleOperationLog.id.desc())
-            .limit(1)
+            .limit(limit)
         )
-        row = result.scalar_one_or_none()
-        return _to_entry(row) if row else None
+        return [_to_entry(row) for row in result.scalars()]
 
     async def _finalize(self, log_id: int, status: Status, details: dict[str, Any] | None) -> None:
         async with self._session_factory() as session:
@@ -113,7 +132,8 @@ class OperationLog:
             )
 
 
-def _to_entry(row: ModuleOperationLog) -> LogEntry:
+def log_entry_from_row(row: ModuleOperationLog) -> LogEntry:
+    """Convert an ORM row to a plain ``LogEntry`` dataclass."""
     return LogEntry(
         id=row.id,
         module_name=row.module_name,
@@ -121,4 +141,8 @@ def _to_entry(row: ModuleOperationLog) -> LogEntry:
         step=row.step,
         status=row.status,
         details=dict(row.details) if row.details else None,
+        created_at=row.created_at,
     )
+
+
+_to_entry = log_entry_from_row  # backwards-compatible alias

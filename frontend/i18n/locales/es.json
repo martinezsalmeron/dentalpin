@@ -859,6 +859,85 @@
       "userCreated": "Usuario creado correctamente",
       "userUpdated": "Usuario actualizado correctamente",
       "userDeleted": "Usuario eliminado de la clínica"
+    },
+    "modules": {
+      "title": "Módulos",
+      "subtitle": "Instala, desinstala y actualiza los módulos de la clínica.",
+      "description": "Gestiona qué módulos están activos en tu clínica.",
+      "deps": "Dependencias",
+      "noDeps": "Sin dependencias",
+      "state": {
+        "installed": "Instalado",
+        "uninstalled": "No instalado",
+        "toInstall": "Pendiente de instalar",
+        "toUpgrade": "Pendiente de actualizar",
+        "toRemove": "Pendiente de eliminar",
+        "disabled": "Desactivado",
+        "error": "Error"
+      },
+      "category": {
+        "official": "Oficial",
+        "community": "Comunidad"
+      },
+      "actions": {
+        "install": "Instalar",
+        "uninstall": "Desinstalar",
+        "upgrade": "Actualizar",
+        "apply": "Aplicar cambios",
+        "viewDetails": "Detalles",
+        "force": "Forzar desinstalación"
+      },
+      "confirmInstall": {
+        "title": "¿Instalar {name}?",
+        "message": "El módulo se marcará para instalar y quedará activo tras aplicar los cambios.",
+        "scheduled": "Se instalarán también estas dependencias:"
+      },
+      "confirmUninstall": {
+        "title": "¿Desinstalar {name}?",
+        "warning": "Se eliminarán las tablas del módulo. Antes se creará un backup pg_dump automático para poder recuperar los datos.",
+        "forceHint": "Ignora los módulos dependientes. Úsalo solo si sabes lo que haces."
+      },
+      "confirmUpgrade": {
+        "title": "¿Actualizar {name}?",
+        "message": "El módulo se actualizará a la versión declarada en disco al aplicar los cambios."
+      },
+      "confirmApply": {
+        "title": "Aplicar cambios",
+        "message": "El backend se reiniciará. La sesión puede interrumpirse unos segundos mientras se procesan las operaciones pendientes."
+      },
+      "pending": {
+        "banner": "Cambios pendientes:",
+        "apply": "Aplicar cambios"
+      },
+      "doctor": {
+        "banner": "Se han detectado problemas en el sistema de módulos.",
+        "orphans": "módulos huérfanos",
+        "missingDeps": "dependencias faltantes",
+        "manifestErrors": "errores de manifiesto",
+        "errored": "módulos con error"
+      },
+      "detail": {
+        "state": "Estado",
+        "category": "Categoría",
+        "installedAt": "Instalado el",
+        "lastChange": "Último cambio",
+        "baseRevision": "Revisión base",
+        "appliedRevision": "Revisión aplicada",
+        "manifest": "Manifest completo",
+        "errorMessage": "Mensaje de error",
+        "operationLog": "Log de operaciones",
+        "noOperations": "Sin operaciones registradas."
+      },
+      "restart": {
+        "inProgress": "Reiniciando backend…",
+        "done": "Cambios aplicados",
+        "failed": "Error al aplicar cambios",
+        "timeout": "Timeout esperando al backend"
+      },
+      "toasts": {
+        "scheduled": "Operación programada. Aplica los cambios para completarla.",
+        "applied": "Cambios aplicados correctamente."
+      }
     }
   },
   "selector": {
@@ -883,6 +962,9 @@
     "success": "Éxito",
     "completed": "Completado",
     "retry": "Reintentar",
+    "refresh": "Actualizar",
+    "hide": "Ocultar",
+    "forbidden": "Acceso denegado",
     "confirm": "Confirmar",
     "yes": "Sí",
     "no": "No",

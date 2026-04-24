@@ -134,6 +134,26 @@ async def module_doctor(
     return ApiResponse(data=(await svc.doctor()).to_dict())
 
 
+@router.get("/{name}/-/operations")
+async def module_operations(
+    name: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.read"))],
+    limit: int = 20,
+) -> ApiResponse[list[dict[str, Any]]]:
+    """Return the most recent operation log rows for ``name``.
+
+    ``limit`` is clamped to ``[1, 100]``. 404 if the module is unknown.
+    """
+    clamped = max(1, min(limit, 100))
+    svc = ModuleService(db)
+    try:
+        entries = await svc.operation_log(name, limit=clamped)
+    except ModuleOperationError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ApiResponse(data=[entry.to_dict() for entry in entries])
+
+
 # --- Mutating endpoints --------------------------------------------------
 
 

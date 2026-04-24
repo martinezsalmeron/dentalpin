@@ -838,6 +838,85 @@
       "userCreated": "User created successfully",
       "userUpdated": "User updated successfully",
       "userDeleted": "User removed from clinic"
+    },
+    "modules": {
+      "title": "Modules",
+      "subtitle": "Install, uninstall and upgrade clinic modules.",
+      "description": "Manage which modules are active in your clinic.",
+      "deps": "Dependencies",
+      "noDeps": "No dependencies",
+      "state": {
+        "installed": "Installed",
+        "uninstalled": "Not installed",
+        "toInstall": "Pending install",
+        "toUpgrade": "Pending upgrade",
+        "toRemove": "Pending removal",
+        "disabled": "Disabled",
+        "error": "Error"
+      },
+      "category": {
+        "official": "Official",
+        "community": "Community"
+      },
+      "actions": {
+        "install": "Install",
+        "uninstall": "Uninstall",
+        "upgrade": "Upgrade",
+        "apply": "Apply changes",
+        "viewDetails": "Details",
+        "force": "Force uninstall"
+      },
+      "confirmInstall": {
+        "title": "Install {name}?",
+        "message": "The module will be scheduled for install and become active after applying changes.",
+        "scheduled": "These dependencies will also be installed:"
+      },
+      "confirmUninstall": {
+        "title": "Uninstall {name}?",
+        "warning": "The module tables will be removed. A pg_dump backup is created first so data can be recovered.",
+        "forceHint": "Ignores dependent modules. Only use this if you know what you're doing."
+      },
+      "confirmUpgrade": {
+        "title": "Upgrade {name}?",
+        "message": "The module will be upgraded to the on-disk manifest version when changes are applied."
+      },
+      "confirmApply": {
+        "title": "Apply changes",
+        "message": "The backend will restart. The session may be briefly interrupted while pending operations run."
+      },
+      "pending": {
+        "banner": "Pending changes:",
+        "apply": "Apply changes"
+      },
+      "doctor": {
+        "banner": "Issues detected in the module system.",
+        "orphans": "orphan modules",
+        "missingDeps": "missing dependencies",
+        "manifestErrors": "manifest errors",
+        "errored": "errored modules"
+      },
+      "detail": {
+        "state": "State",
+        "category": "Category",
+        "installedAt": "Installed at",
+        "lastChange": "Last change",
+        "baseRevision": "Base revision",
+        "appliedRevision": "Applied revision",
+        "manifest": "Full manifest",
+        "errorMessage": "Error message",
+        "operationLog": "Operation log",
+        "noOperations": "No operations recorded."
+      },
+      "restart": {
+        "inProgress": "Restarting backend…",
+        "done": "Changes applied",
+        "failed": "Failed to apply changes",
+        "timeout": "Timed out waiting for backend"
+      },
+      "toasts": {
+        "scheduled": "Operation scheduled. Apply changes to complete.",
+        "applied": "Changes applied successfully."
+      }
     }
   },
   "selector": {
@@ -861,6 +940,9 @@
     "success": "Success",
     "completed": "Completed",
     "retry": "Retry",
+    "refresh": "Refresh",
+    "hide": "Hide",
+    "forbidden": "Access denied",
     "confirm": "Confirm",
     "yes": "Yes",
     "no": "No",
