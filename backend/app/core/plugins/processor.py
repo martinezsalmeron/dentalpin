@@ -291,7 +291,7 @@ class PendingProcessor:
         migrate_log = await self._op_log.started(
             module_name=record.name, operation="uninstall", step="migrate_down"
         )
-        downgrade_target = record.base_revision or "base"
+        downgrade_target = _downgrade_target_for(record.name, record.base_revision)
         await self._run_downgrade(downgrade_target)
         await self._op_log.completed(migrate_log, {"target_revision": downgrade_target})
 
@@ -331,19 +331,25 @@ class PendingProcessor:
         timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         target = BACKUP_ROOT / f"module_{module_name}_{timestamp}.sql"
 
-        args = ["pg_dump", "--data-only", "--no-owner", settings.DATABASE_URL]
+        args = ["pg_dump", "--data-only", "--no-owner", _pg_dump_dsn(settings.DATABASE_URL)]
         for table in tables:
             args.extend(["--table", table])
 
         try:
             with target.open("w") as fh:
                 subprocess.run(args, stdout=fh, check=True)
-        except FileNotFoundError:
-            logger.warning(
-                "pg_dump not available; skipping backup for module %s",
-                module_name,
+        except FileNotFoundError as exc:
+            target.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"pg_dump not available; cannot back up module {module_name}. "
+                "Install postgresql-client in the runtime image."
+            ) from exc
+
+        if target.stat().st_size == 0:
+            target.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"pg_dump produced an empty backup for module {module_name}"
             )
-            return None
         return target
 
     # --- Error book-keeping --------------------------------------------
@@ -432,7 +438,7 @@ def _alembic_cmd(args: list[str]) -> str | None:
     ``args`` is forwarded verbatim to the ``alembic`` CLI (e.g.
     ``["upgrade", "schedules@head"]`` or ``["downgrade", "base"]``).
     """
-    cfg_path = Path(__file__).resolve().parents[3] / "alembic.ini"
+    cfg_path = _alembic_cfg_path()
     backend_root = cfg_path.parent
 
     try:
@@ -446,10 +452,103 @@ def _alembic_cmd(args: list[str]) -> str | None:
             f"alembic {' '.join(args)} failed with exit code {exc.returncode}"
         ) from exc
 
-    # Resolve the current head so the caller can persist applied_revision.
-    # We still import ScriptDirectory in-process (no asyncio involved).
+    # Resolve the caller's targeted head. Using ``get_current_head`` would
+    # raise ``MultipleHeads`` now that schedules has its own branch, so
+    # only return a head when the caller specified a branch-qualified
+    # target (``<label>@head``). Other callers ignore the return.
+    if len(args) >= 2 and args[-1].endswith("@head"):
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        script = ScriptDirectory.from_config(Config(str(cfg_path)))
+        return script.get_revision(args[-1]).revision
+    return None
+
+
+def _alembic_cfg_path() -> Path:
+    return Path(__file__).resolve().parents[3] / "alembic.ini"
+
+
+def _parent_revision(revision: str) -> str:
+    """Return the ``down_revision`` of ``revision``, or ``'base'`` if none."""
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
-    script = ScriptDirectory.from_config(Config(str(cfg_path)))
-    return script.get_current_head()
+    script = ScriptDirectory.from_config(Config(str(_alembic_cfg_path())))
+    rev = script.get_revision(revision)
+    down = rev.down_revision
+    if down is None:
+        return "base"
+    return down if isinstance(down, str) else down[0]
+
+
+def _module_branch_label(revision: str) -> str | None:
+    """Return the Alembic branch label that owns ``revision``.
+
+    Walks from ``revision`` down through its ancestors and returns the
+    first ``branch_labels`` it finds. The module-system convention is
+    that a module's first revision carries the label and every follow-up
+    in the same module chains off it without a label, so walking down
+    from the module's own head lands on that first revision.
+    """
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    script = ScriptDirectory.from_config(Config(str(_alembic_cfg_path())))
+    rev = script.get_revision(revision)
+    while rev is not None:
+        if rev.branch_labels:
+            return next(iter(rev.branch_labels))
+        down = rev.down_revision
+        if down is None:
+            return None
+        rev = script.get_revision(down if isinstance(down, str) else down[0])
+    return None
+
+
+def _downgrade_target_for(module_name: str, base_revision: str | None) -> str:
+    """Resolve the Alembic target for uninstalling a module.
+
+    - No ``base_revision`` (legacy main-linear module): ``"base"`` — kept
+      as a defensive fallback; reconcile now forces those modules to
+      ``removable=False`` so this path shouldn't be hit in practice.
+    - Revision belongs to a labelled module branch: ``"<label>@-<N>"``
+      where ``N`` is the count of revisions the module owns. This is
+      the only branch-scoped form Alembic supports: ``<label>@base``
+      globally downgrades every branch to the labelled branch's shared
+      ancestor, which would cascade into other modules.
+    - Revision with no owning label (should not happen post-audit):
+      downgrade to the parent revision.
+    """
+    if not base_revision:
+        return "base"
+    label = _module_branch_label(base_revision)
+    if label is not None:
+        count = _count_owned_revisions(module_name)
+        if count > 0:
+            return f"{label}@-{count}"
+        return "base"
+    return _parent_revision(base_revision)
+
+
+def _count_owned_revisions(module_name: str) -> int:
+    """Return how many Alembic revisions the module owns.
+
+    Counts ``.py`` files in ``app/modules/<name>/migrations/versions/``
+    (excluding ``__init__`` and other non-revision files). Zero when
+    the module has no branch of its own.
+    """
+    modules_root = Path(__file__).resolve().parents[3] / "app" / "modules"
+    versions_dir = modules_root / module_name / "migrations" / "versions"
+    if not versions_dir.is_dir():
+        return 0
+    return sum(
+        1
+        for p in versions_dir.glob("*.py")
+        if not p.name.startswith("__")
+    )
+
+
+def _pg_dump_dsn(database_url: str) -> str:
+    """Strip SQLAlchemy async driver prefix so ``pg_dump`` accepts the URL."""
+    return database_url.replace("postgresql+asyncpg://", "postgresql://")

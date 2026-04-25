@@ -154,6 +154,20 @@ class ModuleService:
             # installed modules never go through.
             branch_head = _resolve_module_branch_head(module)
 
+            # Safety net for Bug #2 (see issue #56): a module may only
+            # declare ``removable=True`` when its Alembic branch is
+            # self-contained. Otherwise uninstall would cascade into
+            # unrelated modules. Reconcile forces the flag off and warns.
+            effective_removable = manifest.removable
+            if manifest.removable and not _module_is_branch_isolated(module):
+                logger.warning(
+                    "Module %s declares removable=True but its Alembic "
+                    "branch has foreign descendants; forcing "
+                    "removable=False until the branch is isolated.",
+                    manifest.name,
+                )
+                effective_removable = False
+
             record = existing.get(module.name)
             if record is None:
                 self.db.add(
@@ -162,7 +176,7 @@ class ModuleService:
                         version=manifest.version,
                         state=ModuleState.INSTALLED.value,
                         category=manifest.category.value,
-                        removable=manifest.removable,
+                        removable=effective_removable,
                         auto_install=manifest.auto_install,
                         installed_at=now,
                         last_state_change=now,
@@ -186,7 +200,7 @@ class ModuleService:
             # Always refresh the snapshot so DB stays in sync with disk.
             record.manifest_snapshot = manifest.to_snapshot()
             record.category = manifest.category.value
-            record.removable = manifest.removable
+            record.removable = effective_removable
             record.auto_install = manifest.auto_install
 
             # Backfill base_revision for modules reconciled before this
@@ -596,6 +610,69 @@ def _resolve_module_branch_head(module: BaseModule) -> str | None:
         if rev_dir == versions_dir:
             return rev.revision
     return None
+
+
+def _module_is_branch_isolated(module: BaseModule) -> bool:
+    """True when the module's revisions form a self-contained branch.
+
+    A module is branch-isolated when no revision outside its own
+    ``migrations/versions/`` directory descends from any of the
+    module's revisions. Practically: running
+    ``alembic downgrade <module>@base`` rolls back only the module's
+    tables, never touching another module's migrations.
+
+    Modules without their own migrations directory (legacy main-linear)
+    are considered NOT isolated — they are the reason Bug #2 exists.
+    """
+    spec = importlib.util.find_spec(type(module).__module__)
+    if spec is None or spec.origin is None:
+        return False
+    versions_dir = (Path(spec.origin).parent / "migrations" / "versions").resolve()
+    if not versions_dir.is_dir():
+        return False
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    cfg_path = Path(__file__).resolve().parents[3] / "alembic.ini"
+    if not cfg_path.is_file():
+        return False
+
+    try:
+        script = ScriptDirectory.from_config(Config(str(cfg_path)))
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.warning("Could not load Alembic ScriptDirectory: %s", exc)
+        return False
+
+    owned: set[str] = set()
+    for rev in script.walk_revisions():
+        rev_path_str = getattr(rev, "path", None)
+        if not rev_path_str:
+            continue
+        try:
+            rev_dir = Path(rev_path_str).resolve().parent
+        except (OSError, ValueError):
+            continue
+        if rev_dir == versions_dir:
+            owned.add(rev.revision)
+
+    if not owned:
+        return False
+
+    for rev in script.walk_revisions():
+        if rev.revision in owned:
+            continue
+        down = rev.down_revision
+        parents: tuple[str, ...]
+        if down is None:
+            parents = ()
+        elif isinstance(down, str):
+            parents = (down,)
+        else:
+            parents = tuple(down)
+        if any(p in owned for p in parents):
+            return False
+    return True
 
 
 async def rediscover_and_reconcile(db: AsyncSession) -> None:

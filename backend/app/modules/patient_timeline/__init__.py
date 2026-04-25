@@ -34,7 +34,7 @@ class PatientTimelineModule(BaseModule):
         "depends": ["patients"],
         "installable": True,
         "auto_install": True,
-        "removable": True,
+        "removable": False,
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["read"],

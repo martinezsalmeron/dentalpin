@@ -407,7 +407,15 @@ async def post_upgrade(ctx: ModuleContext, from_version: str) -> None:
 
 ### `migrations/`
 
-Brand-new modules get their own Alembic branch:
+Every module — official or community — MUST carry its own Alembic
+branch. The branch is what makes `removable=True` safe: uninstall runs
+`alembic downgrade <module>@base`, which walks only the module's
+revisions. Without the branch, uninstall would cascade into every
+revision added after the module's tail in the main linear chain (see
+issue #56 for the full incident write-up).
+
+The initial revision chains off the core anchor `0001` and carries the
+branch label:
 
 ```python
 # migrations/versions/inv_0001_initial.py
@@ -416,8 +424,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "inv_0001"
-down_revision = None
-branch_labels = ("inventory",)
+down_revision = "0001"                # anchor on core initial
+branch_labels = ("inventory",)        # MUST match the module name
 depends_on = None
 
 
@@ -440,28 +448,61 @@ def downgrade() -> None:
     op.drop_table("inventory_items")
 ```
 
+Subsequent revisions chain off the module's own previous revision and
+leave `branch_labels = None`:
+
+```python
+revision = "inv_0002"
+down_revision = "inv_0001"
+branch_labels = None
+```
+
 Generate with:
 
 ```bash
 alembic revision --autogenerate \
   -m "initial inventory schema" \
-  --version-path dentalpin_inventory/migrations/versions \
+  --version-path app/modules/inventory/migrations/versions \
   --branch-label inventory \
-  --head base
+  --head 0001
 ```
 
-For **official modules** (`backend/app/modules/<name>/`): each module
-owns its initial migration under
-`backend/app/modules/<name>/migrations/versions/<mod>_0001_initial.py`.
-All module initials chain off the core `0001_core_initial.py`
-(main-linear at `backend/alembic/versions/`) via `down_revision`.
-Subsequent module migrations chain off the module's own previous
-revision. No `branch_labels` needed — the chain is linear across all
-modules so Alembic CLI works the same as before.
+(For community modules, swap the `--version-path` for
+`dentalpin_inventory/migrations/versions`.)
 
 `backend/alembic.ini`'s `version_locations` lists every module's
 `migrations/versions` directory so `alembic history | heads | upgrade`
-find them before `env.py` runs.
+find them before `env.py` runs. Because each branch adds a head, the
+backend entrypoint and the round-trip tests use the plural form:
+`alembic upgrade heads`.
+
+#### Why branches matter for removability
+
+In the legacy main-linear layout every module's revisions were
+threaded through a single chain. A module near the middle of the
+chain could not be uninstalled without also downgrading every module
+above it — the `alembic upgrade heads` that runs on the next boot then
+re-applied the target module's migration, and the tables came back.
+The user-facing "module uninstalled" message was cosmetic only.
+
+Per-module branches fix this because Alembic can walk a single branch
+independently. The uninstall pipeline relies on two commands that are
+safe only when your module is on its own branch:
+
+- `alembic downgrade <module>@-<N>` — walks `N` steps down on the
+  labelled branch, where `N` is the number of revisions your module
+  owns. The processor computes `N` automatically from the files in
+  `migrations/versions/`. `@base` is **not** equivalent: it resolves to
+  the branch's shared ancestor and would downgrade every other branch
+  on its way there.
+- `alembic upgrade <module>@head` — re-applies only your migrations.
+
+Reconcile at boot checks that the module's branch is self-contained.
+If a module declares `removable=True` but its branch has foreign
+descendants (another module's revision chains off one of yours), the
+core forces `removable=False` and logs a warning. This is a safety
+net, not a workaround — fix the offending `down_revision` so your
+branch stays isolated.
 
 ### `data/*.yaml`
 
@@ -781,9 +822,15 @@ Community modules can import these via pytest discovery once
 - Event bus: your handlers fire on published events; unrelated events
   don't crash
 - Seed idempotency: run `install` twice, no duplicates, no errors
-- Round-trip schema (modules with Alembic branch): `install` then
-  `uninstall` leaves the DB schema identical to pre-install (diff
-  via `pg_dump --schema-only`)
+- Round-trip uninstall (modules with `removable=True`):
+  - `alembic upgrade heads` followed by `alembic downgrade <module>@base`
+    removes every table your module owns.
+  - No table belonging to another module disappears in the process
+    (snapshot `information_schema.tables` before and after).
+  - The `pg_dump` backup file under `/app/storage/backups/` is
+    non-empty.
+  - `alembic upgrade <module>@head` restores the tables and the YAML
+    seeds are reloaded into `core_external_id`.
 
 ### Example
 
