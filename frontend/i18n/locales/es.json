@@ -263,7 +263,43 @@
     "editEmergencyContact": "Editar contacto de emergencia",
     "editLegalGuardian": "Editar tutor legal",
     "editBilling": "Editar datos de facturación",
-    "editMedicalHistory": "Editar historial médico"
+    "editMedicalHistory": "Editar historial médico",
+    "medicalSnapshot": {
+      "title": "Información médica",
+      "allergiesEmpty": "Sin alergias conocidas",
+      "allergiesNotReviewed": "Historial médico no registrado",
+      "completeHistory": "Completar historial",
+      "reviewedOn": "Revisado el {date}",
+      "conditions": {
+        "pregnantWeek": "Embarazo · sem. {week}",
+        "anticoagulantInr": "Anticoagulada · INR {inr}",
+        "smokerFreq": "Fumadora · {freq}/día"
+      }
+    },
+    "visitSummary": {
+      "title": "Resumen de visitas",
+      "lastVisit": "Última visita",
+      "nextAppointment": "Próxima cita",
+      "noLastVisit": "Sin visitas previas",
+      "noNextAppointment": "Sin cita programada"
+    },
+    "personalInfo": {
+      "title": "Datos personales",
+      "ageLabel": "{age} años",
+      "birthWithAge": "{date} ({age} años)"
+    },
+    "contactInfo": {
+      "title": "Contacto",
+      "copyPhone": "Copiar teléfono",
+      "copyEmail": "Copiar email",
+      "address": "Dirección",
+      "addEmergency": "Añadir contacto de emergencia",
+      "addGuardian": "Añadir tutor legal",
+      "guardianRequired": "Tutor legal requerido"
+    },
+    "administrative": {
+      "title": "Administración"
+    }
   },
   "patientDetail": {
     "tabs": {
@@ -1012,7 +1048,9 @@
     },
     "now": "Ahora",
     "today": "Hoy",
-    "yesterday": "Ayer"
+    "tomorrow": "Mañana",
+    "yesterday": "Ayer",
+    "copied": "Copiado al portapapeles"
   },
   "validation": {
     "required": "Este campo es requerido",

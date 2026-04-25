@@ -83,6 +83,14 @@ const nextAppointment = computed(() => {
   return upcoming[0] || null
 })
 
+// Most recent completed appointment (for visit summary card)
+const lastVisit = computed(() => {
+  const completed = appointments.value
+    .filter(apt => apt.status === 'completed')
+    .sort((a, b) => new Date(b.end_time).getTime() - new Date(a.end_time).getTime())
+  return completed[0] || null
+})
+
 // Fetch patient budgets
 const { data: budgetsData, status: budgetsStatus } = await useAsyncData(
   `patient:${patientId}:budgets`,
@@ -127,7 +135,7 @@ const { medicalHistory, isSaving: isSavingMedical, saveMedicalHistory } = useMed
 
 // Tabs - computed to filter by permissions
 // New structure: Clinical (Odontogram+Plans) | Administration (Budgets+Billing) | Appointments | Documents | Timeline | Info
-const activeTab = ref('clinical')
+const activeTab = ref('info')
 
 // Sync tab from query param
 watch(
@@ -143,7 +151,15 @@ watch(
 const tabs = computed(() => {
   const baseTabs: Array<{ value: string, label: string, icon: string, slot: string }> = []
 
-  // Clinical tab (Odontogram + Treatment Plans) - replaces separate odontogram tab
+  // Info tab (Demographics + Medical history) - first so safety-critical info is the default landing
+  baseTabs.push({
+    value: 'info',
+    label: t('patientDetail.tabs.info'),
+    icon: 'i-lucide-user',
+    slot: 'info'
+  })
+
+  // Clinical tab (Odontogram + Treatment Plans)
   if (can(PERMISSIONS.odontogram.read) || can(PERMISSIONS.treatmentPlans.read)) {
     baseTabs.push({
       value: 'clinical',
@@ -153,7 +169,7 @@ const tabs = computed(() => {
     })
   }
 
-  // Administration tab (Budgets + Billing) - merges budgets and billing
+  // Administration tab (Budgets + Billing)
   if (can(PERMISSIONS.budget.read) || can(PERMISSIONS.billing.read)) {
     baseTabs.push({
       value: 'administration',
@@ -169,14 +185,6 @@ const tabs = computed(() => {
     label: t('patientDetail.tabs.timeline'),
     icon: 'i-lucide-history',
     slot: 'timeline'
-  })
-
-  // Info tab (Demographics + Medical history)
-  baseTabs.push({
-    value: 'info',
-    label: t('patientDetail.tabs.info'),
-    icon: 'i-lucide-user',
-    slot: 'info'
   })
 
   return baseTabs
@@ -251,15 +259,6 @@ async function archivePatient() {
   }
 }
 
-// Format date
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
-}
-
 // Check if patient is a minor (under 18)
 const isMinor = computed(() => {
   if (!patient.value?.date_of_birth) return false
@@ -281,22 +280,6 @@ function handlePlanViewChange(view: 'list' | 'detail') {
 // Reset sidebar visibility when changing tabs
 watch(activeTab, () => {
   hideSidebar.value = false
-})
-
-// Info tab accordion items - with edit buttons in headers
-const infoAccordionItems = computed(() => {
-  const items = [
-    { label: t('patients.demographics'), icon: 'i-lucide-user', slot: 'demographics', defaultOpen: true },
-    { label: t('patients.emergencyContact.title'), icon: 'i-lucide-phone-call', slot: 'emergency' }
-  ]
-  if (isMinor.value) {
-    items.push({ label: t('patients.legalGuardian.title'), icon: 'i-lucide-shield-check', slot: 'guardian', defaultOpen: false })
-  }
-  items.push(
-    { label: t('patients.medicalHistory.title'), icon: 'i-lucide-heart-pulse', slot: 'medical', defaultOpen: false },
-    { label: t('patients.billingSection'), icon: 'i-lucide-receipt', slot: 'billing', defaultOpen: false }
-  )
-  return items
 })
 </script>
 
@@ -384,211 +367,40 @@ const infoAccordionItems = computed(() => {
           >
             <!-- Info tab content -->
             <template #info>
-              <div class="mt-4 space-y-4 overflow-visible">
-                <UCard>
-                  <UAccordion
-                    :items="infoAccordionItems"
-                    :ui="{ item: { base: 'border rounded-lg' } }"
-                    multiple
-                  >
-                    <!-- Demographics Section -->
-                    <template #demographics>
-                      <div class="p-4">
-                        <div class="flex justify-end mb-3">
-                          <UButton
-                            v-if="canEditPatient"
-                            variant="soft"
-                            color="neutral"
-                            icon="i-lucide-pencil"
-                            size="xs"
-                            @click="openSectionModal('demographics')"
-                          >
-                            {{ t('common.edit') }}
-                          </UButton>
-                        </div>
-                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <DataField
-                            :label="t('patients.firstName')"
-                            :value="patient.first_name"
-                          />
-                          <DataField
-                            :label="t('patients.lastName')"
-                            :value="patient.last_name"
-                          />
-                          <DataField
-                            :label="t('patients.phone')"
-                            :value="patient.phone"
-                          />
-                          <DataField
-                            :label="t('patients.email')"
-                            :value="patient.email"
-                          />
-                          <DataField
-                            :label="t('patients.dateOfBirth')"
-                            :value="patient.date_of_birth ? formatDate(patient.date_of_birth) : null"
-                          />
-                          <DataField
-                            :label="t('patients.gender.label')"
-                            :value="patient.gender ? t(`patients.gender.${patient.gender}`) : null"
-                          />
-                          <DataField
-                            v-if="patient.national_id"
-                            :label="t('patients.nationalId')"
-                            :value="`${patient.national_id_type?.toUpperCase() || ''}: ${patient.national_id}`"
-                          />
-                          <DataField
-                            v-if="patient.profession"
-                            :label="t('patients.profession')"
-                            :value="patient.profession"
-                          />
-                        </dl>
-                        <DataField
-                          v-if="patient.notes"
-                          class="mt-4"
-                          :label="t('patients.notes')"
-                          :value="patient.notes"
-                          multiline
-                        />
-                      </div>
-                    </template>
+              <div class="mt-4 space-y-3 lg:space-y-4 overflow-visible">
+                <MedicalSnapshotCard
+                  :medical-history="medicalHistory"
+                  :active-alerts="patient.active_alerts"
+                  :can-edit="canEditMedicalHistory"
+                  @edit="openSectionModal('medical')"
+                  @complete-history="openSectionModal('medical')"
+                />
 
-                    <!-- Emergency Contact Section -->
-                    <template #emergency>
-                      <div class="p-4">
-                        <div class="flex justify-end mb-3">
-                          <UButton
-                            v-if="canEditPatient"
-                            variant="soft"
-                            color="neutral"
-                            icon="i-lucide-pencil"
-                            size="xs"
-                            @click="openSectionModal('emergency')"
-                          >
-                            {{ t('common.edit') }}
-                          </UButton>
-                        </div>
-                        <EmergencyContactForm
-                          :model-value="patient.emergency_contact"
-                          readonly
-                        />
-                      </div>
-                    </template>
+                <VisitSummaryCard
+                  :last-visit="lastVisit"
+                  :next-appointment="nextAppointment"
+                />
 
-                    <!-- Legal Guardian Section (minors only) -->
-                    <template #guardian>
-                      <div class="p-4">
-                        <div class="flex justify-end mb-3">
-                          <UButton
-                            v-if="canEditPatient"
-                            variant="soft"
-                            color="neutral"
-                            icon="i-lucide-pencil"
-                            size="xs"
-                            @click="openSectionModal('guardian')"
-                          >
-                            {{ t('common.edit') }}
-                          </UButton>
-                        </div>
-                        <LegalGuardianForm
-                          :model-value="patient.legal_guardian"
-                          readonly
-                        />
-                      </div>
-                    </template>
+                <PersonalInfoCard
+                  :patient="patient"
+                  :can-edit="canEditPatient"
+                  @edit="openSectionModal('demographics')"
+                />
 
-                    <!-- Medical History Section -->
-                    <template #medical>
-                      <div class="p-4">
-                        <div class="flex justify-end mb-3">
-                          <UButton
-                            v-if="canEditMedicalHistory"
-                            variant="soft"
-                            color="neutral"
-                            icon="i-lucide-pencil"
-                            size="xs"
-                            @click="openSectionModal('medical')"
-                          >
-                            {{ t('common.edit') }}
-                          </UButton>
-                        </div>
-                        <MedicalHistoryForm
-                          :model-value="medicalHistory"
-                          readonly
-                        />
-                      </div>
-                    </template>
+                <ContactInfoCard
+                  :patient="patient"
+                  :is-minor="isMinor"
+                  :can-edit="canEditPatient"
+                  @edit-contact="openSectionModal('demographics')"
+                  @edit-emergency="openSectionModal('emergency')"
+                  @edit-guardian="openSectionModal('guardian')"
+                />
 
-                    <!-- Billing Section -->
-                    <template #billing>
-                      <div class="p-4">
-                        <div class="flex justify-between items-center mb-4">
-                          <div class="flex items-center gap-3">
-                            <UBadge
-                              v-if="patient.has_complete_billing_info"
-                              color="success"
-                              variant="subtle"
-                            >
-                              <UIcon
-                                name="i-lucide-check"
-                                class="w-3 h-3 mr-1"
-                              />
-                              {{ t('patients.billingComplete') }}
-                            </UBadge>
-                            <UBadge
-                              v-else
-                              color="warning"
-                              variant="subtle"
-                            >
-                              <UIcon
-                                name="i-lucide-alert-triangle"
-                                class="w-3 h-3 mr-1"
-                              />
-                              {{ t('patients.billingIncomplete') }}
-                            </UBadge>
-                          </div>
-                          <UButton
-                            v-if="canEditPatient"
-                            variant="soft"
-                            color="neutral"
-                            icon="i-lucide-pencil"
-                            size="xs"
-                            @click="openSectionModal('billing')"
-                          >
-                            {{ t('common.edit') }}
-                          </UButton>
-                        </div>
-                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <DataField
-                            :label="t('patients.billingName')"
-                            :value="patient.billing_name"
-                          />
-                          <DataField
-                            :label="t('patients.billingTaxId')"
-                            :value="patient.billing_tax_id"
-                          />
-                          <DataField
-                            :label="t('patients.billingEmail')"
-                            :value="patient.billing_email"
-                          />
-                          <DataField :label="t('patients.billingAddress')">
-                            <template v-if="patient.billing_address">
-                              {{ patient.billing_address.street || '' }}
-                              <template v-if="patient.billing_address.city || patient.billing_address.postal_code">
-                                <br>{{ patient.billing_address.postal_code }} {{ patient.billing_address.city }}
-                              </template>
-                              <template v-if="patient.billing_address.province">
-                                <br>{{ patient.billing_address.province }}
-                              </template>
-                            </template>
-                            <template v-else>
-                              —
-                            </template>
-                          </DataField>
-                        </dl>
-                      </div>
-                    </template>
-                  </UAccordion>
-                </UCard>
+                <AdministrativeCard
+                  :patient="patient"
+                  :can-edit="canEditPatient"
+                  @edit="openSectionModal('billing')"
+                />
 
                 <!-- Danger zone -->
                 <div class="alert-surface-danger rounded-token-lg px-4 py-3 flex items-center justify-between gap-4">

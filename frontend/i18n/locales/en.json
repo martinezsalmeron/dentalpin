@@ -235,7 +235,43 @@
     "editDemographics": "Edit demographics",
     "editEmergencyContact": "Edit emergency contact",
     "editBilling": "Edit billing information",
-    "editMedicalHistory": "Edit medical history"
+    "editMedicalHistory": "Edit medical history",
+    "medicalSnapshot": {
+      "title": "Medical information",
+      "allergiesEmpty": "No known allergies",
+      "allergiesNotReviewed": "Medical history not recorded",
+      "completeHistory": "Complete history",
+      "reviewedOn": "Reviewed on {date}",
+      "conditions": {
+        "pregnantWeek": "Pregnant · w. {week}",
+        "anticoagulantInr": "Anticoagulant · INR {inr}",
+        "smokerFreq": "Smoker · {freq}/day"
+      }
+    },
+    "visitSummary": {
+      "title": "Visit summary",
+      "lastVisit": "Last visit",
+      "nextAppointment": "Next appointment",
+      "noLastVisit": "No previous visits",
+      "noNextAppointment": "No appointment scheduled"
+    },
+    "personalInfo": {
+      "title": "Personal info",
+      "ageLabel": "{age} years",
+      "birthWithAge": "{date} ({age} years)"
+    },
+    "contactInfo": {
+      "title": "Contact",
+      "copyPhone": "Copy phone",
+      "copyEmail": "Copy email",
+      "address": "Address",
+      "addEmergency": "Add emergency contact",
+      "addGuardian": "Add legal guardian",
+      "guardianRequired": "Legal guardian required"
+    },
+    "administrative": {
+      "title": "Administrative"
+    }
   },
   "patientDetail": {
     "tabs": {
@@ -990,7 +1026,9 @@
     },
     "now": "Now",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "copied": "Copied to clipboard"
   },
   "validation": {
     "required": "This field is required",
