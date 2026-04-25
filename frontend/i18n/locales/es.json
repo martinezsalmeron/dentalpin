@@ -835,6 +835,85 @@
   },
   "settings": {
     "title": "Configuración",
+    "subtitle": "Gestiona los ajustes de tu clínica, equipo y módulos.",
+    "allCategories": "Todas las categorías",
+    "categories": {
+      "general": {
+        "label": "General",
+        "description": "Datos de la clínica, marca y zona horaria."
+      },
+      "workspace": {
+        "label": "Espacio de trabajo",
+        "description": "Gabinetes, horarios y disponibilidad."
+      },
+      "people": {
+        "label": "Personas",
+        "description": "Usuarios, roles e invitaciones."
+      },
+      "clinical": {
+        "label": "Clínica",
+        "description": "Catálogo, tratamientos y plantillas."
+      },
+      "billing": {
+        "label": "Facturación e impuestos",
+        "description": "Series, IVA y cumplimiento fiscal."
+      },
+      "communications": {
+        "label": "Comunicaciones",
+        "description": "Notificaciones, SMTP y plantillas."
+      },
+      "integrations": {
+        "label": "Integraciones",
+        "description": "Servicios externos y proveedores."
+      },
+      "modules": {
+        "label": "Módulos",
+        "description": "Instala, actualiza y desinstala módulos."
+      },
+      "account": {
+        "label": "Cuenta",
+        "description": "Tu perfil, contraseña e idioma."
+      }
+    },
+    "search": {
+      "placeholder": "Buscar configuración…",
+      "empty": "Sin resultados para esa búsqueda.",
+      "navigate": "navegar",
+      "open": "abrir"
+    },
+    "locked": {
+      "title": "No tienes acceso a esta sección",
+      "description": "Pide a un administrador de tu clínica que te conceda los permisos necesarios."
+    },
+    "emptyCategory": {
+      "title": "Sin opciones disponibles",
+      "description": "Cuando se habiliten módulos compatibles, sus opciones aparecerán aquí."
+    },
+    "loadError": {
+      "description": "No se pudo cargar este editor. Vuelve a intentarlo en unos segundos."
+    },
+    "comingSoon": {
+      "title": "Disponible próximamente",
+      "subtitle": "Estamos trabajando en esta sección. Mientras tanto, puedes gestionar este apartado desde la API."
+    },
+    "onboarding": {
+      "title": "Pon a punto tu clínica",
+      "subtitle": "Tienes {count} pasos pendientes para completar la configuración inicial.",
+      "dismiss": "Ocultar",
+      "items": {
+        "clinicInfo": {
+          "label": "Completa los datos de la clínica",
+          "description": "Nombre, CIF/NIF y dirección aparecerán en presupuestos y facturas."
+        },
+        "cabinets": {
+          "label": "Crea al menos un gabinete",
+          "description": "Sin gabinetes no se pueden crear citas en la agenda."
+        }
+      }
+    },
+    "cabinetsDescription": "Salas o boxes donde se atiende a pacientes.",
+    "usersDescription": "Cuentas con acceso a esta clínica y sus roles.",
+    "profileDescription": "Tu información personal en esta clínica.",
     "clinic": "Clínica",
     "profile": "Perfil",
     "clinicName": "Nombre de la clínica",

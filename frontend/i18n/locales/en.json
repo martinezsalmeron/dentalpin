@@ -814,6 +814,85 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Manage your clinic, team and modules.",
+    "allCategories": "All categories",
+    "categories": {
+      "general": {
+        "label": "General",
+        "description": "Clinic profile, branding and timezone."
+      },
+      "workspace": {
+        "label": "Workspace",
+        "description": "Cabinets, opening hours and availability."
+      },
+      "people": {
+        "label": "People",
+        "description": "Users, roles and invitations."
+      },
+      "clinical": {
+        "label": "Clinical",
+        "description": "Catalog, treatment defaults and templates."
+      },
+      "billing": {
+        "label": "Billing & tax",
+        "description": "Invoice series, VAT and tax compliance."
+      },
+      "communications": {
+        "label": "Communications",
+        "description": "Notifications, SMTP and templates."
+      },
+      "integrations": {
+        "label": "Integrations",
+        "description": "External services and providers."
+      },
+      "modules": {
+        "label": "Modules",
+        "description": "Install, upgrade and uninstall modules."
+      },
+      "account": {
+        "label": "Account",
+        "description": "Your profile, password and language."
+      }
+    },
+    "search": {
+      "placeholder": "Search settings…",
+      "empty": "No matches for that search.",
+      "navigate": "navigate",
+      "open": "open"
+    },
+    "locked": {
+      "title": "You don't have access to this section",
+      "description": "Ask a clinic administrator to grant you the required permissions."
+    },
+    "emptyCategory": {
+      "title": "No options available",
+      "description": "When compatible modules are enabled, their settings will appear here."
+    },
+    "loadError": {
+      "description": "Couldn't load this editor. Try again in a few seconds."
+    },
+    "comingSoon": {
+      "title": "Coming soon",
+      "subtitle": "We're working on this section. In the meantime you can manage this via the API."
+    },
+    "onboarding": {
+      "title": "Finish setting up your clinic",
+      "subtitle": "You have {count} pending steps to complete initial setup.",
+      "dismiss": "Dismiss",
+      "items": {
+        "clinicInfo": {
+          "label": "Complete the clinic profile",
+          "description": "Name, tax ID and address show up on quotes and invoices."
+        },
+        "cabinets": {
+          "label": "Create at least one cabinet",
+          "description": "Without cabinets you can't schedule appointments."
+        }
+      }
+    },
+    "cabinetsDescription": "Rooms or boxes where patients are treated.",
+    "usersDescription": "Accounts with access to this clinic and their roles.",
+    "profileDescription": "Your personal information in this clinic.",
     "clinic": "Clinic",
     "profile": "Profile",
     "clinicName": "Clinic name",

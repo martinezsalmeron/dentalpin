@@ -19,6 +19,7 @@
  */
 
 import type { Component } from 'vue'
+import type { SettingsCategoryId } from './useSettingsRegistry'
 
 export interface SlotEntry<Ctx = unknown> {
   /**
@@ -42,6 +43,20 @@ export interface SlotEntry<Ctx = unknown> {
    * ``ctx`` prop. Return false to hide the entry for this context.
    */
   condition?: (ctx: Ctx) => boolean
+  // ---- settings.sections extensions ---------------------------------
+  // Optional fields used by the ``settings.sections`` slot to place the
+  // entry inside the categorised settings IA. All other slots ignore
+  // them.
+  /** Settings category bucket. Default: ``'modules'`` (fallback). */
+  category?: SettingsCategoryId
+  /** Synonyms surfaced by Cmd-K search (lowercase substrings). */
+  searchKeywords?: string[]
+  /** i18n key for the label shown in nav + search. */
+  labelKey?: string
+  /** i18n key for one-line description. */
+  descriptionKey?: string
+  /** Renders an amber dot when truthy at resolve time. */
+  attention?: () => boolean
 }
 
 type SlotMap = Record<string, SlotEntry[]>
