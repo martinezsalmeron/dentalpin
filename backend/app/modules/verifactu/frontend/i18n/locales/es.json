@@ -1,0 +1,267 @@
+{
+  "verifactu": {
+    "nav": {
+      "settings": "Verifactu (AEAT)"
+    },
+    "settingsCards": {
+      "title": "Verifactu (AEAT)",
+      "description": "Cumplimiento de facturación electrónica para España. Gestiona certificado, productor del SIF, cola de envío y libro fiscal.",
+      "open": "Gestionar"
+    },
+    "title": "Verifactu (AEAT)",
+    "subtitle": "Cumplimiento de facturación electrónica para España (RRSIF / Veri*Factu).",
+    "hero": {
+      "loading": { "title": "Cargando…", "description": "" },
+      "setup": {
+        "title": "Configuración pendiente",
+        "description": "Completa los siguientes pasos antes de activar Verifactu."
+      },
+      "inactive": {
+        "title": "Listo para activar",
+        "description": "Toda la configuración está completa. Activa Verifactu para empezar a enviar facturas a la AEAT."
+      },
+      "active-test": {
+        "title": "Verifactu activo en pruebas",
+        "description": "Las facturas se envían al sandbox de la AEAT. Útil para validar la integración antes de pasar a producción."
+      },
+      "active-prod": {
+        "title": "Verifactu activo en producción",
+        "description": "Las facturas se envían como datos fiscales reales a la AEAT. Cualquier error queda registrado oficialmente."
+      },
+      "activate": "Activar Verifactu",
+      "deactivate": "Desactivar Verifactu"
+    },
+    "setup": {
+      "clinicNif": "Configurar el CIF/NIF de la clínica",
+      "clinicNifCta": "Datos de clínica",
+      "producer": "Rellenar datos del productor del SIF",
+      "producerCta": "Productor",
+      "declaration": "Firmar la declaración responsable del productor",
+      "declarationCta": "Firmar",
+      "certificate": "Subir el certificado digital (FNMT)",
+      "certificateCta": "Subir"
+    },
+    "cards": {
+      "manage": "Gestionar",
+      "emisor": {
+        "title": "Datos del emisor",
+        "editHint": "Estos datos vienen de la información de la clínica. Para cambiarlos, edítalos allí.",
+        "editLink": "Información de la clínica"
+      },
+      "producer": {
+        "empty": "Aún no se ha configurado el productor del SIF."
+      },
+      "vatMapping": {
+        "title": "Clasificación IVA AEAT",
+        "description": "Asocia cada tipo de IVA del catálogo con su clasificación AEAT (S1, E1, N1…)."
+      },
+      "activity": {
+        "title": "Actividad"
+      }
+    },
+    "modal": {
+      "confirmProdTitle": "¿Pasar a producción?",
+      "confirmProdAction": "Sí, pasar a producción"
+    },
+    "vatMapping": {
+      "title": "Clasificación IVA AEAT",
+      "subtitle": "Define cómo cada tipo de IVA del catálogo se traduce a la clasificación AEAT en cada registro Verifactu.",
+      "legalIntroTitle": "Cómo funciona",
+      "legalIntro": "Si dejas un tipo en 'Auto', verifactu usa una heurística (rate>0 → S1, rate=0 → N1). Para servicios sanitarios dentales suele ser correcto fijar 'E1 — Exento art. 20 LIVA'. Las clínicas españolas suelen necesitar override sólo en el tipo 'Exento'.",
+      "empty": "No hay tipos de IVA en el catálogo de la clínica.",
+      "rate": "Tipo",
+      "defaultBadge": "Por defecto",
+      "autoOption": "Auto ({code}) — usar heurística",
+      "sourceAuto": "automático",
+      "sourceOverride": "override fijado",
+      "save": "Guardar",
+      "saved": "Clasificación guardada.",
+      "saveFailed": "No se pudo guardar la clasificación.",
+      "notesPlaceholder": "Notas (p. ej. 'art. 20.uno.3.º LIVA')"
+    },
+    "environment": {
+      "test": "Pruebas",
+      "prod": "Producción",
+      "switchToProd": "Cambiar a producción",
+      "switchToTest": "Cambiar a pruebas",
+      "warningProd": "Vas a pasar a producción real. Las facturas que se emitan a partir de ahora se enviarán a la AEAT como datos fiscales reales.",
+      "label": "Entorno"
+    },
+    "status": {
+      "enabled": "Activo",
+      "disabled": "Inactivo",
+      "noCertificate": "Sin certificado",
+      "certificateExpiringSoon": "Certificado expira en {days} días",
+      "certificateExpired": "Certificado expirado"
+    },
+    "settings": {
+      "title": "Configuración Verifactu",
+      "enable": "Activar Verifactu",
+      "enableHint": "Cuando esté activo, cada factura emitida se enviará automáticamente a la AEAT.",
+      "nifEmisor": "NIF del emisor",
+      "nifEmisorHint": "NIF de la clínica que emite las facturas. Debe coincidir con el certificado.",
+      "nombreRazon": "Razón social del emisor",
+      "save": "Guardar configuración",
+      "saved": "Configuración guardada"
+    },
+    "certificate": {
+      "title": "Certificado digital",
+      "description": "Sube el certificado FNMT de la clínica (.pfx / .p12). Se almacena cifrado.",
+      "active": "Certificado activo",
+      "healthy": "Vigente",
+      "subject": "Titular",
+      "issuer": "Emisor",
+      "nif": "NIF del titular",
+      "validFrom": "Válido desde",
+      "validUntil": "Válido hasta",
+      "uploadFile": "Archivo del certificado",
+      "uploadHint": "Acepta formatos .pfx y .p12.",
+      "password": "Contraseña del certificado",
+      "passwordHint": "La contraseña con la que se protege el archivo. No se almacena en claro.",
+      "passwordPlaceholder": "••••••••",
+      "togglePassword": "Mostrar/ocultar contraseña",
+      "uploadButton": "Subir certificado",
+      "uploadTitle": "Subir certificado",
+      "replaceTitle": "Reemplazar certificado",
+      "uploadSubmit": "Subir certificado",
+      "replaceSubmit": "Reemplazar certificado",
+      "uploaded": "Certificado subido y activo",
+      "uploadFailed": "No se pudo cargar el certificado",
+      "invalidFormat": "Formato no válido. Sube un archivo .pfx o .p12.",
+      "history": "Historial de certificados",
+      "historyEmpty": "Aún no se ha subido ningún certificado.",
+      "noActive": "No hay un certificado activo",
+      "noActiveHint": "Sube tu certificado FNMT (.pfx / .p12) para poder activar Verifactu y firmar los envíos a la AEAT.",
+      "dropzoneTitle": "Arrastra tu certificado aquí",
+      "dropzoneSubtitle": "o haz clic para seleccionar un archivo",
+      "dropzoneFormats": "Formato .pfx o .p12",
+      "removeFile": "Quitar archivo",
+      "encryptionNote": "El archivo y la contraseña se almacenan cifrados con la clave del servidor. Nunca se exponen en claro.",
+      "helpTitle": "¿De dónde sacar el certificado?",
+      "helpBody": "Para firmar los envíos a la AEAT necesitas un certificado digital de la clínica emitido por la FNMT. Existen tres modalidades válidas:",
+      "helpItem1": "Certificado de Representante de Persona Jurídica — para sociedades (S.L., S.A.).",
+      "helpItem2": "Certificado de Persona Física — para autónomos cuyo NIF coincide con el emisor.",
+      "helpItem3": "Sello de Empresa — alternativa para entidades.",
+      "fnmtLink": "Solicitar certificado en la sede FNMT"
+    },
+    "queue": {
+      "title": "Cola de envío",
+      "tabs": {
+        "pending": "Pendientes",
+        "rejected": "Rechazados",
+        "transient": "Errores temporales"
+      },
+      "empty": "No hay registros en este estado.",
+      "retry": "Reintentar (Subsanación)",
+      "viewInvoice": "Ver factura",
+      "errorCode": "Código",
+      "transportError": "Error de transporte",
+      "aeatFault": "Respuesta de fallo de AEAT",
+      "submissionAttempt": "Intento {n}",
+      "processNow": "Procesar ahora",
+      "processed": "Procesados {n} registros"
+    },
+    "records": {
+      "title": "Libro fiscal",
+      "subtitle": "Historial inmutable de registros enviados a la AEAT.",
+      "filterState": "Estado",
+      "filterTipo": "Tipo",
+      "columns": {
+        "createdAt": "Fecha",
+        "tipoFactura": "Tipo",
+        "serieNumero": "Número",
+        "importe": "Importe",
+        "state": "Estado",
+        "csv": "CSV AEAT"
+      },
+      "viewXml": "Ver XML",
+      "verifyChain": "Verificar cadena"
+    },
+    "tipoFactura": {
+      "F1": "F1 — Factura completa",
+      "F2": "F2 — Simplificada",
+      "F3": "F3 — Sustitución",
+      "R1": "R1 — Rectificativa",
+      "R2": "R2 — Bad debt",
+      "R5": "R5 — Rectificativa simplificada"
+    },
+    "recordState": {
+      "pending": "Pendiente",
+      "sending": "Enviando",
+      "accepted": "Aceptado",
+      "accepted_with_errors": "Aceptado con errores",
+      "rejected": "Rechazado",
+      "failed_transient": "Reintentando",
+      "failed_validation": "Error de validación"
+    },
+    "panel": {
+      "verifactuTitle": "Verifactu",
+      "huella": "Huella",
+      "csv": "CSV AEAT",
+      "qr": "Código QR",
+      "viewRecord": "Ver registro completo",
+      "submittedAt": "Enviado",
+      "stillPending": "Pendiente de envío a AEAT"
+    },
+    "producer": {
+      "title": "Productor del SIF",
+      "subtitle": "Identificación legal de quien pone el software en producción y firma la declaración responsable.",
+      "legalIntroTitle": "Responsabilidad legal",
+      "legalIntro": "RD 1007/2023 art. 13 exige que el productor del Sistema Informático de Facturación firme una declaración responsable. Si DentalPin se ofrece como SaaS gestionado, el productor es la empresa que opera el SaaS. Si una clínica autohospeda el software, ella misma es productora (autodesarrollo). Si lo despliega un integrador, es el integrador.",
+      "process": {
+        "title": "¿Qué tienes que hacer?",
+        "s1": "Identifica quién es el productor del SIF (paso 1) — datos legales que aparecerán en la declaración y en cada registro enviado a la AEAT.",
+        "s2": "Lee la declaración responsable y fírmala electrónicamente (paso 2). El sistema sella la fecha y el usuario que firma como evidencia.",
+        "s3": "Descarga el PDF firmado (paso 3) para guardarlo como evidencia y, si operas un SaaS, distribuirlo a tus clínicas.",
+        "legalNote": "La firma electrónica registrada en el sistema es suficiente como evidencia ante una inspección AEAT. El PDF es un documento informativo basado en esa firma."
+      },
+      "step1": {
+        "title": "Datos del productor",
+        "description": "Estos datos identifican legalmente al productor del SIF y se incluyen en la declaración responsable y en el bloque SistemaInformatico de cada registro enviado a la AEAT.",
+        "lockedTitle": "Datos sellados",
+        "lockedDescription": "La declaración ya fue firmada con estos datos, por lo que quedan bloqueados. Si necesitas cambiarlos, contacta soporte para anular la firma."
+      },
+      "step2": {
+        "title": "Firmar declaración responsable",
+        "description": "Lee con atención el texto. Cuando estés conforme, marca la casilla y pulsa Firmar electrónicamente. La firma se sella en el sistema con la fecha y el usuario."
+      },
+      "step3": {
+        "title": "Descargar declaración firmada",
+        "description": "Documento imprimible con los datos del productor y la marca de firma electrónica. Útil para archivo interno, inspección AEAT o distribución a clínicas que usan el sistema.",
+        "lockedHint": "Disponible una vez firmada la declaración (paso 2)."
+      },
+      "declaration": {
+        "heading": "Declaración responsable",
+        "legalRef": "Sistema Informático de Facturación — Veri*Factu (RD 1007/2023, art. 13)",
+        "preamble": "De conformidad con el artículo 13 del Real Decreto 1007/2023 (RRSIF) y la Orden HAC/1177/2024:",
+        "identity": "{name}, con NIF {nif}, en su condición de productor del Sistema Informático de Facturación denominado DentalPin (identificador del sistema {idSistema}, versión {version}), declara responsablemente que:",
+        "item1": "El sistema cumple los requisitos del artículo 29.2.j) de la Ley 58/2003, General Tributaria, y del RRSIF.",
+        "item2": "El sistema garantiza la integridad, conservación, accesibilidad, legibilidad, trazabilidad e inalterabilidad de los registros de facturación.",
+        "item3": "El sistema implementa el envío continuo de los registros a la AEAT en modalidad Veri*Factu.",
+        "item4": "El productor se compromete a mantener el sistema actualizado conforme a las modificaciones normativas que se publiquen."
+      },
+      "statusSigned": "Firmada",
+      "statusUnsigned": "Pendiente de firma",
+      "readAndAccept": "He leído y acepto la declaración responsable como productor del SIF.",
+      "signButton": "Firmar electrónicamente",
+      "signNote": "Al pulsar el botón se registra la firma con la fecha y tu usuario. La acción no se puede deshacer desde la interfaz.",
+      "signedToast": "Declaración firmada y registrada.",
+      "sealedNote": "Los datos del productor quedan sellados como evidencia para una posible inspección AEAT.",
+      "saveDraft": "Guardar datos sin firmar",
+      "draftSaved": "Datos guardados (pendientes de firma).",
+      "downloadPdf": "Descargar PDF firmado",
+      "revokeAction": "Anular firma para editar",
+      "revokeTitle": "¿Anular la firma?",
+      "revokeBody": "Anular la firma electrónica te deja editar de nuevo los datos del productor. Antes de continuar:",
+      "revokeBullet1": "La firma actual deja de tener validez como evidencia ante AEAT.",
+      "revokeBullet2": "Verifactu se desactiva automáticamente hasta que firmes la nueva declaración.",
+      "revokeBullet3": "Los registros ya enviados a AEAT no se ven afectados — sólo cambia el productor declarado para los siguientes envíos.",
+      "revokeConfirm": "Anular y editar",
+      "revokedToast": "Firma anulada. Ya puedes editar los datos del productor.",
+      "signLabel": "Firmar la declaración responsable",
+      "alreadySigned": "Declaración firmada",
+      "signedAt": "Firmada electrónicamente el {at}",
+      "saveFailed": "No se pudo guardar la información del productor."
+    }
+  }
+}

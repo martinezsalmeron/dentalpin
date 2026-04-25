@@ -50,6 +50,7 @@ export interface ClinicAddress {
 export interface ClinicUpdate {
   name?: string
   tax_id?: string
+  legal_name?: string
   address?: ClinicAddress
   phone?: string
   email?: string
@@ -60,6 +61,7 @@ export interface Clinic {
   id: string
   name: string
   tax_id: string
+  legal_name?: string | null
   address?: Record<string, string>
   phone?: string
   email?: string

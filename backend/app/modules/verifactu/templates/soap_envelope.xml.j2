@@ -1,0 +1,43 @@
+{#-
+  Top-level SOAP envelope for RegFactuSistemaFacturacion. Wraps N
+  RegistroFactura children, each containing either a RegistroAlta or
+  RegistroAnulacion (rendered separately and inlined here).
+
+  Namespace convention (matches AEAT-accepted implementations such as
+  EduardoRuizM/verifactu-api-python):
+
+  * ``sum:``  → SuministroLR.xsd. Used for the wrapper elements
+    ``RegFactuSistemaFacturacion``, ``Cabecera`` and ``RegistroFactura``
+    — these are the ones DEFINED in the LR schema.
+  * default ``xmlns=`` → SuministroInformacion.xsd. Inner data
+    elements (``ObligadoEmision``, ``RegistroAlta``, ``IDFactura``,
+    ``Desglose``, …) have no prefix and inherit the default namespace.
+
+  Variables:
+    cabecera_obligado_nif    — clinic NIF
+    cabecera_obligado_nombre — clinic legal name
+    registros_xml            — list of XML strings already rendered
+                               (RegistroAlta / RegistroAnulacion)
+-#}
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:sum="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroLR.xsd"
+    xmlns="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroInformacion.xsd">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <sum:RegFactuSistemaFacturacion>
+      <sum:Cabecera>
+        <ObligadoEmision>
+          <NombreRazon>{{ cabecera_obligado_nombre | e }}</NombreRazon>
+          <NIF>{{ cabecera_obligado_nif }}</NIF>
+        </ObligadoEmision>
+      </sum:Cabecera>
+      {%- for registro_xml in registros_xml %}
+      <sum:RegistroFactura>
+        {{ registro_xml | safe }}
+      </sum:RegistroFactura>
+      {%- endfor %}
+    </sum:RegFactuSistemaFacturacion>
+  </soapenv:Body>
+</soapenv:Envelope>

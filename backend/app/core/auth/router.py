@@ -559,6 +559,8 @@ async def update_clinic_metadata(
         clinic.name = data.name
     if data.tax_id is not None:
         clinic.tax_id = data.tax_id
+    if data.legal_name is not None:
+        clinic.legal_name = data.legal_name or None
     if data.phone is not None:
         clinic.phone = data.phone
     if data.email is not None:

@@ -35,6 +35,7 @@ const backLabel = computed(() => comesFromPatient.value ? t('actions.back') : t(
 const showPaymentModal = ref(false)
 const showCreditNoteModal = ref(false)
 const showSendModal = ref(false)
+const showIssueConfirm = ref(false)
 const isProcessing = ref(false)
 const isDownloadingPdf = ref(false)
 const isSending = ref(false)
@@ -109,7 +110,7 @@ function getStatusBadgeColor(status: string): string {
 }
 
 // Actions
-async function handleIssue() {
+function requestIssue() {
   if (!currentInvoice.value) return
 
   // Check billing data is complete before issuing
@@ -122,7 +123,11 @@ async function handleIssue() {
     return
   }
 
-  if (!confirm(t('invoice.confirmations.issue'))) return
+  showIssueConfirm.value = true
+}
+
+async function handleIssue() {
+  if (!currentInvoice.value) return
 
   isProcessing.value = true
   try {
@@ -132,11 +137,14 @@ async function handleIssue() {
       description: t('invoice.messages.issued'),
       color: 'success'
     })
+    showIssueConfirm.value = false
     await fetchInvoice(invoiceId.value)
-  } catch {
+  } catch (e: any) {
+    const data = e?.data ?? e?.response?._data ?? {}
+    const detail = data.message || data.detail || data.errors?.[0] || null
     toast.add({
       title: t('common.error'),
-      description: t('invoice.errors.issue'),
+      description: detail || t('invoice.errors.issue'),
       color: 'error'
     })
   } finally {
@@ -462,8 +470,7 @@ function goToCreditNoteFor() {
             v-if="canIssue(currentInvoice) && can('billing.write')"
             color="primary"
             icon="i-lucide-send"
-            :loading="isProcessing"
-            @click="handleIssue"
+            @click="requestIssue"
           >
             {{ t('invoice.actions.issue') }}
           </UButton>
@@ -794,6 +801,53 @@ function goToCreditNoteFor() {
         </div>
       </div>
     </template>
+
+    <!-- Issue confirmation modal -->
+    <UModal
+      v-model:open="showIssueConfirm"
+      :title="t('invoice.actions.issue')"
+    >
+      <template #body>
+        <div class="p-4">
+          <div class="flex items-start gap-3">
+            <div class="shrink-0 w-10 h-10 rounded-full alert-surface-warning flex items-center justify-center">
+              <UIcon
+                name="i-lucide-send"
+                class="w-5 h-5"
+              />
+            </div>
+            <div class="flex-1 space-y-2">
+              <p class="text-default font-medium">
+                {{ t('invoice.confirmations.issue') }}
+              </p>
+              <p class="text-caption text-subtle">
+                {{ t('invoice.confirmations.issueDescription') }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            :disabled="isProcessing"
+            @click="showIssueConfirm = false"
+          >
+            {{ t('common.cancel') }}
+          </UButton>
+          <UButton
+            color="primary"
+            icon="i-lucide-send"
+            :loading="isProcessing"
+            @click="handleIssue"
+          >
+            {{ t('invoice.actions.issue') }}
+          </UButton>
+        </div>
+      </template>
+    </UModal>
 
     <!-- Payment Modal -->
     <UModal

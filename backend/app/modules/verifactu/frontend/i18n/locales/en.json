@@ -1,0 +1,261 @@
+{
+  "verifactu": {
+    "nav": { "settings": "Verifactu (AEAT)" },
+    "settingsCards": {
+      "title": "Verifactu (AEAT)",
+      "description": "Spanish e-invoicing compliance. Manage certificate, SIF producer, submission queue and fiscal ledger.",
+      "open": "Open"
+    },
+    "title": "Verifactu (AEAT)",
+    "subtitle": "Spanish e-invoicing compliance (RRSIF / Veri*Factu).",
+    "hero": {
+      "loading": { "title": "Loading…", "description": "" },
+      "setup": {
+        "title": "Setup pending",
+        "description": "Complete the following steps before enabling Verifactu."
+      },
+      "inactive": {
+        "title": "Ready to enable",
+        "description": "All configuration is complete. Enable Verifactu to start submitting invoices to AEAT."
+      },
+      "active-test": {
+        "title": "Verifactu active in test",
+        "description": "Invoices are submitted to the AEAT sandbox. Useful to validate the integration before going to production."
+      },
+      "active-prod": {
+        "title": "Verifactu active in production",
+        "description": "Invoices are submitted as real fiscal data to AEAT. Any error is officially recorded."
+      },
+      "activate": "Enable Verifactu",
+      "deactivate": "Disable Verifactu"
+    },
+    "setup": {
+      "clinicNif": "Configure the clinic's tax ID (CIF/NIF)",
+      "clinicNifCta": "Clinic info",
+      "producer": "Fill in the SIF producer details",
+      "producerCta": "Producer",
+      "declaration": "Sign the producer's declaración responsable",
+      "declarationCta": "Sign",
+      "certificate": "Upload the digital certificate (FNMT)",
+      "certificateCta": "Upload"
+    },
+    "cards": {
+      "manage": "Manage",
+      "emisor": {
+        "title": "Issuer data",
+        "editHint": "This data comes from the clinic info. To change it, edit it there.",
+        "editLink": "Clinic info"
+      },
+      "producer": {
+        "empty": "SIF producer not configured yet."
+      },
+      "vatMapping": {
+        "title": "AEAT VAT classification",
+        "description": "Map each catalog VAT type to its AEAT classification (S1, E1, N1…)."
+      },
+      "activity": {
+        "title": "Activity"
+      }
+    },
+    "modal": {
+      "confirmProdTitle": "Switch to production?",
+      "confirmProdAction": "Yes, switch to production"
+    },
+    "vatMapping": {
+      "title": "AEAT VAT classification",
+      "subtitle": "Define how each catalog VAT type translates to its AEAT classification in every Verifactu record.",
+      "legalIntroTitle": "How it works",
+      "legalIntro": "Leaving a row on 'Auto' uses a heuristic (rate>0 → S1, rate=0 → N1). For dental clinical services it usually makes sense to pin 'E1 — Exempt art. 20 LIVA'. Spanish clinics typically only need an override on the 'Exempt' VAT type.",
+      "empty": "No VAT types in the clinic catalog.",
+      "rate": "Rate",
+      "defaultBadge": "Default",
+      "autoOption": "Auto ({code}) — use heuristic",
+      "sourceAuto": "automatic",
+      "sourceOverride": "override pinned",
+      "save": "Save",
+      "saved": "Classification saved.",
+      "saveFailed": "Could not save classification.",
+      "notesPlaceholder": "Notes (e.g. 'art. 20.uno.3.º LIVA')"
+    },
+    "environment": {
+      "test": "Test",
+      "prod": "Production",
+      "switchToProd": "Switch to production",
+      "switchToTest": "Switch to test",
+      "warningProd": "You're about to switch to production. From now on, every issued invoice will be sent to AEAT as a real fiscal record.",
+      "label": "Environment"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "noCertificate": "No certificate",
+      "certificateExpiringSoon": "Certificate expires in {days} days",
+      "certificateExpired": "Certificate expired"
+    },
+    "settings": {
+      "title": "Verifactu settings",
+      "enable": "Enable Verifactu",
+      "enableHint": "When enabled, every issued invoice is automatically sent to AEAT.",
+      "nifEmisor": "Issuer NIF",
+      "nifEmisorHint": "The clinic NIF. Must match the certificate.",
+      "nombreRazon": "Issuer legal name",
+      "save": "Save",
+      "saved": "Settings saved"
+    },
+    "certificate": {
+      "title": "Digital certificate",
+      "description": "Upload the clinic's FNMT certificate (.pfx / .p12). Stored encrypted.",
+      "active": "Active certificate",
+      "healthy": "Healthy",
+      "subject": "Holder",
+      "issuer": "Issuer",
+      "nif": "Holder NIF",
+      "validFrom": "Valid from",
+      "validUntil": "Valid until",
+      "uploadFile": "Certificate file",
+      "uploadHint": "Accepts .pfx and .p12 formats.",
+      "password": "Certificate password",
+      "passwordHint": "The password protecting the file. Never stored in cleartext.",
+      "passwordPlaceholder": "••••••••",
+      "togglePassword": "Show/hide password",
+      "uploadButton": "Upload certificate",
+      "uploadTitle": "Upload certificate",
+      "replaceTitle": "Replace certificate",
+      "uploadSubmit": "Upload certificate",
+      "replaceSubmit": "Replace certificate",
+      "uploaded": "Certificate uploaded and active",
+      "uploadFailed": "Could not upload the certificate",
+      "invalidFormat": "Invalid format. Upload a .pfx or .p12 file.",
+      "history": "Certificate history",
+      "historyEmpty": "No certificate uploaded yet.",
+      "noActive": "No active certificate",
+      "noActiveHint": "Upload your FNMT certificate (.pfx / .p12) to enable Verifactu and sign submissions to AEAT.",
+      "dropzoneTitle": "Drop your certificate here",
+      "dropzoneSubtitle": "or click to pick a file",
+      "dropzoneFormats": ".pfx or .p12 format",
+      "removeFile": "Remove file",
+      "encryptionNote": "The file and password are encrypted with the server key. Never stored in cleartext.",
+      "helpTitle": "Where to get the certificate?",
+      "helpBody": "To sign submissions to AEAT you need a digital certificate for the clinic, issued by FNMT. Three valid types:",
+      "helpItem1": "Legal Representative Certificate — for companies (S.L., S.A.).",
+      "helpItem2": "Personal Certificate — for autónomos whose NIF matches the issuer.",
+      "helpItem3": "Corporate Seal — alternative for entities.",
+      "fnmtLink": "Request certificate at the FNMT portal"
+    },
+    "queue": {
+      "title": "Submission queue",
+      "tabs": { "pending": "Pending", "rejected": "Rejected", "transient": "Transient errors" },
+      "empty": "No records in this state.",
+      "retry": "Retry (Subsanación)",
+      "viewInvoice": "View invoice",
+      "errorCode": "Code",
+      "transportError": "Transport error",
+      "aeatFault": "AEAT fault response",
+      "submissionAttempt": "Attempt {n}",
+      "processNow": "Process now",
+      "processed": "Processed {n} records"
+    },
+    "records": {
+      "title": "Fiscal ledger",
+      "subtitle": "Immutable history of records submitted to AEAT.",
+      "filterState": "State",
+      "filterTipo": "Type",
+      "columns": {
+        "createdAt": "Date",
+        "tipoFactura": "Type",
+        "serieNumero": "Number",
+        "importe": "Amount",
+        "state": "State",
+        "csv": "AEAT CSV"
+      },
+      "viewXml": "View XML",
+      "verifyChain": "Verify chain"
+    },
+    "tipoFactura": {
+      "F1": "F1 — Full invoice",
+      "F2": "F2 — Simplified",
+      "F3": "F3 — Substitution",
+      "R1": "R1 — Rectification",
+      "R2": "R2 — Bad debt",
+      "R5": "R5 — Simplified rectification"
+    },
+    "recordState": {
+      "pending": "Pending",
+      "sending": "Sending",
+      "accepted": "Accepted",
+      "accepted_with_errors": "Accepted with errors",
+      "rejected": "Rejected",
+      "failed_transient": "Retrying",
+      "failed_validation": "Validation error"
+    },
+    "panel": {
+      "verifactuTitle": "Verifactu",
+      "huella": "Hash",
+      "csv": "AEAT CSV",
+      "qr": "QR code",
+      "viewRecord": "View full record",
+      "submittedAt": "Submitted",
+      "stillPending": "Pending submission to AEAT"
+    },
+    "producer": {
+      "title": "SIF producer",
+      "subtitle": "Legal identification of whoever puts the software in production and signs the declaración responsable.",
+      "legalIntroTitle": "Legal responsibility",
+      "legalIntro": "RD 1007/2023 art. 13 requires the producer of the Sistema Informático de Facturación to sign a declaración responsable. If DentalPin is offered as managed SaaS, the producer is the SaaS operator. If a clinic self-hosts (autodesarrollo), the clinic itself is the producer. If an integrator deploys it, the integrator is the producer.",
+      "process": {
+        "title": "What you need to do",
+        "s1": "Identify who the SIF producer is (step 1) — legal data that appears in the declaration and in every record sent to AEAT.",
+        "s2": "Read the declaration responsable and sign it electronically (step 2). The system seals the date and the signing user as evidence.",
+        "s3": "Download the signed PDF (step 3) for archival and, if you operate a SaaS, to distribute to your clinics.",
+        "legalNote": "The electronic signature stored in the system is sufficient evidence for an AEAT audit. The PDF is an informational document derived from that signature."
+      },
+      "step1": {
+        "title": "Producer data",
+        "description": "These fields legally identify the SIF producer and are embedded both in the declaración responsable and in the SistemaInformatico block of every record sent to AEAT.",
+        "lockedTitle": "Sealed data",
+        "lockedDescription": "The declaration was already signed with this data, so it is locked. Contact support to revoke the signature if you need to change it."
+      },
+      "step2": {
+        "title": "Sign the declaration",
+        "description": "Read the text carefully. Once you are happy, tick the checkbox and click Sign electronically. The signature is sealed in the system with the date and user."
+      },
+      "step3": {
+        "title": "Download signed declaration",
+        "description": "Printable document with the producer data and the electronic-signature stamp. Useful for internal archiving, AEAT audit, or distribution to clinics using the system.",
+        "lockedHint": "Available after the declaration is signed (step 2)."
+      },
+      "declaration": {
+        "heading": "Declaración responsable",
+        "legalRef": "Sistema Informático de Facturación — Veri*Factu (RD 1007/2023, art. 13)",
+        "preamble": "Pursuant to article 13 of Royal Decree 1007/2023 (RRSIF) and Order HAC/1177/2024:",
+        "identity": "{name}, with NIF {nif}, acting as producer of the Sistema Informático de Facturación named DentalPin (system identifier {idSistema}, version {version}), responsibly declares that:",
+        "item1": "The system meets the requirements of article 29.2.j) of Law 58/2003 (General Tributaria) and the RRSIF.",
+        "item2": "The system guarantees the integrity, retention, accessibility, legibility, traceability and inalterability of invoicing records.",
+        "item3": "The system implements continuous submission of records to AEAT under Veri*Factu mode.",
+        "item4": "The producer commits to keep the system updated as regulations evolve."
+      },
+      "statusSigned": "Signed",
+      "statusUnsigned": "Awaiting signature",
+      "readAndAccept": "I have read and accept the declaración responsable as SIF producer.",
+      "signButton": "Sign electronically",
+      "signNote": "Clicking the button records the signature with the date and your user. The action cannot be undone from the interface.",
+      "signedToast": "Declaration signed and recorded.",
+      "sealedNote": "Producer data is sealed as evidence for any potential AEAT audit.",
+      "saveDraft": "Save without signing",
+      "draftSaved": "Draft saved (signature pending).",
+      "downloadPdf": "Download signed PDF",
+      "revokeAction": "Revoke signature to edit",
+      "revokeTitle": "Revoke the signature?",
+      "revokeBody": "Revoking the electronic signature lets you edit producer data again. Before you continue:",
+      "revokeBullet1": "The current signature loses legal value as AEAT evidence.",
+      "revokeBullet2": "Verifactu auto-disables until you sign the new declaration.",
+      "revokeBullet3": "Records already submitted to AEAT are not affected — only the declared producer for future submissions changes.",
+      "revokeConfirm": "Revoke and edit",
+      "revokedToast": "Signature revoked. You can edit the producer data now.",
+      "signLabel": "Sign the declaración responsable",
+      "alreadySigned": "Declaration signed",
+      "signedAt": "Electronically signed on {at}",
+      "saveFailed": "Could not save producer info."
+    }
+  }
+}

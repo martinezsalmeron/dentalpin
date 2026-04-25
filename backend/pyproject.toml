@@ -29,6 +29,11 @@ dependencies = [
     # which Python base image the backend runs on (Alpine ships with
     # no system tzdata by default).
     "tzdata>=2024.1",
+    # Verifactu (AEAT) module dependencies. httpx for mTLS submissions,
+    # lxml for SOAP response parsing, qrcode for the per-invoice QR.
+    "httpx>=0.26.0",
+    "lxml>=5.0.0",
+    "qrcode[pil]>=7.4.0",
 ]
 
 [project.optional-dependencies]
@@ -53,6 +58,7 @@ media = "app.modules.media:MediaModule"
 notifications = "app.modules.notifications:NotificationsModule"
 reports = "app.modules.reports:ReportsModule"
 schedules = "app.modules.schedules:SchedulesModule"
+verifactu = "app.modules.verifactu:VerifactuModule"
 
 [tool.setuptools.packages.find]
 where = ["."]

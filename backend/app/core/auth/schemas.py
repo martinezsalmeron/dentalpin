@@ -77,6 +77,7 @@ class ClinicMetadataUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     tax_id: str | None = Field(default=None, max_length=20)
+    legal_name: str | None = Field(default=None, max_length=200)
     address: ClinicAddressUpdate | None = None
     phone: str | None = Field(default=None, max_length=20)
     email: EmailStr | None = None
@@ -122,6 +123,7 @@ class ClinicMetadataResponse(BaseModel):
     id: UUID
     name: str
     tax_id: str
+    legal_name: str | None = None
     address: dict | None
     phone: str | None
     email: str | None

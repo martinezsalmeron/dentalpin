@@ -170,22 +170,52 @@ class ModuleService:
 
             record = existing.get(module.name)
             if record is None:
+                # Modules with ``auto_install=False`` must wait for an
+                # explicit Install action from the admin UI before they
+                # become active. They appear in the registry but stay
+                # in ``uninstalled`` state — their lifecycle install()
+                # hook is NOT called, their event handlers do not fire,
+                # and ``base_revision`` is left blank until the user
+                # promotes them.
+                #
+                # Note that the underlying Alembic migration was still
+                # applied as part of the main ``alembic upgrade heads``
+                # at boot (the schema lives on disk, not behind state).
+                # When the user later triggers Install, the processor's
+                # ``_run_migrate`` is a no-op (already at head) and the
+                # rest of the pipeline (seed → lifecycle hook → finalize)
+                # runs normally, eventually setting state=installed.
+                if manifest.auto_install:
+                    initial_state = ModuleState.INSTALLED.value
+                    initial_installed_at = now
+                    initial_base_revision = branch_head
+                    initial_applied_revision = branch_head
+                else:
+                    initial_state = ModuleState.UNINSTALLED.value
+                    initial_installed_at = None
+                    initial_base_revision = None
+                    initial_applied_revision = None
+
                 self.db.add(
                     ModuleRecord(
                         name=manifest.name,
                         version=manifest.version,
-                        state=ModuleState.INSTALLED.value,
+                        state=initial_state,
                         category=manifest.category.value,
                         removable=effective_removable,
                         auto_install=manifest.auto_install,
-                        installed_at=now,
+                        installed_at=initial_installed_at,
                         last_state_change=now,
                         manifest_snapshot=manifest.to_snapshot(),
-                        base_revision=branch_head,
-                        applied_revision=branch_head,
+                        base_revision=initial_base_revision,
+                        applied_revision=initial_applied_revision,
                     )
                 )
-                logger.info("Reconciled: inserted new module %s", manifest.name)
+                logger.info(
+                    "Reconciled: inserted new module %s (state=%s)",
+                    manifest.name,
+                    initial_state,
+                )
                 continue
 
             if record.version != manifest.version:

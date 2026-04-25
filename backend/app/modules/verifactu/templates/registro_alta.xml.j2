@@ -1,0 +1,136 @@
+{#-
+  RegistroAlta — Veri*Factu spec (AEAT). XSD: SuministroLR.xsd.
+
+  Variables (all required unless noted):
+    nif_emisor             — clinic NIF, normalised (uppercase, no spaces)
+    nombre_razon_emisor    — clinic legal name
+    serie_numero           — invoice number ("FAC-2026-0001")
+    fecha_expedicion       — date, formatted DD-MM-YYYY
+    tipo_factura           — F1|F2|F3|R1|R2|R5
+    tipo_rectificativa     — I|S (only when tipo_factura starts with R/F3)
+    descripcion_operacion  — free text ≤500 chars
+    destinatario           — None for F2 simplificada; else dict with
+                             {nombre_razon, nif} (NIF) or {nombre_razon,
+                             id_otro: {tipo_id, codigo_pais, id}} for
+                             non-Spanish customers.
+    desglose               — list of dicts as built by IvaClassifier:
+                             {impuesto, clave_regimen, tipo_impositivo,
+                              base_imponible, cuota_repercutida,
+                              calificacion_operacion?, operacion_exenta?,
+                              causa_exencion?}
+    cuota_total            — Decimal sum of cuota_repercutida
+    importe_total          — Decimal invoice total (base + IVA)
+    is_first_record        — True for the very first record of the chain
+    huella_anterior        — previous record's Huella, '' if first
+    id_factura_anterior    — None if first; else dict {nif, num_serie, fecha}
+    sistema_informatico    — dict with all <SistemaInformatico> fields
+    fecha_hora_huso        — ISO 8601 with TZ offset
+    huella                 — SHA-256 hex uppercase
+    facturas_rectificadas  — None | list[{nif, num_serie, fecha}] (R*)
+    importe_rectificacion  — None | dict {base_rectificada,
+                             cuota_rectificada} (R* type S substitución)
+-#}
+<RegistroAlta>
+  <IDVersion>1.0</IDVersion>
+  <IDFactura>
+    <IDEmisorFactura>{{ nif_emisor }}</IDEmisorFactura>
+    <NumSerieFactura>{{ serie_numero }}</NumSerieFactura>
+    <FechaExpedicionFactura>{{ fecha_expedicion }}</FechaExpedicionFactura>
+  </IDFactura>
+  <NombreRazonEmisor>{{ nombre_razon_emisor | e }}</NombreRazonEmisor>
+  <TipoFactura>{{ tipo_factura }}</TipoFactura>
+  {%- if tipo_rectificativa %}
+  <TipoRectificativa>{{ tipo_rectificativa }}</TipoRectificativa>
+  {%- endif %}
+  {%- if facturas_rectificadas %}
+  <FacturasRectificadas>
+    {%- for f in facturas_rectificadas %}
+    <IDFacturaRectificada>
+      <IDEmisorFactura>{{ f.nif }}</IDEmisorFactura>
+      <NumSerieFactura>{{ f.num_serie }}</NumSerieFactura>
+      <FechaExpedicionFactura>{{ f.fecha }}</FechaExpedicionFactura>
+    </IDFacturaRectificada>
+    {%- endfor %}
+  </FacturasRectificadas>
+  {%- endif %}
+  {%- if importe_rectificacion %}
+  <ImporteRectificacion>
+    <BaseRectificada>{{ importe_rectificacion.base_rectificada }}</BaseRectificada>
+    <CuotaRectificada>{{ importe_rectificacion.cuota_rectificada }}</CuotaRectificada>
+  </ImporteRectificacion>
+  {%- endif %}
+  <DescripcionOperacion>{{ descripcion_operacion | e }}</DescripcionOperacion>
+  {%- if destinatario %}
+  <Destinatarios>
+    <IDDestinatario>
+      <NombreRazon>{{ destinatario.nombre_razon | e }}</NombreRazon>
+      {%- if destinatario.nif %}
+      <NIF>{{ destinatario.nif }}</NIF>
+      {%- elif destinatario.id_otro %}
+      <IDOtro>
+        <CodigoPais>{{ destinatario.id_otro.codigo_pais }}</CodigoPais>
+        <IDType>{{ destinatario.id_otro.tipo_id }}</IDType>
+        <ID>{{ destinatario.id_otro.id }}</ID>
+      </IDOtro>
+      {%- endif %}
+    </IDDestinatario>
+  </Destinatarios>
+  {%- else %}
+  <FacturaSinIdentifDestinatarioArt61d>S</FacturaSinIdentifDestinatarioArt61d>
+  {%- endif %}
+  <Desglose>
+    {%- for d in desglose %}
+    <DetalleDesglose>
+      <Impuesto>{{ d.impuesto }}</Impuesto>
+      <ClaveRegimen>{{ d.clave_regimen }}</ClaveRegimen>
+      {%- if d.calificacion_operacion %}
+      <CalificacionOperacion>{{ d.calificacion_operacion }}</CalificacionOperacion>
+      {%- endif %}
+      {%- if d.operacion_exenta %}
+      <OperacionExenta>{{ d.causa_exencion }}</OperacionExenta>
+      {%- endif %}
+      {%- if d.tipo_impositivo is not none %}
+      <TipoImpositivo>{{ '%.2f' | format(d.tipo_impositivo|float) }}</TipoImpositivo>
+      {%- endif %}
+      <BaseImponibleOimporteNoSujeto>{{ '%.2f' | format(d.base_imponible|float) }}</BaseImponibleOimporteNoSujeto>
+      {%- if d.cuota_repercutida is not none %}
+      <CuotaRepercutida>{{ '%.2f' | format(d.cuota_repercutida|float) }}</CuotaRepercutida>
+      {%- endif %}
+    </DetalleDesglose>
+    {%- endfor %}
+  </Desglose>
+  <CuotaTotal>{{ '%.2f' | format(cuota_total|float) }}</CuotaTotal>
+  <ImporteTotal>{{ '%.2f' | format(importe_total|float) }}</ImporteTotal>
+  <Encadenamiento>
+    {%- if is_first_record %}
+    <PrimerRegistro>S</PrimerRegistro>
+    {%- else %}
+    <RegistroAnterior>
+      <IDEmisorFactura>{{ id_factura_anterior.nif }}</IDEmisorFactura>
+      <NumSerieFactura>{{ id_factura_anterior.num_serie }}</NumSerieFactura>
+      <FechaExpedicionFactura>{{ id_factura_anterior.fecha }}</FechaExpedicionFactura>
+      <Huella>{{ huella_anterior }}</Huella>
+    </RegistroAnterior>
+    {%- endif %}
+  </Encadenamiento>
+  <SistemaInformatico>
+    <NombreRazon>{{ sistema_informatico.nombre_razon | e }}</NombreRazon>
+    <NIF>{{ sistema_informatico.nif }}</NIF>
+    <NombreSistemaInformatico>{{ sistema_informatico.nombre_sistema }}</NombreSistemaInformatico>
+    <IdSistemaInformatico>{{ sistema_informatico.id_sistema }}</IdSistemaInformatico>
+    <Version>{{ sistema_informatico.version }}</Version>
+    <NumeroInstalacion>{{ sistema_informatico.numero_instalacion }}</NumeroInstalacion>
+    <TipoUsoPosibleSoloVerifactu>{{ sistema_informatico.tipo_uso_solo_verifactu }}</TipoUsoPosibleSoloVerifactu>
+    <TipoUsoPosibleMultiOT>{{ sistema_informatico.tipo_uso_multi_ot }}</TipoUsoPosibleMultiOT>
+    <IndicadorMultiplesOT>{{ sistema_informatico.indicador_multiples_ot }}</IndicadorMultiplesOT>
+  </SistemaInformatico>
+  <FechaHoraHusoGenRegistro>{{ fecha_hora_huso }}</FechaHoraHusoGenRegistro>
+  {%- if subsanacion %}
+  <Subsanacion>S</Subsanacion>
+  {%- endif %}
+  {%- if rechazo_previo %}
+  <RechazoPrevio>X</RechazoPrevio>
+  {%- endif %}
+  <TipoHuella>01</TipoHuella>
+  <Huella>{{ huella }}</Huella>
+</RegistroAlta>

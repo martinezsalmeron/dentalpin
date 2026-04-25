@@ -7,6 +7,7 @@ This directory contains developer documentation for each DentalPin module.
 | Module | Description | Documentation |
 |--------|-------------|---------------|
 | **budget** | Treatment quotes with versioning, signatures, and PDF | [budget.md](./budget.md) |
+| **verifactu** | Spanish AEAT Veri\*Factu compliance (mandatory 2027) — installation & operation manual | [verifactu.md](./verifactu.md) |
 
 ## Module Documentation Structure
 

@@ -2,14 +2,14 @@
 import type { InvoiceItem, InvoiceItemCreate, TreatmentCatalogItem, VatType } from '~~/app/types'
 
 const props = defineProps<{
-  open: boolean
   invoiceId: string
   currency?: string
   editItem?: InvoiceItem // If provided, modal is in edit mode
 }>()
 
+const open = defineModel<boolean>('open', { default: false })
+
 const emit = defineEmits<{
-  'update:open': [value: boolean]
   'saved': [] // Emitted on both add and update
 }>()
 
@@ -172,7 +172,8 @@ async function handleSubmit() {
     }
 
     emit('saved')
-    close()
+    open.value = false
+    resetForm()
   } catch {
     toast.add({
       title: t('common.error'),
@@ -185,8 +186,8 @@ async function handleSubmit() {
 }
 
 function close() {
+  open.value = false
   resetForm()
-  emit('update:open', false)
 }
 
 function resetForm() {
@@ -230,7 +231,7 @@ function populateFromEditItem() {
 }
 
 // Reset/populate form and load VAT types when modal opens
-watch(() => props.open, async (isOpen) => {
+watch(open, async (isOpen) => {
   if (isOpen) {
     await loadVatTypes()
     if (props.editItem) {
@@ -243,10 +244,7 @@ watch(() => props.open, async (isOpen) => {
 </script>
 
 <template>
-  <UModal
-    :open="open"
-    @update:open="emit('update:open', $event)"
-  >
+  <UModal v-model:open="open">
     <template #content>
       <UCard class="w-full max-w-lg">
         <template #header>

@@ -1,0 +1,48 @@
+{#-
+  RegistroAnulacion — Veri*Factu spec.
+
+  Variables:
+    nif_emisor          — clinic NIF
+    serie_numero        — number of the invoice being voided
+    fecha_expedicion    — DD-MM-YYYY of the voided invoice
+    huella_anterior     — chain link
+    id_factura_anterior — None if first; else dict {nif, num_serie, fecha}
+    is_first_record     — True only when chain is empty
+    sistema_informatico — same dict as registro_alta
+    fecha_hora_huso     — ISO 8601 with TZ
+    huella              — SHA-256 hex uppercase
+-#}
+<RegistroAnulacion>
+  <IDVersion>1.0</IDVersion>
+  <IDFactura>
+    <IDEmisorFacturaAnulada>{{ nif_emisor }}</IDEmisorFacturaAnulada>
+    <NumSerieFacturaAnulada>{{ serie_numero }}</NumSerieFacturaAnulada>
+    <FechaExpedicionFacturaAnulada>{{ fecha_expedicion }}</FechaExpedicionFacturaAnulada>
+  </IDFactura>
+  <Encadenamiento>
+    {%- if is_first_record %}
+    <PrimerRegistro>S</PrimerRegistro>
+    {%- else %}
+    <RegistroAnterior>
+      <IDEmisorFactura>{{ id_factura_anterior.nif }}</IDEmisorFactura>
+      <NumSerieFactura>{{ id_factura_anterior.num_serie }}</NumSerieFactura>
+      <FechaExpedicionFactura>{{ id_factura_anterior.fecha }}</FechaExpedicionFactura>
+      <Huella>{{ huella_anterior }}</Huella>
+    </RegistroAnterior>
+    {%- endif %}
+  </Encadenamiento>
+  <SistemaInformatico>
+    <NombreRazon>{{ sistema_informatico.nombre_razon | e }}</NombreRazon>
+    <NIF>{{ sistema_informatico.nif }}</NIF>
+    <NombreSistemaInformatico>{{ sistema_informatico.nombre_sistema }}</NombreSistemaInformatico>
+    <IdSistemaInformatico>{{ sistema_informatico.id_sistema }}</IdSistemaInformatico>
+    <Version>{{ sistema_informatico.version }}</Version>
+    <NumeroInstalacion>{{ sistema_informatico.numero_instalacion }}</NumeroInstalacion>
+    <TipoUsoPosibleSoloVerifactu>{{ sistema_informatico.tipo_uso_solo_verifactu }}</TipoUsoPosibleSoloVerifactu>
+    <TipoUsoPosibleMultiOT>{{ sistema_informatico.tipo_uso_multi_ot }}</TipoUsoPosibleMultiOT>
+    <IndicadorMultiplesOT>{{ sistema_informatico.indicador_multiples_ot }}</IndicadorMultiplesOT>
+  </SistemaInformatico>
+  <FechaHoraHusoGenRegistro>{{ fecha_hora_huso }}</FechaHoraHusoGenRegistro>
+  <TipoHuella>01</TipoHuella>
+  <Huella>{{ huella }}</Huella>
+</RegistroAnulacion>

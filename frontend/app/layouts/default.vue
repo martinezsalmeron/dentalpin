@@ -57,6 +57,9 @@ async function handleLogout() {
   await auth.logout()
 }
 
+const settingsItem = computed(() => navigationItems.value.find(i => i.to === '/settings'))
+const mainNavItems = computed(() => navigationItems.value.filter(i => i.to !== '/settings'))
+
 // Check if nav item is active
 function isActive(to: string): boolean {
   if (to === '/') {
@@ -110,7 +113,7 @@ function isActive(to: string): boolean {
       <!-- Navigation -->
       <nav class="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
         <NuxtLink
-          v-for="item in navigationItems"
+          v-for="item in mainNavItems"
           :key="item.to"
           :to="item.to"
           class="group flex items-center gap-3 px-3 py-2 rounded-token-md text-ui transition-colors"
@@ -138,6 +141,7 @@ function isActive(to: string): boolean {
         <div
           v-if="auth.user.value"
           class="flex items-center gap-3"
+          :class="isSidebarCollapsed ? 'flex-col' : ''"
         >
           <UAvatar
             :alt="auth.user.value.first_name"
@@ -155,6 +159,23 @@ function isActive(to: string): boolean {
               {{ auth.user.value.email }}
             </p>
           </div>
+          <NuxtLink
+            v-if="settingsItem"
+            :to="settingsItem.to"
+            :title="settingsItem.label"
+            :aria-label="settingsItem.label"
+            class="shrink-0 p-1.5 rounded-token-md transition-colors"
+            :class="[
+              isActive(settingsItem.to)
+                ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-soft-text)]'
+                : 'text-muted hover:bg-surface hover:text-default'
+            ]"
+          >
+            <UIcon
+              :name="settingsItem.icon"
+              class="w-[18px] h-[18px]"
+            />
+          </NuxtLink>
         </div>
       </div>
     </aside>
@@ -198,7 +219,7 @@ function isActive(to: string): boolean {
           <!-- Navigation -->
           <nav class="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
             <NuxtLink
-              v-for="item in navigationItems"
+              v-for="item in mainNavItems"
               :key="item.to"
               :to="item.to"
               class="group flex items-center gap-3 px-3 py-3 rounded-token-md text-ui transition-colors"
@@ -235,6 +256,23 @@ function isActive(to: string): boolean {
                   {{ auth.user.value.email }}
                 </p>
               </div>
+              <NuxtLink
+                v-if="settingsItem"
+                :to="settingsItem.to"
+                :title="settingsItem.label"
+                :aria-label="settingsItem.label"
+                class="shrink-0 p-2 rounded-token-md transition-colors"
+                :class="[
+                  isActive(settingsItem.to)
+                    ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-soft-text)]'
+                    : 'text-muted hover:bg-surface hover:text-default'
+                ]"
+              >
+                <UIcon
+                  :name="settingsItem.icon"
+                  class="w-5 h-5"
+                />
+              </NuxtLink>
             </div>
           </div>
         </div>

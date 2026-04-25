@@ -23,6 +23,23 @@ Source License, as stated in this License.
 License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 "Business Source License" is a trademark of MariaDB Corporation Ab.
 
+Spanish Tax Compliance Notice (Veri*Factu / RRSIF)
+
+The optional `verifactu` module integrates with the Spanish tax authority
+(AEAT) under Real Decreto 1007/2023. Under that regulation, every
+deployment of a Sistema Informático de Facturación (SIF) has a
+"productor del SIF" who is legally responsible for the software's
+compliance and who must sign a declaración responsable. That role does
+not transfer with the source code: the producer is whoever deploys and
+operates this software in production for issuing real invoices in
+Spain. The DentalPin Contributors do not act as producer for any
+deployment they do not themselves operate. Operators (SaaS providers,
+integrators, or self-hosting clinics under autodesarrollo) are solely
+responsible for completing the producer wizard, signing the declaración
+responsable, validating end-to-end against AEAT preproduction, and
+keeping the software up to date with regulatory changes. See
+`backend/app/modules/verifactu/README.md` for details.
+
 Terms
 
 The Licensor hereby grants you the right to copy, modify, create derivative works,

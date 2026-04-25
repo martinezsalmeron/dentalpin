@@ -83,6 +83,7 @@ const isSavingClinicInfo = ref(false)
 const clinicInfoForm = ref({
   name: '',
   tax_id: '',
+  legal_name: '',
   street: '',
   city: '',
   postal_code: '',
@@ -91,6 +92,66 @@ const clinicInfoForm = ref({
   email: '',
   timezone: 'Europe/Madrid'
 })
+
+// ISO 3166-1 alpha-2 codes used by the country selector. Localized
+// labels come from `Intl.DisplayNames` so we get every UI language
+// for free. Storing the code (not the name) avoids brittle string
+// matches when the user switches locale later.
+const COUNTRY_CODES = [
+  'AD', 'AE', 'AF', 'AG', 'AL', 'AM', 'AO', 'AR', 'AT', 'AU', 'AZ',
+  'BA', 'BB', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BN', 'BO', 'BR', 'BS', 'BT', 'BW', 'BY', 'BZ',
+  'CA', 'CD', 'CF', 'CG', 'CH', 'CI', 'CL', 'CM', 'CN', 'CO', 'CR', 'CU', 'CV', 'CY', 'CZ',
+  'DE', 'DJ', 'DK', 'DM', 'DO', 'DZ',
+  'EC', 'EE', 'EG', 'ER', 'ES', 'ET',
+  'FI', 'FJ', 'FM', 'FR',
+  'GA', 'GB', 'GD', 'GE', 'GH', 'GM', 'GN', 'GQ', 'GR', 'GT', 'GW', 'GY',
+  'HN', 'HR', 'HT', 'HU',
+  'ID', 'IE', 'IL', 'IN', 'IQ', 'IR', 'IS', 'IT',
+  'JM', 'JO', 'JP',
+  'KE', 'KG', 'KH', 'KI', 'KM', 'KN', 'KP', 'KR', 'KW', 'KZ',
+  'LA', 'LB', 'LC', 'LI', 'LK', 'LR', 'LS', 'LT', 'LU', 'LV', 'LY',
+  'MA', 'MC', 'MD', 'ME', 'MG', 'MH', 'MK', 'ML', 'MM', 'MN', 'MR', 'MT', 'MU', 'MV', 'MW', 'MX', 'MY', 'MZ',
+  'NA', 'NE', 'NG', 'NI', 'NL', 'NO', 'NP', 'NR', 'NZ',
+  'OM',
+  'PA', 'PE', 'PG', 'PH', 'PK', 'PL', 'PT', 'PW', 'PY',
+  'QA',
+  'RO', 'RS', 'RU', 'RW',
+  'SA', 'SB', 'SC', 'SD', 'SE', 'SG', 'SI', 'SK', 'SL', 'SM', 'SN', 'SO', 'SR', 'SS', 'ST', 'SV', 'SY', 'SZ',
+  'TD', 'TG', 'TH', 'TJ', 'TL', 'TM', 'TN', 'TO', 'TR', 'TT', 'TV', 'TW', 'TZ',
+  'UA', 'UG', 'US', 'UY', 'UZ',
+  'VA', 'VC', 'VE', 'VN', 'VU',
+  'WS',
+  'XK',
+  'YE',
+  'ZA', 'ZM', 'ZW',
+] as const
+
+const countryOptions = computed(() => {
+  let displayNames: Intl.DisplayNames | null = null
+  try {
+    displayNames = new Intl.DisplayNames([currentLocale.value], { type: 'region' })
+  } catch {
+    displayNames = null
+  }
+  const collator = new Intl.Collator(currentLocale.value, { sensitivity: 'base' })
+  return COUNTRY_CODES.map(code => ({
+    value: code,
+    label: displayNames?.of(code) ?? code,
+  })).sort((a, b) => collator.compare(a.label, b.label))
+})
+
+function translateCountry(value: string | undefined | null): string {
+  if (!value) return ''
+  if (value.length === 2 && /^[A-Za-z]{2}$/.test(value)) {
+    try {
+      return new Intl.DisplayNames([currentLocale.value], { type: 'region' })
+        .of(value.toUpperCase()) ?? value
+    } catch {
+      return value
+    }
+  }
+  return value
+}
 
 // Curated IANA timezone list for the clinic metadata form. Covers the
 // Spanish/European market + the Americas; users with exotic needs can
@@ -288,7 +349,7 @@ function formatAddress(address?: Record<string, string>): string {
   if (address.street) parts.push(address.street)
   const cityLine = [address.postal_code, address.city].filter(Boolean).join(' ')
   if (cityLine) parts.push(cityLine)
-  if (address.country) parts.push(address.country)
+  if (address.country) parts.push(translateCountry(address.country))
   return parts.length > 0 ? parts.join(', ') : '-'
 }
 
@@ -297,6 +358,7 @@ function openClinicInfoModal() {
   clinicInfoForm.value = {
     name: c?.name || '',
     tax_id: c?.tax_id || '',
+    legal_name: c?.legal_name || '',
     street: c?.address?.street || '',
     city: c?.address?.city || '',
     postal_code: c?.address?.postal_code || '',
@@ -319,6 +381,7 @@ async function handleSaveClinicInfo() {
   const updateData: ClinicUpdate = {
     name: clinicInfoForm.value.name || undefined,
     tax_id: clinicInfoForm.value.tax_id || undefined,
+    legal_name: clinicInfoForm.value.legal_name || '',
     address,
     phone: clinicInfoForm.value.phone || undefined,
     email: clinicInfoForm.value.email || undefined,
@@ -399,6 +462,15 @@ async function handleSaveClinicInfo() {
                 {{ clinic.currentClinic.value.tax_id || '-' }}
               </p>
             </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium text-muted">
+              {{ t('settings.legalName') }}
+            </label>
+            <p class="text-default">
+              {{ clinic.currentClinic.value.legal_name || '-' }}
+            </p>
           </div>
 
           <div>
@@ -1212,6 +1284,13 @@ async function handleSaveClinicInfo() {
               </UFormField>
             </div>
 
+            <UFormField
+              :label="t('settings.legalName')"
+              :help="t('settings.legalNameHelp')"
+            >
+              <UInput v-model="clinicInfoForm.legal_name" />
+            </UFormField>
+
             <UFormField :label="t('settings.street')">
               <UInput v-model="clinicInfoForm.street" />
             </UFormField>
@@ -1224,7 +1303,16 @@ async function handleSaveClinicInfo() {
                 <UInput v-model="clinicInfoForm.city" />
               </UFormField>
               <UFormField :label="t('settings.country')">
-                <UInput v-model="clinicInfoForm.country" />
+                <USelectMenu
+                  v-model="clinicInfoForm.country"
+                  :items="countryOptions"
+                  value-key="value"
+                  label-key="label"
+                  searchable
+                  :search-input="{ placeholder: t('settings.countrySearchPlaceholder') }"
+                  :placeholder="t('settings.countryPlaceholder')"
+                  class="w-full"
+                />
               </UFormField>
             </div>
 

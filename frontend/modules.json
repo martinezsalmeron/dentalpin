@@ -11,8 +11,9 @@
     "/module_layers/patient_timeline/frontend",
     "/module_layers/patients_clinical/frontend",
     "/module_layers/reports/frontend",
+    "/module_layers/schedules/frontend",
     "/module_layers/treatment_plan/frontend",
-    "/module_layers/schedules/frontend"
+    "/module_layers/verifactu/frontend"
   ],
   "modules": [
     {
@@ -60,12 +61,16 @@
       "path": "/module_layers/reports/frontend"
     },
     {
+      "name": "schedules",
+      "path": "/module_layers/schedules/frontend"
+    },
+    {
       "name": "treatment_plan",
       "path": "/module_layers/treatment_plan/frontend"
     },
     {
-      "name": "schedules",
-      "path": "/module_layers/schedules/frontend"
+      "name": "verifactu",
+      "path": "/module_layers/verifactu/frontend"
     }
   ],
   "version": 1
