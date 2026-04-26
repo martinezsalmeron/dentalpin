@@ -31,15 +31,11 @@ class ClassificationOverride:
     exemption_cause: str | None
 
 
-async def load_overrides(
-    db: AsyncSession, clinic_id: UUID
-) -> dict[UUID, ClassificationOverride]:
+async def load_overrides(db: AsyncSession, clinic_id: UUID) -> dict[UUID, ClassificationOverride]:
     """Return ``{vat_type_id: override}`` for the given clinic."""
 
     result = await db.execute(
-        select(VerifactuVatClassification).where(
-            VerifactuVatClassification.clinic_id == clinic_id
-        )
+        select(VerifactuVatClassification).where(VerifactuVatClassification.clinic_id == clinic_id)
     )
     return {
         row.vat_type_id: ClassificationOverride(

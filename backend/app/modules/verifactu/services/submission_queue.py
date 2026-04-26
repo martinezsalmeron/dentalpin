@@ -55,9 +55,7 @@ async def _active_certificate(db: AsyncSession, clinic_id) -> VerifactuCertifica
     return result.scalar_one_or_none()
 
 
-async def _select_pending(
-    db: AsyncSession, clinic_id, limit: int
-) -> list[VerifactuRecord]:
+async def _select_pending(db: AsyncSession, clinic_id, limit: int) -> list[VerifactuRecord]:
     result = await db.execute(
         select(VerifactuRecord)
         .where(
@@ -84,9 +82,7 @@ def _build_envelope(
 
 
 def _match_line(line: aeat_client.LineResponse, record: VerifactuRecord) -> bool:
-    serie = line.id_factura.get("NumSerieFactura") or line.id_factura.get(
-        "NumSerieFacturaAnulada"
-    )
+    serie = line.id_factura.get("NumSerieFactura") or line.id_factura.get("NumSerieFacturaAnulada")
     if serie is None:
         return False
     return serie == record.serie_numero
@@ -119,9 +115,7 @@ async def process_clinic(db: AsyncSession, clinic_id) -> int:
     )
     clinic_row = clinic_q.first()
     if clinic_row is None or not (clinic_row[0] or "").strip():
-        logger.warning(
-            "verifactu: clinic %s missing tax_id; cannot submit", clinic_id
-        )
+        logger.warning("verifactu: clinic %s missing tax_id; cannot submit", clinic_id)
         return 0
     nif_emisor = clinic_row[0].strip().upper()
     nombre_razon_emisor = (clinic_row[1] or clinic_row[2] or "").strip()
@@ -194,9 +188,9 @@ async def process_clinic(db: AsyncSession, clinic_id) -> int:
             from lxml import etree
 
             root = etree.fromstring(response.raw_xml.encode("utf-8"))
-            fault_strings = root.xpath(
-                ".//*[local-name()='faultstring']/text()"
-            ) or root.xpath(".//*[local-name()='Reason']//text()")
+            fault_strings = root.xpath(".//*[local-name()='faultstring']/text()") or root.xpath(
+                ".//*[local-name()='Reason']//text()"
+            )
             if fault_strings:
                 fault_message = str(fault_strings[0]).strip()[:500]
         except Exception:  # noqa: BLE001 — best-effort surfacing

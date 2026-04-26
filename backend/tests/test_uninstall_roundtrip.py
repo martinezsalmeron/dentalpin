@@ -74,8 +74,7 @@ def test_schedules_uninstall_roundtrip_is_branch_scoped() -> None:
     _alembic("upgrade", "heads")
     before = _list_tables()
     assert SCHEDULES_TABLES.issubset(before), (
-        f"expected schedules tables at heads; missing: "
-        f"{SCHEDULES_TABLES - before}"
+        f"expected schedules tables at heads; missing: {SCHEDULES_TABLES - before}"
     )
     baseline_non_schedules = before - SCHEDULES_TABLES
 
@@ -86,8 +85,7 @@ def test_schedules_uninstall_roundtrip_is_branch_scoped() -> None:
 
     after_down = _list_tables()
     assert SCHEDULES_TABLES.isdisjoint(after_down), (
-        f"schedules tables survived downgrade: "
-        f"{SCHEDULES_TABLES & after_down}"
+        f"schedules tables survived downgrade: {SCHEDULES_TABLES & after_down}"
     )
     assert baseline_non_schedules <= after_down, (
         "downgrade leaked into other modules; missing tables: "
@@ -98,8 +96,7 @@ def test_schedules_uninstall_roundtrip_is_branch_scoped() -> None:
     _alembic("upgrade", "schedules@head")
     after_up = _list_tables()
     assert before <= after_up, (
-        "reinstall did not restore every table; missing: "
-        f"{before - after_up}"
+        f"reinstall did not restore every table; missing: {before - after_up}"
     )
 
 

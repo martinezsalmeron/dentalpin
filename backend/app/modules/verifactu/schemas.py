@@ -169,9 +169,7 @@ class VatClassificationUpdate(BaseModel):
         default=None,
         pattern=r"^(S1|S2|E1|E2|E3|E4|E5|E6|N1|N2)$",
     )
-    exemption_cause: str | None = Field(
-        default=None, pattern=r"^E[1-6]$"
-    )
+    exemption_cause: str | None = Field(default=None, pattern=r"^E[1-6]$")
     notes: str | None = Field(default=None, max_length=500)
 
 

@@ -58,9 +58,7 @@ def _now_madrid() -> datetime:
 
 async def _get_or_create_settings(db: AsyncSession, clinic_id) -> VerifactuSettings:
     result = await db.execute(
-        select(VerifactuSettings)
-        .where(VerifactuSettings.clinic_id == clinic_id)
-        .with_for_update()
+        select(VerifactuSettings).where(VerifactuSettings.clinic_id == clinic_id).with_for_update()
     )
     settings = result.scalar_one_or_none()
     if settings is None:
@@ -131,16 +129,15 @@ def _build_desglose(
             # Pre-mapping behaviour: heuristic + ``vat_exempt_reason``
             # tag for art. 20 LIVA exemptions.
             is_exento = bool(item.vat_exempt_reason) and vat_rate == 0
-            cls = iva_classifier.classify(
-                vat_rate=vat_rate, is_exento_sanitario=is_exento
-            )
-        line_base = Decimal(str(item.line_subtotal or 0)) - Decimal(
-            str(item.line_discount or 0)
-        )
+            cls = iva_classifier.classify(vat_rate=vat_rate, is_exento_sanitario=is_exento)
+        line_base = Decimal(str(item.line_subtotal or 0)) - Decimal(str(item.line_discount or 0))
         line_cuota = Decimal(str(item.line_tax or 0))
         classified.append((cls, line_base, line_cuota))
 
-    groups: dict[tuple[str, str | None, Decimal | None], dict[str, Decimal | iva_classifier.DesgloseClassification]] = {}
+    groups: dict[
+        tuple[str, str | None, Decimal | None],
+        dict[str, Decimal | iva_classifier.DesgloseClassification],
+    ] = {}
     for cls, base, cuota in classified:
         key = (
             cls.calificacion_operacion or "EXENTO",
@@ -160,10 +157,7 @@ def _build_desglose(
         # AEAT validation 1237: omit CuotaRepercutida for N1/N2 and
         # exempt operations — only sujeto y no exento (S1/S2) carries
         # the IVA quota.
-        is_no_quota = (
-            cls.operacion_exenta
-            or cls.calificacion_operacion in ("N1", "N2")
-        )
+        is_no_quota = cls.operacion_exenta or cls.calificacion_operacion in ("N1", "N2")
         lines.append(
             xml_builder.DesgloseLine(
                 impuesto=cls.impuesto,
@@ -262,8 +256,7 @@ class VerifactuHook(BillingComplianceHook):
         nif_emisor, nombre_razon_emisor = await _load_emisor(db, invoice.clinic_id)
         if not nif_emisor:
             raise ValueError(
-                "La clínica no tiene CIF/NIF configurado; "
-                "imposible firmar el registro Verifactu."
+                "La clínica no tiene CIF/NIF configurado; imposible firmar el registro Verifactu."
             )
 
         # Decide TipoFactura.
@@ -331,9 +324,7 @@ class VerifactuHook(BillingComplianceHook):
                     xml_builder.IDFacturaRef(
                         nif=nif_emisor,
                         num_serie=original.invoice_number or "",
-                        fecha=(
-                            f"{original.issue_date:%d-%m-%Y}" if original.issue_date else ""
-                        ),
+                        fecha=(f"{original.issue_date:%d-%m-%Y}" if original.issue_date else ""),
                     )
                 )
 

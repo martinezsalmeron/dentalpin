@@ -206,8 +206,6 @@ async def test_reconcile_keeps_removable_true_for_branch_isolated_module(
     await svc.reconcile_with_db()
 
     record = (
-        await db_session.execute(
-            select(ModuleRecord).where(ModuleRecord.name == "schedules")
-        )
+        await db_session.execute(select(ModuleRecord).where(ModuleRecord.name == "schedules"))
     ).scalar_one()
     assert record.removable is True

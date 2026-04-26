@@ -18,7 +18,7 @@ def _well_formed(s: str) -> etree._Element:
     # used by the surrounding envelope so xpath checks work.
     wrapper = (
         '<root xmlns:sum="https://www2.agenciatributaria.gob.es/static_files/'
-        "common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroLR.xsd\">"
+        'common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/SuministroLR.xsd">'
         f"{s}"
         "</root>"
     )
@@ -80,7 +80,7 @@ def test_alta_f2_uses_factura_sin_identif():
     assert flag == ["S"]
 
 
-def test_alta_first_record_has_primer_registro_S():
+def test_alta_first_record_has_primer_registro_s():
     xml_str = xml_builder.render_registro_alta(_make_payload())
     root = _well_formed(xml_str)
     flag = root.xpath(".//*[local-name()='PrimerRegistro']/text()")
@@ -90,8 +90,12 @@ def test_alta_first_record_has_primer_registro_S():
 def test_alta_includes_sistema_informatico():
     xml_str = xml_builder.render_registro_alta(_make_payload())
     root = _well_formed(xml_str)
-    assert root.xpath(".//*[local-name()='SistemaInformatico']/*[local-name()='NombreSistemaInformatico']/text()") == ["DentalPin"]
-    assert root.xpath(".//*[local-name()='SistemaInformatico']/*[local-name()='NumeroInstalacion']/text()") == ["abc-123"]
+    assert root.xpath(
+        ".//*[local-name()='SistemaInformatico']/*[local-name()='NombreSistemaInformatico']/text()"
+    ) == ["DentalPin"]
+    assert root.xpath(
+        ".//*[local-name()='SistemaInformatico']/*[local-name()='NumeroInstalacion']/text()"
+    ) == ["abc-123"]
 
 
 def test_amounts_formatted_two_decimals():

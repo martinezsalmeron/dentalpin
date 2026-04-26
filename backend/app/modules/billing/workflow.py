@@ -147,9 +147,7 @@ class InvoiceWorkflowService:
             clinic = invoice.clinic
             hook = BillingHookRegistry.get_for_clinic(clinic) if clinic else None
             if hook is None:
-                billing_errors.append(
-                    "billing_tax_id is required (update patient billing info)"
-                )
+                billing_errors.append("billing_tax_id is required (update patient billing info)")
         if billing_errors:
             raise InvoiceWorkflowError(
                 f"Cannot issue invoice: incomplete billing data. {', '.join(billing_errors)}"

@@ -12,7 +12,7 @@ EduardoRuizM/verifactu-api-python ``fingerprint()`` function (MIT).
 from __future__ import annotations
 
 import hashlib
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -131,9 +131,7 @@ def test_alta_amount_format_is_two_decimals():
         fecha_hora_huso_gen_registro=dt,
     )
 
-    a = hash_chain.fingerprint_alta(
-        cuota_total=Decimal("1"), importe_total=Decimal("1"), **common
-    )
+    a = hash_chain.fingerprint_alta(cuota_total=Decimal("1"), importe_total=Decimal("1"), **common)
     b = hash_chain.fingerprint_alta(
         cuota_total=Decimal("1.00"), importe_total=Decimal("1.00"), **common
     )

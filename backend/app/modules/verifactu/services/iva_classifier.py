@@ -58,9 +58,7 @@ def classify(
     """Map a DentalPin invoice line to its Veri*Factu classification."""
 
     if vat_rate not in _VALID_VAT_RATES:
-        raise ValueError(
-            f"Unsupported VAT rate {vat_rate}; expected one of {_VALID_VAT_RATES}"
-        )
+        raise ValueError(f"Unsupported VAT rate {vat_rate}; expected one of {_VALID_VAT_RATES}")
 
     if is_exento_sanitario:
         return DesgloseClassification(

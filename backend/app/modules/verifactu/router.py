@@ -87,9 +87,7 @@ async def _clinic_emisor(db: AsyncSession, clinic_id) -> tuple[str | None, str |
     """
 
     result = await db.execute(
-        select(Clinic.tax_id, Clinic.legal_name, Clinic.name).where(
-            Clinic.id == clinic_id
-        )
+        select(Clinic.tax_id, Clinic.legal_name, Clinic.name).where(Clinic.id == clinic_id)
     )
     row = result.first()
     if row is None:
@@ -151,17 +149,13 @@ async def update_settings(
     if s.enabled and (not s.producer_nif or not s.producer_name):
         raise HTTPException(
             status_code=400,
-            detail=(
-                "Configura el productor del SIF en el asistente antes de "
-                "activar Verifactu."
-            ),
+            detail=("Configura el productor del SIF en el asistente antes de activar Verifactu."),
         )
     if s.enabled and s.declaracion_responsable_signed_at is None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Debes firmar la declaración responsable del productor "
-                "antes de activar Verifactu."
+                "Debes firmar la declaración responsable del productor antes de activar Verifactu."
             ),
         )
     if s.enabled and not await _has_active_cert(db, ctx.clinic_id):
@@ -236,9 +230,7 @@ async def update_producer(
     return ApiResponse(data=await _build_settings_response(db, s, ctx.clinic_id))
 
 
-@router.delete(
-    "/producer/declaracion", response_model=ApiResponse[VerifactuSettingsResponse]
-)
+@router.delete("/producer/declaracion", response_model=ApiResponse[VerifactuSettingsResponse])
 async def revoke_producer_declaracion(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("verifactu.settings.configure"))],
@@ -329,9 +321,7 @@ async def upload_certificate(
     )
 
 
-@router.get(
-    "/certificate", response_model=ApiResponse[VerifactuCertificateResponse | None]
-)
+@router.get("/certificate", response_model=ApiResponse[VerifactuCertificateResponse | None])
 async def get_active_certificate(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("verifactu.settings.read"))],
@@ -344,9 +334,7 @@ async def get_active_certificate(
         )
     )
     cert = result.scalar_one_or_none()
-    return ApiResponse(
-        data=VerifactuCertificateResponse.model_validate(cert) if cert else None
-    )
+    return ApiResponse(data=VerifactuCertificateResponse.model_validate(cert) if cert else None)
 
 
 @router.get(
@@ -409,9 +397,7 @@ async def list_records(
         base = base.where(VerifactuRecord.tipo_factura == tipo_factura)
     base = base.order_by(VerifactuRecord.created_at.desc())
 
-    total_q = await db.execute(
-        select(func.count()).select_from(base.subquery())
-    )
+    total_q = await db.execute(select(func.count()).select_from(base.subquery()))
     total = total_q.scalar_one()
 
     rows = await db.execute(base.offset((page - 1) * page_size).limit(page_size))
@@ -423,9 +409,7 @@ async def list_records(
     )
 
 
-@router.get(
-    "/records/{record_id}", response_model=ApiResponse[VerifactuRecordDetailResponse]
-)
+@router.get("/records/{record_id}", response_model=ApiResponse[VerifactuRecordDetailResponse])
 async def get_record(
     record_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
@@ -473,7 +457,9 @@ async def list_queue(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("verifactu.queue.manage"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-    state: str | None = Query(default=None, pattern=r"^(pending|sending|rejected|failed_transient|failed_validation)?$"),
+    state: str | None = Query(
+        default=None, pattern=r"^(pending|sending|rejected|failed_transient|failed_validation)?$"
+    ),
 ) -> ApiResponse[list[VerifactuQueueItem]]:
     base = select(VerifactuRecord).where(VerifactuRecord.clinic_id == ctx.clinic_id)
     if state:
@@ -486,14 +472,10 @@ async def list_queue(
         )
     base = base.order_by(VerifactuRecord.created_at.desc()).limit(500)
     rows = await db.execute(base)
-    return ApiResponse(
-        data=[VerifactuQueueItem.model_validate(r) for r in rows.scalars()]
-    )
+    return ApiResponse(data=[VerifactuQueueItem.model_validate(r) for r in rows.scalars()])
 
 
-@router.post(
-    "/queue/{record_id}/retry", response_model=ApiResponse[VerifactuRecordResponse]
-)
+@router.post("/queue/{record_id}/retry", response_model=ApiResponse[VerifactuRecordResponse])
 async def retry_record(
     record_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
@@ -668,9 +650,7 @@ async def upsert_vat_mapping(
 
     # Validate the vat_type belongs to this clinic.
     vt_q = await db.execute(
-        select(VatType).where(
-            VatType.id == vat_type_id, VatType.clinic_id == ctx.clinic_id
-        )
+        select(VatType).where(VatType.id == vat_type_id, VatType.clinic_id == ctx.clinic_id)
     )
     vt = vt_q.scalar_one_or_none()
     if vt is None:
@@ -704,9 +684,7 @@ async def upsert_vat_mapping(
         else:
             existing.classification = body.classification
             existing.exemption_cause = (
-                body.exemption_cause
-                if body.classification.startswith("E")
-                else None
+                body.exemption_cause if body.classification.startswith("E") else None
             )
             existing.notes = body.notes
         await db.commit()

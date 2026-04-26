@@ -88,18 +88,21 @@ def parse_and_validate(pfx_bytes: bytes, password: str) -> CertificateInfo:
 
     subject_cn = _name_attribute(cert, NameOID.COMMON_NAME)
     issuer_cn = _issuer_cn(cert)
-    nif_titular = (
-        _name_attribute(cert, NameOID.SERIAL_NUMBER)
-        or _name_attribute(cert, NameOID.ORGANIZATION_IDENTIFIER)
+    nif_titular = _name_attribute(cert, NameOID.SERIAL_NUMBER) or _name_attribute(
+        cert, NameOID.ORGANIZATION_IDENTIFIER
     )
     if nif_titular and nif_titular.upper().startswith("IDCES-"):
         nif_titular = nif_titular.split("-", 1)[1]
 
-    valid_from = cert.not_valid_before_utc if hasattr(cert, "not_valid_before_utc") else (
-        cert.not_valid_before.replace(tzinfo=UTC)
+    valid_from = (
+        cert.not_valid_before_utc
+        if hasattr(cert, "not_valid_before_utc")
+        else (cert.not_valid_before.replace(tzinfo=UTC))
     )
-    valid_until = cert.not_valid_after_utc if hasattr(cert, "not_valid_after_utc") else (
-        cert.not_valid_after.replace(tzinfo=UTC)
+    valid_until = (
+        cert.not_valid_after_utc
+        if hasattr(cert, "not_valid_after_utc")
+        else (cert.not_valid_after.replace(tzinfo=UTC))
     )
 
     return CertificateInfo(
@@ -121,7 +124,9 @@ def build_ssl_context(pfx_bytes: bytes, password: str) -> Iterator[ssl.SSLContex
     """
 
     try:
-        key, cert, additional = pkcs12.load_key_and_certificates(pfx_bytes, password.encode("utf-8"))
+        key, cert, additional = pkcs12.load_key_and_certificates(
+            pfx_bytes, password.encode("utf-8")
+        )
     except (ValueError, TypeError) as exc:
         raise CertificateError(f"PFX inválido o contraseña incorrecta: {exc}") from exc
 

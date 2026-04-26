@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from app.modules.verifactu.services.aeat_client import parse_response
 
-
 _RESPONSE_OK = """<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
     xmlns:resp="https://example/resp">

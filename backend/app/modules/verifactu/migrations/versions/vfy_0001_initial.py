@@ -166,9 +166,7 @@ def downgrade() -> None:
         "ux_verifactu_certificates_one_active_per_clinic",
         table_name="verifactu_certificates",
     )
-    op.drop_index(
-        op.f("ix_verifactu_certificates_clinic_id"), table_name="verifactu_certificates"
-    )
+    op.drop_index(op.f("ix_verifactu_certificates_clinic_id"), table_name="verifactu_certificates")
     op.drop_table("verifactu_certificates")
 
     op.drop_index(op.f("ix_verifactu_settings_clinic_id"), table_name="verifactu_settings")

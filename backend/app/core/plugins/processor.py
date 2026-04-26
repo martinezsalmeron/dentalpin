@@ -347,9 +347,7 @@ class PendingProcessor:
 
         if target.stat().st_size == 0:
             target.unlink(missing_ok=True)
-            raise RuntimeError(
-                f"pg_dump produced an empty backup for module {module_name}"
-            )
+            raise RuntimeError(f"pg_dump produced an empty backup for module {module_name}")
         return target
 
     # --- Error book-keeping --------------------------------------------
@@ -486,10 +484,17 @@ def _module_branch_label(revision: str) -> str | None:
     """Return the Alembic branch label that owns ``revision``.
 
     Walks from ``revision`` down through its ancestors and returns the
-    first ``branch_labels`` it finds. The module-system convention is
-    that a module's first revision carries the label and every follow-up
-    in the same module chains off it without a label, so walking down
-    from the module's own head lands on that first revision.
+    first explicitly-declared ``branch_labels`` it finds. The module-system
+    convention is that a module's first revision carries the label and
+    every follow-up in the same module chains off it without a label, so
+    walking down from the module's own head lands on that first revision.
+
+    Uses ``_orig_branch_labels`` (the file's own declaration) instead of
+    ``branch_labels`` because Alembic propagates labels upward to all
+    ancestors of a labelled revision — that propagation would otherwise
+    misattribute a main-linear revision to a downstream branch (e.g.
+    ``tp_0002`` reported as ``verifactu`` because ``vfy_0001`` chains off
+    it).
     """
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -497,8 +502,8 @@ def _module_branch_label(revision: str) -> str | None:
     script = ScriptDirectory.from_config(Config(str(_alembic_cfg_path())))
     rev = script.get_revision(revision)
     while rev is not None:
-        if rev.branch_labels:
-            return next(iter(rev.branch_labels))
+        if rev._orig_branch_labels:
+            return next(iter(rev._orig_branch_labels))
         down = rev.down_revision
         if down is None:
             return None
@@ -542,11 +547,7 @@ def _count_owned_revisions(module_name: str) -> int:
     versions_dir = modules_root / module_name / "migrations" / "versions"
     if not versions_dir.is_dir():
         return 0
-    return sum(
-        1
-        for p in versions_dir.glob("*.py")
-        if not p.name.startswith("__")
-    )
+    return sum(1 for p in versions_dir.glob("*.py") if not p.name.startswith("__"))
 
 
 def _pg_dump_dsn(database_url: str) -> str:

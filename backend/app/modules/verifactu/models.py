@@ -68,9 +68,7 @@ class VerifactuSettings(Base, TimestampMixin):
 
     last_huella: Mapped[str | None] = mapped_column(String(64), default=None)
     last_record_id: Mapped[UUID | None] = mapped_column(UUID(as_uuid=True), default=None)
-    next_send_after: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    next_send_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     last_aeat_response_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), default=None
     )
@@ -127,9 +125,7 @@ class VerifactuVatClassification(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text, default=None)
 
     __table_args__ = (
-        UniqueConstraint(
-            "clinic_id", "vat_type_id", name="uq_verifactu_vat_class_clinic_vat"
-        ),
+        UniqueConstraint("clinic_id", "vat_type_id", name="uq_verifactu_vat_class_clinic_vat"),
     )
 
 
@@ -217,9 +213,7 @@ class VerifactuRecord(Base):
     subsanacion: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rechazo_previo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     submission_attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    last_attempt_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     extra: Mapped[dict | None] = mapped_column(JSONB, default=None)
 

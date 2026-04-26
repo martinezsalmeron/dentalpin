@@ -94,9 +94,7 @@ async def submit(
             raise AeatClientError(f"HTTP error talking to AEAT: {exc}") from exc
 
     if response.status_code >= 400:
-        raise AeatClientError(
-            f"AEAT returned HTTP {response.status_code}: {response.text[:500]}"
-        )
+        raise AeatClientError(f"AEAT returned HTTP {response.status_code}: {response.text[:500]}")
 
     return parse_response(response.text)
 
