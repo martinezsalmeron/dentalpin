@@ -36,18 +36,6 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n'
   ],
 
-  // Pre-bundle every `i-lucide-*` icon referenced in source into the client
-  // bundle. Without this, @nuxt/icon fetches icons lazily per-name on client
-  // navigation, which causes the sidebar to briefly render a stale / wrong
-  // icon (e.g. the settings cog showing up next to "Pacientes") until the
-  // real icon resolves.
-  icon: {
-    clientBundle: {
-      scan: true,
-      sizeLimitKb: 512
-    }
-  },
-
   components: [
     {
       path: '~/components',
@@ -116,5 +104,17 @@ export default defineNuxtConfig({
     langDir: 'locales',
     strategy: 'no_prefix',
     detectBrowserLanguage: false
+  },
+
+  // Pre-bundle every `i-lucide-*` icon referenced in source into the client
+  // bundle. Without this, @nuxt/icon fetches icons lazily per-name on client
+  // navigation, which causes the sidebar to briefly render a stale / wrong
+  // icon (e.g. the settings cog showing up next to "Pacientes") until the
+  // real icon resolves.
+  icon: {
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 512
+    }
   }
 })

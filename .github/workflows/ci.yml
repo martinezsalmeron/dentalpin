@@ -202,7 +202,7 @@ jobs:
           done
 
       - name: Run migrations
-        run: docker compose exec -T backend alembic upgrade head
+        run: docker compose exec -T backend alembic upgrade heads
 
       - name: Seed demo data
         run: ./scripts/seed-demo.sh --lang es
