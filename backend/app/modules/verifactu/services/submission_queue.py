@@ -21,14 +21,16 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.models import Clinic
+from app.core.events import EventType, event_bus
 from app.modules.billing.models import Invoice
 
 from ..models import VerifactuCertificate, VerifactuRecord, VerifactuSettings
-from . import aeat_client, encryption, xml_builder
+from . import aeat_client, encryption, error_messages, xml_builder
+from .severity import severity_for
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +199,7 @@ async def process_clinic(db: AsyncSession, clinic_id) -> int:
             fault_message = None
 
     # Match responses to records.
+    newly_rejected: list[VerifactuRecord] = []
     for r in records:
         line = next((ln for ln in response.lineas if _match_line(ln, r)), None)
         r.aeat_estado_envio = response.estado_envio
@@ -219,11 +222,23 @@ async def process_clinic(db: AsyncSession, clinic_id) -> int:
             r.state = "accepted_with_errors"
         elif line.estado_registro == "Incorrecto":
             r.state = "rejected"
+            newly_rejected.append(r)
         else:
             r.state = "failed_transient"
 
-        # Mirror final state into Invoice.compliance_data.
-        if r.state in ("accepted", "accepted_with_errors"):
+        # Mirror state into Invoice.compliance_data so the invoice page
+        # can render the banner / status without hitting the records API,
+        # and so the generic compliance_severity filter on the billing
+        # list endpoint sees a fresh value. Mirror for every terminal-ish
+        # state, not just accepted — the badge/list want the truth even
+        # for failed_transient + failed_validation.
+        if r.state in (
+            "accepted",
+            "accepted_with_errors",
+            "rejected",
+            "failed_validation",
+            "failed_transient",
+        ):
             inv_q = await db.execute(select(Invoice).where(Invoice.id == r.invoice_id))
             inv = inv_q.scalar_one_or_none()
             if inv is not None:
@@ -238,13 +253,78 @@ async def process_clinic(db: AsyncSession, clinic_id) -> int:
                             else None
                         ),
                         "state": r.state,
+                        "error_code": r.aeat_codigo_error,
+                        "error_message": r.aeat_descripcion_error,
+                        "severity": severity_for(r.state, r.aeat_codigo_error),
                     }
                 )
                 cd["ES"] = es
                 inv.compliance_data = cd
 
     await db.commit()
+
+    # Notify subscribers (email handler in tasks.py) AFTER commit so the
+    # rejected state is durable when handlers query the DB. The bus
+    # itself runs handlers as background tasks and swallows errors.
+    for r in newly_rejected:
+        friendly = error_messages.friendly_error(
+            r.aeat_codigo_error, r.aeat_descripcion_error
+        )
+        event_bus.publish(
+            EventType.VERIFACTU_RECORD_REJECTED,
+            {
+                "clinic_id": str(r.clinic_id),
+                "invoice_id": str(r.invoice_id),
+                "record_id": str(r.id),
+                "serie_numero": r.serie_numero,
+                "codigo_error": r.aeat_codigo_error,
+                "descripcion_error": r.aeat_descripcion_error,
+                "friendly_message": friendly["message"],
+                "field": friendly["field"],
+                "suggested_cta": friendly["suggested_cta"],
+                "occurred_at": now.isoformat(),
+            },
+        )
+
     return len(records)
+
+
+async def reap_stuck_sending(
+    session_factory,
+    *,
+    threshold_minutes: int = 10,
+) -> int:
+    """Demote ``state='sending'`` records older than ``threshold_minutes`` to ``pending``.
+
+    Records may be left in ``sending`` if a worker crashes mid-batch
+    (between marking the rows and committing the AEAT response). The
+    next 60 s tick won't pick them up because the selector only matches
+    ``pending`` / ``failed_transient``. This bulk UPDATE rescues them.
+
+    Returns the number of records demoted.
+    """
+
+    async with session_factory() as db:
+        cutoff = datetime.now(UTC) - timedelta(minutes=threshold_minutes)
+        stmt = (
+            update(VerifactuRecord)
+            .where(
+                VerifactuRecord.state == "sending",
+                VerifactuRecord.last_attempt_at.is_not(None),
+                VerifactuRecord.last_attempt_at < cutoff,
+            )
+            .values(state="pending")
+        )
+        result = await db.execute(stmt)
+        await db.commit()
+        count = result.rowcount or 0
+        if count:
+            logger.info(
+                "verifactu: reaped %d records stuck in 'sending' >%dm",
+                count,
+                threshold_minutes,
+            )
+        return count
 
 
 async def process_all(session_factory) -> dict[str, int]:

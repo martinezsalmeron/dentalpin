@@ -143,6 +143,12 @@ class Invoice(Base, TimestampMixin):
     document_hash: Mapped[str | None] = mapped_column(String(64), default=None)  # SHA-256
     previous_hash: Mapped[str | None] = mapped_column(String(64), default=None)  # For hash chain
 
+    # Set when a compliance hook regenerates the fiscal record (e.g.
+    # Verifactu Subsanación) so the previously rendered PDF/QR no longer
+    # matches the canonical huella. UI surfaces a "PDF desactualizado"
+    # badge until the user re-downloads.
+    pdf_stale: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # Audit
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     issued_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), default=None)

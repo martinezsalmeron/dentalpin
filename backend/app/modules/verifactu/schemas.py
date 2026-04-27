@@ -119,8 +119,53 @@ class VerifactuQueueItem(BaseModel):
     state: str
     aeat_codigo_error: int | None
     aeat_descripcion_error: str | None
+    aeat_descripcion_error_es: str | None = None
+    # Tagged variant of the friendly message — exposes the affected
+    # field and the suggested call-to-action so the UI can render a
+    # targeted "Fix this in <X>" button instead of generic copy.
+    aeat_error_field: str | None = None
+    aeat_error_cta: str | None = None
     submission_attempt: int
     last_attempt_at: datetime | None
+
+
+class VerifactuRecordAttemptResponse(BaseModel):
+    """One historical attempt of a Verifactu record (art. 8 RD 1007/2023)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    record_id: UUID
+    attempt_no: int
+    huella: str
+    state: str
+    aeat_codigo_error: int | None
+    aeat_descripcion_error: str | None
+    created_at: datetime
+
+
+class NifCheckResponse(BaseModel):
+    """On-blur NIF format check used by the frontend (warning, not block)."""
+
+    is_valid: bool
+    warning: str | None = None
+
+
+class BillingPartyUpdate(BaseModel):
+    """Payload for ``PATCH /invoices/{id}/billing-party``.
+
+    Only allowed when the invoice has a Verifactu record in
+    ``rejected`` / ``failed_validation`` (or the invoice is still a
+    draft). Triggers an automatic regenerate so the user does not have
+    to chase the queue afterwards.
+    """
+
+    billing_name: str | None = Field(default=None, max_length=200)
+    billing_tax_id: str | None = Field(default=None, max_length=50)
+    billing_address: dict | None = None
+    # Optimistic lock — frontend echoes Invoice.updated_at so we detect
+    # concurrent edits from a second admin and reject with 409.
+    expected_updated_at: datetime | None = None
 
 
 class VerifactuHealthResponse(BaseModel):

@@ -417,6 +417,23 @@ class InvoiceUpdate(BaseModel):
     public_notes: str | None = None
 
 
+class BillingPartyUpdate(BaseModel):
+    """Edit billing-party fields on an issued invoice.
+
+    Allowed only when the country compliance hook says the invoice is in
+    a correctable state (e.g. a Verifactu record currently ``rejected``
+    so AEAT never registered the original data) — see workflow gate.
+    """
+
+    billing_name: str | None = Field(default=None, max_length=200)
+    billing_tax_id: str | None = Field(default=None, max_length=50)
+    billing_address: dict | None = None
+    expected_updated_at: datetime | None = Field(
+        default=None,
+        description="Echo of Invoice.updated_at — optimistic lock; 409 on mismatch.",
+    )
+
+
 class InvoiceResponse(BaseModel):
     """Schema for invoice response."""
 
@@ -463,6 +480,7 @@ class InvoiceResponse(BaseModel):
     # Extensibility
     compliance_data: dict | None
     document_hash: str | None
+    pdf_stale: bool = False
 
     # Audit
     created_by: UUID
@@ -507,6 +525,13 @@ class InvoiceListResponse(BaseModel):
     balance_due: Decimal
     currency: str
     created_at: datetime
+
+    # Generic compliance summary — shape is country-keyed
+    # ({"ES": {state, severity, error_message, ...}}) and entirely owned
+    # by compliance modules (verifactu et al.). Billing exposes it raw
+    # so country-specific UI slots can render badges without a second
+    # round-trip.
+    compliance_data: dict | None = None
 
     # Related (brief)
     patient: PatientBrief | None = None

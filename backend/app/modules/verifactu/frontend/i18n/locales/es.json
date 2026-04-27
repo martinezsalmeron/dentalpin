@@ -87,6 +87,9 @@
       "warningProd": "Vas a pasar a producción real. Las facturas que se emitan a partir de ahora se enviarán a la AEAT como datos fiscales reales.",
       "label": "Entorno"
     },
+    "errors": {
+      "cannotPromoteToProd": "Tu rol no tiene permiso para pasar Verifactu a producción. Pide a un administrador que realice el cambio."
+    },
     "status": {
       "enabled": "Activo",
       "disabled": "Inactivo",
@@ -152,14 +155,91 @@
         "transient": "Errores temporales"
       },
       "empty": "No hay registros en este estado.",
-      "retry": "Reintentar (Subsanación)",
+      "retry": "Reintentar",
+      "regenerateAndRetry": "Regenerar y reenviar",
+      "regenerateTooltip": "Recalcula el registro con los datos actuales (NIF, líneas, etc.) y lo envía como subsanación.",
+      "retryAll": "Regenerar todos",
+      "retryAllConfirm": "Vas a regenerar y reenviar todos los rechazados de la clínica. ¿Continuar?",
+      "retryAllResult": "Regenerados {n} registros ({failed} fallaron).",
       "viewInvoice": "Ver factura",
+      "viewHistory": "Historial AEAT",
       "errorCode": "Código",
       "transportError": "Error de transporte",
       "aeatFault": "Respuesta de fallo de AEAT",
+      "rawError": "Mensaje original de la AEAT",
       "submissionAttempt": "Intento {n}",
       "processNow": "Procesar ahora",
-      "processed": "Procesados {n} registros"
+      "processed": "Procesados {n} registros",
+      "regeneratedToast": "Registro regenerado y reenviado.",
+      "blockingBanner": {
+        "title": "Hay {n} registro(s) Verifactu rechazado(s)",
+        "description": "No podrás emitir nuevas facturas hasta resolverlos. Esto evita romper la cadena de huellas.",
+        "cta": "Ir a la cola",
+        "adminContact": "Avisa al administrador {email} si no tienes acceso."
+      },
+      "ctas": {
+        "edit_clinic": "Corregir mis datos fiscales",
+        "edit_billing_party": "Editar datos del cliente",
+        "edit_lines": "Revisar líneas de la factura",
+        "edit_producer": "Editar productor del SIF",
+        "retry": "Reintentar",
+        "contact_support": "Contactar soporte"
+      },
+      "history": {
+        "title": "Historial de envíos a AEAT",
+        "empty": "No hay intentos previos archivados (este es el primer envío).",
+        "attempt": "Intento #{n}",
+        "huella": "Huella",
+        "code": "Código AEAT"
+      }
+    },
+    "billingParty": {
+      "modalTitle": "Editar datos del cliente",
+      "intro": "Estos datos se enviarán a la AEAT como destinatario en el siguiente reenvío.",
+      "fields": {
+        "name": "Nombre / razón social",
+        "taxId": "NIF / CIF",
+        "address": "Dirección"
+      },
+      "save": "Guardar y reenviar",
+      "saved": "Datos guardados. Verifactu reenviará el registro automáticamente.",
+      "concurrentEdit": "Otra persona modificó la factura mientras tanto. Recarga la página y vuelve a intentarlo.",
+      "saveFailed": "No se pudo guardar."
+    },
+    "invoiceBanner": {
+      "rejectedTitle": "AEAT ha rechazado este registro Verifactu",
+      "rejectedBody": "Corrige el dato indicado y se reenviará automáticamente como subsanación.",
+      "pdfStaleTitle": "El PDF descargado puede estar desactualizado",
+      "pdfStaleBody": "Tras corregir y reenviar, el QR cambia. Descarga el PDF de nuevo si ya lo enviaste al paciente.",
+      "downloadAgain": "Descargar PDF actualizado"
+    },
+    "nif": {
+      "warningInvalid": "El NIF/CIF no parece tener un formato válido. AEAT puede rechazarlo."
+    },
+    "globalBanner": {
+      "title": "Verifactu: {n} factura(s) rechazada(s) por AEAT",
+      "description": "Resuelve los rechazos antes de emitir nuevas facturas (la cadena de huellas se rompería).",
+      "cta": "Resolver"
+    },
+    "badge": {
+      "short": "AEAT",
+      "tooltip": {
+        "ok": "Aceptada por AEAT",
+        "warning": "Aceptada con avisos por AEAT",
+        "pending": "Pendiente de envío a AEAT",
+        "error": "Rechazada por AEAT"
+      }
+    },
+    "filter": {
+      "label": "Verifactu",
+      "options": {
+        "ok": "Aceptadas",
+        "warning": "Con avisos",
+        "pending": "Pendientes",
+        "error": "Rechazadas"
+      },
+      "shortcut": "Solo problemas",
+      "empty": "Todas tus facturas Verifactu están al día."
     },
     "records": {
       "title": "Libro fiscal",
@@ -229,6 +309,16 @@
         "title": "Descargar declaración firmada",
         "description": "Documento imprimible con los datos del productor y la marca de firma electrónica. Útil para archivo interno, inspección AEAT o distribución a clínicas que usan el sistema.",
         "lockedHint": "Disponible una vez firmada la declaración (paso 2)."
+      },
+      "fields": {
+        "name": "Razón social del productor",
+        "nameHint": "Nombre legal de la empresa o autónomo que actúa como productor del SIF.",
+        "nif": "NIF del productor",
+        "nifHint": "NIF del productor del SIF. Aparece en cada registro enviado a la AEAT.",
+        "idSistema": "ID del sistema",
+        "idSistemaHint": "Identificador corto (1-2 caracteres) que el productor asigna al sistema. Por defecto: DP.",
+        "version": "Versión del sistema",
+        "versionHint": "Versión del software desplegada en producción (p. ej. 0.1.0)."
       },
       "declaration": {
         "heading": "Declaración responsable",

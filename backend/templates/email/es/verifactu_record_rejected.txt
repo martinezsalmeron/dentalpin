@@ -1,0 +1,27 @@
+Hola {{ admin_name }},
+
+La AEAT ha RECHAZADO el registro Verifactu de la factura {{ invoice_number }} de la clínica "{{ clinic_name }}".
+Mientras no lo resuelvas no podrás emitir nuevas facturas (rompería la cadena de huellas).
+
+Factura: {{ invoice_number }}
+Código AEAT: {{ codigo_error or '—' }}
+Motivo: {{ friendly_message }}
+
+Pasos:
+{% if suggested_cta == 'edit_clinic' -%}
+1. Entra en Configuración → Clínica y revisa el CIF/NIF.
+2. Vuelve a Configuración → Verifactu → Cola y pulsa "Regenerar y reenviar".
+{% elif suggested_cta == 'edit_billing_party' -%}
+1. Abre la factura {{ invoice_number }} y pulsa "Editar datos del cliente" en el banner.
+2. Tras guardar, se reenvía automáticamente.
+{% elif suggested_cta == 'edit_lines' -%}
+1. Revisa el mapeo de IVA y los importes de la factura.
+2. Crea rectificativa si la factura ya estaba pagada.
+{% else -%}
+1. Entra en Configuración → Verifactu → Cola para ver el detalle.
+2. Si no está claro, contacta con soporte adjuntando el código de error.
+{% endif %}
+
+{% if queue_url -%}
+Cola Verifactu: {{ queue_url }}
+{%- endif %}

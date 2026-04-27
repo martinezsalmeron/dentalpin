@@ -23,7 +23,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
 | `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 4 | 13 | 3 | yes |
-| `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 4 | 0 | 1 | yes |
+| `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 0 | 1 | yes |
 
 ## Modules
 
@@ -351,6 +351,7 @@ Cumplimiento Veri*Factu (AEAT) para clínicas en España.
 - **Depends:** `billing`, `catalog`
 - **Frontend layer:** `frontend`
 - **Permissions:**
+  - `verifactu.environment.promote`
   - `verifactu.queue.manage`
   - `verifactu.records.read`
   - `verifactu.settings.configure`

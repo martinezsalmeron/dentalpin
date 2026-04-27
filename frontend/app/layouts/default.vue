@@ -10,7 +10,14 @@ const route = useRoute()
 // Pull the backend-driven nav on mount + on every route change, so
 // sidebar reflects module installs/upgrades without a full reload.
 // ensureLoaded enforces a 60s freshness window internally.
-ensureLoaded()
+// Await on server so modules:active lands in the SSR payload — otherwise
+// the client hydrates with active=null, then flips branches once the
+// fetch resolves, briefly filtering the sidebar down to just Inicio.
+if (import.meta.server) {
+  await ensureLoaded()
+} else {
+  ensureLoaded()
+}
 
 watch(
   () => auth.accessToken.value,
@@ -342,6 +349,13 @@ function isActive(to: string): boolean {
 
       <!-- Page content -->
       <main class="flex-1 p-3 sm:p-4 md:p-6 min-w-0 overflow-x-hidden">
+        <!--
+          Global banner slot for compliance modules (Verifactu rejected
+          alerts, certificate expiry warnings, etc.). Modules register
+          their banners via `useModuleSlots`; the layout knows nothing
+          about them.
+        -->
+        <ModuleSlot name="app.banners" :ctx="{}" />
         <slot />
       </main>
     </div>

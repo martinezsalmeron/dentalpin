@@ -1,12 +1,16 @@
 """Verifactu module database models.
 
-Three tables:
+Tables:
 
 * ``verifactu_settings`` — per-clinic configuration (one row per clinic).
 * ``verifactu_certificates`` — uploaded PFX/P12 certificates (encrypted).
 * ``verifactu_records`` — append-only fiscal ledger of every register
-  (alta or anulacion) sent to AEAT, with full XML payload, hash chain,
-  and AEAT response.
+  (alta or anulacion) sent to AEAT, with current XML payload, hash chain,
+  and last AEAT response.
+* ``verifactu_record_attempts`` — historical snapshots of every XML
+  payload + huella generated for a record. Required by RD 1007/2023
+  art. 8 (trazabilidad de todos los registros generados, incluso
+  los rechazados antes de subsanación).
 """
 
 from datetime import date, datetime
@@ -87,6 +91,14 @@ class VerifactuSettings(Base, TimestampMixin):
         UUID(as_uuid=True), default=None
     )
 
+    # Set by tasks._notify_rejected when an admin email is sent. Used
+    # to throttle to one alert per clinic per 30 min — avoids flooding
+    # admins when a systemic issue (bad NIF on the clinic, expired cert)
+    # triggers many rejections in a single batch.
+    last_rejected_alert_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+
     clinic: Mapped["Clinic"] = relationship()
 
 
@@ -151,6 +163,13 @@ class VerifactuCertificate(Base, TimestampMixin):
     nif_titular: Mapped[str | None] = mapped_column(String(20), default=None)
     valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+    # Set by the daily cert-expiry job whenever it sends an alert email.
+    # Used to throttle to one alert per certificate per 24 h regardless
+    # of how many admins receive it.
+    last_expiry_alert_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
@@ -228,4 +247,43 @@ class VerifactuRecord(Base):
         UniqueConstraint("clinic_id", "huella", name="uq_verifactu_record_clinic_huella"),
         Index("ix_verifactu_records_clinic_created", "clinic_id", "created_at"),
         Index("ix_verifactu_records_clinic_state", "clinic_id", "state"),
+    )
+
+
+class VerifactuRecordAttempt(Base):
+    """Historical snapshot of one XML payload + huella sent for a record.
+
+    A record is regenerated (Subsanación con datos corregidos) by
+    overwriting ``VerifactuRecord.xml_payload`` and ``huella``. RD
+    1007/2023 art. 8 requires conservar la trazabilidad de todos los
+    registros generados — including the rejected XML before subsanación.
+    Each call to ``regenerate_record`` snapshots the previous state here
+    before mutating the parent record.
+    """
+
+    __tablename__ = "verifactu_record_attempts"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    record_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("verifactu_records.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    xml_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    huella: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    aeat_codigo_error: Mapped[int | None] = mapped_column(Integer, default=None)
+    aeat_descripcion_error: Mapped[str | None] = mapped_column(Text, default=None)
+    aeat_response_xml: Mapped[str | None] = mapped_column(Text, default=None)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("record_id", "attempt_no", name="uq_verifactu_attempt_record_no"),
     )

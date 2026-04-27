@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_expired %}Tu certificado Verifactu ya ha caducado{% else %}Tu certificado Verifactu caduca pronto{% endif %}{% endblock %}
+
+{% block content %}
+<h2>Hola {{ admin_name }},</h2>
+
+{% if is_expired %}
+<div class="alert alert-error">
+    El certificado digital de la clínica <strong>{{ clinic_name }}</strong> usado para firmar los envíos a la AEAT (Veri*Factu) <strong>ya ha caducado</strong>. Mientras no lo renueves, los registros se quedarán en cola y la AEAT rechazará cualquier envío.
+</div>
+{% else %}
+<div class="alert alert-warning">
+    El certificado digital de la clínica <strong>{{ clinic_name }}</strong> usado para firmar los envíos a la AEAT (Veri*Factu) caduca en <strong>{{ days_left }} día{% if days_left != 1 %}s{% endif %}</strong>. Te recomendamos renovarlo antes de la fecha límite para que la facturación no se interrumpa.
+</div>
+{% endif %}
+
+<div class="info-box">
+    <div class="label">Titular del certificado</div>
+    <div class="value">{{ subject_cn or '—' }}</div>
+</div>
+
+<div class="info-box">
+    <div class="label">Fecha de caducidad</div>
+    <div class="value">{{ valid_until.strftime('%d/%m/%Y') }}</div>
+</div>
+
+<h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 16px; font-weight: 600;">¿Qué necesitas hacer?</h3>
+
+<ol style="padding-left: 20px; color: #3f3f46;">
+    <li style="margin-bottom: 8px;">Solicita un nuevo certificado a la FNMT (Representante de Persona Jurídica, Persona Física o Sello de Empresa).</li>
+    <li style="margin-bottom: 8px;">Inicia sesión en DentalPin como administrador y entra en <em>Configuración → Verifactu → Certificado</em>.</li>
+    <li style="margin-bottom: 8px;">Sube el nuevo archivo <code>.pfx</code> e introduce su contraseña. El certificado anterior queda archivado para auditoría.</li>
+</ol>
+
+<p>Si necesitas ayuda, contesta a este correo y te guiamos paso a paso.</p>
+{% endblock %}

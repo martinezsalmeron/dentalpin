@@ -6,6 +6,7 @@ const router = useRouter()
 const { t, locale } = useI18n()
 const toast = useToast()
 const { can } = usePermissions()
+const { currentClinic } = useClinic()
 const {
   currentInvoice,
   isLoading,
@@ -26,6 +27,14 @@ const {
   getPaymentMethodLabel,
   formatCurrency
 } = useInvoices()
+
+// Context object passed to compliance-module slot entries (e.g.
+// Verifactu-ES). Billing remains country-agnostic; the slot registry
+// resolves which component to render per clinic country.
+const complianceSlotCtx = computed(() => ({
+  invoice: currentInvoice.value,
+  clinic: currentClinic.value
+}))
 
 const invoiceId = computed(() => route.params.id as string)
 const comesFromPatient = computed(() => route.query.from === 'patient' && route.query.patientId)
@@ -424,6 +433,15 @@ function goToCreditNoteFor() {
               >
                 {{ t('invoice.overdue') }}
               </UBadge>
+              <!--
+                Compliance modules surface a quick AEAT/factur-x/etc.
+                badge here. Renders nothing when there is no compliance
+                data for the active country.
+              -->
+              <ModuleSlot
+                name="invoice.detail.header.meta"
+                :ctx="{ invoice: currentInvoice, clinic: currentClinic }"
+              />
             </h1>
             <p
               v-if="currentInvoice.patient"
@@ -798,6 +816,16 @@ function goToCreditNoteFor() {
               </div>
             </div>
           </UCard>
+
+          <!--
+            Compliance modules (Verifactu-ES, factur-x-FR, ...) plug
+            into this slot via `useModuleSlots`. Billing has no compile-
+            time dependency on any of them.
+          -->
+          <ModuleSlot
+            name="invoice.detail.compliance"
+            :ctx="complianceSlotCtx"
+          />
         </div>
       </div>
     </template>

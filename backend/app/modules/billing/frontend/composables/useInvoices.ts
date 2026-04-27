@@ -40,6 +40,10 @@ export interface InvoiceListParams {
   search?: string
   budget_id?: string
   is_credit_note?: boolean
+  // Generic compliance severity filter — `ok | warning | pending |
+  // error`. Backend matches any country in compliance_data whose
+  // severity is in the list. Owned by compliance modules.
+  compliance_severity?: string[]
 }
 
 // Status colors for badges
@@ -142,6 +146,9 @@ export function useInvoices() {
       if (params.search) searchParams.set('search', params.search)
       if (params.budget_id) searchParams.set('budget_id', params.budget_id)
       if (params.is_credit_note !== undefined) searchParams.set('is_credit_note', params.is_credit_note.toString())
+      if (params.compliance_severity?.length) {
+        params.compliance_severity.forEach(s => searchParams.append('compliance_severity', s))
+      }
 
       const response = await api.get<PaginatedResponse<InvoiceListItem>>(
         `/api/v1/billing/invoices?${searchParams.toString()}`
@@ -251,6 +258,25 @@ export function useInvoices() {
       currentInvoice.value = { ...currentInvoice.value, ...response.data }
     }
 
+    return response.data
+  }
+
+  async function updateBillingParty(
+    id: string,
+    data: {
+      billing_name?: string | null
+      billing_tax_id?: string | null
+      billing_address?: Record<string, unknown> | null
+      expected_updated_at?: string | null
+    }
+  ): Promise<Invoice> {
+    const response = await api.patch<ApiResponse<Invoice>>(
+      `/api/v1/billing/invoices/${id}/billing-party`,
+      data as unknown as Record<string, unknown>
+    )
+    if (currentInvoice.value?.id === id) {
+      currentInvoice.value = { ...currentInvoice.value, ...response.data }
+    }
     return response.data
   }
 
@@ -607,6 +633,7 @@ export function useInvoices() {
     createInvoice,
     createFromBudget,
     updateInvoice,
+    updateBillingParty,
     deleteInvoice,
 
     // Items

@@ -39,6 +39,7 @@ class InvoicePDFService:
         clinic: "Clinic",
         is_preview: bool = False,
         locale: str = "es",
+        extra_pdf_data: dict | None = None,
     ) -> bytes:
         """Generate PDF for an invoice.
 
@@ -47,12 +48,20 @@ class InvoicePDFService:
             clinic: The clinic for branding
             is_preview: If True, adds DRAFT watermark for draft invoices
             locale: Language for labels (es/en)
+            extra_pdf_data: Optional dict produced by a country
+                ``BillingComplianceHook.enhance_pdf_data``. Recognised
+                keys: ``compliance_qr_png_b64`` (base64 PNG) renders the
+                QR top-right; ``compliance_qr_label`` (default
+                ``"VERI*FACTU"``); ``legal_notices`` (list[str]) appends
+                to the legal-notices block.
 
         Returns:
             PDF content as bytes
         """
         # Generate HTML content
-        html_content = InvoicePDFService._generate_html(invoice, clinic, is_preview, locale)
+        html_content = InvoicePDFService._generate_html(
+            invoice, clinic, is_preview, locale, extra_pdf_data or {}
+        )
 
         # Convert to PDF
         pdf_bytes = InvoicePDFService._html_to_pdf(html_content)
@@ -70,8 +79,10 @@ class InvoicePDFService:
         clinic: "Clinic",
         is_preview: bool,
         locale: str,
+        extra_pdf_data: dict | None = None,
     ) -> str:
         """Generate HTML content for the invoice."""
+        extra = extra_pdf_data or {}
         # Localized labels
         labels = InvoicePDFService._get_labels(locale)
 
@@ -148,6 +159,34 @@ class InvoicePDFService:
             credit_note_ref_html = f"""
             <div class="credit-note-ref">
                 <strong>{labels["credit_note_for"]}:</strong> {ref_number}
+            </div>
+            """
+
+        # Compliance QR (e.g. AEAT VERI*FACTU). Country-agnostic block:
+        # the country compliance hook supplies the base64 PNG via
+        # ``extra_pdf_data['compliance_qr_png_b64']``. Sized 32 mm and
+        # placed top-right per AEAT geometry; we render it as a sibling
+        # of ``.invoice-info`` so it does not push the layout.
+        qr_b64 = extra.get("compliance_qr_png_b64") or extra.get("verifactu_qr_png_b64")
+        qr_label = extra.get("compliance_qr_label") or "VERI*FACTU"
+        qr_block_html = ""
+        if qr_b64:
+            qr_block_html = f"""
+            <div class="compliance-qr">
+                <img src="data:image/png;base64,{qr_b64}" alt="{qr_label}" />
+                <div class="compliance-qr-label">{qr_label}</div>
+            </div>
+            """
+
+        # Legal notices appended by compliance hooks (e.g. "Factura
+        # verificable en VERI*FACTU"). Rendered after the notes section.
+        legal_notices = extra.get("legal_notices") or []
+        legal_notices_html = ""
+        if legal_notices:
+            items_li = "".join(f"<li>{notice}</li>" for notice in legal_notices)
+            legal_notices_html = f"""
+            <div class="legal-notices">
+                <ul>{items_li}</ul>
             </div>
             """
 
@@ -361,6 +400,39 @@ class InvoicePDFService:
                     padding-top: 10px;
                 }}
 
+                .compliance-qr {{
+                    position: absolute;
+                    top: 20mm;
+                    right: 20mm;
+                    text-align: center;
+                    width: 32mm;
+                }}
+                .compliance-qr img {{
+                    width: 32mm;
+                    height: 32mm;
+                    display: block;
+                }}
+                .compliance-qr-label {{
+                    margin-top: 2mm;
+                    font-size: 7pt;
+                    font-weight: bold;
+                    letter-spacing: 0.5px;
+                    color: #111;
+                }}
+
+                .legal-notices {{
+                    margin-top: 16px;
+                    font-size: 8pt;
+                    color: #6b7280;
+                }}
+                .legal-notices ul {{
+                    list-style: none;
+                    padding: 0;
+                }}
+                .legal-notices li {{
+                    margin-bottom: 4px;
+                }}
+
                 @media print {{
                     body {{ padding: 0; }}
                     .footer {{ position: fixed; }}
@@ -369,6 +441,7 @@ class InvoicePDFService:
         </head>
         <body>
             {watermark_html}
+            {qr_block_html}
 
             <div class="header">
                 <div class="clinic-info">
@@ -513,6 +586,8 @@ class InvoicePDFService:
             labels["days"]
         }
             </div>
+
+            {legal_notices_html}
 
             <div class="footer">
                 {labels["generated_by"]} DentalPin | {date.today().strftime("%d/%m/%Y %H:%M")}

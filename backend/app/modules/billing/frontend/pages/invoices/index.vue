@@ -20,6 +20,7 @@ const { t, locale } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const { can } = usePermissions()
+const { currentClinic } = useClinic()
 const {
   invoices,
   total,
@@ -33,6 +34,10 @@ const {
 const searchQuery = ref('')
 const selectedStatuses = ref<InvoiceStatus[]>([])
 const showOverdue = ref(false)
+// Generic compliance severity filter — owned and rendered by the
+// active compliance module via the ``invoice.list.toolbar.filters``
+// slot. Billing only knows about the param shape.
+const complianceSeverity = ref<string[]>([])
 const currentPage = ref(1)
 const pageSize = 20
 
@@ -65,7 +70,8 @@ async function loadInvoices() {
     page_size: pageSize,
     search: debouncedSearch.value || undefined,
     status: selectedStatuses.value.length > 0 ? selectedStatuses.value : undefined,
-    overdue: showOverdue.value || undefined
+    overdue: showOverdue.value || undefined,
+    compliance_severity: complianceSeverity.value.length > 0 ? complianceSeverity.value : undefined
   })
 }
 
@@ -75,9 +81,14 @@ onMounted(() => {
 })
 
 // Reload when filters change
-watch([currentPage, debouncedSearch, selectedStatuses, showOverdue], () => {
+watch([currentPage, debouncedSearch, selectedStatuses, showOverdue, complianceSeverity], () => {
   loadInvoices()
 })
+
+function applyComplianceSeverity(next: string[]) {
+  complianceSeverity.value = next
+  currentPage.value = 1
+}
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize))
 
@@ -170,6 +181,15 @@ function isOverdue(invoice: InvoiceListItem): boolean {
         v-model="showOverdue"
         :label="t('invoice.filters.overdueOnly')"
       />
+      <!--
+        Compliance modules (verifactu-ES, factur-x-FR…) inject extra
+        toolbar filters here. Billing knows nothing about them — it
+        just owns the ``compliance_severity`` query param shape.
+      -->
+      <ModuleSlot
+        name="invoice.list.toolbar.filters"
+        :ctx="{ severity: complianceSeverity, onChange: applyComplianceSeverity, clinic: currentClinic }"
+      />
     </div>
 
     <UCard>
@@ -228,6 +248,15 @@ function isOverdue(invoice: InvoiceListItem): boolean {
               :label="t('invoice.overdue')"
               size="xs"
               dot
+            />
+            <!--
+              Compliance badge slot (verifactu, factur-x…). Returns
+              nothing when the invoice has no compliance_data for the
+              active country — keeps non-ES clinics' rows untouched.
+            -->
+            <ModuleSlot
+              name="invoice.list.row.meta"
+              :ctx="{ invoice, clinic: currentClinic }"
             />
           </template>
           <template #subtitle>

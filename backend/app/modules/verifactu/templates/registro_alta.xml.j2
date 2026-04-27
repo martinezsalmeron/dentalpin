@@ -38,6 +38,16 @@
     <FechaExpedicionFactura>{{ fecha_expedicion }}</FechaExpedicionFactura>
   </IDFactura>
   <NombreRazonEmisor>{{ nombre_razon_emisor | e }}</NombreRazonEmisor>
+  {#- Per AEAT XSD: Subsanacion + RechazoPrevio van inmediatamente
+      después de NombreRazonEmisor, antes de TipoFactura. Si se ponen
+      al final junto a TipoHuella el validador reporta "falta TipoHuella"
+      porque encuentra estos elementos donde esperaba TipoHuella. -#}
+  {%- if subsanacion %}
+  <Subsanacion>S</Subsanacion>
+  {%- endif %}
+  {%- if rechazo_previo %}
+  <RechazoPrevio>X</RechazoPrevio>
+  {%- endif %}
   <TipoFactura>{{ tipo_factura }}</TipoFactura>
   {%- if tipo_rectificativa %}
   <TipoRectificativa>{{ tipo_rectificativa }}</TipoRectificativa>
@@ -125,12 +135,6 @@
     <IndicadorMultiplesOT>{{ sistema_informatico.indicador_multiples_ot }}</IndicadorMultiplesOT>
   </SistemaInformatico>
   <FechaHoraHusoGenRegistro>{{ fecha_hora_huso }}</FechaHoraHusoGenRegistro>
-  {%- if subsanacion %}
-  <Subsanacion>S</Subsanacion>
-  {%- endif %}
-  {%- if rechazo_previo %}
-  <RechazoPrevio>X</RechazoPrevio>
-  {%- endif %}
   <TipoHuella>01</TipoHuella>
   <Huella>{{ huella }}</Huella>
 </RegistroAlta>

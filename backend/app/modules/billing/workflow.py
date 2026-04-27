@@ -291,6 +291,96 @@ class InvoiceWorkflowService:
         return invoice
 
     @staticmethod
+    async def update_billing_party(
+        db: AsyncSession,
+        invoice: Invoice,
+        *,
+        new_name: str | None,
+        new_tax_id: str | None,
+        new_address: dict | None,
+        expected_updated_at: datetime | None,
+        changed_by: UUID,
+    ) -> Invoice:
+        """Edit billing-party fields on an issued invoice with compliance gate.
+
+        Drafts: open editing (no fiscal commitment yet).
+
+        Issued + compliance hook present: only allowed when the hook's
+        latest fiscal record reports a correctable state. For Verifactu
+        that means ``rejected`` / ``failed_validation`` — AEAT never
+        registered the original data, so the spec admits Subsanación
+        with corrected data. ``accepted`` invoices require a credit
+        note instead and are rejected here.
+
+        On success, triggers the compliance hook's regenerate path so
+        the user does not have to re-trigger from the compliance queue.
+        """
+
+        if expected_updated_at is not None and invoice.updated_at is not None:
+            # Treat both as UTC; the DB stores TIMESTAMPTZ so updated_at
+            # is timezone-aware. The frontend echoes whatever was served.
+            if abs((invoice.updated_at - expected_updated_at).total_seconds()) > 1:
+                raise InvoiceWorkflowError(
+                    "concurrent edit detected — refresh and try again"
+                )
+
+        if invoice.status != "draft":
+            hook = BillingHookRegistry.get_for_clinic(invoice.clinic) if invoice.clinic else None
+            if hook is None:
+                raise InvoiceWorkflowError(
+                    f"Cannot edit billing party on invoice with status '{invoice.status}'"
+                )
+            allowed, reason = await hook.can_edit_billing_party(invoice, db)
+            if not allowed:
+                raise InvoiceWorkflowError(
+                    reason
+                    or "Edición no permitida por la normativa de cumplimiento de este país."
+                )
+
+        previous = {
+            "billing_name": invoice.billing_name,
+            "billing_tax_id": invoice.billing_tax_id,
+            "billing_address": invoice.billing_address,
+        }
+        if new_name is not None:
+            invoice.billing_name = new_name.strip() or None
+        if new_tax_id is not None:
+            invoice.billing_tax_id = new_tax_id.strip().upper() or None
+        if new_address is not None:
+            invoice.billing_address = new_address
+
+        from .service import InvoiceHistoryService
+
+        await InvoiceHistoryService.add_entry(
+            db,
+            clinic_id=invoice.clinic_id,
+            invoice_id=invoice.id,
+            action="billing_party_updated",
+            changed_by=changed_by,
+            previous_state=previous,
+            new_state={
+                "billing_name": invoice.billing_name,
+                "billing_tax_id": invoice.billing_tax_id,
+                "billing_address": invoice.billing_address,
+            },
+        )
+
+        await db.flush()
+
+        # Auto-regenerate compliance record so the user does not have
+        # to chase the compliance queue. Drafts have no fiscal record
+        # yet; the hook signals a no-op via the default impl.
+        if invoice.status != "draft":
+            hook = BillingHookRegistry.get_for_clinic(invoice.clinic) if invoice.clinic else None
+            if hook is not None:
+                regenerated = await hook.regenerate_after_party_change(invoice, db)
+                if regenerated:
+                    invoice.compliance_data = invoice.compliance_data or {}
+                    invoice.compliance_data.update(regenerated)
+
+        return invoice
+
+    @staticmethod
     async def void_invoice(
         db: AsyncSession,
         invoice: Invoice,

@@ -84,6 +84,24 @@ export interface VerifactuRecordDetail extends VerifactuRecord {
   aeat_response_xml: string | null
 }
 
+export type VerifactuErrorField =
+  | 'emisor'
+  | 'destinatario'
+  | 'linea'
+  | 'cabecera'
+  | 'cadena'
+  | 'transporte'
+  | 'sistema'
+  | 'rectificativa'
+
+export type VerifactuErrorCTA =
+  | 'edit_clinic'
+  | 'edit_billing_party'
+  | 'edit_lines'
+  | 'edit_producer'
+  | 'retry'
+  | 'contact_support'
+
 export interface VerifactuQueueItem {
   id: string
   invoice_id: string
@@ -92,8 +110,33 @@ export interface VerifactuQueueItem {
   state: string
   aeat_codigo_error: number | null
   aeat_descripcion_error: string | null
+  aeat_descripcion_error_es: string | null
+  aeat_error_field: VerifactuErrorField | null
+  aeat_error_cta: VerifactuErrorCTA | null
   submission_attempt: number
   last_attempt_at: string | null
+}
+
+export interface VerifactuRecordAttempt {
+  id: string
+  record_id: string
+  attempt_no: number
+  huella: string
+  state: string
+  aeat_codigo_error: number | null
+  aeat_descripcion_error: string | null
+  created_at: string
+}
+
+export interface NifCheckResult {
+  is_valid: boolean
+  warning: string | null
+}
+
+export interface RetryAllResult {
+  regenerated: number
+  failed: { record_id: string; error: string }[]
+  remaining: number
 }
 
 export interface VerifactuHealth {
@@ -146,9 +189,20 @@ export const useVerifactu = () => {
       const r = await api.post<ApiResponse<VerifactuCertificate>>('/api/v1/verifactu/certificate', fd)
       return r.data
     },
-    async listRecords(params: { page?: number; page_size?: number; state?: string; tipo_factura?: string } = {}) {
-      const r = await api.get<PaginatedResponse<VerifactuRecord>>('/api/v1/verifactu/records', { params })
+    async listRecords(params: { page?: number; page_size?: number; state?: string; tipo_factura?: string; invoice_id?: string } = {}) {
+      const qs = new URLSearchParams()
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null) qs.set(k, String(v))
+      }
+      const url = `/api/v1/verifactu/records${qs.toString() ? `?${qs.toString()}` : ''}`
+      const r = await api.get<PaginatedResponse<VerifactuRecord>>(url)
       return r
+    },
+    async getLatestRecordForInvoice(invoiceId: string) {
+      const r = await api.get<PaginatedResponse<VerifactuRecord>>(
+        `/api/v1/verifactu/records?invoice_id=${invoiceId}&page_size=1`
+      )
+      return r.data?.[0] ?? null
     },
     async getRecord(id: string) {
       const r = await api.get<ApiResponse<VerifactuRecordDetail>>(`/api/v1/verifactu/records/${id}`)
@@ -158,8 +212,29 @@ export const useVerifactu = () => {
       const r = await api.get<ApiResponse<VerifactuQueueItem[]>>('/api/v1/verifactu/queue', { params: state ? { state } : undefined })
       return r.data
     },
-    async retryRecord(id: string) {
-      const r = await api.post<ApiResponse<VerifactuRecord>>(`/api/v1/verifactu/queue/${id}/retry`)
+    async retryRecord(id: string, opts: { regenerate?: boolean } = {}) {
+      const qs = opts.regenerate === false ? '?regenerate=false' : ''
+      const r = await api.post<ApiResponse<VerifactuRecord>>(
+        `/api/v1/verifactu/queue/${id}/retry${qs}`
+      )
+      return r.data
+    },
+    async retryAllRejected() {
+      const r = await api.post<ApiResponse<RetryAllResult>>(
+        '/api/v1/verifactu/queue/retry-all'
+      )
+      return r.data
+    },
+    async listRecordAttempts(id: string) {
+      const r = await api.get<ApiResponse<VerifactuRecordAttempt[]>>(
+        `/api/v1/verifactu/records/${id}/attempts`
+      )
+      return r.data
+    },
+    async checkNif(value: string) {
+      const r = await api.get<ApiResponse<NifCheckResult>>(
+        `/api/v1/verifactu/nif-check?value=${encodeURIComponent(value)}`
+      )
       return r.data
     },
     async processNow() {

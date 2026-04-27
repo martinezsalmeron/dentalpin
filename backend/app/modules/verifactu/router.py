@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.dependencies import ClinicContext, get_clinic_context, require_permission
 from app.core.auth.models import Clinic
+from app.core.auth.permissions import has_permission
 from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
@@ -25,8 +26,10 @@ from .models import (
     VerifactuSettings,
     VerifactuVatClassification,
 )
+from .models import VerifactuRecordAttempt
 from .schemas import (
     CertificateUploadResponse,
+    NifCheckResponse,
     ProducerDefaultsResponse,
     ProducerInfoUpdate,
     VatClassificationItem,
@@ -35,12 +38,13 @@ from .schemas import (
     VerifactuCertificateResponse,
     VerifactuHealthResponse,
     VerifactuQueueItem,
+    VerifactuRecordAttemptResponse,
     VerifactuRecordDetailResponse,
     VerifactuRecordResponse,
     VerifactuSettingsResponse,
     VerifactuSettingsUpdate,
 )
-from .services import certificate, encryption, iva_classifier, sistema_informatico
+from .services import certificate, encryption, iva_classifier, nif_validator, sistema_informatico
 
 router = APIRouter()
 
@@ -134,6 +138,20 @@ async def update_settings(
     if body.enabled is not None:
         s.enabled = body.enabled
     if body.environment is not None:
+        # Promoting from ``test`` → ``prod`` is destructive: every
+        # subsequent invoice becomes part of the clinic's official
+        # AEAT fiscal ledger. Require an explicit
+        # ``verifactu.environment.promote`` grant on top of the
+        # general ``settings.configure`` permission.
+        is_promoting_to_prod = body.environment == "prod" and s.environment != "prod"
+        if is_promoting_to_prod and not has_permission(ctx.role, "verifactu.environment.promote"):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "No tienes permiso para promover Verifactu a producción. "
+                    "Pide al administrador de la clínica que realice este paso."
+                ),
+            )
         s.environment = body.environment
 
     nif, _ = await _clinic_emisor(db, ctx.clinic_id)
@@ -389,12 +407,15 @@ async def list_records(
     page_size: Annotated[int, Query(ge=1, le=200)] = 50,
     state: str | None = None,
     tipo_factura: str | None = None,
+    invoice_id: UUID | None = None,
 ) -> PaginatedApiResponse[VerifactuRecordResponse]:
     base = select(VerifactuRecord).where(VerifactuRecord.clinic_id == ctx.clinic_id)
     if state:
         base = base.where(VerifactuRecord.state == state)
     if tipo_factura:
         base = base.where(VerifactuRecord.tipo_factura == tipo_factura)
+    if invoice_id:
+        base = base.where(VerifactuRecord.invoice_id == invoice_id)
     base = base.order_by(VerifactuRecord.created_at.desc())
 
     total_q = await db.execute(select(func.count()).select_from(base.subquery()))
@@ -472,7 +493,21 @@ async def list_queue(
         )
     base = base.order_by(VerifactuRecord.created_at.desc()).limit(500)
     rows = await db.execute(base)
-    return ApiResponse(data=[VerifactuQueueItem.model_validate(r) for r in rows.scalars()])
+    from .services.error_messages import friendly_error
+
+    items: list[VerifactuQueueItem] = []
+    for r in rows.scalars():
+        friendly = friendly_error(r.aeat_codigo_error, r.aeat_descripcion_error)
+        item = VerifactuQueueItem.model_validate(r)
+        item = item.model_copy(
+            update={
+                "aeat_descripcion_error_es": friendly["message"],
+                "aeat_error_field": friendly["field"],
+                "aeat_error_cta": friendly["suggested_cta"],
+            }
+        )
+        items.append(item)
+    return ApiResponse(data=items)
 
 
 @router.post("/queue/{record_id}/retry", response_model=ApiResponse[VerifactuRecordResponse])
@@ -481,7 +516,21 @@ async def retry_record(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("verifactu.queue.manage"))],
     db: Annotated[AsyncSession, Depends(get_db)],
+    regenerate: Annotated[bool, Query(description="Re-render XML from current data")] = True,
 ) -> ApiResponse[VerifactuRecordResponse]:
+    """Retry a queued Verifactu record.
+
+    Default behaviour (``regenerate=true``) for ``rejected`` /
+    ``failed_validation`` records: re-render the XML and recompute the
+    huella from current Clinic + Invoice + Settings, then re-queue as
+    Subsanación. Use ``regenerate=false`` for debug to send the stored
+    XML verbatim — sometimes useful when the rejection was actually a
+    transient AEAT issue mis-coded as ``Incorrecto``.
+
+    For ``failed_transient`` records the XML is always reused — the
+    rejection was at the transport layer, not a data problem.
+    """
+
     result = await db.execute(
         select(VerifactuRecord).where(
             VerifactuRecord.id == record_id,
@@ -493,13 +542,128 @@ async def retry_record(
         raise HTTPException(status_code=404)
     if rec.state == "accepted":
         raise HTTPException(status_code=400, detail="Registro ya aceptado")
-    rec.state = "pending"
-    rec.subsanacion = True
-    if rec.aeat_estado_registro == "Incorrecto":
-        rec.rechazo_previo = True
-    await db.commit()
-    await db.refresh(rec)
+
+    code = rec.aeat_codigo_error or 0
+    is_business_transient = rec.state == "failed_transient" and (
+        code == -2 or code >= 1000
+    )
+    is_regenable = rec.state in ("rejected", "failed_validation") or is_business_transient
+    if regenerate and is_regenable:
+        from .hook import regenerate_record
+
+        try:
+            rec = await regenerate_record(db, rec)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        await db.commit()
+        await db.refresh(rec)
+    else:
+        rec.state = "pending"
+        rec.subsanacion = True
+        if rec.aeat_estado_registro == "Incorrecto":
+            rec.rechazo_previo = True
+        await db.commit()
+        await db.refresh(rec)
     return ApiResponse(data=VerifactuRecordResponse.model_validate(rec))
+
+
+@router.post("/queue/retry-all", response_model=ApiResponse[dict])
+async def retry_all_rejected(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("verifactu.queue.manage"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[dict]:
+    """Bulk-regenerate every ``rejected`` record for the current clinic.
+
+    Use case: clinic activated Verifactu with a mistyped NIF and 50
+    invoices got rejected at once. Admin fixes the NIF in clinic
+    settings then triggers this endpoint to re-queue them all in one
+    click. Capped at 200 records per call to bound the transaction.
+    """
+
+    from .hook import regenerate_record
+
+    rows_q = await db.execute(
+        select(VerifactuRecord)
+        .where(
+            VerifactuRecord.clinic_id == ctx.clinic_id,
+            VerifactuRecord.state.in_(("rejected", "failed_validation")),
+        )
+        .order_by(VerifactuRecord.created_at.asc())
+        .limit(200)
+    )
+    rows = list(rows_q.scalars())
+    regenerated = 0
+    failed: list[dict] = []
+    for rec in rows:
+        try:
+            await regenerate_record(db, rec)
+            regenerated += 1
+        except ValueError as exc:
+            failed.append({"record_id": str(rec.id), "error": str(exc)})
+    await db.commit()
+    return ApiResponse(
+        data={
+            "regenerated": regenerated,
+            "failed": failed,
+            "remaining": max(0, len(rows) - regenerated),
+        }
+    )
+
+
+@router.get(
+    "/records/{record_id}/attempts",
+    response_model=ApiResponse[list[VerifactuRecordAttemptResponse]],
+)
+async def list_record_attempts(
+    record_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("verifactu.records.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[VerifactuRecordAttemptResponse]]:
+    """Historical attempts (XMLs + huellas) for a record (art. 8 RD 1007/2023)."""
+
+    rec_q = await db.execute(
+        select(VerifactuRecord.id).where(
+            VerifactuRecord.id == record_id,
+            VerifactuRecord.clinic_id == ctx.clinic_id,
+        )
+    )
+    if rec_q.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404)
+
+    attempts_q = await db.execute(
+        select(VerifactuRecordAttempt)
+        .where(VerifactuRecordAttempt.record_id == record_id)
+        .order_by(VerifactuRecordAttempt.attempt_no.asc())
+    )
+    return ApiResponse(
+        data=[
+            VerifactuRecordAttemptResponse.model_validate(a)
+            for a in attempts_q.scalars()
+        ]
+    )
+
+
+@router.get("/nif-check", response_model=ApiResponse[NifCheckResponse])
+async def check_nif(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("verifactu.settings.read"))],
+    value: Annotated[str, Query(description="NIF/CIF to validate")],
+) -> ApiResponse[NifCheckResponse]:
+    """On-blur NIF check used by the frontend.
+
+    Returns ``is_valid=False`` plus a Spanish warning when the value
+    does not pass mod-23 validation. Advisory only — neither blocks
+    saving nor invoice issuing.
+    """
+
+    return ApiResponse(
+        data=NifCheckResponse(
+            is_valid=nif_validator.is_valid_spanish_nif(value),
+            warning=nif_validator.nif_warning(value),
+        )
+    )
 
 
 @router.post("/queue/process-now", response_model=ApiResponse[dict])

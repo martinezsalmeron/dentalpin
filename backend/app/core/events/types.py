@@ -95,3 +95,6 @@ class EventType:
 
     # Visit-level note event (agenda module — reuses AppointmentTreatment.notes)
     AGENDA_VISIT_NOTE_UPDATED = "agenda.visit_note_updated"
+
+    # Verifactu compliance events
+    VERIFACTU_RECORD_REJECTED = "verifactu.record.rejected"

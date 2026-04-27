@@ -85,6 +85,9 @@
       "warningProd": "You're about to switch to production. From now on, every issued invoice will be sent to AEAT as a real fiscal record.",
       "label": "Environment"
     },
+    "errors": {
+      "cannotPromoteToProd": "Your role cannot promote Verifactu to production. Ask an administrator to perform this change."
+    },
     "status": {
       "enabled": "Enabled",
       "disabled": "Disabled",
@@ -146,14 +149,91 @@
       "title": "Submission queue",
       "tabs": { "pending": "Pending", "rejected": "Rejected", "transient": "Transient errors" },
       "empty": "No records in this state.",
-      "retry": "Retry (Subsanación)",
+      "retry": "Retry",
+      "regenerateAndRetry": "Regenerate & resubmit",
+      "regenerateTooltip": "Recomputes the record from current data (NIF, lines, …) and resubmits as Subsanación.",
+      "retryAll": "Regenerate all",
+      "retryAllConfirm": "About to regenerate every rejected record for this clinic. Continue?",
+      "retryAllResult": "Regenerated {n} records ({failed} failed).",
       "viewInvoice": "View invoice",
+      "viewHistory": "AEAT history",
       "errorCode": "Code",
       "transportError": "Transport error",
       "aeatFault": "AEAT fault response",
+      "rawError": "Raw AEAT message",
       "submissionAttempt": "Attempt {n}",
       "processNow": "Process now",
-      "processed": "Processed {n} records"
+      "processed": "Processed {n} records",
+      "regeneratedToast": "Record regenerated and resubmitted.",
+      "blockingBanner": {
+        "title": "{n} Verifactu record(s) rejected",
+        "description": "You can't issue new invoices until they are resolved (would break the hash chain).",
+        "cta": "Open queue",
+        "adminContact": "Ask admin {email} if you don't have access."
+      },
+      "ctas": {
+        "edit_clinic": "Fix my fiscal data",
+        "edit_billing_party": "Edit customer data",
+        "edit_lines": "Review invoice lines",
+        "edit_producer": "Edit SIF producer",
+        "retry": "Retry",
+        "contact_support": "Contact support"
+      },
+      "history": {
+        "title": "AEAT submission history",
+        "empty": "No prior attempts archived (this is the first submission).",
+        "attempt": "Attempt #{n}",
+        "huella": "Hash",
+        "code": "AEAT code"
+      }
+    },
+    "billingParty": {
+      "modalTitle": "Edit customer data",
+      "intro": "These details will be sent to AEAT as the recipient on the next submission.",
+      "fields": {
+        "name": "Name / legal name",
+        "taxId": "Tax ID",
+        "address": "Address"
+      },
+      "save": "Save & resubmit",
+      "saved": "Saved. Verifactu will resubmit the record automatically.",
+      "concurrentEdit": "Someone else edited this invoice in the meantime. Reload and try again.",
+      "saveFailed": "Could not save."
+    },
+    "invoiceBanner": {
+      "rejectedTitle": "AEAT rejected this Verifactu record",
+      "rejectedBody": "Fix the data below and we'll resubmit it as Subsanación automatically.",
+      "pdfStaleTitle": "Downloaded PDF may be outdated",
+      "pdfStaleBody": "The QR changes after correcting and resubmitting. Re-download the PDF if you already sent it to the patient.",
+      "downloadAgain": "Download fresh PDF"
+    },
+    "nif": {
+      "warningInvalid": "Tax ID format doesn't look right. AEAT may reject it."
+    },
+    "globalBanner": {
+      "title": "Verifactu: {n} invoice(s) rejected by AEAT",
+      "description": "Resolve them before issuing new invoices (would break the hash chain).",
+      "cta": "Resolve"
+    },
+    "badge": {
+      "short": "AEAT",
+      "tooltip": {
+        "ok": "Accepted by AEAT",
+        "warning": "Accepted with notes by AEAT",
+        "pending": "Pending submission to AEAT",
+        "error": "Rejected by AEAT"
+      }
+    },
+    "filter": {
+      "label": "Verifactu",
+      "options": {
+        "ok": "Accepted",
+        "warning": "With notes",
+        "pending": "Pending",
+        "error": "Rejected"
+      },
+      "shortcut": "Only issues",
+      "empty": "All Verifactu invoices are up to date."
     },
     "records": {
       "title": "Fiscal ledger",
@@ -223,6 +303,16 @@
         "title": "Download signed declaration",
         "description": "Printable document with the producer data and the electronic-signature stamp. Useful for internal archiving, AEAT audit, or distribution to clinics using the system.",
         "lockedHint": "Available after the declaration is signed (step 2)."
+      },
+      "fields": {
+        "name": "Producer legal name",
+        "nameHint": "Legal name of the company or autónomo acting as SIF producer.",
+        "nif": "Producer NIF",
+        "nifHint": "NIF of the SIF producer. Appears on every record submitted to AEAT.",
+        "idSistema": "System ID",
+        "idSistemaHint": "Short identifier (1-2 chars) the producer assigns to the system. Default: DP.",
+        "version": "System version",
+        "versionHint": "Software version deployed in production (e.g. 0.1.0)."
       },
       "declaration": {
         "heading": "Declaración responsable",

@@ -22,7 +22,12 @@ management, queue inspection, records.
 
 ## Events emitted
 
-None.
+- `verifactu.record.rejected` — published by `submission_queue` after
+  AEAT marks a record `Incorrecto`. Payload: `record_id`, `invoice_id`,
+  `clinic_id`, `serie_numero`, `codigo_error`, `descripcion_error`,
+  `friendly_message`, `field`, `suggested_cta`. Consumed internally by
+  `tasks._notify_rejected` to email clinic admins (throttled 30 min
+  via `verifactu_settings.last_rejected_alert_at`).
 
 ## Events consumed
 
@@ -48,6 +53,30 @@ See `hook.py` and `README.md` for the architecture.
   reordering breaks the chain and AEAT will reject everything after.
   Hence the synchronous `BillingComplianceHook` instead of the event
   bus on `invoice.issued`.
+- **Issue blocked while a record is rejected.** `validate_before_issue`
+  returns 422 if any record is in `rejected` / `failed_validation` for
+  the clinic. This is intentional: it guarantees the rejected record
+  is always the chain head, so `regenerate_record` can rewrite the
+  same row without having to re-sign downstream records. `failed_transient`
+  (network) does NOT block — the worker retries automatically.
+- **Subsanación regenerates the XML in place.** `regenerate_record`
+  recomputes huella + XML from current data and overwrites the parent
+  row. The previous attempt is preserved in `verifactu_record_attempts`
+  for art. 8 RD 1007/2023 trazabilidad. Inmutabilidad sólo aplica a
+  registros aceptados (libro fiscal AEAT) — los rechazados son
+  modificables hasta que la AEAT los acepte.
+- **`Invoice.pdf_stale=True` after regenerate.** The embedded QR is
+  computed from a huella that no longer matches the new submission, so
+  any PDF already downloaded / emailed is stale. Frontend shows a
+  badge prompting re-download.
+- **`compliance_data['ES'].severity` is the source of truth for the
+  badge + filter.** Vocabulary: `ok | warning | pending | error`
+  (defined in `services/severity.py::severity_for`). Verifactu writes
+  it on every transition (issue, queue update, regenerate). Billing
+  filters generically by this field over any country key — never
+  imports verifactu, never learns Spanish-specific record states.
+  When adding a new state to `RECORD_STATES`, update `severity_for`
+  in the same change so the badge stays consistent.
 - **Per-clinic FNMT certificate.** Encrypted at rest with Fernet
   derived from `SECRET_KEY` — rotating `SECRET_KEY` requires
   re-encrypting certificates. Document this in any ops runbook change.

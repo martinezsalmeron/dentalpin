@@ -15,6 +15,7 @@ from app.database import get_db
 from .hooks import BillingHookRegistry
 from .models import PAYMENT_METHODS
 from .schemas import (
+    BillingPartyUpdate,
     BillingSettingsResponse,
     BillingSettingsUpdate,
     CreditNoteCreate,
@@ -164,6 +165,9 @@ async def reset_series_counter(
 # ============================================================================
 
 
+VALID_COMPLIANCE_SEVERITIES = {"ok", "warning", "pending", "error"}
+
+
 @router.get("/invoices", response_model=PaginatedApiResponse[InvoiceListResponse])
 async def list_invoices(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
@@ -181,8 +185,22 @@ async def list_invoices(
     search: str | None = None,
     budget_id: UUID | None = None,
     is_credit_note: bool | None = None,
+    compliance_severity: list[str] | None = Query(
+        default=None,
+        description=(
+            "Filter by compliance severity (any country). One of: "
+            "ok, warning, pending, error. Whitelist-validated."
+        ),
+    ),
 ) -> PaginatedApiResponse[InvoiceListResponse]:
     """List invoices with filtering and pagination."""
+    if compliance_severity:
+        bad = set(compliance_severity) - VALID_COMPLIANCE_SEVERITIES
+        if bad:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid compliance_severity values: {sorted(bad)}",
+            )
     invoices, total = await InvoiceService.list_invoices(
         db,
         ctx.clinic_id,
@@ -198,6 +216,7 @@ async def list_invoices(
         search=search,
         budget_id=budget_id,
         is_credit_note=is_credit_note,
+        compliance_severity=compliance_severity,
     )
     return PaginatedApiResponse(
         data=[InvoiceListResponse.model_validate(i) for i in invoices],
@@ -350,6 +369,62 @@ async def update_invoice(
         return ApiResponse(data=InvoiceResponse.model_validate(invoice))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch(
+    "/invoices/{invoice_id}/billing-party",
+    response_model=ApiResponse[InvoiceResponse],
+)
+async def update_billing_party(
+    invoice_id: UUID,
+    data: BillingPartyUpdate,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("billing.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[InvoiceResponse]:
+    """Edit billing party (NIF / name / address) on an issued invoice.
+
+    Allowed only when:
+
+    * The invoice is still ``draft`` (no compliance record yet), OR
+    * The compliance hook says the latest fiscal record is correctable
+      (Verifactu: ``rejected`` / ``failed_validation``).
+
+    On success, triggers an automatic regenerate of the compliance
+    record (Verifactu Subsanación) so the user does not need a second
+    click in the queue.
+
+    Optimistic lock via ``expected_updated_at`` — 409 on mismatch.
+    """
+
+    invoice = await InvoiceService.get_invoice(
+        db, ctx.clinic_id, invoice_id, include_items=False, include_payments=False
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    try:
+        await InvoiceWorkflowService.update_billing_party(
+            db,
+            invoice,
+            new_name=data.billing_name,
+            new_tax_id=data.billing_tax_id,
+            new_address=data.billing_address,
+            expected_updated_at=data.expected_updated_at,
+            changed_by=ctx.user_id,
+        )
+        await db.commit()
+    except InvoiceWorkflowError as e:
+        # 409 when optimistic-lock mismatch, 422 otherwise.
+        status = 409 if "concurrent" in str(e).lower() else 422
+        raise HTTPException(status_code=status, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    invoice = await InvoiceService.get_invoice(
+        db, ctx.clinic_id, invoice_id, include_items=False, include_payments=False
+    )
+    return ApiResponse(data=InvoiceResponse.model_validate(invoice))
 
 
 @router.delete("/invoices/{invoice_id}", status_code=204)
@@ -839,13 +914,21 @@ async def download_invoice_pdf(
 
     clinic = await db.get(Clinic, ctx.clinic_id)
 
+    from .hooks import BillingHookRegistry
     from .pdf import InvoicePDFService
+
+    # Country compliance modules (e.g. Veri*Factu) inject QR + legal
+    # notices via the registered hook. Billing stays country-agnostic
+    # — it only forwards the resulting dict to the PDF service.
+    hook = BillingHookRegistry.get_for_clinic(clinic) if clinic else None
+    extra_pdf_data = hook.enhance_pdf_data({}, invoice) if hook else None
 
     pdf_bytes = InvoicePDFService.generate_pdf(
         invoice,
         clinic,
         is_preview=False,
         locale=locale,
+        extra_pdf_data=extra_pdf_data,
     )
 
     # Generate filename
@@ -881,13 +964,18 @@ async def preview_invoice_pdf(
 
     clinic = await db.get(Clinic, ctx.clinic_id)
 
+    from .hooks import BillingHookRegistry
     from .pdf import InvoicePDFService
+
+    hook = BillingHookRegistry.get_for_clinic(clinic) if clinic else None
+    extra_pdf_data = hook.enhance_pdf_data({}, invoice) if hook else None
 
     pdf_bytes = InvoicePDFService.generate_pdf(
         invoice,
         clinic,
         is_preview=True,
         locale=locale,
+        extra_pdf_data=extra_pdf_data,
     )
 
     return Response(

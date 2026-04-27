@@ -18,6 +18,7 @@ const showProdConfirm = ref(false)
 const errorMessage = ref<string | null>(null)
 
 const canManage = computed(() => can('verifactu.settings.configure'))
+const canPromoteToProd = computed(() => can('verifactu.environment.promote'))
 
 async function refresh() {
   loading.value = true
@@ -130,6 +131,10 @@ async function toggleEnabled() {
 async function switchEnvironment(target: 'test' | 'prod') {
   if (!settings.value || !canManage.value) return
   if (target === 'prod') {
+    if (!canPromoteToProd.value) {
+      errorMessage.value = t('verifactu.errors.cannotPromoteToProd')
+      return
+    }
     showProdConfirm.value = true
     return
   }
@@ -251,7 +256,7 @@ onMounted(refresh)
                 {{ t(`verifactu.environment.${settings?.environment}`) }}
               </UBadge>
               <UButton
-                v-if="settings?.environment === 'test'"
+                v-if="settings?.environment === 'test' && canPromoteToProd"
                 :loading="switchingEnv"
                 variant="ghost"
                 color="red"

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Factura rechazada por AEAT — acción requerida{% endblock %}
+
+{% block content %}
+<h2>Hola {{ admin_name }},</h2>
+
+<div class="alert alert-error">
+    La AEAT ha <strong>rechazado</strong> el registro Verifactu de la factura <strong>{{ invoice_number }}</strong> de la clínica <strong>{{ clinic_name }}</strong>.
+    Mientras no resuelvas esta incidencia, <strong>no podrás emitir nuevas facturas</strong> (la cadena de huellas quedaría comprometida).
+</div>
+
+<div class="info-box">
+    <div class="label">Factura</div>
+    <div class="value">{{ invoice_number }}</div>
+</div>
+
+<div class="info-box">
+    <div class="label">Código AEAT</div>
+    <div class="value">{{ codigo_error or '—' }}</div>
+</div>
+
+<div class="info-box">
+    <div class="label">Motivo</div>
+    <div class="value">{{ friendly_message }}</div>
+</div>
+
+<h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 16px; font-weight: 600;">¿Qué hacer ahora?</h3>
+
+<ol style="padding-left: 20px; color: #3f3f46;">
+    {% if suggested_cta == 'edit_clinic' %}
+    <li style="margin-bottom: 8px;">Entra en <em>Configuración → Clínica</em> y revisa el CIF/NIF de la clínica.</li>
+    <li style="margin-bottom: 8px;">Vuelve a <em>Configuración → Verifactu → Cola</em> y pulsa <strong>«Regenerar y reenviar»</strong>.</li>
+    {% elif suggested_cta == 'edit_billing_party' %}
+    <li style="margin-bottom: 8px;">Abre la factura {{ invoice_number }} y pulsa <strong>«Editar datos del cliente»</strong> en el banner rojo.</li>
+    <li style="margin-bottom: 8px;">Tras guardar, el registro se reenvía automáticamente.</li>
+    {% elif suggested_cta == 'edit_lines' %}
+    <li style="margin-bottom: 8px;">Revisa el mapeo de IVA y los importes de la factura {{ invoice_number }}.</li>
+    <li style="margin-bottom: 8px;">Crea una rectificativa si la factura ya estaba pagada o reemítela si era borrador.</li>
+    {% else %}
+    <li style="margin-bottom: 8px;">Entra en <em>Configuración → Verifactu → Cola</em> para ver el detalle del rechazo.</li>
+    <li style="margin-bottom: 8px;">Si la causa no está clara, contacta con soporte adjuntando el código de error.</li>
+    {% endif %}
+</ol>
+
+{% if queue_url %}
+<p style="margin-top: 20px;">
+    <a href="{{ queue_url }}" style="display: inline-block; padding: 10px 16px; background: #18181b; color: #fff; text-decoration: none; border-radius: 6px;">Abrir cola Verifactu</a>
+</p>
+{% endif %}
+{% endblock %}

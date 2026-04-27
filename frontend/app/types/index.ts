@@ -1540,6 +1540,10 @@ export interface InvoiceListItem {
   balance_due: number
   currency: string
   created_at: string
+  // Generic compliance summary keyed by ISO country (e.g.
+  // {"ES": {state, severity, error_message, ...}}). Owned by the
+  // active compliance module — billing exposes it raw.
+  compliance_data?: Record<string, Record<string, unknown>> | null
   patient?: PatientBrief
   creator?: UserBrief
 }

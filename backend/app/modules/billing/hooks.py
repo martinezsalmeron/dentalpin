@@ -238,6 +238,37 @@ class BillingComplianceHook(ABC):
         """
         return None  # Default: use standard template
 
+    async def can_edit_billing_party(
+        self, invoice: "Invoice", db: AsyncSession
+    ) -> tuple[bool, str | None]:
+        """Whether the billing party (NIF/name/address) of an issued invoice
+        can still be edited under this country's compliance rules.
+
+        Default returns ``(False, ...)`` — most countries treat issued
+        invoices as immutable. Verifactu overrides this to allow editing
+        when the latest fiscal record is in a correctable state
+        (``rejected`` / ``failed_validation``) — AEAT never registered
+        the original data so Subsanación with corrected data is legal.
+        """
+
+        return False, "Issued invoices are immutable for this country."
+
+    async def regenerate_after_party_change(
+        self, invoice: "Invoice", db: AsyncSession
+    ) -> dict[str, Any]:
+        """Re-render the compliance record after a billing-party edit.
+
+        Called by the billing workflow right after persisting the new
+        ``billing_*`` fields. Implementations should re-run their hash
+        chain / submission step from the updated invoice. Returns the
+        same shape as :meth:`on_invoice_issued` so callers can merge
+        the result into ``Invoice.compliance_data``.
+
+        Default: no-op.
+        """
+
+        return {}
+
 
 class BillingHookRegistry:
     """Registry for compliance hooks.

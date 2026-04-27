@@ -57,6 +57,21 @@ from app.modules.treatment_plan.models import (  # noqa: F401
     TreatmentMedia,
     TreatmentPlan,
 )
+from app.modules.billing.models import (  # noqa: F401
+    Invoice,
+    InvoiceHistory,
+    InvoiceItem,
+    InvoiceSeries,
+    InvoiceSeriesHistory,
+    Payment,
+)
+from app.modules.verifactu.models import (  # noqa: F401
+    VerifactuCertificate,
+    VerifactuRecord,
+    VerifactuRecordAttempt,
+    VerifactuSettings,
+    VerifactuVatClassification,
+)
 
 # Load modules manually for tests (normally done in lifespan)
 load_modules(app)

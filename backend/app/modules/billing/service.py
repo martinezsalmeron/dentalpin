@@ -552,6 +552,7 @@ class InvoiceService:
         search: str | None = None,
         budget_id: UUID | None = None,
         is_credit_note: bool | None = None,
+        compliance_severity: list[str] | None = None,
     ) -> tuple[list[Invoice], int]:
         """List invoices with filtering and pagination."""
         query = (
@@ -603,6 +604,30 @@ class InvoiceService:
                 query = query.where(Invoice.credit_note_for_id.isnot(None))
             else:
                 query = query.where(Invoice.credit_note_for_id.is_(None))
+
+        if compliance_severity:
+            # Country-agnostic: matches any country key in the JSONB
+            # whose ``severity`` is in the requested list. Compliance
+            # modules (verifactu et al.) write ``severity`` themselves
+            # — billing knows nothing about the vocabulary beyond the
+            # whitelist enforced at the router boundary.
+            from sqlalchemy import bindparam, text
+
+            jsonpath = (
+                "$.* ? ("
+                + " || ".join([f'@.severity == "{s}"' for s in compliance_severity])
+                + ")"
+            )
+            # Whitelist guarantees only [a-z] values, so the inline
+            # interpolation above is safe — but assert defensively.
+            assert all(s.isalpha() and s.islower() for s in compliance_severity)
+            # CAST a jsonpath: asyncpg envía el bindparam como VARCHAR
+            # y PostgreSQL no acepta VARCHAR para el segundo argumento.
+            query = query.where(
+                text(
+                    "jsonb_path_exists(invoices.compliance_data, CAST(:jp AS jsonpath))"
+                ).bindparams(bindparam("jp", value=jsonpath))
+            )
 
         if search:
             from app.modules.patients.models import Patient

@@ -25,6 +25,7 @@ function loadModuleLayers(): string[] {
 }
 
 const moduleLayers = loadModuleLayers()
+const modulesJsonPath = resolve(__dirname, 'modules.json')
 
 export default defineNuxtConfig({
 
@@ -67,6 +68,12 @@ export default defineNuxtConfig({
     }
   },
   srcDir: 'app',
+
+  // Restart dev server when the backend rewrites `modules.json` on
+  // module install/uninstall. `extends` is evaluated once at config
+  // boot, so a layer added after Nuxt started is invisible until
+  // restart. Watching the file makes the round-trip automatic.
+  watch: [modulesJsonPath],
 
   compatibilityDate: '2025-01-15',
 

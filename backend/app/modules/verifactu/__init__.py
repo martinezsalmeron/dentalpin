@@ -55,8 +55,12 @@ class VerifactuModule(BaseModule):
         from app.modules.billing.hooks import BillingHookRegistry
 
         from .hook import VerifactuHook
+        from .tasks import register_event_handlers
 
         BillingHookRegistry.register(VerifactuHook())
+        # Same reasoning for the event bus subscription — re-attach on
+        # boot so the rejected-record email handler survives restarts.
+        register_event_handlers()
 
     def get_models(self) -> list:
         return [
@@ -75,6 +79,7 @@ class VerifactuModule(BaseModule):
             "settings.configure",
             "records.read",
             "queue.manage",
+            "environment.promote",
         ]
 
     def get_event_handlers(self) -> dict:
@@ -133,6 +138,7 @@ class VerifactuModule(BaseModule):
         from app.modules.billing.hooks import BillingHookRegistry
 
         from .models import VerifactuRecord
+        from .tasks import unregister_jobs
 
         result = await ctx.db.execute(
             select(VerifactuRecord.id)
@@ -146,5 +152,9 @@ class VerifactuModule(BaseModule):
                 "libro de facturación 4 años. Exporta el libro antes de "
                 "intentar desinstalar."
             )
+        from .tasks import unregister_event_handlers
+
         BillingHookRegistry.unregister("ES")
+        unregister_jobs()
+        unregister_event_handlers()
         ctx.logger.info("verifactu hook unregistered")

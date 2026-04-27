@@ -69,6 +69,11 @@ export function useModules() {
   })
 
   const navigationItems = computed<NavigationItem[]>(() => {
+    // Hold off filtering until auth has hydrated. Without this, an early
+    // evaluation with empty permissions strips every nav entry that
+    // declares a permission, leaving the sidebar at just "Inicio".
+    if (!auth.user.value) return []
+
     const moduleNav = active.value
       ? active.value.flatMap(m => m.navigation)
       : getStaticNav()

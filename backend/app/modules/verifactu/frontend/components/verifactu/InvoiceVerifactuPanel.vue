@@ -54,7 +54,7 @@ const stateColor = computed(() => {
       </div>
       <UButton
         v-if="data.record_id"
-        :to="`/settings/verifactu/records/${data.record_id}`"
+        to="/settings/verifactu/records"
         variant="ghost"
         size="sm"
       >

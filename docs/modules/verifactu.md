@@ -144,8 +144,10 @@ The module appears in `Admin → Modules` as `uninstalled` (because
 5. The verifactu card appears in `Configuration` with quick links to
    the configuration sub-pages.
 
-If the host frontend's `modules.json` has changed, restart the
-frontend so the Nuxt layer re-discovers verifactu's pages:
+In dev, Nuxt watches `frontend/modules.json` and restarts itself
+when the backend rewrites it on install/uninstall — no manual step
+required. If you do need to force it (e.g. when running a
+production build):
 
 ```bash
 docker-compose restart frontend
