@@ -38,6 +38,30 @@ DentalPin is built as independent modules under `backend/app/modules/<name>/` wi
 
 ---
 
+## When adding X, do Y (agent checklists)
+
+| Trigger | Required actions |
+|---------|------------------|
+| New module | Create `backend/app/modules/<name>/CLAUDE.md` + `CHANGELOG.md`. Run `python backend/scripts/generate_catalogs.py`. Follow `docs/checklists/new-module.md`. |
+| New event published or consumed | Add to `EventType` in `backend/app/core/events/types.py`. Re-run `generate_catalogs.py`. Document publisher payload in module CLAUDE.md. |
+| New permission | Return from `get_permissions()` (no module prefix). List in `manifest.role_permissions`. Add to `frontend/app/config/permissions.ts` if user-facing. |
+| Architectural decision | Copy `docs/adr/TEMPLATE.md` → `docs/adr/NNNN-title.md`. |
+| New domain term (ES↔EN) | Append to `docs/glossary.md`. |
+| Touched any module | Update its `backend/app/modules/<name>/CHANGELOG.md` under `## Unreleased`. |
+| Cross-module FK or import | Target module MUST be in `manifest.depends`. CI rejects otherwise. |
+
+Reference material:
+
+- Checklists: `docs/checklists/`
+- Per-module CLAUDE.md template: `docs/checklists/module-claude-template.md`
+- ADRs: `docs/adr/` (start with 0001 for the modular contract)
+- Glossary: `docs/glossary.md`
+- Module catalog: `docs/modules-catalog.md` (auto-generated)
+- Event catalog: `docs/events-catalog.md` (auto-generated)
+- Reference modules to copy from: `patients` (simple), `schedules` (removable), `treatment_plan` (heavy deps), `verifactu` (compliance)
+
+---
+
 ## Quick start
 
 ```bash

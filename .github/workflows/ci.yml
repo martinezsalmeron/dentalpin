@@ -103,7 +103,37 @@ jobs:
                            tests/test_module_manifests_consistency.py \
                            tests/test_manifest_validator.py \
                            tests/test_module_loader.py \
+                           tests/test_module_docs.py \
                            -v --tb=short
+
+  catalog-freshness:
+    # Verifies docs/modules-catalog.md and docs/events-catalog.md are
+    # in sync with the manifests + EventType enum + event_bus.publish
+    # callsites. Authors regenerate locally with:
+    #   python backend/scripts/generate_catalogs.py
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Check catalogs are fresh
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://dental:testpass@localhost:5432/stub
+          SECRET_KEY: ci-stub
+          ENVIRONMENT: test
+          TESTING: "true"
+        run: |
+          python scripts/generate_catalogs.py --check
 
   frontend-lint:
     runs-on: ubuntu-latest
