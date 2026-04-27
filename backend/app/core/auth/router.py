@@ -52,6 +52,28 @@ _limiter_enabled = settings.ENVIRONMENT == "production" and not settings.TESTING
 limiter = Limiter(key_func=get_remote_address, enabled=_limiter_enabled)
 
 
+async def _refresh_rate_key(request: Request) -> str:
+    """Key the refresh limiter by user, not IP.
+
+    A shared edge proxy (Cloudflare → Nuxt SSR → backend) collapses every
+    real client to the same socket peer, so an IP-keyed limiter caps the
+    whole tenant after a handful of refreshes. Decoding the refresh token
+    here gives a per-user bucket; we fall back to the proxy-aware client
+    IP if the body is missing or unreadable.
+    """
+    try:
+        body = await request.json()
+        token = body.get("refresh_token") if isinstance(body, dict) else None
+        if token:
+            payload = decode_token(token)
+            sub = payload.get("sub")
+            if sub:
+                return f"refresh:{sub}"
+    except Exception:
+        pass
+    return get_remote_address(request)
+
+
 @router.post("/register", response_model=TokenResponse)
 @limiter.limit("3/hour")
 async def register(
@@ -143,7 +165,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=AuthResponse)
-@limiter.limit("10/minute")
+@limiter.limit("10/minute", key_func=_refresh_rate_key)
 async def refresh_token(
     request: Request,
     data: TokenRefresh,

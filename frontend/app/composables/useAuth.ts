@@ -60,25 +60,45 @@ export function useAuth() {
     await router.push('/login')
   }
 
+  // Dedupe concurrent refreshes. Without this, a page that fires N
+  // parallel requests on an expired access token triggers N refresh
+  // calls — all but one race past the rate limiter and trip 429,
+  // which then logs the user out. Sharing one in-flight promise keeps
+  // the refresh single-shot per session.
+  const refreshInFlight = useState<Promise<boolean> | null>('auth:refresh-in-flight', () => null)
+
   async function refresh(): Promise<boolean> {
     if (!refreshToken.value) {
       return false
     }
 
-    try {
-      const response = await $fetch<AuthResponse>('/api/v1/auth/refresh', {
-        baseURL: apiBaseUrl.value,
-        method: 'POST',
-        body: { refresh_token: refreshToken.value }
-      })
+    if (refreshInFlight.value) {
+      return refreshInFlight.value
+    }
 
-      accessToken.value = response.access_token
-      refreshToken.value = response.refresh_token
-      user.value = response.user
-      return true
-    } catch {
-      await logout()
-      return false
+    const run = (async (): Promise<boolean> => {
+      try {
+        const response = await $fetch<AuthResponse>('/api/v1/auth/refresh', {
+          baseURL: apiBaseUrl.value,
+          method: 'POST',
+          body: { refresh_token: refreshToken.value }
+        })
+
+        accessToken.value = response.access_token
+        refreshToken.value = response.refresh_token
+        user.value = response.user
+        return true
+      } catch {
+        await logout()
+        return false
+      }
+    })()
+
+    refreshInFlight.value = run
+    try {
+      return await run
+    } finally {
+      refreshInFlight.value = null
     }
   }
 
