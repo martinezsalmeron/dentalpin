@@ -1,6 +1,6 @@
 """Budget module service layer - business logic."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -363,6 +363,130 @@ class BudgetService:
             new_state={"status": "draft", "total": str(budget.total)},
         )
 
+        return budget
+
+    @staticmethod
+    async def create_from_plan_snapshot(
+        db: AsyncSession,
+        clinic_id: UUID,
+        user_id: UUID,
+        snapshot: dict,
+    ) -> Budget | None:
+        """Create the draft budget that mirrors a confirmed treatment plan.
+
+        Called synchronously from ``TreatmentPlanService.confirm`` to
+        guarantee atomicity. Idempotent: if a non-cancelled budget
+        already exists for the plan (looked up by ``plan_id`` in the
+        snapshot), returns ``None`` so the caller leaves the existing
+        link alone.
+
+        Snapshot shape: see
+        ``TreatmentPlanService._build_plan_snapshot``.
+        """
+        from sqlalchemy import text
+
+        from .workflow import (
+            BudgetWorkflowService,
+            DEFAULT_BUDGET_VALIDITY_DAYS,
+            _resolve_clinic_settings,
+        )
+
+        plan_id_raw = snapshot.get("plan_id")
+        patient_id_raw = snapshot.get("patient_id")
+        plan_number = snapshot.get("plan_number")
+        if not plan_id_raw or not patient_id_raw:
+            return None
+
+        # Idempotency: check whether a non-cancelled budget already
+        # exists for this plan. We reverse-lookup via the
+        # treatment_plans table to keep the dependency one-way.
+        existing_row = (
+            await db.execute(
+                text(
+                    "SELECT b.id FROM budgets b "
+                    "JOIN treatment_plans tp ON tp.budget_id = b.id "
+                    "WHERE tp.id = :plan_id "
+                    "  AND tp.clinic_id = :clinic_id "
+                    "  AND b.status != 'cancelled' "
+                    "LIMIT 1"
+                ),
+                {"plan_id": plan_id_raw, "clinic_id": clinic_id},
+            )
+        ).first()
+        if existing_row is not None:
+            existing = await db.get(Budget, existing_row.id)
+            return existing
+
+        clinic_settings = await _resolve_clinic_settings(db, clinic_id)
+        validity_days = int(
+            clinic_settings.get("budget_expiry_days", DEFAULT_BUDGET_VALIDITY_DAYS)
+        )
+        today = date.today()
+
+        budget_number = await BudgetNumberService.generate_number(db, clinic_id)
+        public_auth_method = await BudgetWorkflowService.resolve_public_auth_method(
+            db,
+            clinic_id=clinic_id,
+            patient_id=UUID(patient_id_raw),
+            clinic_settings=clinic_settings,
+        )
+
+        budget = Budget(
+            clinic_id=clinic_id,
+            patient_id=UUID(patient_id_raw),
+            budget_number=budget_number,
+            version=1,
+            status="draft",
+            valid_from=today,
+            valid_until=today + timedelta(days=validity_days),
+            created_by=user_id,
+            plan_number_snapshot=plan_number,
+            plan_status_snapshot="pending",
+            public_auth_method=public_auth_method,
+        )
+        db.add(budget)
+        await db.flush()
+
+        for item_snapshot in snapshot.get("items") or []:
+            catalog_item_id_raw = item_snapshot.get("catalog_item_id")
+            treatment_id_raw = item_snapshot.get("treatment_id")
+            if not catalog_item_id_raw or not treatment_id_raw:
+                continue
+            unit_price_raw = item_snapshot.get("unit_price")
+            await BudgetItemService.create_item(
+                db,
+                clinic_id,
+                budget.id,
+                {
+                    "catalog_item_id": UUID(catalog_item_id_raw),
+                    "quantity": 1,
+                    "treatment_id": UUID(treatment_id_raw),
+                    "tooth_number": item_snapshot.get("tooth_number"),
+                    "surfaces": item_snapshot.get("surfaces"),
+                    "unit_price": (
+                        Decimal(unit_price_raw)
+                        if unit_price_raw is not None
+                        else None
+                    ),
+                },
+            )
+
+        await BudgetService._recalculate_totals(db, budget)
+
+        await BudgetHistoryService.add_entry(
+            db,
+            clinic_id=clinic_id,
+            budget_id=budget.id,
+            action="created",
+            changed_by=user_id,
+            new_state={
+                "status": "draft",
+                "from_plan_id": plan_id_raw,
+                "from_plan_number": plan_number,
+            },
+            notes="Auto-created from confirmed treatment plan",
+        )
+        await db.flush()
         return budget
 
     @staticmethod
