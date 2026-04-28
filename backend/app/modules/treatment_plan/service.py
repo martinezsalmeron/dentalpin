@@ -411,6 +411,11 @@ class TreatmentPlanService:
         )
         item = reloaded.scalar_one()
 
+        # Snapshot payload — see ADR 0003. The budget module subscribes
+        # without importing treatment_plan/odontogram models.
+        treatment = item.treatment
+        primary_tooth = treatment.teeth[0].tooth_number if treatment and treatment.teeth else None
+        primary_surfaces = treatment.teeth[0].surfaces if treatment and treatment.teeth else None
         event_bus.publish(
             "treatment_plan.treatment_added",
             {
@@ -419,6 +424,19 @@ class TreatmentPlanService:
                 "treatment_id": str(treatment_id),
                 "clinic_id": str(clinic_id),
                 "patient_id": str(plan.patient_id),
+                "budget_id": str(plan.budget_id) if plan.budget_id else None,
+                "catalog_item_id": (
+                    str(treatment.catalog_item_id)
+                    if treatment and treatment.catalog_item_id
+                    else None
+                ),
+                "tooth_number": primary_tooth,
+                "surfaces": primary_surfaces,
+                "unit_price": (
+                    str(treatment.price_snapshot)
+                    if treatment and treatment.price_snapshot is not None
+                    else None
+                ),
             },
         )
 
@@ -574,6 +592,8 @@ class TreatmentPlanService:
 
                 await TreatmentService.delete(db, clinic_id, treatment_id, user_id)
 
+        # Snapshot payload — budget needs ``budget_id`` to find the
+        # matching line without importing treatment_plan models.
         event_bus.publish(
             "treatment_plan.treatment_removed",
             {
@@ -581,6 +601,7 @@ class TreatmentPlanService:
                 "item_id": str(item_id),
                 "treatment_id": str(treatment_id),
                 "clinic_id": str(clinic_id),
+                "budget_id": str(plan.budget_id) if plan.budget_id else None,
             },
         )
 
@@ -804,10 +825,47 @@ class TreatmentPlanService:
         clinic_id: UUID,
         plan_id: UUID,
     ) -> bool:
-        """Request budget module to sync items."""
+        """Request budget module to sync items.
+
+        Builds a denormalized items snapshot so the budget handler can
+        reconcile without importing treatment_plan / odontogram models
+        (ADR 0003).
+        """
         plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
         if not plan or not plan.budget_id:
             return False
+
+        plan_items = await db.execute(
+            select(PlannedTreatmentItem)
+            .options(
+                selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
+            )
+            .where(
+                PlannedTreatmentItem.treatment_plan_id == plan_id,
+                PlannedTreatmentItem.clinic_id == clinic_id,
+            )
+        )
+        items_payload = []
+        for plan_item in plan_items.scalars().all():
+            treatment = plan_item.treatment
+            if not treatment or not treatment.catalog_item_id:
+                continue
+            primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
+            primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
+            items_payload.append(
+                {
+                    "item_id": str(plan_item.id),
+                    "treatment_id": str(treatment.id),
+                    "catalog_item_id": str(treatment.catalog_item_id),
+                    "tooth_number": primary_tooth,
+                    "surfaces": primary_surfaces,
+                    "unit_price": (
+                        str(treatment.price_snapshot)
+                        if treatment.price_snapshot is not None
+                        else None
+                    ),
+                }
+            )
 
         event_bus.publish(
             "treatment_plan.budget_sync_requested",
@@ -815,6 +873,7 @@ class TreatmentPlanService:
                 "plan_id": str(plan_id),
                 "budget_id": str(plan.budget_id),
                 "clinic_id": str(clinic_id),
+                "items": items_payload,
             },
         )
 

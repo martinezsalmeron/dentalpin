@@ -92,22 +92,36 @@ async def get_budget(
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
 
-    # Query for treatment plan that references this budget (reverse lookup)
-    from app.modules.treatment_plan.models import TreatmentPlan
+    # Reverse lookup of the linked treatment plan via raw SQL — the
+    # treatment_plans table is owned by the treatment_plan module and
+    # we deliberately avoid importing its ORM model from here (ADR 0003).
+    # plan_number_snapshot / plan_status_snapshot on Budget already
+    # cover the common card/list use cases; this fetch is only for the
+    # detail endpoint where we expose the live plan id + title.
+    from sqlalchemy import text
 
-    result = await db.execute(
-        select(TreatmentPlan).where(
-            TreatmentPlan.budget_id == budget_id,
-            TreatmentPlan.clinic_id == ctx.clinic_id,
-            TreatmentPlan.deleted_at.is_(None),
+    plan_row = (
+        await db.execute(
+            text(
+                "SELECT id, plan_number, title, status "
+                "FROM treatment_plans "
+                "WHERE budget_id = :budget_id "
+                "  AND clinic_id = :clinic_id "
+                "  AND deleted_at IS NULL "
+                "LIMIT 1"
+            ),
+            {"budget_id": budget_id, "clinic_id": ctx.clinic_id},
         )
-    )
-    treatment_plan = result.scalar_one_or_none()
+    ).first()
 
-    # Build response with treatment plan
     response_data = BudgetDetailResponse.model_validate(budget)
-    if treatment_plan:
-        response_data.treatment_plan = TreatmentPlanBrief.model_validate(treatment_plan)
+    if plan_row:
+        response_data.treatment_plan = TreatmentPlanBrief(
+            id=plan_row.id,
+            plan_number=plan_row.plan_number,
+            title=plan_row.title,
+            status=plan_row.status,
+        )
 
     return ApiResponse(data=response_data)
 
