@@ -46,3 +46,4 @@ Triggers (any one):
 | 0003 | [Event bus over direct cross-module imports](0003-event-bus-over-direct-imports.md) | accepted | 2026-04-27 |
 | 0004 | [BSL 1.1 license, Apache 2.0 after 4 years](0004-bsl-license.md) | accepted | 2026-04-27 |
 | 0005 | [Relative permissions, registry-prefixed namespacing](0005-relative-permissions.md) | accepted | 2026-04-27 |
+| 0006 | [Budget public link two-factor authentication](0006-budget-public-link-2-factor-auth.md) | accepted | 2026-04-28 |
