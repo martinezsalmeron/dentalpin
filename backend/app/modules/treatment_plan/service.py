@@ -899,6 +899,234 @@ class TreatmentPlanService:
         return True
 
     # -------------------------------------------------------------------------
+    # Bandeja de planes (cross-module pipeline view)
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    async def list_pipeline(
+        db: AsyncSession,
+        clinic_id: UUID,
+        tab: str,
+        page: int = 1,
+        page_size: int = 20,
+        doctor_id: UUID | None = None,
+        search: str | None = None,
+    ) -> tuple[list[dict], int]:
+        """Pipeline bandeja query — joins plans + budgets + appointments.
+
+        Returns ``(rows, total)`` with rows shaped as ``PipelineRow``
+        dicts ready to be returned by FastAPI. The query is implemented
+        with raw SQL because the JOIN spans three modules
+        (treatment_plan + budget + agenda) and `treatment_plan`'s
+        manifest declares the dependency on both. Splitting into ORM
+        round-trips would be N+1; doing it in one statement is fastest
+        and pageable.
+        """
+        from sqlalchemy import text as sa_text
+
+        # ----- per-tab WHERE clause ------------------------------------
+        # Five tabs documented in docs/workflows/plan-budget-flow.md §5.
+        if tab == "por_presupuestar":
+            tab_where = "p.status = 'pending' AND b.status = 'draft'"
+            order_by = "COALESCE(p.confirmed_at, p.created_at) DESC"
+        elif tab == "esperando_paciente":
+            tab_where = "p.status = 'pending' AND b.status IN ('sent', 'expired')"
+            order_by = "COALESCE(p.confirmed_at, p.created_at) ASC"  # oldest first
+        elif tab == "sin_cita":
+            tab_where = (
+                "p.status = 'active' "
+                "AND COALESCE(appt.future_count, 0) = 0 "
+                "AND COALESCE(appt.past_count, 0) = 0"
+            )
+            order_by = "p.updated_at DESC"
+        elif tab == "sin_proxima_cita":
+            tab_where = (
+                "p.status = 'active' "
+                "AND COALESCE(appt.future_count, 0) = 0 "
+                "AND COALESCE(appt.past_count, 0) > 0 "
+                "AND COALESCE(items.pending_count, 0) > 0"
+            )
+            order_by = "appt.last_past_at DESC NULLS LAST"
+        elif tab == "cerrados":
+            tab_where = (
+                "p.status = 'closed' "
+                "AND p.closed_at >= (NOW() - INTERVAL '90 days')"
+            )
+            order_by = "p.closed_at DESC"
+        else:
+            raise ValueError(f"Unknown pipeline tab '{tab}'")
+
+        params: dict[str, object] = {"clinic_id": clinic_id}
+        extra_where = ""
+        if doctor_id is not None:
+            extra_where += " AND p.assigned_professional_id = :doctor_id"
+            params["doctor_id"] = doctor_id
+        if search:
+            extra_where += (
+                " AND (p.plan_number ILIKE :q "
+                "OR pat.first_name ILIKE :q "
+                "OR pat.last_name ILIKE :q)"
+            )
+            params["q"] = f"%{search}%"
+
+        # ----- shared SELECT --------------------------------------------
+        base_sql = f"""
+            WITH item_counts AS (
+                SELECT
+                    treatment_plan_id AS plan_id,
+                    COUNT(*) AS total_count,
+                    COUNT(*) FILTER (WHERE status = 'completed') AS completed_count,
+                    COUNT(*) FILTER (WHERE status = 'pending') AS pending_count
+                FROM planned_treatment_items
+                WHERE clinic_id = :clinic_id
+                GROUP BY treatment_plan_id
+            ),
+            plan_appts AS (
+                SELECT
+                    pti.treatment_plan_id AS plan_id,
+                    COUNT(*) FILTER (
+                        WHERE a.start_time >= NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS future_count,
+                    COUNT(*) FILTER (
+                        WHERE a.start_time < NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS past_count,
+                    MAX(a.start_time) FILTER (
+                        WHERE a.start_time < NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS last_past_at,
+                    MIN(a.start_time) FILTER (
+                        WHERE a.start_time >= NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS next_future_at
+                FROM planned_treatment_items pti
+                JOIN appointment_treatments at ON at.planned_treatment_item_id = pti.id
+                JOIN appointments a ON a.id = at.appointment_id
+                WHERE pti.clinic_id = :clinic_id
+                GROUP BY pti.treatment_plan_id
+            ),
+            next_appt AS (
+                SELECT DISTINCT ON (pti.treatment_plan_id)
+                    pti.treatment_plan_id AS plan_id,
+                    a.id AS id,
+                    a.start_time AS start_at,
+                    a.cabinet_id AS cabinet_id,
+                    a.professional_id AS professional_id
+                FROM planned_treatment_items pti
+                JOIN appointment_treatments at ON at.planned_treatment_item_id = pti.id
+                JOIN appointments a ON a.id = at.appointment_id
+                WHERE pti.clinic_id = :clinic_id
+                  AND a.start_time >= NOW()
+                  AND a.status NOT IN ('cancelled', 'no_show')
+                ORDER BY pti.treatment_plan_id, a.start_time ASC
+            )
+            SELECT
+                p.id AS plan_id,
+                p.plan_number,
+                p.title AS plan_title,
+                p.status AS plan_status,
+                p.closure_reason,
+                p.confirmed_at,
+                p.closed_at,
+                p.updated_at,
+                pat.id AS patient_id,
+                pat.first_name,
+                pat.last_name,
+                pat.phone,
+                COALESCE(items.total_count, 0) AS items_total,
+                COALESCE(items.completed_count, 0) AS items_completed,
+                b.id AS budget_id,
+                b.status AS budget_status,
+                b.total AS budget_total,
+                b.valid_until,
+                b.last_reminder_sent_at,
+                b.viewed_at,
+                na.id AS next_appt_id,
+                na.start_at AS next_appt_start_at,
+                na.cabinet_id AS next_appt_cabinet,
+                na.professional_id AS next_appt_professional
+            FROM treatment_plans p
+            JOIN patients pat ON pat.id = p.patient_id
+            LEFT JOIN budgets b ON b.id = p.budget_id
+            LEFT JOIN item_counts items ON items.plan_id = p.id
+            LEFT JOIN plan_appts appt ON appt.plan_id = p.id
+            LEFT JOIN next_appt na ON na.plan_id = p.id
+            WHERE p.clinic_id = :clinic_id
+              AND p.deleted_at IS NULL
+              AND ({tab_where})
+              {extra_where}
+        """
+
+        # ----- count + page ---------------------------------------------
+        count_result = await db.execute(
+            sa_text(f"SELECT COUNT(*) AS total FROM ({base_sql}) sub"),
+            params,
+        )
+        total = count_result.scalar() or 0
+
+        page_params = dict(params)
+        page_params["limit"] = page_size
+        page_params["offset"] = (page - 1) * page_size
+        rows_result = await db.execute(
+            sa_text(f"{base_sql} ORDER BY {order_by} LIMIT :limit OFFSET :offset"),
+            page_params,
+        )
+
+        # ----- shape rows -----------------------------------------------
+        now = datetime.now(UTC)
+        out: list[dict] = []
+        for r in rows_result.mappings().all():
+            anchor = (
+                r["confirmed_at"] or r["closed_at"] or r["updated_at"]
+            )
+            days_in_status = (
+                (now - anchor).days if anchor is not None else 0
+            )
+            patient_brief = {
+                "id": r["patient_id"],
+                "first_name": r["first_name"],
+                "last_name": r["last_name"],
+                "phone": r["phone"],
+            }
+            budget_brief = None
+            if r["budget_id"]:
+                budget_brief = {
+                    "id": r["budget_id"],
+                    "status": r["budget_status"],
+                    "total": float(r["budget_total"])
+                    if r["budget_total"] is not None
+                    else None,
+                    "valid_until": r["valid_until"],
+                    "last_reminder_sent_at": r["last_reminder_sent_at"],
+                    "viewed_at": r["viewed_at"],
+                }
+            next_appt = None
+            if r["next_appt_id"]:
+                next_appt = {
+                    "id": r["next_appt_id"],
+                    "start_at": r["next_appt_start_at"],
+                    "cabinet_id": r["next_appt_cabinet"],
+                    "professional_id": r["next_appt_professional"],
+                }
+            out.append(
+                {
+                    "plan_id": r["plan_id"],
+                    "plan_number": r["plan_number"],
+                    "plan_title": r["plan_title"],
+                    "plan_status": r["plan_status"],
+                    "days_in_status": max(days_in_status, 0),
+                    "closure_reason": r["closure_reason"],
+                    "items_total": r["items_total"],
+                    "items_completed": r["items_completed"],
+                    "patient": patient_brief,
+                    "budget": budget_brief,
+                    "next_appointment": next_appt,
+                }
+            )
+        return out, total
+
+    # -------------------------------------------------------------------------
     # Workflow Transitions (confirm / close / reactivate)
     # -------------------------------------------------------------------------
 

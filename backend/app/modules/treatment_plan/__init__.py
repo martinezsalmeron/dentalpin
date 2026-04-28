@@ -53,7 +53,16 @@ class TreatmentPlanModule(BaseModule):
                 "plans.read",
                 "plans.write",
             ],
-            "receptionist": [],
+            # Reception drives the bandeja de planes: read + write notes
+            # + close (terminal transitions tied to patient outcomes) +
+            # reactivate (welcoming a returning patient back to draft).
+            # Confirm stays with the doctor.
+            "receptionist": [
+                "plans.read",
+                "plans.write",
+                "plans.close",
+                "plans.reactivate",
+            ],
         },
         "frontend": {
             "layer_path": "frontend",
@@ -83,18 +92,26 @@ class TreatmentPlanModule(BaseModule):
         return [
             "plans.read",
             "plans.write",
+            # Workflow transitions split out for fine-grained RBAC.
+            "plans.confirm",
+            "plans.close",
+            "plans.reactivate",
         ]
 
     def get_event_handlers(self) -> dict[str, Any]:
         from .events import (
             on_appointment_completed,
             on_budget_accepted,
+            on_budget_rejected,
+            on_budget_renegotiated,
             on_treatment_performed,
         )
 
         return {
             EventType.APPOINTMENT_COMPLETED: on_appointment_completed,
             EventType.BUDGET_ACCEPTED: on_budget_accepted,
+            EventType.BUDGET_REJECTED: on_budget_rejected,
+            EventType.BUDGET_RENEGOTIATED: on_budget_renegotiated,
             EventType.ODONTOGRAM_TREATMENT_PERFORMED: on_treatment_performed,
         }
 

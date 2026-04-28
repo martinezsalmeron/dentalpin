@@ -388,19 +388,18 @@ async def test_add_item_blocked_when_budget_generated(
     """Generating a budget locks the plan — further items are rejected with 409."""
     plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
 
-    # Activate and generate budget.
+    # Confirm the plan (auto-creates budget) and activate.
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/confirm",
+        headers=auth_headers,
+    )
+    assert r.status_code == 200, r.text
     r = await client.patch(
         f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
         headers=auth_headers,
         json={"status": "active"},
     )
     assert r.status_code == 200, r.text
-
-    r = await client.post(
-        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/generate-budget",
-        headers=auth_headers,
-    )
-    assert r.status_code == 201, r.text
 
     # Try to add another item — should be 409 locked.
     new_treatment_id = await _create_treatment(client, auth_headers, setup, tooth_number=15)
@@ -490,7 +489,10 @@ async def test_unlock_plan_without_budget_returns_400(
 async def test_cancel_plan_removes_planned_treatments(
     client: AsyncClient, auth_headers: dict, setup: dict
 ) -> None:
-    """Cancelling an active plan cleans up its orphaned planned Treatments."""
+    """Closing an active plan cleans up its orphaned planned Treatments.
+
+    Workflow rework: draft → pending → active → closed (cancelled_by_clinic).
+    """
     plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
     plan_resp = await client.get(
         f"/api/v1/treatment_plan/treatment-plans/{plan_id}",
@@ -498,7 +500,15 @@ async def test_cancel_plan_removes_planned_treatments(
     )
     treatment_id = plan_resp.json()["data"]["items"][0]["treatment"]["id"]
 
-    # draft → active → cancelled
+    # draft → pending (auto-creates draft budget)
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/confirm",
+        headers=auth_headers,
+    )
+    assert r.status_code == 200, r.text
+
+    # pending → active (admin override via patch /status, would normally come from
+    # the budget acceptance event; tests do that path explicitly).
     r = await client.patch(
         f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
         headers=auth_headers,
@@ -506,10 +516,11 @@ async def test_cancel_plan_removes_planned_treatments(
     )
     assert r.status_code == 200, r.text
 
-    r = await client.patch(
-        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
+    # active → closed (cancelled by clinic)
+    r = await client.post(
+        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/close",
         headers=auth_headers,
-        json={"status": "cancelled"},
+        json={"closure_reason": "cancelled_by_clinic"},
     )
     assert r.status_code == 200, r.text
 
