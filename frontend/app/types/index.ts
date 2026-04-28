@@ -1987,12 +1987,20 @@ export interface PlannedTreatmentItemUpdate {
 export interface CompleteItemRequest {
   completed_without_appointment?: boolean
   notes?: string
-  note_body?: string | null
-  attachment_document_ids?: string[]
 }
 
-// Clinical notes + polymorphic attachments
-export type ClinicalNoteOwnerType = 'plan' | 'plan_item'
+// Clinical notes — owned by the ``clinical_notes`` module since issue #60.
+// Polymorphic over four note_type / owner_type pairings:
+//   administrative + diagnosis → owner_type='patient'
+//   treatment                  → owner_type='treatment' (odontogram.Treatment.id)
+//   treatment_plan             → owner_type='plan' (treatment_plans.id)
+export type NoteType
+  = | 'administrative'
+    | 'diagnosis'
+    | 'treatment'
+    | 'treatment_plan'
+
+export type ClinicalNoteOwnerType = 'patient' | 'treatment' | 'plan'
 export type AttachmentOwnerType = ClinicalNoteOwnerType | 'appointment_treatment'
 
 export interface NoteAttachment {
@@ -2008,8 +2016,10 @@ export interface NoteAttachment {
 export interface ClinicalNote {
   id: string
   clinic_id: string
+  note_type: NoteType
   owner_type: ClinicalNoteOwnerType
   owner_id: string
+  tooth_number: number | null
   body: string
   author_id: string
   created_at: string
@@ -2018,8 +2028,10 @@ export interface ClinicalNote {
 }
 
 export interface ClinicalNoteCreate {
+  note_type: NoteType
   owner_type: ClinicalNoteOwnerType
   owner_id: string
+  tooth_number?: number | null
   body: string
   attachment_document_ids?: string[]
 }
@@ -2036,8 +2048,35 @@ export interface NoteAttachmentCreate {
   display_order?: number
 }
 
+export interface ClinicalNoteAuthor {
+  id: string
+  full_name: string | null
+  email: string | null
+}
+
+export interface ClinicalNoteLinked {
+  kind: 'patient' | 'treatment' | 'plan'
+  id: string | null
+  label: string | null
+  tooth_number: number | null
+}
+
+export interface RecentNoteEntry {
+  id: string
+  note_type: NoteType
+  owner_type: ClinicalNoteOwnerType
+  owner_id: string
+  tooth_number: number | null
+  body: string
+  created_at: string
+  updated_at: string
+  author: ClinicalNoteAuthor
+  linked: ClinicalNoteLinked
+  attachments: NoteAttachment[]
+}
+
 export interface ClinicalNoteEntry {
-  source: 'plan' | 'plan_item' | 'visit'
+  source: 'plan' | 'treatment' | 'visit'
   note_id: string | null
   owner_id: string
   plan_item_id: string | null
@@ -2048,13 +2087,30 @@ export interface ClinicalNoteEntry {
   attachments: NoteAttachment[]
 }
 
+export interface PlanItemSummary {
+  id: string
+  treatment_id: string
+  sequence_order: number
+  status: string
+  label: string | null
+  teeth: number[]
+}
+
 export interface PlanItemNotesGroup {
-  plan_item: PlannedTreatmentItem
+  plan_item: PlanItemSummary
   notes: ClinicalNoteEntry[]
 }
 
+export interface PlanSummary {
+  id: string
+  plan_number: string
+  title: string | null
+  status: string
+  created_at: string
+}
+
 export interface PlanNotesGroup {
-  plan: TreatmentPlan
+  plan: PlanSummary
   plan_notes: ClinicalNoteEntry[]
   treatments: PlanItemNotesGroup[]
 }

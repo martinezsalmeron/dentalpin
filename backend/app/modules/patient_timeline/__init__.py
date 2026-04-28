@@ -83,9 +83,12 @@ class PatientTimelineModule(BaseModule):
             EventType.PATIENT_MEDICAL_UPDATED: events.on_medical_updated,
             # Documents
             EventType.DOCUMENT_UPLOADED: events.on_document_uploaded,
-            # Clinical notes
-            EventType.TREATMENT_PLAN_NOTE_CREATED: events.on_plan_note_created,
-            EventType.TREATMENT_PLAN_ITEM_NOTE_CREATED: events.on_item_note_created,
+            # Clinical notes (clinical_notes module — single handler covers
+            # administrative / diagnosis / treatment / treatment_plan).
+            EventType.CLINICAL_NOTE_ADMINISTRATIVE_CREATED: events.on_clinical_note_created,
+            EventType.CLINICAL_NOTE_DIAGNOSIS_CREATED: events.on_clinical_note_created,
+            EventType.CLINICAL_NOTE_TREATMENT_CREATED: events.on_clinical_note_created,
+            EventType.CLINICAL_NOTE_PLAN_CREATED: events.on_clinical_note_created,
             EventType.AGENDA_VISIT_NOTE_UPDATED: events.on_visit_note_updated,
             EventType.TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE: (
                 events.on_item_completed_without_note

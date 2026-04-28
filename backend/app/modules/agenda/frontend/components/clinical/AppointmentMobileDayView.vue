@@ -1,13 +1,33 @@
 <script setup lang="ts">
-import type { Appointment, Professional } from '~~/app/types'
+/**
+ * Mobile agenda — single-track day view with explicit free slots.
+ * Issue #61.
+ *
+ * Composes the week-strip date nav, the day summary (resource selector
+ * + metrics + min-duration filter), and the timeline (busy/free/blocked
+ * chronological list). Free slots are tappable and emit `free-slot-tap`
+ * with a payload the parent can hand straight to the appointment
+ * composer.
+ */
+import type { Appointment, Cabinet, Professional } from '~~/app/types'
+import type {
+  FreeSlotEntry,
+  ResourceKind,
+  ResourceRef,
+  DayBounds
+} from '../../composables/useFreeSlots'
+import { useFreeSlots } from '../../composables/useFreeSlots'
+import type { AvailabilityPayload } from '../../composables/useScheduleAvailability'
+import { useScheduleAvailability } from '../../composables/useScheduleAvailability'
 
 interface ProfessionalWithColor extends Professional {
   color: string
 }
 
 const props = defineProps<{
-  appointments: Appointment[]
+  appointments: readonly Appointment[]
   professionals: ProfessionalWithColor[]
+  cabinets: Cabinet[]
   currentDate: Date
   isLoading?: boolean
   highlightedAppointmentId?: string | null
@@ -17,16 +37,197 @@ const emit = defineEmits<{
   'appointment-click': [appointment: Appointment]
   'date-change': [date: Date]
   'create-at': [date: Date]
+  'free-slot-tap': [payload: { slot: FreeSlotEntry, resource: ResourceRef }]
   'highlight-cleared': []
 }>()
 
 const { t, locale } = useI18n()
+const auth = useAuth()
+const { fetch: fetchAvailability } = useScheduleAvailability()
+
+const STORAGE_PREFIX = 'agenda:mobile:'
 
 watch(() => props.highlightedAppointmentId, (newId) => {
-  if (newId) {
-    setTimeout(() => emit('highlight-cleared'), 5000)
-  }
+  if (newId) setTimeout(() => emit('highlight-cleared'), 5000)
 }, { immediate: true })
+
+// ---- Resource selection (persisted) -------------------------------
+
+const resourceKind = ref<ResourceKind>(loadKind())
+const resourceId = ref<string | null>(null)
+
+function loadKind(): ResourceKind {
+  if (import.meta.server) return 'professional'
+  const v = window.localStorage.getItem(STORAGE_PREFIX + 'resourceKind')
+  return v === 'cabinet' ? 'cabinet' : 'professional'
+}
+
+function loadResourceId(kind: ResourceKind): string | null {
+  if (import.meta.server) return null
+  return window.localStorage.getItem(STORAGE_PREFIX + 'resourceId:' + kind)
+}
+
+function persistResource() {
+  if (import.meta.server) return
+  window.localStorage.setItem(STORAGE_PREFIX + 'resourceKind', resourceKind.value)
+  if (resourceId.value) {
+    window.localStorage.setItem(
+      STORAGE_PREFIX + 'resourceId:' + resourceKind.value,
+      resourceId.value
+    )
+  }
+}
+
+function defaultProfessionalId(): string | null {
+  if (props.professionals.length === 0) return null
+  const stored = loadResourceId('professional')
+  if (stored && props.professionals.some(p => p.id === stored)) return stored
+  // Prefer current user when they are a professional.
+  const me = auth.user.value?.id
+  if (me && props.professionals.some(p => p.id === me)) return me
+  // Otherwise alphabetically first.
+  const sorted = [...props.professionals].sort((a, b) => {
+    const an = `${a.first_name ?? ''} ${a.last_name ?? ''}`
+    const bn = `${b.first_name ?? ''} ${b.last_name ?? ''}`
+    return an.localeCompare(bn)
+  })
+  return sorted[0]?.id ?? null
+}
+
+function defaultCabinetId(): string | null {
+  if (props.cabinets.length === 0) return null
+  const stored = loadResourceId('cabinet')
+  if (stored && props.cabinets.some(c => c.name === stored)) return stored
+  const sorted = [...props.cabinets].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+  return sorted[0]?.name ?? null
+}
+
+watch(
+  [resourceKind, () => props.professionals, () => props.cabinets],
+  () => {
+    if (resourceKind.value === 'professional') {
+      const next = defaultProfessionalId()
+      // Only override resourceId when current is invalid for new kind/list.
+      if (!resourceId.value || !props.professionals.some(p => p.id === resourceId.value)) {
+        resourceId.value = next
+      }
+    } else {
+      const next = defaultCabinetId()
+      if (!resourceId.value || !props.cabinets.some(c => c.name === resourceId.value)) {
+        resourceId.value = next
+      }
+    }
+    persistResource()
+  },
+  { immediate: true }
+)
+
+const resource = computed<ResourceRef | null>(() => {
+  if (!resourceId.value) return null
+  return { kind: resourceKind.value, id: resourceId.value }
+})
+
+function onUpdateResourceKind(kind: ResourceKind) {
+  resourceKind.value = kind
+  // Reset resourceId so the watcher above picks the default for the new kind.
+  resourceId.value = kind === 'professional' ? defaultProfessionalId() : defaultCabinetId()
+  persistResource()
+}
+
+function onUpdateResourceId(id: string) {
+  resourceId.value = id
+  persistResource()
+}
+
+// ---- Min-duration filter (persisted) ------------------------------
+
+const minDurationMin = ref<number>(loadMinDuration())
+
+function loadMinDuration(): number {
+  if (import.meta.server) return 20
+  const raw = window.localStorage.getItem(STORAGE_PREFIX + 'minDurationMin')
+  const n = raw ? Number.parseInt(raw, 10) : NaN
+  return Number.isFinite(n) && n > 0 ? n : 20
+}
+
+function onUpdateMinDuration(value: number) {
+  minDurationMin.value = value
+  if (!import.meta.server) {
+    window.localStorage.setItem(STORAGE_PREFIX + 'minDurationMin', String(value))
+  }
+}
+
+// ---- Availability fetch ------------------------------------------
+
+const availability = ref<AvailabilityPayload | null>(null)
+
+function isoLocalDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+async function refreshAvailability() {
+  const iso = isoLocalDate(props.currentDate)
+  const params: { start: string, end: string, professional_id?: string } = {
+    start: iso,
+    end: iso
+  }
+  if (resourceKind.value === 'professional' && resourceId.value) {
+    params.professional_id = resourceId.value
+  }
+  availability.value = await fetchAvailability(params)
+}
+
+watch(
+  [() => props.currentDate, resourceKind, resourceId],
+  () => { refreshAvailability() },
+  { immediate: true }
+)
+
+// ---- Bounds (derive from availability open ranges; default 8–21) --
+
+const DEFAULT_BOUNDS: DayBounds = { startHour: 8, endHour: 21 }
+
+const bounds = computed<DayBounds>(() => {
+  const payload = availability.value
+  if (!payload) return DEFAULT_BOUNDS
+  const open = payload.ranges.filter(r => r.state === 'open')
+  if (open.length === 0) return DEFAULT_BOUNDS
+  let minHour = 24
+  let maxHour = 0
+  for (const r of open) {
+    const s = new Date(r.start)
+    const e = new Date(r.end)
+    minHour = Math.min(minHour, s.getHours())
+    const eh = e.getMinutes() > 0 || e.getSeconds() > 0 ? e.getHours() + 1 : e.getHours()
+    maxHour = Math.max(maxHour, eh)
+  }
+  minHour = Math.max(0, Math.min(minHour, 23))
+  maxHour = Math.max(minHour + 1, Math.min(maxHour, 24))
+  return { startHour: minHour, endHour: maxHour }
+})
+
+// ---- Free-slot engine -------------------------------------------
+
+const appointmentsRef = computed(() => props.appointments)
+
+const { entries, summary } = useFreeSlots({
+  appointments: appointmentsRef,
+  availability,
+  resource,
+  date: toRef(() => props.currentDate),
+  minDurationMin,
+  bounds
+})
+
+function onFreeSlotTap(slot: FreeSlotEntry) {
+  if (!resource.value) return
+  emit('free-slot-tap', { slot, resource: resource.value })
+}
+
+// ---- Header / week strip ----------------------------------------
 
 function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear()
@@ -65,60 +266,11 @@ function formatHeaderDate(date: Date): string {
   }).format(date)
 }
 
-function formatTime(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit', hour12: false })
-}
-
-function minutesBetween(startIso: string, endIso: string): number {
-  return Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000)
-}
-
 function countForDay(day: Date): number {
   return props.appointments.filter((apt) => {
     const d = new Date(apt.start_time)
     return isSameDay(d, day) && apt.status !== 'cancelled'
   }).length
-}
-
-const dayAppointments = computed(() => {
-  const filtered = props.appointments.filter((apt) => {
-    const d = new Date(apt.start_time)
-    return isSameDay(d, props.currentDate)
-  })
-  return [...filtered].sort((a, b) => a.start_time.localeCompare(b.start_time))
-})
-
-function professionalFor(id: string): ProfessionalWithColor | undefined {
-  return props.professionals.find(p => p.id === id)
-}
-
-function professionalInitials(p: ProfessionalWithColor): string {
-  return `${p.first_name?.[0] ?? ''}${p.last_name?.[0] ?? ''}`.toUpperCase()
-}
-
-function patientName(apt: Appointment): string {
-  if (apt.patient) {
-    return `${apt.patient.first_name ?? ''} ${apt.patient.last_name ?? ''}`.trim() || t('appointments.noPatient')
-  }
-  return t('appointments.noPatient')
-}
-
-function statusLabel(s: Appointment['status']): string {
-  return t(`appointments.status.${s}`, s)
-}
-
-function statusColor(s: Appointment['status']): 'neutral' | 'primary' | 'success' | 'warning' | 'error' | 'info' {
-  switch (s) {
-    case 'scheduled': return 'neutral'
-    case 'confirmed': return 'info'
-    case 'checked_in': return 'warning'
-    case 'in_treatment': return 'primary'
-    case 'completed': return 'success'
-    case 'cancelled': return 'neutral'
-    case 'no_show': return 'error'
-    default: return 'neutral'
-  }
 }
 
 function shiftDay(days: number) {
@@ -138,11 +290,13 @@ function isToday(d: Date): boolean {
 function createNow() {
   emit('create-at', new Date(props.currentDate))
 }
+
+const hasAnyEntry = computed(() => entries.value.length > 0)
 </script>
 
 <template>
   <div class="flex flex-col h-full w-full min-w-0">
-    <!-- Sticky header: date nav + week strip -->
+    <!-- Sticky header: date nav + week strip + day summary -->
     <div class="sticky top-0 z-20 bg-surface border-b border-subtle">
       <div class="flex items-center justify-between px-3 py-2">
         <UButton
@@ -155,7 +309,7 @@ function createNow() {
         />
         <button
           type="button"
-          class="text-ui text-default capitalize px-3 py-1 rounded-token-md hover:bg-surface-muted"
+          class="text-ui text-default capitalize px-3 py-1 rounded-token-md hover:bg-surface-muted min-h-[36px]"
           @click="emit('date-change', new Date())"
         >
           {{ formatHeaderDate(currentDate) }}
@@ -196,9 +350,22 @@ function createNow() {
           <span v-else class="h-[14px]" />
         </button>
       </div>
+
+      <AppointmentMobileDaySummary
+        :resource-kind="resourceKind"
+        :resource-id="resourceId"
+        :professionals="professionals"
+        :cabinets="cabinets"
+        :summary="summary"
+        :min-duration-min="minDurationMin"
+        :is-loading="isLoading"
+        @update:resource-kind="onUpdateResourceKind"
+        @update:resource-id="onUpdateResourceId"
+        @update:min-duration-min="onUpdateMinDuration"
+      />
     </div>
 
-    <!-- Appointment list -->
+    <!-- Timeline body -->
     <div class="flex-1 overflow-y-auto pb-24">
       <div v-if="isLoading" class="p-6 flex justify-center">
         <UIcon
@@ -209,7 +376,19 @@ function createNow() {
       </div>
 
       <div
-        v-else-if="dayAppointments.length === 0"
+        v-else-if="!resource"
+        class="p-6 flex flex-col items-center gap-3 text-center"
+      >
+        <UIcon name="i-lucide-user-round-search" class="w-10 h-10 text-subtle" />
+        <p class="text-ui text-muted">
+          {{ resourceKind === 'professional'
+            ? t('appointments.noProfessionals')
+            : t('appointments.cabinetAssignment.unassigned') }}
+        </p>
+      </div>
+
+      <div
+        v-else-if="!hasAnyEntry"
         class="p-6 flex flex-col items-center gap-3 text-center"
       >
         <UIcon name="i-lucide-calendar-x" class="w-10 h-10 text-subtle" />
@@ -226,74 +405,14 @@ function createNow() {
         </UButton>
       </div>
 
-      <ul v-else class="divide-y divide-subtle">
-        <li
-          v-for="apt in dayAppointments"
-          :key="apt.id"
-        >
-          <button
-            type="button"
-            class="w-full flex items-start gap-3 px-3 py-3 text-left hover:bg-surface-muted transition-colors"
-            :class="{ 'bg-[var(--color-primary-soft)]/30': apt.id === highlightedAppointmentId }"
-            @click="emit('appointment-click', apt)"
-          >
-            <!-- Time column -->
-            <div class="flex flex-col items-end shrink-0 w-14 pt-0.5">
-              <span class="text-ui font-medium text-default tnum">
-                {{ formatTime(apt.start_time) }}
-              </span>
-              <span class="text-caption text-subtle tnum">
-                {{ minutesBetween(apt.start_time, apt.end_time) }}m
-              </span>
-            </div>
-
-            <!-- Colored accent based on professional -->
-            <span
-              class="w-1 self-stretch rounded-full shrink-0"
-              :style="{ backgroundColor: professionalFor(apt.professional_id)?.color || 'var(--color-primary)' }"
-            />
-
-            <!-- Body -->
-            <div class="flex-1 min-w-0 flex flex-col gap-1">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="text-ui text-default truncate font-medium">
-                  {{ patientName(apt) }}
-                </span>
-              </div>
-              <div class="flex items-center gap-2 flex-wrap text-caption text-subtle">
-                <span
-                  v-if="professionalFor(apt.professional_id)"
-                  class="inline-flex items-center gap-1"
-                >
-                  <span
-                    class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] text-white font-medium"
-                    :style="{ backgroundColor: professionalFor(apt.professional_id)?.color }"
-                  >
-                    {{ professionalInitials(professionalFor(apt.professional_id)!) }}
-                  </span>
-                  <span class="truncate">
-                    {{ professionalFor(apt.professional_id)?.first_name }}
-                    {{ professionalFor(apt.professional_id)?.last_name }}
-                  </span>
-                </span>
-                <span v-if="apt.cabinet" class="inline-flex items-center gap-1">
-                  <UIcon name="i-lucide-door-open" class="w-3 h-3" />
-                  {{ apt.cabinet }}
-                </span>
-              </div>
-            </div>
-
-            <UBadge
-              :color="statusColor(apt.status)"
-              variant="soft"
-              size="sm"
-              class="shrink-0"
-            >
-              {{ statusLabel(apt.status) }}
-            </UBadge>
-          </button>
-        </li>
-      </ul>
+      <AppointmentMobileTimeline
+        v-else
+        :entries="entries"
+        :professionals="professionals"
+        :highlighted-appointment-id="highlightedAppointmentId"
+        @appointment-click="emit('appointment-click', $event)"
+        @free-slot-tap="onFreeSlotTap"
+      />
     </div>
 
     <!-- FAB: create appointment -->

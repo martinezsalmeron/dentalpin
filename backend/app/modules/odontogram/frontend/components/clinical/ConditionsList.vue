@@ -106,6 +106,16 @@ function isHighlighted(toothNumber: number): boolean {
               >
                 {{ formatSurfaces(condition.surfaces) }}
               </span>
+              <!-- Per-treatment action slot (e.g. clinical_notes' note button). -->
+              <ModuleSlot
+                v-if="condition.id"
+                name="odontogram.condition.actions"
+                :ctx="{
+                  treatmentId: condition.id,
+                  toothNumber: group.toothNumber,
+                  status: condition.status
+                }"
+              />
             </span>
             <span
               v-if="idx < group.treatments.length - 1"

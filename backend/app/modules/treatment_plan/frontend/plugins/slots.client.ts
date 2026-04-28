@@ -1,16 +1,10 @@
-import { defineAsyncComponent } from 'vue'
-import { registerSlot } from '~~/app/composables/useModuleSlots'
+// Treatment-plan slot registrations.
+//
+// Clinical-notes-related slots (patient.timeline.treatments,
+// patient.summary.feed, odontogram.diagnosis.sidebar,
+// odontogram.condition.actions) are owned by the ``clinical_notes``
+// module since issue #60. Nothing to register here today; the file is
+// kept so the plugin auto-discovery has a stable entry point for
+// future treatment_plan-only slots.
 
-export default defineNuxtPlugin(() => {
-  // Grouped clinical-notes feed (Plan → Tratamiento → Notas). The host
-  // `patient_timeline` module renders this slot inside its "treatment"
-  // category view without importing anything from treatment_plan.
-  registerSlot('patient.timeline.treatments', {
-    id: 'treatment_plan.patient.timeline.treatments',
-    component: defineAsyncComponent(
-      () => import('../components/clinical/notes/PatientClinicalNotesByPlan.vue')
-    ),
-    order: 10,
-    permission: 'treatment_plan.notes.read'
-  })
-})
+export default defineNuxtPlugin(() => {})

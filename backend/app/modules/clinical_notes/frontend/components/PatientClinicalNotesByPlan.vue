@@ -2,23 +2,20 @@
 /**
  * PatientClinicalNotesByPlan — grouped clinical-notes feed for a patient.
  *
- * Renders one block per treatment plan (``Plan → Tratamiento → Notas``) so a
- * clinician can scan every plan / plan_item / visit note in a single view.
- * Data is served pre-grouped by ``GET /treatment_plan/patients/{id}/clinical-notes``;
- * rendering stays purely presentational here.
+ * Renders one block per treatment plan (Plan → Tratamiento → Notas) so a
+ * clinician can scan every plan / treatment / visit note in one view. Data
+ * is server-grouped by ``GET /api/v1/clinical_notes/patients/{id}/by-plan``.
  *
- * Mounted into the ``patient.timeline.treatments`` slot by this module's
- * ``frontend/plugins/slots.client.ts`` so the host ``patient_timeline`` module
- * does not import anything from ``treatment_plan``.
+ * Mounted into the ``patient.timeline.treatments`` slot.
  */
 
-import type { PlanItemNotesGroup, PlanNotesGroup, PlannedTreatmentItem } from '~~/app/types'
+import type { PlanNotesGroup } from '~~/app/types'
 
 const props = defineProps<{
   ctx: { patientId: string }
 }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { listGroupedForPatient } = useClinicalNotes()
 
 const groups = ref<PlanNotesGroup[]>([])
@@ -44,32 +41,10 @@ function formatDate(iso: string): string {
   }
 }
 
-function getItemName(item: PlannedTreatmentItem): string {
-  const names = item.catalog_item?.names || item.treatment?.catalog_item?.names
-  if (names) {
-    const name = names[locale.value] || names.es
-    if (name) return name
-  }
-  const clinicalType = item.treatment?.clinical_type
-  if (clinicalType) {
-    const key = `odontogram.treatments.types.${clinicalType}`
-    const translated = t(key)
-    if (translated !== key) return translated
-    return clinicalType
-  }
-  return t('clinical.plans.unknownTreatment')
-}
-
-function itemToothLabel(item: PlannedTreatmentItem): string {
-  const teeth = (item.treatment?.teeth ?? []).map(x => x.tooth_number)
-  if (teeth.length === 0) return ''
-  return `${t('clinical.tooth')} ${teeth.join(', ')}`
-}
-
-function sourceBadgeColor(source: 'plan' | 'plan_item' | 'visit'): string {
+function sourceBadgeColor(source: 'plan' | 'treatment' | 'visit'): string {
   if (source === 'visit') return 'primary'
-  if (source === 'plan_item') return 'success'
-  return 'neutral'
+  if (source === 'treatment') return 'success'
+  return 'secondary'
 }
 
 const hasAny = computed(() =>
@@ -100,7 +75,7 @@ const hasAny = computed(() =>
         name="i-lucide-notebook-pen"
         class="w-10 h-10 mx-auto mb-3 opacity-50"
       />
-      <p>{{ t('treatmentPlans.byPlan.empty') }}</p>
+      <p>{{ t('clinicalNotes.byPlan.empty') }}</p>
     </div>
 
     <template v-else>
@@ -133,10 +108,9 @@ const hasAny = computed(() =>
         </template>
 
         <div class="space-y-4">
-          <!-- Plan-level notes -->
           <section v-if="group.plan_notes.length > 0">
             <h4 class="text-caption font-medium text-muted mb-2">
-              {{ t('treatmentPlans.byPlan.planNotesLabel') }}
+              {{ t('clinicalNotes.byPlan.planNotesLabel') }}
             </h4>
             <div class="space-y-2">
               <article
@@ -145,26 +119,22 @@ const hasAny = computed(() =>
                 class="border border-default rounded-md p-3 bg-surface"
               >
                 <header class="flex items-center justify-between mb-2 gap-2">
-                  <span class="text-caption text-muted">
-                    {{ formatDate(note.created_at) }}
-                  </span>
+                  <span class="text-caption text-muted">{{ formatDate(note.created_at) }}</span>
                   <UBadge
                     :color="sourceBadgeColor(note.source)"
                     variant="subtle"
                     size="xs"
                   >
-                    {{ t(`treatmentPlans.filterBy.${note.source === 'plan_item' ? 'item' : note.source}`) }}
+                    {{ t(`clinicalNotes.timeline.source.${note.source}`) }}
                   </UBadge>
                 </header>
-                <div
-                  class="prose prose-sm max-w-none"
-                  v-html="note.body"
-                />
+                <div class="text-sm whitespace-pre-wrap break-words">
+                  {{ note.body }}
+                </div>
               </article>
             </div>
           </section>
 
-          <!-- Per-treatment notes -->
           <section
             v-for="tgroup in group.treatments"
             :key="tgroup.plan_item.id"
@@ -175,12 +145,12 @@ const hasAny = computed(() =>
                 name="i-lucide-stethoscope"
                 class="w-4 h-4 text-muted"
               />
-              <span class="font-medium">{{ getItemName(tgroup.plan_item) }}</span>
+              <span class="font-medium">{{ tgroup.plan_item.label || t('clinicalNotes.byPlan.unknownTreatment') }}</span>
               <span
-                v-if="itemToothLabel(tgroup.plan_item)"
+                v-if="tgroup.plan_item.teeth.length > 0"
                 class="text-caption text-muted"
               >
-                · {{ itemToothLabel(tgroup.plan_item) }}
+                · {{ t('clinicalNotes.linked.tooth', { n: tgroup.plan_item.teeth.join(', ') }) }}
               </span>
             </header>
 
@@ -188,7 +158,7 @@ const hasAny = computed(() =>
               v-if="tgroup.notes.length === 0"
               class="text-caption text-subtle italic pl-6"
             >
-              {{ t('treatmentPlans.byPlan.noNotesForTreatment') }}
+              {{ t('clinicalNotes.byPlan.noNotesForTreatment') }}
             </div>
             <div
               v-else
@@ -196,25 +166,22 @@ const hasAny = computed(() =>
             >
               <article
                 v-for="note in tgroup.notes"
-                :key="note.note_id || `visit-${note.owner_id}-${note.created_at}`"
+                :key="note.note_id || `${note.source}-${note.owner_id}-${note.created_at}`"
                 class="border border-default rounded-md p-3 bg-surface"
               >
                 <header class="flex items-center justify-between mb-2 gap-2">
-                  <span class="text-caption text-muted">
-                    {{ formatDate(note.created_at) }}
-                  </span>
+                  <span class="text-caption text-muted">{{ formatDate(note.created_at) }}</span>
                   <UBadge
                     :color="sourceBadgeColor(note.source)"
                     variant="subtle"
                     size="xs"
                   >
-                    {{ t(`treatmentPlans.filterBy.${note.source === 'plan_item' ? 'item' : note.source}`) }}
+                    {{ t(`clinicalNotes.timeline.source.${note.source}`) }}
                   </UBadge>
                 </header>
-                <div
-                  class="prose prose-sm max-w-none"
-                  v-html="note.body"
-                />
+                <div class="text-sm whitespace-pre-wrap break-words">
+                  {{ note.body }}
+                </div>
               </article>
             </div>
           </section>

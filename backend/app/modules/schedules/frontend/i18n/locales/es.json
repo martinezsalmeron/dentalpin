@@ -8,8 +8,7 @@
       "clinicHoursTitle": "Horario de la clínica",
       "clinicHoursDescription": "Define el horario de apertura semanal y los días especiales (festivos, horario reducido).",
       "professionalHoursTitle": "Horarios de profesionales",
-      "professionalHoursDescription": "Configura el horario individual de cada profesional y gestiona vacaciones u otros períodos sin disponibilidad.",
-      "open": "Gestionar"
+      "professionalHoursDescription": "Configura el horario individual de cada profesional y gestiona vacaciones u otros períodos sin disponibilidad."
     },
     "clinicHours": {
       "title": "Horario de la clínica",

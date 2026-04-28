@@ -16,8 +16,6 @@ from app.core.events.types import EventType
 from app.core.plugins import BaseModule
 
 from .models import (
-    ClinicalNote,
-    ClinicalNoteAttachment,
     PlannedTreatmentItem,
     TreatmentMedia,
     TreatmentPlan,
@@ -50,12 +48,10 @@ class TreatmentPlanModule(BaseModule):
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["*"],
-            "hygienist": ["plans.read", "notes.read", "notes.write"],
+            "hygienist": ["plans.read"],
             "assistant": [
                 "plans.read",
                 "plans.write",
-                "notes.read",
-                "notes.write",
             ],
             "receptionist": [],
         },
@@ -78,8 +74,6 @@ class TreatmentPlanModule(BaseModule):
             TreatmentPlan,
             PlannedTreatmentItem,
             TreatmentMedia,
-            ClinicalNote,
-            ClinicalNoteAttachment,
         ]
 
     def get_router(self) -> APIRouter:
@@ -89,8 +83,6 @@ class TreatmentPlanModule(BaseModule):
         return [
             "plans.read",
             "plans.write",
-            "notes.read",
-            "notes.write",
         ]
 
     def get_event_handlers(self) -> dict[str, Any]:

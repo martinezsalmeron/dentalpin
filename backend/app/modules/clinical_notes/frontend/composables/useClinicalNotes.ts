@@ -1,7 +1,5 @@
 import type {
   ApiResponse,
-  AppointmentTreatmentNoteResponse,
-  AppointmentTreatmentNoteUpdate,
   AttachmentOwnerType,
   ClinicalNote,
   ClinicalNoteCreate,
@@ -11,56 +9,78 @@ import type {
   NoteAttachment,
   NoteAttachmentCreate,
   NoteTemplate,
-  PlanNotesGroup
+  NoteType,
+  PlanNotesGroup,
+  RecentNoteEntry
 } from '~~/app/types'
 
 /**
- * Clinical notes + polymorphic attachments for treatment plans.
+ * Clinical notes — owned by the `clinical_notes` module since issue #60.
  *
- * Notes live at two levels (plan, plan_item). Visit-level notes reuse
- * `AppointmentTreatment.notes` (agenda module) and are updated via
- * {@link patchVisitNote}.
+ * Polymorphic over four note_type / owner_type pairings:
+ *   administrative + diagnosis → owner_type='patient'
+ *   treatment                  → owner_type='treatment' (odontogram.Treatment.id)
+ *   treatment_plan             → owner_type='plan' (treatment_plans.id)
+ *
+ * Endpoints under `/api/v1/clinical_notes/`. Visit-level notes still live on
+ * `AppointmentTreatment.notes` in the agenda module and are PATCHed there.
  */
 export function useClinicalNotes() {
   const api = useApi()
   const toast = useToast()
   const { t } = useI18n()
 
-  const notes = ref<ClinicalNote[]>([])
   const loading = ref(false)
 
-  async function listNotes(ownerType: ClinicalNoteOwnerType, ownerId: string) {
+  async function listForOwner(
+    ownerType: ClinicalNoteOwnerType,
+    ownerId: string
+  ): Promise<ClinicalNote[]> {
     loading.value = true
     try {
       const qs = new URLSearchParams({ owner_type: ownerType, owner_id: ownerId })
       const response = await api.get<ApiResponse<ClinicalNote[]>>(
-        `/api/v1/treatment_plan/notes?${qs}`
+        `/api/v1/clinical_notes/notes?${qs}`
       )
-      notes.value = response.data
       return response.data
     } finally {
       loading.value = false
     }
   }
 
-  async function listForPlan(planId: string): Promise<ClinicalNoteEntry[]> {
+  async function listRecentForPatient(
+    patientId: string,
+    options: { types?: NoteType[]; limit?: number; before?: string } = {}
+  ): Promise<RecentNoteEntry[]> {
+    const qs = new URLSearchParams()
+    if (options.limit) qs.set('limit', String(options.limit))
+    if (options.before) qs.set('before', options.before)
+    if (options.types) {
+      for (const t of options.types) qs.append('types', t)
+    }
+    const url = `/api/v1/clinical_notes/patients/${patientId}/recent${qs.toString() ? `?${qs}` : ''}`
+    const response = await api.get<ApiResponse<RecentNoteEntry[]>>(url)
+    return response.data
+  }
+
+  async function listMergedForPlan(planId: string): Promise<ClinicalNoteEntry[]> {
     const response = await api.get<ApiResponse<ClinicalNoteEntry[]>>(
-      `/api/v1/treatment_plan/treatment-plans/${planId}/clinical-notes`
+      `/api/v1/clinical_notes/treatment-plans/${planId}/merged`
     )
     return response.data
   }
 
   async function listGroupedForPatient(patientId: string): Promise<PlanNotesGroup[]> {
     const response = await api.get<ApiResponse<PlanNotesGroup[]>>(
-      `/api/v1/treatment_plan/patients/${patientId}/clinical-notes`
+      `/api/v1/clinical_notes/patients/${patientId}/by-plan`
     )
     return response.data
   }
 
   async function listTemplates(category?: string): Promise<NoteTemplate[]> {
     const qs = new URLSearchParams()
-    if (category) qs.append('category', category)
-    const url = `/api/v1/treatment_plan/note-templates${qs.toString() ? `?${qs}` : ''}`
+    if (category) qs.set('category', category)
+    const url = `/api/v1/clinical_notes/note-templates${qs.toString() ? `?${qs}` : ''}`
     const response = await api.get<ApiResponse<NoteTemplate[]>>(url)
     return response.data
   }
@@ -68,13 +88,14 @@ export function useClinicalNotes() {
   async function createNote(input: ClinicalNoteCreate): Promise<ClinicalNote | null> {
     try {
       const response = await api.post<ApiResponse<ClinicalNote>>(
-        '/api/v1/treatment_plan/notes',
+        '/api/v1/clinical_notes/notes',
         input
       )
-      toast.add({ title: t('treatmentPlans.notes.saved'), color: 'green' })
+      toast.add({ title: t('clinicalNotes.toasts.saved'), color: 'success' })
       return response.data
     } catch (error) {
       console.error('Error creating clinical note:', error)
+      toast.add({ title: t('clinicalNotes.toasts.saveFailed'), color: 'error' })
       return null
     }
   }
@@ -83,21 +104,22 @@ export function useClinicalNotes() {
     try {
       const payload: ClinicalNoteUpdate = { body }
       const response = await api.patch<ApiResponse<ClinicalNote>>(
-        `/api/v1/treatment_plan/notes/${noteId}`,
+        `/api/v1/clinical_notes/notes/${noteId}`,
         payload
       )
-      toast.add({ title: t('treatmentPlans.notes.saved'), color: 'green' })
+      toast.add({ title: t('clinicalNotes.toasts.saved'), color: 'success' })
       return response.data
     } catch (error) {
       console.error('Error updating clinical note:', error)
+      toast.add({ title: t('clinicalNotes.toasts.saveFailed'), color: 'error' })
       return null
     }
   }
 
   async function deleteNote(noteId: string): Promise<boolean> {
     try {
-      await api.del(`/api/v1/treatment_plan/notes/${noteId}`)
-      toast.add({ title: t('treatmentPlans.notes.deleted'), color: 'green' })
+      await api.del(`/api/v1/clinical_notes/notes/${noteId}`)
+      toast.add({ title: t('clinicalNotes.toasts.deleted'), color: 'success' })
       return true
     } catch (error) {
       console.error('Error deleting clinical note:', error)
@@ -108,7 +130,7 @@ export function useClinicalNotes() {
   async function linkAttachment(input: NoteAttachmentCreate): Promise<NoteAttachment | null> {
     try {
       const response = await api.post<ApiResponse<NoteAttachment>>(
-        '/api/v1/treatment_plan/attachments',
+        '/api/v1/clinical_notes/attachments',
         input
       )
       return response.data
@@ -120,7 +142,7 @@ export function useClinicalNotes() {
 
   async function unlinkAttachment(attachmentId: string): Promise<boolean> {
     try {
-      await api.del(`/api/v1/treatment_plan/attachments/${attachmentId}`)
+      await api.del(`/api/v1/clinical_notes/attachments/${attachmentId}`)
       return true
     } catch (error) {
       console.error('Error unlinking attachment:', error)
@@ -134,33 +156,16 @@ export function useClinicalNotes() {
   ): Promise<NoteAttachment[]> {
     const qs = new URLSearchParams({ owner_type: ownerType, owner_id: ownerId })
     const response = await api.get<ApiResponse<NoteAttachment[]>>(
-      `/api/v1/treatment_plan/attachments?${qs}`
+      `/api/v1/clinical_notes/attachments?${qs}`
     )
     return response.data
   }
 
-  async function patchVisitNote(
-    appointmentTreatmentId: string,
-    payload: AppointmentTreatmentNoteUpdate
-  ): Promise<AppointmentTreatmentNoteResponse | null> {
-    try {
-      const response = await api.patch<ApiResponse<AppointmentTreatmentNoteResponse>>(
-        `/api/v1/agenda/appointment-treatments/${appointmentTreatmentId}`,
-        payload
-      )
-      toast.add({ title: t('treatmentPlans.notes.saved'), color: 'green' })
-      return response.data
-    } catch (error) {
-      console.error('Error updating visit note:', error)
-      return null
-    }
-  }
-
   return {
-    notes,
     loading,
-    listNotes,
-    listForPlan,
+    listForOwner,
+    listRecentForPatient,
+    listMergedForPlan,
     listGroupedForPatient,
     listTemplates,
     createNote,
@@ -168,7 +173,6 @@ export function useClinicalNotes() {
     deleteNote,
     linkAttachment,
     unlinkAttachment,
-    listAttachments,
-    patchVisitNote
+    listAttachments
   }
 }

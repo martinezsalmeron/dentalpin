@@ -1,0 +1,106 @@
+{
+  "clinicalNotes": {
+    "types": {
+      "administrative": "Administrative",
+      "diagnosis": "Diagnosis",
+      "treatment": "Treatment",
+      "treatment_plan": "Plan"
+    },
+    "feed": {
+      "filterLabel": "Filters",
+      "filterAll": "All",
+      "filterClear": "Clear filters",
+      "filterStatus": "Showing {n} of {total} types",
+      "addAdministrative": "Administrative note",
+      "loadMore": "Load more",
+      "empty": {
+        "title": "No notes yet",
+        "help": "Administrative, diagnosis and treatment notes will show up here in chronological order."
+      }
+    },
+    "diagnosisSidebar": {
+      "title": "Notes",
+      "addNote": "Add note",
+      "empty": "No notes in this category."
+    },
+    "treatmentButton": {
+      "title": "Treatment notes",
+      "add": "Add note",
+      "empty": "No notes on this treatment yet.",
+      "aria": "Treatment notes ({n})"
+    },
+    "timeline": {
+      "addPlanNote": "Plan note",
+      "empty": "No notes yet.",
+      "emptyForFilter": "No notes match the filter.",
+      "source": {
+        "plan": "Plan",
+        "treatment": "Treatment",
+        "visit": "Visit"
+      }
+    },
+    "byPlan": {
+      "empty": "This patient has no plan-linked clinical notes yet.",
+      "planNotesLabel": "Plan notes",
+      "unknownTreatment": "Treatment",
+      "noNotesForTreatment": "No notes on this treatment yet."
+    },
+    "composer": {
+      "placeholder": "Write the note…",
+      "templates": "Templates",
+      "bindToTooth": "Attach to tooth {n}"
+    },
+    "linked": {
+      "tooth": "Tooth {n}",
+      "treatment": "Treatment",
+      "treatmentOnTooth": "{label} (tooth {n})",
+      "plan": "Plan",
+      "planNamed": "Plan: {label}"
+    },
+    "actions": {
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "openLinked": "Open context"
+    },
+    "author": {
+      "unknown": "Unknown author"
+    },
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{n} min ago",
+      "hoursAgo": "{n} h ago",
+      "daysAgo": "{n} d ago"
+    },
+    "toasts": {
+      "saved": "Note saved",
+      "deleted": "Note deleted",
+      "saveFailed": "Could not save the note"
+    },
+    "confirms": {
+      "delete": "Delete this note? Recovery requires contacting support."
+    },
+    "templates": {
+      "endo": {
+        "singleVisit": "Endodontics (single visit)",
+        "multiVisit": "Endodontics (multi visit)"
+      },
+      "perio": {
+        "scaling": "Scaling / RAR"
+      },
+      "implant": {
+        "placement": "Implant placement"
+      },
+      "diagnosis": {
+        "caries": "Caries",
+        "periapical": "Periapical lesion"
+      },
+      "admin": {
+        "phoneCall": "Patient phone call",
+        "reschedule": "Reschedule request"
+      },
+      "general": {
+        "followUp": "General follow-up"
+      }
+    }
+  }
+}

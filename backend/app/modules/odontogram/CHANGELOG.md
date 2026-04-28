@@ -3,6 +3,11 @@
 ## Unreleased
 
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
+- Issue #60: `DiagnosisMode.vue` exposes a right-rail
+  `odontogram.diagnosis.sidebar` slot (with mobile slideover) and
+  `ConditionsList.vue` exposes a per-treatment
+  `odontogram.condition.actions` slot. The clinical_notes module fills
+  both — odontogram itself does not depend on it.
 
 ## 0.3.0 — initial documented version
 

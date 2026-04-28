@@ -1,4 +1,9 @@
-"""Treatment plan module database models."""
+"""Treatment plan module database models.
+
+Note: clinical-notes models live in the ``clinical_notes`` module since
+issue #60. The ``clinical_notes`` and ``clinical_note_attachments`` tables
+remain in the database, but ownership of the schema/migrations moved.
+"""
 
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -6,7 +11,6 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
-    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -19,13 +23,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
-
-# Polymorphic owner types used by ClinicalNote + ClinicalNoteAttachment.
-NOTE_OWNER_PLAN = "plan"
-NOTE_OWNER_PLAN_ITEM = "plan_item"
-ATTACHMENT_OWNER_APPOINTMENT_TREATMENT = "appointment_treatment"
-NOTE_OWNER_TYPES = (NOTE_OWNER_PLAN, NOTE_OWNER_PLAN_ITEM)
-ATTACHMENT_OWNER_TYPES = (*NOTE_OWNER_TYPES, ATTACHMENT_OWNER_APPOINTMENT_TREATMENT)
 
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
@@ -173,97 +170,4 @@ class TreatmentMedia(Base, TimestampMixin):
     __table_args__ = (
         Index("idx_treatment_media_item", "planned_treatment_item_id"),
         Index("idx_treatment_media_document", "document_id"),
-    )
-
-
-class ClinicalNote(Base, TimestampMixin):
-    """Timestamped clinical note attached to a plan or plan item.
-
-    Polymorphic within the treatment_plan module: ``owner_type`` is one of
-    ``plan`` or ``plan_item``. ``owner_id`` is a soft reference validated at
-    the service layer (no DB-level FK to avoid cross-row type branching).
-    Visit-level notes reuse ``AppointmentTreatment.notes`` (agenda module) and
-    are not stored here.
-    """
-
-    __tablename__ = "clinical_notes"
-
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
-
-    owner_type: Mapped[str] = mapped_column(String(20))
-    owner_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True))
-
-    body: Mapped[str] = mapped_column(Text)
-    author_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
-
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-    clinic: Mapped["Clinic"] = relationship()
-    author: Mapped["User"] = relationship()
-    attachments: Mapped[list["ClinicalNoteAttachment"]] = relationship(
-        back_populates="note",
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            "owner_type IN ('plan', 'plan_item')",
-            name="ck_clinical_notes_owner_type",
-        ),
-        Index(
-            "idx_clinical_notes_owner",
-            "clinic_id",
-            "owner_type",
-            "owner_id",
-            "created_at",
-        ),
-        Index("idx_clinical_notes_author", "author_id"),
-    )
-
-
-class ClinicalNoteAttachment(Base, TimestampMixin):
-    """Polymorphic link between a ``media.Document`` and a notes owner.
-
-    ``owner_type`` may be ``plan``, ``plan_item``, or ``appointment_treatment``.
-    ``note_id`` is optional: attachments can be linked directly to an owner
-    without a text note (e.g. a radiograph uploaded to a plan item), or linked
-    to a specific note when uploaded through the note editor.
-    """
-
-    __tablename__ = "clinical_note_attachments"
-
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
-
-    document_id: Mapped[UUID] = mapped_column(
-        ForeignKey("documents.id", ondelete="CASCADE"), index=True
-    )
-    owner_type: Mapped[str] = mapped_column(String(30))
-    owner_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True))
-    note_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("clinical_notes.id", ondelete="SET NULL"), index=True
-    )
-    display_order: Mapped[int] = mapped_column(Integer, default=0)
-
-    clinic: Mapped["Clinic"] = relationship()
-    document: Mapped["Document"] = relationship()
-    note: Mapped["ClinicalNote | None"] = relationship(back_populates="attachments")
-
-    __table_args__ = (
-        CheckConstraint(
-            "owner_type IN ('plan', 'plan_item', 'appointment_treatment')",
-            name="ck_clinical_note_attachments_owner_type",
-        ),
-        UniqueConstraint(
-            "document_id",
-            "owner_type",
-            "owner_id",
-            name="uq_clinical_note_attachments_doc_owner",
-        ),
-        Index(
-            "idx_clinical_note_attachments_owner",
-            "clinic_id",
-            "owner_type",
-            "owner_id",
-        ),
     )

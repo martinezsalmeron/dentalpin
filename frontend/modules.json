@@ -13,7 +13,7 @@
     "/module_layers/reports/frontend",
     "/module_layers/schedules/frontend",
     "/module_layers/treatment_plan/frontend",
-    "/module_layers/verifactu/frontend"
+    "/module_layers/clinical_notes/frontend"
   ],
   "modules": [
     {
@@ -69,8 +69,8 @@
       "path": "/module_layers/treatment_plan/frontend"
     },
     {
-      "name": "verifactu",
-      "path": "/module_layers/verifactu/frontend"
+      "name": "clinical_notes",
+      "path": "/module_layers/clinical_notes/frontend"
     }
   ],
   "version": 1

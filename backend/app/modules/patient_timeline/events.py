@@ -442,38 +442,43 @@ async def on_document_uploaded(data: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def on_plan_note_created(data: dict) -> None:
-    """Record a plan-level clinical note on the patient timeline."""
+_NOTE_TYPE_TITLES = {
+    "administrative": "Nota administrativa",
+    "diagnosis": "Nota de diagnóstico",
+    "treatment": "Nota clínica en tratamiento",
+    "treatment_plan": "Nota clínica en plan de tratamiento",
+}
+
+
+async def on_clinical_note_created(data: dict) -> None:
+    """Record any clinical_notes-module note on the patient timeline.
+
+    A single handler covers all four note_types (administrative, diagnosis,
+    treatment, treatment_plan). The event_type field stays specific so the
+    timeline UI can filter by note category.
+    """
+    event_type_str = f"clinical_notes.{data.get('note_type', 'note')}_created"
+    note_type = data.get("note_type") or "note"
+    title = _NOTE_TYPE_TITLES.get(note_type, "Nota clínica")
+    tooth = data.get("tooth_number")
+    if note_type == "diagnosis" and tooth:
+        title = f"{title} (diente {tooth})"
+
     data = {**data, "source_id": data.get("note_id")}
     excerpt = data.get("body_excerpt") or ""
     await _record(
-        event_type=EventType.TREATMENT_PLAN_NOTE_CREATED,
+        event_type=event_type_str,
         event_category="note",
         source_table="clinical_notes",
         data=data,
         source_id_key="source_id",
-        title="Nota clínica en plan de tratamiento",
-        description=excerpt or None,
-        event_data={"plan_id": data.get("plan_id")},
-        created_by_key="user_id",
-    )
-
-
-async def on_item_note_created(data: dict) -> None:
-    """Record a plan-item-level clinical note on the patient timeline."""
-    data = {**data, "source_id": data.get("note_id")}
-    excerpt = data.get("body_excerpt") or ""
-    await _record(
-        event_type=EventType.TREATMENT_PLAN_ITEM_NOTE_CREATED,
-        event_category="note",
-        source_table="clinical_notes",
-        data=data,
-        source_id_key="source_id",
-        title="Nota clínica en tratamiento",
+        title=title,
         description=excerpt or None,
         event_data={
-            "plan_id": data.get("plan_id"),
-            "plan_item_id": data.get("plan_item_id"),
+            "note_type": note_type,
+            "owner_type": data.get("owner_type"),
+            "owner_id": data.get("owner_id"),
+            "tooth_number": tooth,
         },
         created_by_key="user_id",
     )

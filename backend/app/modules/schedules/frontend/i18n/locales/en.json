@@ -8,8 +8,7 @@
       "clinicHoursTitle": "Clinic hours",
       "clinicHoursDescription": "Define the clinic's weekly opening hours and special dates (holidays, reduced hours).",
       "professionalHoursTitle": "Professional schedules",
-      "professionalHoursDescription": "Set individual schedules for each professional and manage vacations or other unavailable periods.",
-      "open": "Manage"
+      "professionalHoursDescription": "Set individual schedules for each professional and manage vacations or other unavailable periods."
     },
     "clinicHours": {
       "title": "Clinic hours",

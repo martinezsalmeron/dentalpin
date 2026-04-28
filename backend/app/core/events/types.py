@@ -88,10 +88,17 @@ class EventType:
     TREATMENT_PLAN_TREATMENT_COMPLETED = "treatment_plan.treatment_completed"
     TREATMENT_PLAN_BUDGET_SYNC_REQUESTED = "treatment_plan.budget_sync_requested"
 
-    # Clinical note events (treatment_plan module)
-    TREATMENT_PLAN_NOTE_CREATED = "treatment_plan.plan_note_created"
-    TREATMENT_PLAN_ITEM_NOTE_CREATED = "treatment_plan.item_note_created"
+    # Treatment-plan completion audit (kept here — emitted by treatment_plan
+    # when an item is completed without a clinical note, consumed by
+    # patient_timeline for compliance audit).
     TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE = "treatment_plan.item_completed_without_note"
+
+    # Clinical-notes events (clinical_notes module — replaces the legacy
+    # ``treatment_plan.{plan,item}_note_created`` pair).
+    CLINICAL_NOTE_ADMINISTRATIVE_CREATED = "clinical_notes.administrative_created"
+    CLINICAL_NOTE_DIAGNOSIS_CREATED = "clinical_notes.diagnosis_created"
+    CLINICAL_NOTE_TREATMENT_CREATED = "clinical_notes.treatment_created"
+    CLINICAL_NOTE_PLAN_CREATED = "clinical_notes.plan_created"
 
     # Visit-level note event (agenda module — reuses AppointmentTreatment.notes)
     AGENDA_VISIT_NOTE_UPDATED = "agenda.visit_note_updated"

@@ -25,6 +25,10 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `budget.created` | `EventType.BUDGET_CREATED` | — | — |
 | `budget.rejected` | `EventType.BUDGET_REJECTED` | — | — |
 | `budget.sent` | `EventType.BUDGET_SENT` | `budget` | `notifications`, `patient_timeline` |
+| `clinical_notes.administrative_created` | `EventType.CLINICAL_NOTE_ADMINISTRATIVE_CREATED` | — | `patient_timeline` |
+| `clinical_notes.diagnosis_created` | `EventType.CLINICAL_NOTE_DIAGNOSIS_CREATED` | — | `patient_timeline` |
+| `clinical_notes.plan_created` | `EventType.CLINICAL_NOTE_PLAN_CREATED` | — | `patient_timeline` |
+| `clinical_notes.treatment_created` | `EventType.CLINICAL_NOTE_TREATMENT_CREATED` | — | `patient_timeline` |
 | `credit_note.issued` | `EventType.CREDIT_NOTE_ISSUED` | — | — |
 | `document.archived` | `EventType.DOCUMENT_ARCHIVED` | — | — |
 | `document.deleted` | `EventType.DOCUMENT_DELETED` | `media` | — |
@@ -55,12 +59,11 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `treatment_plan.budget_sync_requested` | `EventType.TREATMENT_PLAN_BUDGET_SYNC_REQUESTED` | `treatment_plan` | `budget` |
 | `treatment_plan.created` | `EventType.TREATMENT_PLAN_CREATED` | `treatment_plan` | `patient_timeline` |
 | `treatment_plan.item_completed_without_note` | `EventType.TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE` | `treatment_plan` | `patient_timeline` |
-| `treatment_plan.item_note_created` | `EventType.TREATMENT_PLAN_ITEM_NOTE_CREATED` | — | `patient_timeline` |
-| `treatment_plan.plan_note_created` | `EventType.TREATMENT_PLAN_NOTE_CREATED` | — | `patient_timeline` |
 | `treatment_plan.status_changed` | `EventType.TREATMENT_PLAN_STATUS_CHANGED` | `treatment_plan` | — |
 | `treatment_plan.treatment_added` | `EventType.TREATMENT_PLAN_TREATMENT_ADDED` | `treatment_plan` | `budget` |
 | `treatment_plan.treatment_completed` | `EventType.TREATMENT_PLAN_TREATMENT_COMPLETED` | `treatment_plan` | `patient_timeline` |
 | `treatment_plan.treatment_removed` | `EventType.TREATMENT_PLAN_TREATMENT_REMOVED` | `treatment_plan` | `budget` |
+| `verifactu.record.rejected` | `EventType.VERIFACTU_RECORD_REJECTED` | `verifactu` | — |
 
 ## Events published but missing from `EventType` enum
 
@@ -69,7 +72,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 - `treatment_plan.items_reordered` — 1 site(s):
   - `backend/app/modules/treatment_plan/service.py:515`
 - `treatment_plan.unlocked` — 1 site(s):
-  - `backend/app/modules/treatment_plan/service.py:801`
+  - `backend/app/modules/treatment_plan/service.py:789`
 
 ## Detail
 
@@ -189,6 +192,34 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
   - `notifications`
   - `patient_timeline`
 
+### `clinical_notes.administrative_created`
+
+- **Constant:** `EventType.CLINICAL_NOTE_ADMINISTRATIVE_CREATED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:**
+  - `patient_timeline`
+
+### `clinical_notes.diagnosis_created`
+
+- **Constant:** `EventType.CLINICAL_NOTE_DIAGNOSIS_CREATED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:**
+  - `patient_timeline`
+
+### `clinical_notes.plan_created`
+
+- **Constant:** `EventType.CLINICAL_NOTE_PLAN_CREATED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:**
+  - `patient_timeline`
+
+### `clinical_notes.treatment_created`
+
+- **Constant:** `EventType.CLINICAL_NOTE_TREATMENT_CREATED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:**
+  - `patient_timeline`
+
 ### `credit_note.issued`
 
 - **Constant:** `EventType.CREDIT_NOTE_ISSUED`
@@ -254,7 +285,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.INVOICE_PAID`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/workflow.py:401`
+  - `billing` — `backend/app/modules/billing/workflow.py:491`
 - **Subscribers:**
   - `patient_timeline`
   - `verifactu`
@@ -269,7 +300,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.INVOICE_SENT`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/router.py:584`
+  - `billing` — `backend/app/modules/billing/router.py:659`
 - **Subscribers:**
   - `notifications`
 
@@ -382,7 +413,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_BUDGET_SYNC_REQUESTED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:824`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:812`
 - **Subscribers:**
   - `budget`
 
@@ -398,21 +429,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:682`
-- **Subscribers:**
-  - `patient_timeline`
-
-### `treatment_plan.item_note_created`
-
-- **Constant:** `EventType.TREATMENT_PLAN_ITEM_NOTE_CREATED`
-- **Publishers:** _none in tree — declared but unused_
-- **Subscribers:**
-  - `patient_timeline`
-
-### `treatment_plan.plan_note_created`
-
-- **Constant:** `EventType.TREATMENT_PLAN_NOTE_CREATED`
-- **Publishers:** _none in tree — declared but unused_
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:670`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -422,7 +439,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 - **Publishers:**
   - `treatment_plan` — `backend/app/modules/treatment_plan/events.py:117`
   - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:268`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:718`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:706`
 - **Subscribers:** —
 
 ### `treatment_plan.treatment_added`
@@ -439,7 +456,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 - **Publishers:**
   - `treatment_plan` — `backend/app/modules/treatment_plan/events.py:61`
   - `treatment_plan` — `backend/app/modules/treatment_plan/events.py:164`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:654`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:653`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -450,3 +467,10 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
   - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:577`
 - **Subscribers:**
   - `budget`
+
+### `verifactu.record.rejected`
+
+- **Constant:** `EventType.VERIFACTU_RECORD_REJECTED`
+- **Publishers:**
+  - `verifactu` — `backend/app/modules/verifactu/services/submission_queue.py:273`
+- **Subscribers:** —

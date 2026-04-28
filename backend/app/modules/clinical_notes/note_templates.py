@@ -1,9 +1,10 @@
 """Static catalog of clinical-note templates by treatment category.
 
-The pre-fill shown in the completion-nudge modal is picked from this table
-based on the `treatment.clinical_type` of the item being completed. Bodies
-are plain text (newline-separated labels) since the note editors are
-plain <textarea> — the clinician edits the skeleton in place.
+The pre-fill shown in the completion-nudge modal and the per-treatment note
+composer is picked from this table based on the ``treatment.clinical_type``
+of the item being completed. Bodies are plain text (newline-separated
+labels) since the note editors are plain ``<textarea>`` — the clinician
+edits the skeleton in place.
 
 No DB. No admin UI. Adding a template = edit this file.
 """
@@ -23,7 +24,7 @@ NOTE_TEMPLATES: Final[dict[str, list[NoteTemplate]]] = {
     "endodontics": [
         {
             "id": "endo_single_visit",
-            "i18n_key": "treatmentPlans.noteTemplates.endo.singleVisit",
+            "i18n_key": "clinicalNotes.templates.endo.singleVisit",
             "body": (
                 "Diagnóstico: \n"
                 "Anestesia: \n"
@@ -35,7 +36,7 @@ NOTE_TEMPLATES: Final[dict[str, list[NoteTemplate]]] = {
         },
         {
             "id": "endo_multi_visit",
-            "i18n_key": "treatmentPlans.noteTemplates.endo.multiVisit",
+            "i18n_key": "clinicalNotes.templates.endo.multiVisit",
             "body": (
                 "Sesión: \nConductos trabajados: \nMedicación intraconducto: \nPróxima cita: "
             ),
@@ -44,7 +45,7 @@ NOTE_TEMPLATES: Final[dict[str, list[NoteTemplate]]] = {
     "periodontics": [
         {
             "id": "perio_scaling",
-            "i18n_key": "treatmentPlans.noteTemplates.perio.scaling",
+            "i18n_key": "clinicalNotes.templates.perio.scaling",
             "body": (
                 "Cuadrantes tratados: \n"
                 "Profundidad de sondaje: \n"
@@ -56,7 +57,7 @@ NOTE_TEMPLATES: Final[dict[str, list[NoteTemplate]]] = {
     "implantology": [
         {
             "id": "implant_placement",
-            "i18n_key": "treatmentPlans.noteTemplates.implant.placement",
+            "i18n_key": "clinicalNotes.templates.implant.placement",
             "body": (
                 "Implante (marca / diámetro / longitud): \n"
                 "Torque final (Ncm): \n"
@@ -66,11 +67,41 @@ NOTE_TEMPLATES: Final[dict[str, list[NoteTemplate]]] = {
             ),
         },
     ],
+    "diagnosis": [
+        {
+            "id": "diagnosis_caries",
+            "i18n_key": "clinicalNotes.templates.diagnosis.caries",
+            "body": (
+                "Hallazgo: caries \nProfundidad: \nSíntomas: \nPrueba de vitalidad: \n"
+                "Tratamiento sugerido: "
+            ),
+        },
+        {
+            "id": "diagnosis_periapical",
+            "i18n_key": "clinicalNotes.templates.diagnosis.periapical",
+            "body": (
+                "Lesión periapical \nDiente: \nRadiografía: \n"
+                "Pruebas (percusión, palpación): \nDiagnóstico: "
+            ),
+        },
+    ],
+    "administrative": [
+        {
+            "id": "admin_phone_call",
+            "i18n_key": "clinicalNotes.templates.admin.phoneCall",
+            "body": "Llamada del paciente: \nMotivo: \nAcción tomada: \nSeguimiento: ",
+        },
+        {
+            "id": "admin_reschedule",
+            "i18n_key": "clinicalNotes.templates.admin.reschedule",
+            "body": "Solicita cambio de cita: \nFecha actual: \nNueva propuesta: ",
+        },
+    ],
     "general": [
         {
             "id": "general_follow_up",
-            "i18n_key": "treatmentPlans.noteTemplates.general.followUp",
-            "body": ("Hallazgos: \nProcedimiento realizado: \nIndicaciones al paciente: "),
+            "i18n_key": "clinicalNotes.templates.general.followUp",
+            "body": "Hallazgos: \nProcedimiento realizado: \nIndicaciones al paciente: ",
         },
     ],
 }

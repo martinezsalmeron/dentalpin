@@ -14,6 +14,8 @@ const props = defineProps<{
   initialTime?: string
   initialEndTime?: string
   initialProfessionalId?: string
+  /** Pre-fill the cabinet field (#61, mobile free-slot tap when track = cabinet). */
+  initialCabinet?: string | null
   initialPatientId?: string
   existingAppointments?: Appointment[]
 }>()
@@ -29,6 +31,7 @@ const toast = useToast()
 const auth = useAuth()
 const clinic = useClinic()
 const api = useApi()
+const { isMobile } = useBreakpoint()
 const { createAppointment, updateAppointment, cancelAppointment } = useAppointments()
 const { professionals, fetchProfessionals, getProfessionalColor } = useProfessionals()
 const { fetchSettings, getAutoSendStatus } = useNotificationSettings()
@@ -377,7 +380,14 @@ watch(() => props.open, async (isOpen) => {
       formData.duration = clinic.slotDuration.value || 30
     }
     // Default to unassigned (#51): the cabinet is decided at check-in.
-    formData.cabinet = UNASSIGNED_CABINET
+    // Free-slot tap (#61) may pre-fill a cabinet when the user was
+    // viewing a cabinet-track on mobile.
+    if (props.initialCabinet) {
+      const matchesClinicCabinet = clinic.cabinets.value.some(c => c.name === props.initialCabinet)
+      formData.cabinet = matchesClinicCabinet ? props.initialCabinet : UNASSIGNED_CABINET
+    } else {
+      formData.cabinet = UNASSIGNED_CABINET
+    }
     formData.notes = ''
     selectedTreatments.value = []
     // Reset email checkbox for create mode
@@ -549,10 +559,16 @@ function closeModal() {
 <template>
   <UModal
     :open="open"
+    :fullscreen="isMobile"
     @update:open="$emit('update:open', $event)"
   >
     <template #content>
-      <UCard>
+      <UCard
+        :ui="{
+          root: isMobile ? 'h-full flex flex-col' : '',
+          body: isMobile ? 'flex-1 min-h-0 overflow-hidden p-0' : ''
+        }"
+      >
         <template #header>
           <div class="flex items-center justify-between">
             <h2 class="text-h1 text-default text-default">
@@ -562,12 +578,17 @@ function closeModal() {
               variant="ghost"
               color="neutral"
               icon="i-lucide-x"
+              :aria-label="t('common.close', 'Cerrar')"
               @click="closeModal"
             />
           </div>
         </template>
 
-        <div class="max-h-[60vh] overflow-y-auto pr-1">
+        <div
+          :class="isMobile
+            ? 'h-full overflow-y-auto px-4 py-3'
+            : 'max-h-[60vh] overflow-y-auto pr-1'"
+        >
           <form
             class="space-y-4"
             @submit.prevent="handleSave"
@@ -600,6 +621,7 @@ function closeModal() {
                 <UInput
                   v-model="formData.date"
                   type="date"
+                  :size="isMobile ? 'lg' : 'md'"
                   required
                 />
               </UFormField>
@@ -611,6 +633,7 @@ function closeModal() {
                 <UInput
                   v-model="formData.startTime"
                   type="time"
+                  :size="isMobile ? 'lg' : 'md'"
                   required
                 />
               </UFormField>
@@ -624,6 +647,7 @@ function closeModal() {
                   :items="durationOptions"
                   value-key="value"
                   label-key="label"
+                  :size="isMobile ? 'lg' : 'md'"
                   :placeholder="t('appointments.selectDuration')"
                 />
               </UFormField>
@@ -634,6 +658,7 @@ function closeModal() {
                   :items="cabinetOptions"
                   value-key="value"
                   label-key="label"
+                  :size="isMobile ? 'lg' : 'md'"
                   :placeholder="t('appointments.cabinet')"
                 />
               </UFormField>
@@ -649,6 +674,7 @@ function closeModal() {
                 :items="professionalOptions"
                 value-key="value"
                 label-key="label"
+                :size="isMobile ? 'lg' : 'md'"
                 :placeholder="t('appointments.selectProfessional')"
               />
             </UFormField>

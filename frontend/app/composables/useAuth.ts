@@ -1,5 +1,13 @@
 import type { User, LoginCredentials, AuthResponse, MeResponse, ApiResponse } from '~/types'
 
+// Client-only module-level dedupe slot for the in-flight refresh promise.
+// Storing a Promise inside useState() leaks it into the SSR payload, which
+// devalue cannot serialize (DevalueError "Cannot stringify arbitrary
+// non-POJOs"). On the server, refreshes happen per-request anyway and
+// don't need cross-component dedupe — so we keep this client-only and
+// never touch it during SSR.
+let clientRefreshInFlight: Promise<boolean> | null = null
+
 export function useAuth() {
   const config = useRuntimeConfig()
   const router = useRouter()
@@ -64,16 +72,16 @@ export function useAuth() {
   // parallel requests on an expired access token triggers N refresh
   // calls — all but one race past the rate limiter and trip 429,
   // which then logs the user out. Sharing one in-flight promise keeps
-  // the refresh single-shot per session.
-  const refreshInFlight = useState<Promise<boolean> | null>('auth:refresh-in-flight', () => null)
-
+  // the refresh single-shot per session. Stored in a client-only
+  // module-level slot (see top of file) — putting a Promise into
+  // useState() breaks SSR payload serialization.
   async function refresh(): Promise<boolean> {
     if (!refreshToken.value) {
       return false
     }
 
-    if (refreshInFlight.value) {
-      return refreshInFlight.value
+    if (import.meta.client && clientRefreshInFlight) {
+      return clientRefreshInFlight
     }
 
     const run = (async (): Promise<boolean> => {
@@ -94,11 +102,15 @@ export function useAuth() {
       }
     })()
 
-    refreshInFlight.value = run
+    if (import.meta.client) {
+      clientRefreshInFlight = run
+    }
     try {
       return await run
     } finally {
-      refreshInFlight.value = null
+      if (import.meta.client) {
+        clientRefreshInFlight = null
+      }
     }
   }
 

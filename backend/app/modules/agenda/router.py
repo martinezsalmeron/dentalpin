@@ -507,14 +507,14 @@ async def update_appointment_treatment_note(
     appointment_treatment_id: UUID,
     data: AppointmentTreatmentNoteUpdate,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("treatment_plan.notes.write"))],
+    _: Annotated[None, Depends(require_permission("clinical_notes.notes.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[AppointmentTreatmentResponse]:
     """Update visit-level clinical note + completion flag on an AppointmentTreatment.
 
-    Permission lives under ``treatment_plan.notes`` because conceptually this
-    is the visit-level anchor of the three-level clinical-notes model even
-    though the row is owned by the agenda module.
+    Permission lives under ``clinical_notes.notes`` because conceptually this
+    is the visit-level anchor of the four-level clinical-notes model even
+    though the row is owned by the agenda module (issue #60).
     """
     row = await AppointmentService.update_appointment_treatment_note(
         db,

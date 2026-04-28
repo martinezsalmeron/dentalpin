@@ -24,6 +24,14 @@ from app.modules.agenda.models import (  # noqa: F401
     AppointmentTreatment,
     Cabinet,
 )
+from app.modules.billing.models import (  # noqa: F401
+    Invoice,
+    InvoiceHistory,
+    InvoiceItem,
+    InvoiceSeries,
+    InvoiceSeriesHistory,
+    Payment,
+)
 from app.modules.budget.models import (  # noqa: F401
     Budget,
     BudgetHistory,
@@ -34,6 +42,10 @@ from app.modules.catalog.models import (  # noqa: F401
     TreatmentCatalogItem,
     TreatmentCategory,
     TreatmentOdontogramMapping,
+)
+from app.modules.clinical_notes.models import (  # noqa: F401
+    ClinicalNote,
+    ClinicalNoteAttachment,
 )
 from app.modules.media.models import Document  # noqa: F401
 from app.modules.odontogram.models import (  # noqa: F401
@@ -51,19 +63,9 @@ from app.modules.schedules.models import (  # noqa: F401
     ScheduleShift,
 )
 from app.modules.treatment_plan.models import (  # noqa: F401
-    ClinicalNote,
-    ClinicalNoteAttachment,
     PlannedTreatmentItem,
     TreatmentMedia,
     TreatmentPlan,
-)
-from app.modules.billing.models import (  # noqa: F401
-    Invoice,
-    InvoiceHistory,
-    InvoiceItem,
-    InvoiceSeries,
-    InvoiceSeriesHistory,
-    Payment,
 )
 from app.modules.verifactu.models import (  # noqa: F401
     VerifactuCertificate,

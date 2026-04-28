@@ -1,0 +1,106 @@
+{
+  "clinicalNotes": {
+    "types": {
+      "administrative": "Administrativa",
+      "diagnosis": "Diagnóstico",
+      "treatment": "Tratamiento",
+      "treatment_plan": "Plan"
+    },
+    "feed": {
+      "filterLabel": "Filtros",
+      "filterAll": "Todas",
+      "filterClear": "Quitar filtros",
+      "filterStatus": "Filtrando {n} de {total} tipos",
+      "addAdministrative": "Nota administrativa",
+      "loadMore": "Cargar más",
+      "empty": {
+        "title": "Sin notas todavía",
+        "help": "Las notas administrativas, de diagnóstico y de tratamiento aparecerán aquí en orden cronológico."
+      }
+    },
+    "diagnosisSidebar": {
+      "title": "Notas",
+      "addNote": "Añadir nota",
+      "empty": "Sin notas en esta categoría."
+    },
+    "treatmentButton": {
+      "title": "Notas del tratamiento",
+      "add": "Añadir nota",
+      "empty": "Sin notas para este tratamiento.",
+      "aria": "Notas del tratamiento ({n})"
+    },
+    "timeline": {
+      "addPlanNote": "Nota del plan",
+      "empty": "Sin notas todavía.",
+      "emptyForFilter": "Sin notas que coincidan con el filtro.",
+      "source": {
+        "plan": "Plan",
+        "treatment": "Tratamiento",
+        "visit": "Visita"
+      }
+    },
+    "byPlan": {
+      "empty": "Este paciente aún no tiene notas clínicas vinculadas a planes.",
+      "planNotesLabel": "Notas del plan",
+      "unknownTreatment": "Tratamiento",
+      "noNotesForTreatment": "Sin notas en este tratamiento todavía."
+    },
+    "composer": {
+      "placeholder": "Escribe la nota…",
+      "templates": "Plantillas",
+      "bindToTooth": "Asociar al diente {n}"
+    },
+    "linked": {
+      "tooth": "Diente {n}",
+      "treatment": "Tratamiento",
+      "treatmentOnTooth": "{label} (diente {n})",
+      "plan": "Plan",
+      "planNamed": "Plan: {label}"
+    },
+    "actions": {
+      "showMore": "Ver más",
+      "showLess": "Ver menos",
+      "openLinked": "Abrir contexto"
+    },
+    "author": {
+      "unknown": "Autor desconocido"
+    },
+    "time": {
+      "justNow": "ahora mismo",
+      "minutesAgo": "hace {n} min",
+      "hoursAgo": "hace {n} h",
+      "daysAgo": "hace {n} d"
+    },
+    "toasts": {
+      "saved": "Nota guardada",
+      "deleted": "Nota eliminada",
+      "saveFailed": "No se pudo guardar la nota"
+    },
+    "confirms": {
+      "delete": "¿Eliminar esta nota? Se podrá recuperar contactando con soporte."
+    },
+    "templates": {
+      "endo": {
+        "singleVisit": "Endodoncia (sesión única)",
+        "multiVisit": "Endodoncia (varias sesiones)"
+      },
+      "perio": {
+        "scaling": "Tartrectomía / RAR"
+      },
+      "implant": {
+        "placement": "Colocación de implante"
+      },
+      "diagnosis": {
+        "caries": "Caries",
+        "periapical": "Lesión periapical"
+      },
+      "admin": {
+        "phoneCall": "Llamada del paciente",
+        "reschedule": "Solicita cambio de cita"
+      },
+      "general": {
+        "followUp": "Seguimiento general"
+      }
+    }
+  }
+}

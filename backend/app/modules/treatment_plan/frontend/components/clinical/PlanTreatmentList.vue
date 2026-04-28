@@ -289,6 +289,17 @@ function formatCurrency(amount: number | undefined): string {
             >
               {{ formatCurrency(getItemPrice(item)) }}
             </span>
+            <!-- Per-treatment note button (clinical_notes module). Stays
+                 mounted regardless of plan-item status so notes can be
+                 added/read on every status (issue #60). -->
+            <ModuleSlot
+              name="odontogram.condition.actions"
+              :ctx="{
+                treatmentId: item.treatment_id,
+                toothNumber: itemTeeth(item)[0] ?? null,
+                status: item.status
+              }"
+            />
             <UButton
               v-if="completeEnabled"
               size="xs"
@@ -335,7 +346,7 @@ function formatCurrency(amount: number | undefined): string {
                 name="i-lucide-check-circle"
                 class="w-4 h-4 text-success-accent shrink-0"
               />
-              <span class="line-through truncate">
+              <span class="line-through truncate flex-1 min-w-0">
                 {{ getItemName(item) }}
               </span>
               <span
@@ -344,6 +355,15 @@ function formatCurrency(amount: number | undefined): string {
               >
                 - {{ formatToothInfo(item) }}
               </span>
+              <!-- Notes still readable/writable on completed items (issue #60). -->
+              <ModuleSlot
+                name="odontogram.condition.actions"
+                :ctx="{
+                  treatmentId: item.treatment_id,
+                  toothNumber: itemTeeth(item)[0] ?? null,
+                  status: item.status
+                }"
+              />
             </div>
           </div>
         </div>

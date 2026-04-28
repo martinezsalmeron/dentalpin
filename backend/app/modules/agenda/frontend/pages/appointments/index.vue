@@ -157,6 +157,7 @@ const initialDate = ref<Date | undefined>()
 const initialTime = ref<string | undefined>()
 const initialEndTime = ref<string | undefined>()
 const initialProfessionalId = ref<string | undefined>()
+const initialCabinet = ref<string | null | undefined>()
 
 // Get Monday of the current week
 function getMonday(date: Date): Date {
@@ -196,7 +197,32 @@ function handleSlotClick(date: Date, time: string) {
   initialTime.value = time
   initialEndTime.value = undefined
   initialProfessionalId.value = undefined
+  initialCabinet.value = undefined
   // Keep initialPatientId from URL so patient is pre-selected
+  isModalOpen.value = true
+}
+
+// Handle free-slot tap from mobile timeline (#61) — pre-fill the
+// composer with the gap's start, duration (via end time) and the
+// resource (professional or cabinet) the user was viewing.
+function handleFreeSlotTap(payload: {
+  slot: { start: Date, end: Date, durationMin: number }
+  resource: { kind: 'professional' | 'cabinet', id: string }
+}) {
+  const { slot, resource } = payload
+  selectedAppointment.value = null
+  initialDate.value = new Date(slot.start)
+  initialTime.value = `${String(slot.start.getHours()).padStart(2, '0')}:${String(slot.start.getMinutes()).padStart(2, '0')}`
+  // Cap suggested end at the gap end so the modal picks the closest
+  // valid duration option without overflowing into the next event.
+  initialEndTime.value = `${String(slot.end.getHours()).padStart(2, '0')}:${String(slot.end.getMinutes()).padStart(2, '0')}`
+  if (resource.kind === 'professional') {
+    initialProfessionalId.value = resource.id
+    initialCabinet.value = undefined
+  } else {
+    initialProfessionalId.value = undefined
+    initialCabinet.value = resource.id
+  }
   isModalOpen.value = true
 }
 
@@ -207,6 +233,7 @@ function handleSlotDragCreate(date: Date, startTime: string, endTime: string) {
   initialTime.value = startTime
   initialEndTime.value = endTime
   initialProfessionalId.value = undefined
+  initialCabinet.value = undefined
   // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
@@ -218,6 +245,7 @@ function handleDailySlotClick(professionalId: string, time: string) {
   initialTime.value = time
   initialEndTime.value = undefined
   initialProfessionalId.value = professionalId
+  initialCabinet.value = undefined
   // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
@@ -229,6 +257,7 @@ function handleDailySlotDragCreate(professionalId: string, startTime: string, en
   initialTime.value = startTime
   initialEndTime.value = endTime
   initialProfessionalId.value = professionalId
+  initialCabinet.value = undefined
   // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
@@ -408,6 +437,7 @@ function handleAppointmentClick(appointment: Appointment) {
   initialTime.value = undefined
   initialEndTime.value = undefined
   initialProfessionalId.value = undefined
+  initialCabinet.value = undefined
   initialPatientId.value = undefined
   isModalOpen.value = true
 }
@@ -522,6 +552,7 @@ function openCreateModal() {
   initialTime.value = '09:00'
   initialEndTime.value = undefined
   initialProfessionalId.value = undefined
+  initialCabinet.value = undefined
   // Keep initialPatientId from URL so patient is pre-selected
   isModalOpen.value = true
 }
@@ -652,12 +683,14 @@ watch(isMobile, async (mobile) => {
         v-if="isMobile"
         :appointments="filteredAppointments"
         :professionals="professionalsWithColors"
+        :cabinets="clinic.cabinets.value"
         :current-date="currentDate"
         :is-loading="isLoading"
         :highlighted-appointment-id="highlightedAppointmentId"
         @appointment-click="handleAppointmentClick"
         @date-change="handleDateChange"
         @create-at="(d) => { currentDate = d; openCreateModal() }"
+        @free-slot-tap="handleFreeSlotTap"
         @highlight-cleared="clearHighlight"
       />
 
@@ -718,6 +751,7 @@ watch(isMobile, async (mobile) => {
       :initial-time="initialTime"
       :initial-end-time="initialEndTime"
       :initial-professional-id="initialProfessionalId"
+      :initial-cabinet="initialCabinet"
       :initial-patient-id="initialPatientId"
       :existing-appointments="appointments"
       @saved="handleSaved"

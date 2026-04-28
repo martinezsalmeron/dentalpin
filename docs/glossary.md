@@ -19,7 +19,11 @@ ADRs) for the full story.
 | Tooth | Diente | Identified by FDI numbering (11–48 permanent, 51–85 deciduous). |
 | Surface | Cara/superficie | A face of a tooth (mesial/distal/occlusal/lingual/vestibular). |
 | Visit note | Nota de visita | Free-text note attached to an `AppointmentTreatment`. |
-| Clinical note | Nota clínica | Free-text note attached to a treatment plan or item. |
+| Clinical note | Nota clínica | Free-text note in the `clinical_notes` module. Polymorphic over four `note_type` values (administrative, diagnosis, treatment, treatment_plan). |
+| Administrative note | Nota administrativa | Receptionist / admin note attached to a patient with no clinical context (e.g. "called complaining of tooth pain", "rescheduled to next week"). |
+| Diagnosis note | Nota de diagnóstico | Note taken during a diagnosis session, optionally tied to a specific tooth. |
+| Treatment note | Nota de tratamiento | Note attached to a `Treatment` row (odontogram). Travels with the treatment from diagnosis through plan and completion. |
+| Patient summary | Ficha resumen | Default landing tab on the patient record. Shows the patient header plus the recent-clinical-notes feed across every type. |
 | Hygienist | Higienista | Role with read-only patient access + full appointment access. |
 | Dentist | Dentista | Role with full clinical access. |
 | Assistant | Asistente | Operative role; full patient + appointment access, no clinical writes. |

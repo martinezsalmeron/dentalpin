@@ -15,7 +15,12 @@ Routes mounted at `/api/v1/treatment-plans/`.
 - `POST  /treatment-plans/{id}/items`   — add item from catalog or odontogram tooth treatment
 - `PUT   /treatment-plans/{id}/items/reorder`
 - `POST  /treatment-plans/{id}/items/{item_id}/complete`
-- Notes:  `treatment_plan.notes.{read,write}` on `/.../notes`, `/.../items/{id}/notes`
+
+> **Notes endpoints moved.** Since issue #60 the `clinical_notes` module
+> owns every clinical-note CRUD path (`/api/v1/clinical_notes/*`). The
+> per-item completion endpoint here no longer accepts `note_body` — the
+> client orchestrates a follow-up POST to `clinical_notes` when the
+> dentist captures a note at completion time.
 
 ## Dependencies
 
@@ -25,8 +30,8 @@ no FKs.
 
 ## Permissions
 
-`treatment_plan.plans.{read,write}`,
-`treatment_plan.notes.{read,write}`.
+`treatment_plan.plans.{read,write}`. Clinical-note permissions live in
+the `clinical_notes` module since issue #60.
 
 ## Events emitted
 
@@ -38,9 +43,9 @@ no FKs.
 | `treatment_plan.treatment_removed` | item removed | consumed by `budget` (sync) |
 | `treatment_plan.treatment_completed` | item marked done | consumed by `patient_timeline` |
 | `treatment_plan.budget_sync_requested` | manual resync | consumed by `budget` |
-| `treatment_plan.plan_note_created` | plan-level clinical note | consumed by `patient_timeline` |
-| `treatment_plan.item_note_created` | item-level clinical note | consumed by `patient_timeline` |
 | `treatment_plan.item_completed_without_note` | completion check | consumed by `patient_timeline` |
+
+Clinical-note created events (`clinical_notes.{administrative,diagnosis,treatment,plan}_created`) live in the `clinical_notes` module.
 
 > Two literals — `treatment_plan.items_reordered` (`service.py:515`)
 > and `treatment_plan.unlocked` (`service.py:801`) — are still
@@ -70,9 +75,14 @@ no FKs.
 - **Item completion has two paths**: the user marks an item complete
   here, or the odontogram fires `odontogram.treatment.performed`. Both
   must converge to the same state — keep them idempotent.
-- **Notes have an integrity rule**: completing an item without a
-  clinical note publishes `treatment_plan.item_completed_without_note`
-  for `patient_timeline` to surface in the audit feed. Don't bypass.
+- **Completion still emits an audit event.** `treatment_plan.item_completed_without_note`
+  fires whenever an item is completed; the timeline reconciles it with a
+  follow-up `clinical_notes.treatment_created` event when the client
+  captured a note. Don't bypass — the event is the only signal that an
+  item was completed at all.
+- **Don't import `clinical_notes`.** The dependency is one-way:
+  `clinical_notes → treatment_plan`. The frontend calls both modules
+  during completion; do not add a server-side cross-module import.
 
 ## Related ADRs
 

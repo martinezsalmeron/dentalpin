@@ -42,6 +42,11 @@ None.
   `appointment.status_changed`.
 - **Cabinet assignment uses `assign_cabinet`** — it publishes
   `appointment.cabinet_changed` with both old and new ids.
+- **Mobile free-slot computation is client-side** (#61). The composable
+  `frontend/composables/useFreeSlots.ts` derives gaps from already-loaded
+  appointments + the optional `schedules` availability payload. Do not
+  add a backend free-slot endpoint without ADR — the data flow stays
+  client-side and the schedules dependency stays optional.
 
 ## Related ADRs
 

@@ -45,6 +45,7 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "agenda.*",  # Appointments + cabinets (read/write)
         "odontogram.*",
         "treatment_plan.*",
+        "clinical_notes.*",
         "catalog.read",
         "budget.*",
         "billing.*",
@@ -66,8 +67,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "odontogram.read",
         "odontogram.write",
         "treatment_plan.plans.read",
-        "treatment_plan.notes.read",
-        "treatment_plan.notes.write",
+        "clinical_notes.notes.read",
+        "clinical_notes.notes.write",
         "catalog.read",
         "budget.read",
         "billing.read",
@@ -85,8 +86,8 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "odontogram.read",
         "treatment_plan.plans.read",
         "treatment_plan.plans.write",
-        "treatment_plan.notes.read",
-        "treatment_plan.notes.write",
+        "clinical_notes.notes.read",
+        "clinical_notes.notes.write",
         "catalog.read",
         "budget.read",
         "budget.write",
@@ -115,6 +116,10 @@ ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
         "notifications.send",
         "reports.billing.read",
         "reports.scheduling.read",
+        # Receptionists need administrative + diagnosis-followup notes for
+        # the patient summary feed (e.g. "called complaining of tooth pain").
+        "clinical_notes.notes.read",
+        "clinical_notes.notes.write",
         # No odontogram access for receptionists
     ],
 }

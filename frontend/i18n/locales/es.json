@@ -303,6 +303,7 @@
   },
   "patientDetail": {
     "tabs": {
+      "summary": "Resumen",
       "info": "Info",
       "clinical": "Clínico",
       "odontogram": "Odontograma",
@@ -771,7 +772,23 @@
     "addTreatmentFromPlan": "Añadir tratamiento del plan",
     "selectPendingTreatment": "Seleccionar tratamiento pendiente",
     "emptyDay": "No hay citas este día",
-    "noPatient": "Sin paciente"
+    "noPatient": "Sin paciente",
+    "freeSlots": {
+      "byProfessional": "Profesional",
+      "byCabinet": "Gabinete",
+      "freeSuffix": "libre",
+      "freeShort": "libres",
+      "noFreeTime": "Sin huecos",
+      "tapToBook": "Tocar para reservar",
+      "tapToBookAria": "Hueco libre de {duration} a las {time}",
+      "nextFreeAt": "Próximo {time}",
+      "gapsAtLeast": "{count} huecos ≥ {min} min",
+      "minDuration": "Mínimo",
+      "noFreeSlots": "No hay huecos disponibles este día",
+      "clinicClosed": "Clínica cerrada",
+      "professionalOff": "No disponible",
+      "onBreak": "Pausa"
+    }
   },
   "dashboard": {
     "greetings": {

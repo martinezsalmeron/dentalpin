@@ -56,8 +56,12 @@ export interface SettingsPageEntry {
   labelKey: string
   descriptionKey?: string
   icon: string
-  /** Permission gate. When unset, the page is visible to all roles. */
-  permission?: string
+  /**
+   * Permission gate. A string requires that exact permission; an array
+   * acts as ``canAny`` (visible if the user holds at least one). When
+   * unset, the page is visible to all authenticated roles.
+   */
+  permission?: string | string[]
   /** Component mounted at ``/settings/<category>/<path>``. */
   component?: () => Promise<Component | { default: Component }>
   /** External link target — overrides ``component`` when set. */
@@ -227,7 +231,7 @@ export function unregisterGettingStartedRule(id: string): void {
 
 export function useSettingsRegistry() {
   const { t } = useI18n()
-  const { can } = usePermissions()
+  const { can, canAny } = usePermissions()
   const auth = useAuth()
 
   const version = useRegistryVersion()
@@ -235,7 +239,9 @@ export function useSettingsRegistry() {
 
   function isPageVisible(page: SettingsPageEntry): boolean {
     if (!page.permission) return true
-    return can(page.permission)
+    return Array.isArray(page.permission)
+      ? canAny(page.permission)
+      : can(page.permission)
   }
 
   function pagesByCategory(id: SettingsCategoryId): SettingsPageEntry[] {

@@ -19,12 +19,13 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const { can } = usePermissions()
-const { patchVisitNote } = useClinicalNotes()
+const api = useApi()
+const toast = useToast()
 
 const body = ref(props.initialNotes ?? '')
 const saving = ref(false)
 
-const canWrite = computed(() => !props.readonly && can('treatment_plan.notes.write'))
+const canWrite = computed(() => !props.readonly && can('clinical_notes.notes.write'))
 
 watch(
   () => props.initialNotes,
@@ -38,10 +39,15 @@ async function save() {
   saving.value = true
   try {
     const next = body.value.trim()
-    const result = await patchVisitNote(props.appointmentTreatmentId, {
-      notes: next
-    })
-    if (result) emit('saved', next)
+    await api.patch(
+      `/api/v1/agenda/appointment-treatments/${props.appointmentTreatmentId}`,
+      { notes: next }
+    )
+    toast.add({ title: t('treatmentPlans.visitNote.saved'), color: 'success' })
+    emit('saved', next)
+  } catch (error) {
+    console.error('Error saving visit note:', error)
+    toast.add({ title: t('common.error'), color: 'error' })
   } finally {
     saving.value = false
   }

@@ -1,15 +1,9 @@
 <script setup lang="ts">
-import type { ProfessionalHours, ProfessionalOverride, ProfessionalOverridePayload, WeekdayShifts } from '../../composables/useProfessionalHours'
-
-definePageMeta({
-  middleware: ['auth']
-})
+import type { ClinicHours, ClinicOverride, ClinicOverridePayload, WeekdayShifts } from '../../composables/useClinicHours'
 
 const { t } = useI18n()
 const toast = useToast()
-const auth = useAuth()
 const { can } = usePermissions()
-const { professionals, fetchProfessionals } = useProfessionals()
 const {
   fetchHours,
   updateHours,
@@ -17,75 +11,56 @@ const {
   createOverride,
   updateOverride,
   deleteOverride
-} = useProfessionalHours()
+} = useClinicHours()
 
-const selectedProfessional = ref<string | null>(null)
+const canWrite = computed(() => can('schedules.clinic_hours.write'))
 
-// Admin-level rights let the user pick any professional; others are
-// pinned to their own ID.
-const isAdmin = computed(() => can('schedules.professional.read') || can('schedules.professional.write'))
-const canWrite = computed(() => {
-  if (!selectedProfessional.value) return false
-  if (can('schedules.professional.write')) return true
-  if (selectedProfessional.value === auth.user.value?.id && can('schedules.professional.own.write')) return true
-  return false
-})
-
-const hours = ref<ProfessionalHours | null>(null)
+const hours = ref<ClinicHours | null>(null)
+const overrides = ref<ClinicOverride[]>([])
 const days = ref<WeekdayShifts[]>([])
-const overrides = ref<ProfessionalOverride[]>([])
-const isLoading = ref(false)
+const isLoading = ref(true)
 const isSaving = ref(false)
 
-const professionalOptions = computed(() =>
-  professionals.value.map(p => ({ label: `${p.first_name} ${p.last_name}`, value: p.id }))
-)
-
 const showOverrideModal = ref(false)
-const editingOverride = ref<ProfessionalOverride | null>(null)
-const overrideForm = ref<ProfessionalOverridePayload>({
+const editingOverride = ref<ClinicOverride | null>(null)
+const overrideForm = ref<ClinicOverridePayload>({
   start_date: new Date().toISOString().slice(0, 10),
   end_date: new Date().toISOString().slice(0, 10),
-  kind: 'unavailable',
+  kind: 'closed',
   reason: '',
   shifts: []
 })
 
 const kindLabels = computed(() => ({
-  unavailable: t('schedules.overrides.unavailable'),
+  closed: t('schedules.overrides.closed'),
   custom_hours: t('schedules.overrides.customHours')
 }))
 
-async function loadProfessional(id: string) {
+async function load() {
   isLoading.value = true
   try {
-    const data = await fetchHours(id)
+    const data = await fetchHours()
     hours.value = data
     days.value = data.days
-    overrides.value = await fetchOverrides(id)
+    overrides.value = await fetchOverrides()
   } finally {
     isLoading.value = false
   }
 }
 
-watch(selectedProfessional, async (id) => {
-  if (id) await loadProfessional(id)
-})
-
 async function save() {
-  if (!selectedProfessional.value) return
   isSaving.value = true
   try {
     const cleanDays = days.value.map(d => ({
       weekday: d.weekday,
       shifts: d.shifts.map(s => ({ start_time: s.start_time, end_time: s.end_time }))
     }))
-    const updated = await updateHours(selectedProfessional.value, cleanDays)
+    const updated = await updateHours({ days: cleanDays })
     hours.value = updated
     days.value = updated.days
-    toast.add({ title: t('schedules.professionalHours.saved'), color: 'success' })
+    toast.add({ title: t('schedules.clinicHours.saved'), color: 'success' })
   } catch {
-    toast.add({ title: t('common.error'), color: 'error' })
+    toast.add({ title: t('schedules.clinicHours.savedError'), color: 'error' })
   } finally {
     isSaving.value = false
   }
@@ -97,14 +72,14 @@ function openAddOverride() {
   overrideForm.value = {
     start_date: today,
     end_date: today,
-    kind: 'unavailable',
+    kind: 'closed',
     reason: '',
     shifts: []
   }
   showOverrideModal.value = true
 }
 
-function openEditOverride(o: ProfessionalOverride) {
+function openEditOverride(o: ClinicOverride) {
   editingOverride.value = o
   overrideForm.value = {
     start_date: o.start_date,
@@ -125,21 +100,20 @@ function removeShiftFromOverride(idx: number) {
 }
 
 async function saveOverride() {
-  if (!selectedProfessional.value) return
-  const payload: ProfessionalOverridePayload = {
+  const payload: ClinicOverridePayload = {
     start_date: overrideForm.value.start_date,
     end_date: overrideForm.value.end_date,
     kind: overrideForm.value.kind,
     reason: overrideForm.value.reason || null,
-    shifts: overrideForm.value.kind === 'unavailable' ? [] : overrideForm.value.shifts
+    shifts: overrideForm.value.kind === 'closed' ? [] : overrideForm.value.shifts
   }
   try {
     if (editingOverride.value) {
-      await updateOverride(selectedProfessional.value, editingOverride.value.id, payload)
+      await updateOverride(editingOverride.value.id, payload)
     } else {
-      await createOverride(selectedProfessional.value, payload)
+      await createOverride(payload)
     }
-    overrides.value = await fetchOverrides(selectedProfessional.value)
+    overrides.value = await fetchOverrides()
     showOverrideModal.value = false
   } catch (err: unknown) {
     const fetchError = err as { data?: { message?: string } }
@@ -151,11 +125,10 @@ async function saveOverride() {
   }
 }
 
-async function confirmDelete(o: ProfessionalOverride) {
-  if (!selectedProfessional.value) return
+async function confirmDelete(o: ClinicOverride) {
   if (!window.confirm(t('schedules.overrides.confirmDelete'))) return
-  await deleteOverride(selectedProfessional.value, o.id)
-  overrides.value = await fetchOverrides(selectedProfessional.value)
+  await deleteOverride(o.id)
+  overrides.value = await fetchOverrides()
 }
 
 function timeForInput(value: string): string {
@@ -166,40 +139,18 @@ function padTime(value: string): string {
   return value.length === 5 ? `${value}:00` : value
 }
 
-onMounted(async () => {
-  await fetchProfessionals()
-  // Non-admin professionals auto-select themselves.
-  if (!isAdmin.value && auth.user.value) {
-    selectedProfessional.value = auth.user.value.id
-  }
-})
+onMounted(load)
 </script>
 
 <template>
-  <div class="container mx-auto p-4 max-w-4xl">
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold">
-        {{ t('schedules.professionalHours.title') }}
-      </h1>
-    </div>
-
-    <UCard v-if="isAdmin" class="mb-4">
-      <UFormField :label="t('schedules.professionalHours.selectProfessional')">
-        <USelect
-          v-model="selectedProfessional"
-          :items="professionalOptions"
-          :placeholder="t('schedules.professionalHours.selectProfessional')"
-        />
-      </UFormField>
-    </UCard>
-
+  <div>
     <USkeleton v-if="isLoading" class="h-40 w-full" />
 
-    <div v-else-if="selectedProfessional" class="space-y-6">
+    <div v-else class="space-y-6">
       <UCard>
         <template #header>
           <h2 class="text-lg font-semibold">
-            {{ t('schedules.professionalHours.weeklyTemplate') }}
+            {{ t('schedules.clinicHours.weeklyTemplate') }}
           </h2>
         </template>
 
@@ -213,7 +164,7 @@ onMounted(async () => {
               icon="i-lucide-save"
               @click="save"
             >
-              {{ t('schedules.professionalHours.save') }}
+              {{ t('schedules.clinicHours.save') }}
             </UButton>
           </div>
         </template>
@@ -235,14 +186,14 @@ onMounted(async () => {
       <template #content>
         <div class="p-6 space-y-4">
           <h3 class="text-lg font-semibold">
-            {{ editingOverride ? t('schedules.professionalHours.editOverride') : t('schedules.professionalHours.addOverride') }}
+            {{ editingOverride ? t('schedules.clinicHours.editOverride') : t('schedules.clinicHours.addOverride') }}
           </h3>
 
           <UFormField :label="t('schedules.overrides.kind')">
             <USelect
               v-model="overrideForm.kind"
               :items="[
-                { label: t('schedules.overrides.unavailable'), value: 'unavailable' },
+                { label: t('schedules.overrides.closed'), value: 'closed' },
                 { label: t('schedules.overrides.customHours'), value: 'custom_hours' }
               ]"
             />

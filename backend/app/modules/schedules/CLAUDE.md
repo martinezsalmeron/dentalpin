@@ -45,6 +45,27 @@ None today.
 
 See `events.py`.
 
+## Frontend integration
+
+Settings UI is contributed via the host's settings registry, not via
+file-based routes. The client plugin
+`frontend/plugins/settings.client.ts` calls `registerSettingsPage(...)`
+twice to mount cards/pages under `/settings/workspace`:
+
+| Path | Component | Permission gate |
+|---|---|---|
+| `clinic-hours` | `components/settings/ClinicHoursPage.vue` | `schedules.clinic_hours.read` |
+| `professional-schedules` | `components/settings/ProfessionalSchedulesPage.vue` | canAny `professional.read` ∪ `professional.own.read` |
+
+The host's `[category]/[page].vue` route mounts the registered
+component, applies auth middleware, and renders title/subtitle from
+the i18n keys. The page components contain only domain UI — no outer
+container, h1, or auth boilerplate.
+
+The plugin imports the registry from `~~/app/composables/...` (host
+shell), not from another module, so `manifest.depends` stays at
+`["agenda"]`.
+
 ## Lifecycle
 
 - `installable=True`, `auto_install=True`, `removable=True`.

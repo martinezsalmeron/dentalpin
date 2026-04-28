@@ -14,16 +14,17 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `billing` | 0.1.0 | official | patients, catalog, budget | auto | no | 3 | 3 | 1 | yes |
 | `budget` | 0.1.0 | official | patients, catalog | auto | no | 3 | 2 | 4 | yes |
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 0 | yes |
+| `clinical_notes` | 0.1.0 | official | patients, odontogram, treatment_plan, media | auto | no | 2 | 0 | 0 | yes |
 | `media` | 0.1.0 | official | patients | auto | no | 2 | 2 | 1 | yes |
 | `notifications` | 0.1.0 | official | patients, agenda, budget, billing | auto | no | 8 | 0 | 6 | yes |
 | `odontogram` | 0.3.0 | official | patients, catalog | auto | no | 4 | 4 | 0 | yes |
-| `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 22 | yes |
+| `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 24 | yes |
 | `patients` | 0.1.0 | official | — | auto | no | 2 | 3 | 0 | yes |
 | `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 2 | 0 | yes |
 | `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
-| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 4 | 13 | 3 | yes |
-| `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 0 | 1 | yes |
+| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 2 | 13 | 3 | yes |
+| `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 1 | 1 | yes |
 
 ## Modules
 
@@ -114,6 +115,23 @@ Treatment catalog, categories, VAT types.
 - **Events emitted:** —
 - **Events consumed:** —
 - **Module CLAUDE.md:** [`backend/app/modules/catalog/CLAUDE.md`](../backend/app/modules/catalog/CLAUDE.md)
+
+### `clinical_notes` — v0.1.0
+
+Polymorphic clinical notes (administrative, diagnosis, treatment, treatment plan) with author + attachments.
+
+- **Author:** DentalPin Core Team
+- **License:** BSL-1.1
+- **Category:** official
+- **Install policy:** installable=True · auto_install=True · removable=False
+- **Depends:** `patients`, `odontogram`, `treatment_plan`, `media`
+- **Frontend layer:** `frontend`
+- **Permissions:**
+  - `clinical_notes.notes.read`
+  - `clinical_notes.notes.write`
+- **Events emitted:** —
+- **Events consumed:** —
+- **Module CLAUDE.md:** [`backend/app/modules/clinical_notes/CLAUDE.md`](../backend/app/modules/clinical_notes/CLAUDE.md)
 
 ### `media` — v0.1.0
 
@@ -211,6 +229,10 @@ Patient timeline — unified activity log.
   - `appointment.scheduled`
   - `budget.accepted`
   - `budget.sent`
+  - `clinical_notes.administrative_created`
+  - `clinical_notes.diagnosis_created`
+  - `clinical_notes.plan_created`
+  - `clinical_notes.treatment_created`
   - `document.uploaded`
   - `email.failed`
   - `email.sent`
@@ -220,8 +242,6 @@ Patient timeline — unified activity log.
   - `patient.medical_updated`
   - `treatment_plan.created`
   - `treatment_plan.item_completed_without_note`
-  - `treatment_plan.item_note_created`
-  - `treatment_plan.plan_note_created`
   - `treatment_plan.treatment_completed`
 - **Module CLAUDE.md:** [`backend/app/modules/patient_timeline/CLAUDE.md`](../backend/app/modules/patient_timeline/CLAUDE.md)
 
@@ -320,8 +340,6 @@ Patient treatment plans with budget + odontogram sync.
 - **Depends:** `patients`, `agenda`, `odontogram`, `catalog`, `budget`, `media`
 - **Frontend layer:** `frontend`
 - **Permissions:**
-  - `treatment_plan.notes.read`
-  - `treatment_plan.notes.write`
   - `treatment_plan.plans.read`
   - `treatment_plan.plans.write`
 - **Events emitted:**
@@ -356,7 +374,8 @@ Cumplimiento Veri*Factu (AEAT) para clínicas en España.
   - `verifactu.records.read`
   - `verifactu.settings.configure`
   - `verifactu.settings.read`
-- **Events emitted:** —
+- **Events emitted:**
+  - `verifactu.record.rejected`
 - **Events consumed:**
   - `invoice.paid`
 - **Module CLAUDE.md:** [`backend/app/modules/verifactu/CLAUDE.md`](../backend/app/modules/verifactu/CLAUDE.md)

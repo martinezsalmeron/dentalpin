@@ -33,6 +33,12 @@ const { plans, fetchPatientPlans, loading: plansLoading } = useTreatmentPlans()
 
 // Hover linking between odontogram and conditions list
 const hoveredTeeth = ref<number[]>([])
+// Last clicked tooth — surfaced via slot ctx so a sidebar (issue #60) can
+// pre-bind its diagnosis composer to the tooth without going through the
+// odontogram itself.
+const selectedTooth = ref<number | null>(null)
+// Mobile sidebar slideover state.
+const sidebarOpen = ref(false)
 
 // ============================================================================
 // Computed
@@ -71,11 +77,22 @@ onMounted(async () => {
 
 function handleToothHover(toothNumber: number | null) {
   hoveredTeeth.value = toothNumber ? [toothNumber] : []
+  if (toothNumber) selectedTooth.value = toothNumber
 }
 
 function handleConditionHover(toothNumber: number | null) {
   hoveredTeeth.value = toothNumber ? [toothNumber] : []
 }
+
+const sessionTreatmentIds = computed(() =>
+  conditions.value.map(c => c.id).filter((id): id is string => Boolean(id))
+)
+
+const sidebarCtx = computed(() => ({
+  patientId: props.patientId,
+  selectedTooth: selectedTooth.value,
+  sessionTreatmentIds: sessionTreatmentIds.value
+}))
 
 async function handleTreatmentsChanged() {
   await fetchTreatments(props.patientId)
@@ -83,19 +100,20 @@ async function handleTreatmentsChanged() {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <!-- Loading state -->
-    <div
-      v-if="loading"
-      class="flex items-center justify-center py-8"
-    >
-      <UIcon
-        name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-primary-accent"
-      />
-    </div>
+  <div class="lg:flex lg:gap-4 lg:items-start">
+    <div class="flex-1 min-w-0 space-y-4">
+      <!-- Loading state -->
+      <div
+        v-if="loading"
+        class="flex items-center justify-center py-8"
+      >
+        <UIcon
+          name="i-lucide-loader-2"
+          class="w-8 h-8 animate-spin text-primary-accent"
+        />
+      </div>
 
-    <template v-else>
+      <template v-else>
       <!-- Odontogram with diagnosis mode -->
       <UCard>
         <template #header>
@@ -162,6 +180,40 @@ async function handleTreatmentsChanged() {
         @create="emit('create-plan')"
         @continue="emit('continue-plan', $event)"
       />
-    </template>
+      </template>
+    </div>
+
+    <!-- Right rail (lg+): clinical-notes sidebar provided by other modules
+         via the ``odontogram.diagnosis.sidebar`` slot. -->
+    <aside class="hidden lg:block lg:w-80 xl:w-96 lg:shrink-0">
+      <ModuleSlot
+        name="odontogram.diagnosis.sidebar"
+        :ctx="sidebarCtx"
+      />
+    </aside>
+
+    <!-- Floating action button + slideover for narrow viewports. -->
+    <UButton
+      class="fixed right-4 bottom-4 z-30 lg:hidden shadow-lg"
+      icon="i-lucide-notebook-pen"
+      color="primary"
+      size="lg"
+      :aria-label="t('clinical.diagnosis.openNotes', 'Notas')"
+      @click="sidebarOpen = true"
+    />
+    <USlideover
+      v-model:open="sidebarOpen"
+      side="right"
+      class="lg:hidden"
+    >
+      <template #content>
+        <div class="p-2 h-full">
+          <ModuleSlot
+            name="odontogram.diagnosis.sidebar"
+            :ctx="sidebarCtx"
+          />
+        </div>
+      </template>
+    </USlideover>
   </div>
 </template>

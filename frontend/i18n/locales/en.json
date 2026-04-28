@@ -275,6 +275,7 @@
   },
   "patientDetail": {
     "tabs": {
+      "summary": "Summary",
       "info": "Info",
       "clinical": "Clinical",
       "odontogram": "Dental Chart",
@@ -750,7 +751,23 @@
     "addTreatmentFromPlan": "Add treatment from plan",
     "selectPendingTreatment": "Select pending treatment",
     "emptyDay": "No appointments for this day",
-    "noPatient": "No patient"
+    "noPatient": "No patient",
+    "freeSlots": {
+      "byProfessional": "Professional",
+      "byCabinet": "Cabinet",
+      "freeSuffix": "free",
+      "freeShort": "free",
+      "noFreeTime": "No free time",
+      "tapToBook": "Tap to book",
+      "tapToBookAria": "Free slot of {duration} at {time}",
+      "nextFreeAt": "Next at {time}",
+      "gapsAtLeast": "{count} gaps ≥ {min} min",
+      "minDuration": "Minimum",
+      "noFreeSlots": "No free slots today",
+      "clinicClosed": "Clinic closed",
+      "professionalOff": "Off-duty",
+      "onBreak": "On break"
+    }
   },
   "dashboard": {
     "greetings": {

@@ -134,15 +134,18 @@ const budgets = computed(() => budgetsData.value?.data || [])
 const { medicalHistory, isSaving: isSavingMedical, saveMedicalHistory } = useMedicalHistory(patientIdRef)
 
 // Tabs - computed to filter by permissions
-// New structure: Clinical (Odontogram+Plans) | Administration (Budgets+Billing) | Appointments | Documents | Timeline | Info
-const activeTab = ref('info')
+// Default tab is Summary (issue #60) — patient header + recent notes feed.
+// Info, Clinical, Administration and Timeline follow.
+const activeTab = ref('summary')
 
-// Sync tab from query param
+// Sync tab from query param. Falls back to summary on the patient landing.
 watch(
   () => route.query.tab,
   (tab) => {
     if (tab && typeof tab === 'string') {
       activeTab.value = tab
+    } else {
+      activeTab.value = 'summary'
     }
   },
   { immediate: true }
@@ -151,7 +154,15 @@ watch(
 const tabs = computed(() => {
   const baseTabs: Array<{ value: string, label: string, icon: string, slot: string }> = []
 
-  // Info tab (Demographics + Medical history) - first so safety-critical info is the default landing
+  // Summary tab — at-a-glance recent notes feed.
+  baseTabs.push({
+    value: 'summary',
+    label: t('patientDetail.tabs.summary'),
+    icon: 'i-lucide-layout-dashboard',
+    slot: 'summary'
+  })
+
+  // Info tab (Demographics + Medical history)
   baseTabs.push({
     value: 'info',
     label: t('patientDetail.tabs.info'),
@@ -270,17 +281,6 @@ const isMinor = computed(() => {
   return years < 18
 })
 
-// Hide sidebar when viewing plan detail (gives more space)
-const hideSidebar = ref(false)
-
-function handlePlanViewChange(view: 'list' | 'detail') {
-  hideSidebar.value = view === 'detail'
-}
-
-// Reset sidebar visibility when changing tabs
-watch(activeTab, () => {
-  hideSidebar.value = false
-})
 </script>
 
 <template>
@@ -291,10 +291,8 @@ watch(activeTab, () => {
       class="space-y-4"
     >
       <USkeleton class="h-8 w-48" />
-      <div class="flex gap-6">
-        <USkeleton class="h-96 w-64" />
-        <USkeleton class="h-96 flex-1" />
-      </div>
+      <USkeleton class="h-32 w-full" />
+      <USkeleton class="h-96 w-full" />
     </div>
 
     <!-- Patient content -->
@@ -333,129 +331,127 @@ watch(activeTab, () => {
         </h1>
       </div>
 
-      <!-- Main layout: Sidebar + Content -->
-      <div class="flex flex-col lg:flex-row gap-6">
-        <!-- Sticky Sidebar (hidden when viewing plan detail) -->
-        <aside
-          v-if="!hideSidebar"
-          class="lg:w-72 lg:shrink-0 space-y-4"
+      <!-- Main content (full width — sidebar widgets now live inside the Resumen hero) -->
+      <main class="w-full min-w-0">
+        <UTabs
+          v-model="activeTab"
+          :items="tabs"
+          default-value="summary"
+          class="w-full"
+          :ui="{ content: 'overflow-visible' }"
         >
-          <div class="lg:sticky lg:top-4">
-            <UCard>
-              <PatientQuickInfo
-                :patient="patient"
-                :active-plan="activePlan"
-                :next-appointment="nextAppointment"
-                :loading-plan="plansStatus === 'pending'"
-                :loading-appointment="appointmentsStatus === 'pending'"
-              />
-            </UCard>
-            <!-- Extension point for module-provided sidebar widgets. -->
-            <ModuleSlot name="patient.detail.sidebar" :ctx="{ patient }" />
-          </div>
-        </aside>
-
-        <!-- Main Content with Tabs -->
-        <main class="flex-1 min-w-0">
-          <!-- Tabs -->
-          <UTabs
-            v-model="activeTab"
-            :items="tabs"
-            default-value="info"
-            class="w-full"
-            :ui="{ content: 'overflow-visible' }"
-          >
-            <!-- Info tab content -->
-            <template #info>
-              <div class="mt-4 space-y-3 lg:space-y-4 overflow-visible">
-                <MedicalSnapshotCard
-                  :medical-history="medicalHistory"
-                  :active-alerts="patient.active_alerts"
-                  :can-edit="canEditMedicalHistory"
-                  @edit="openSectionModal('medical')"
-                  @complete-history="openSectionModal('medical')"
-                />
-
-                <VisitSummaryCard
-                  :last-visit="lastVisit"
-                  :next-appointment="nextAppointment"
-                />
-
-                <PersonalInfoCard
-                  :patient="patient"
-                  :can-edit="canEditPatient"
-                  @edit="openSectionModal('demographics')"
-                />
-
-                <ContactInfoCard
-                  :patient="patient"
-                  :is-minor="isMinor"
-                  :can-edit="canEditPatient"
-                  @edit-contact="openSectionModal('demographics')"
-                  @edit-emergency="openSectionModal('emergency')"
-                  @edit-guardian="openSectionModal('guardian')"
-                />
-
-                <AdministrativeCard
-                  :patient="patient"
-                  :can-edit="canEditPatient"
-                  @edit="openSectionModal('billing')"
-                />
-
-                <!-- Danger zone -->
-                <div class="alert-surface-danger rounded-token-lg px-4 py-3 flex items-center justify-between gap-4">
-                  <div class="min-w-0">
-                    <div class="text-ui">
-                      {{ t('patients.dangerZone.title') }}
-                    </div>
-                    <div class="text-caption">
-                      {{ t('patients.dangerZone.archiveHelp') }}
-                    </div>
-                  </div>
-                  <UButton
-                    variant="outline"
-                    color="error"
-                    icon="i-lucide-archive"
-                    size="sm"
-                    @click="isArchiveModalOpen = true"
-                  >
-                    {{ t('patients.archive') }}
-                  </UButton>
+          <!-- Summary tab content: left rail (snapshot) + main feed (notes) -->
+          <template #summary>
+            <div class="mt-4 flex flex-col lg:flex-row gap-4 lg:gap-6 overflow-visible">
+              <aside class="lg:w-72 lg:shrink-0">
+                <div class="lg:sticky lg:top-4">
+                  <PatientSummaryHero
+                    :patient="patient"
+                    :active-plan="activePlan"
+                    :next-appointment="nextAppointment"
+                    :loading-plan="plansStatus === 'pending'"
+                    :loading-appointment="appointmentsStatus === 'pending'"
+                  />
                 </div>
-              </div>
-            </template>
-
-            <!-- Clinical tab content (Odontogram + Treatment Plans) -->
-            <template #clinical>
-              <div class="mt-4">
-                <ClinicalTab
-                  :patient-id="patientId"
-                  :readonly="!canEditOdontogram"
-                  @plan-view-change="handlePlanViewChange"
+              </aside>
+              <div class="flex-1 min-w-0">
+                <ModuleSlot
+                  name="patient.summary.feed"
+                  :ctx="{ patient }"
                 />
               </div>
-            </template>
+            </div>
+          </template>
 
-            <!-- Administration tab content (Budgets + Billing) -->
-            <template #administration>
-              <div class="mt-4">
-                <AdministrationTab
-                  :patient-id="patientId"
-                  :budgets="budgets"
-                  :budgets-loading="budgetsStatus === 'pending'"
-                />
+          <!-- Info tab content -->
+          <template #info>
+            <div class="mt-4 space-y-3 lg:space-y-4 overflow-visible">
+              <MedicalSnapshotCard
+                :medical-history="medicalHistory"
+                :active-alerts="patient.active_alerts"
+                :can-edit="canEditMedicalHistory"
+                @edit="openSectionModal('medical')"
+                @complete-history="openSectionModal('medical')"
+              />
+
+              <VisitSummaryCard
+                :last-visit="lastVisit"
+                :next-appointment="nextAppointment"
+              />
+
+              <PersonalInfoCard
+                :patient="patient"
+                :can-edit="canEditPatient"
+                @edit="openSectionModal('demographics')"
+              />
+
+              <ContactInfoCard
+                :patient="patient"
+                :is-minor="isMinor"
+                :can-edit="canEditPatient"
+                @edit-contact="openSectionModal('demographics')"
+                @edit-emergency="openSectionModal('emergency')"
+                @edit-guardian="openSectionModal('guardian')"
+              />
+
+              <AdministrativeCard
+                :patient="patient"
+                :can-edit="canEditPatient"
+                @edit="openSectionModal('billing')"
+              />
+
+              <!-- Danger zone -->
+              <div class="alert-surface-danger rounded-token-lg px-4 py-3 flex items-center justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="text-ui">
+                    {{ t('patients.dangerZone.title') }}
+                  </div>
+                  <div class="text-caption">
+                    {{ t('patients.dangerZone.archiveHelp') }}
+                  </div>
+                </div>
+                <UButton
+                  variant="outline"
+                  color="error"
+                  icon="i-lucide-archive"
+                  size="sm"
+                  @click="isArchiveModalOpen = true"
+                >
+                  {{ t('patients.archive') }}
+                </UButton>
               </div>
-            </template>
+            </div>
+          </template>
 
-            <!-- Timeline tab content -->
-            <template #timeline>
-              <UCard class="mt-4">
-                <PatientTimeline :patient-id="patientId" />
-              </UCard>
-            </template>
-          </UTabs>
-        </main>
-      </div>
+          <!-- Clinical tab content (Odontogram + Treatment Plans) -->
+          <template #clinical>
+            <div class="mt-4">
+              <ClinicalTab
+                :patient-id="patientId"
+                :readonly="!canEditOdontogram"
+              />
+            </div>
+          </template>
+
+          <!-- Administration tab content (Budgets + Billing) -->
+          <template #administration>
+            <div class="mt-4">
+              <AdministrationTab
+                :patient-id="patientId"
+                :budgets="budgets"
+                :budgets-loading="budgetsStatus === 'pending'"
+              />
+            </div>
+          </template>
+
+          <!-- Timeline tab content -->
+          <template #timeline>
+            <UCard class="mt-4">
+              <PatientTimeline :patient-id="patientId" />
+            </UCard>
+          </template>
+        </UTabs>
+      </main>
     </template>
 
     <!-- Section Edit Modal -->

@@ -11,7 +11,6 @@
 
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { TreatmentPlanDetail } from '~~/app/types'
-import PlanNotesTimeline from './notes/PlanNotesTimeline.vue'
 
 const props = withDefaults(defineProps<{
   plan: TreatmentPlanDetail
@@ -43,6 +42,19 @@ const {
   fetchPlan,
   loading
 } = useTreatmentPlans()
+
+// Cross-module composable provided by the clinical_notes layer. Frontend
+// auto-imports resolve to that layer's implementation.
+const { createNote: createTreatmentNoteRaw } = useClinicalNotes()
+
+async function createTreatmentNote(treatmentId: string, body: string) {
+  await createTreatmentNoteRaw({
+    note_type: 'treatment',
+    owner_type: 'treatment',
+    owner_id: treatmentId,
+    body
+  })
+}
 
 // ============================================================================
 // Confirmation modal (draft → active)
@@ -261,9 +273,13 @@ async function handleCompleteItem(
   itemId: string,
   payload: { noteBody: string | null }
 ) {
-  await completeItem(props.plan.id, itemId, {
-    note_body: payload.noteBody ?? null
-  })
+  // Clinical-note capture moved to the clinical_notes module — orchestrate
+  // both calls from the client so neither module imports the other.
+  const item = props.plan.items.find(i => i.id === itemId)
+  await completeItem(props.plan.id, itemId, {})
+  if (payload.noteBody && item?.treatment_id) {
+    await createTreatmentNote(item.treatment_id, payload.noteBody)
+  }
   await odontogramRef.value?.refetchTreatments()
   await notesTimelineRef.value?.refresh()
   emit('updated')
