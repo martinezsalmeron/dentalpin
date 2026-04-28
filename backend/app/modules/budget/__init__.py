@@ -45,8 +45,13 @@ class BudgetModule(BaseModule):
             "admin": ["*"],
             "dentist": ["*"],
             "hygienist": ["read"],
-            "assistant": ["read", "write"],
-            "receptionist": ["read", "write"],
+            "assistant": ["read", "write", "accept_in_clinic"],
+            "receptionist": [
+                "read",
+                "write",
+                "renegotiate",
+                "accept_in_clinic",
+            ],
         },
         "frontend": {
             "layer_path": "frontend",
@@ -73,6 +78,9 @@ class BudgetModule(BaseModule):
             "read",  # View budgets
             "write",  # Create/update budgets
             "admin",  # Delete budgets, manage settings
+            # Workflow extensions split out for fine-grained RBAC.
+            "renegotiate",  # Cancel a sent budget to renegotiate
+            "accept_in_clinic",  # Capture in-clinic acceptance
         ]
 
     def get_event_handlers(self) -> dict[str, Any]:
