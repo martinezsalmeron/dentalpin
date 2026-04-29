@@ -24,7 +24,6 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'updated': []
-  'activate': []
   'generate-budget': []
   'schedule': []
   'cancelled': []
@@ -43,7 +42,6 @@ const {
   completeItem,
   removeItem,
   reorderItems,
-  updatePlanStatus,
   fetchPlan,
   loading
 } = useTreatmentPlans()
@@ -60,12 +58,6 @@ async function createTreatmentNote(treatmentId: string, body: string) {
     body
   })
 }
-
-// ============================================================================
-// Confirmation modal (draft → active)
-// ============================================================================
-
-const showActivateModal = ref(false)
 
 // ============================================================================
 // Lock state — a plan with a non-cancelled budget is locked for editing.
@@ -296,19 +288,13 @@ async function handleReorder(itemIds: string[]) {
   emit('updated')
 }
 
+// The legacy "Activate plan" CTA used to fire ``update_status`` with
+// ``status='active'`` — an invalid transition under the new state
+// machine (must go through ``pending``). Both the in-page CTA and
+// this open handler now delegate to the page-level ConfirmPlanModal
+// via the ``request-confirm`` event.
 function openActivateModal() {
-  showActivateModal.value = true
-}
-
-async function confirmActivate() {
-  showActivateModal.value = false
-  await updatePlanStatus(props.plan.id, { status: 'active' })
-  emit('updated')
-  emit('activate')
-}
-
-function cancelActivate() {
-  showActivateModal.value = false
+  emit('request-confirm')
 }
 
 function handleGenerateBudget() {
@@ -670,50 +656,6 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
       </template>
     </UModal>
 
-    <!-- Activation confirmation modal -->
-    <UModal v-model:open="showActivateModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[var(--color-primary-soft)] flex items-center justify-center">
-                <UIcon
-                  name="i-lucide-check-circle-2"
-                  class="w-5 h-5 text-primary-accent"
-                />
-              </div>
-              <h3 class="text-h2 text-default">
-                {{ t('treatmentPlans.confirmations.activateTitle') }}
-              </h3>
-            </div>
-          </template>
-
-          <p class="text-body text-muted">
-            {{ t('treatmentPlans.confirmations.activateDescription') }}
-          </p>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                @click="cancelActivate"
-              >
-                {{ t('actions.cancel') }}
-              </UButton>
-              <UButton
-                color="primary"
-                icon="i-lucide-check-circle-2"
-                :loading="loading"
-                @click="confirmActivate"
-              >
-                {{ t('treatmentPlans.actions.confirm') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
   </div>
 </template>
 
