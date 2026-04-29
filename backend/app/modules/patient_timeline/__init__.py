@@ -74,6 +74,15 @@ class PatientTimelineModule(BaseModule):
             # Financial
             EventType.BUDGET_SENT: events.on_budget_sent,
             EventType.BUDGET_ACCEPTED: events.on_budget_accepted,
+            EventType.BUDGET_REJECTED: events.on_budget_rejected,
+            EventType.BUDGET_EXPIRED: events.on_budget_expired,
+            EventType.BUDGET_RENEGOTIATED: events.on_budget_renegotiated,
+            EventType.BUDGET_VIEWED: events.on_budget_viewed,
+            EventType.BUDGET_REMINDER_SENT: events.on_budget_reminder_sent,
+            # Treatment plan workflow transitions
+            EventType.TREATMENT_PLAN_CONFIRMED: events.on_treatment_plan_confirmed,
+            EventType.TREATMENT_PLAN_CLOSED: events.on_treatment_plan_closed,
+            EventType.TREATMENT_PLAN_REACTIVATED: events.on_treatment_plan_reactivated,
             EventType.INVOICE_ISSUED: events.on_invoice_issued,
             EventType.INVOICE_PAID: events.on_invoice_paid,
             # Communications

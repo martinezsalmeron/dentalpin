@@ -4,6 +4,13 @@
 
 ### Added
 
+- Demo seed (`seed.py::seed_clinical_notes_demo`) wired into
+  `scripts/seed_demo.py` step 7. Creates administrative + diagnosis
+  notes per patient (diagnosis tooth-pinned where odontogram has data),
+  `treatment_plan` notes on ~2/3 of plans and `treatment` notes on
+  every other performed treatment, with author rotation between dentist
+  and hygienist and time-staggered `created_at`. Inserts rows directly
+  without firing events to keep `patient_timeline` re-derivation clean.
 - New module owning the polymorphic `clinical_notes` and
   `clinical_note_attachments` tables (extracted from `treatment_plan`).
 - `note_type` discriminator: `administrative`, `diagnosis`, `treatment`,

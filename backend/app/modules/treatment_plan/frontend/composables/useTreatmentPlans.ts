@@ -431,30 +431,104 @@ export function useTreatmentPlans() {
     }
   }
 
-  // Unlock plan (cancels linked budget to allow modifications)
-  async function unlockPlan(planId: string) {
+  // ---------------------------------------------------------------------
+  // Workflow transitions (confirm / reopen / close / reactivate)
+  // ---------------------------------------------------------------------
+
+  // Workflow transitions intentionally DO NOT mutate ``currentPlan`` —
+  // the page handler always follows the action with a full
+  // ``fetchPlan`` so the UI reflects the canonical server state
+  // (including budget_id, items[], confirmed_at, closure metadata,
+  // etc.). Local merges from the action response had race conditions
+  // because the ``TreatmentPlan`` schema returned here lacks ``items``.
+
+  async function confirmPlan(planId: string) {
     loading.value = true
     try {
       const response = await api.post<ApiResponse<TreatmentPlan>>(
-        `/api/v1/treatment_plan/treatment-plans/${planId}/unlock`
+        `/api/v1/treatment_plan/treatment-plans/${planId}/confirm`
       )
-      if (currentPlan.value?.id === planId) {
-        currentPlan.value = { ...currentPlan.value, ...response.data }
-      }
-      toast.add({
-        title: t('treatmentPlans.unlocked'),
-        color: 'green'
-      })
+      toast.add({ title: t('treatmentPlans.confirmed'), color: 'green' })
       return response.data
     } catch (error) {
-      console.error('Error unlocking plan:', error)
-      toast.add({
-        title: t('errors.updateFailed'),
-        color: 'red'
-      })
+      console.error('Error confirming plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
       return null
     } finally {
       loading.value = false
+    }
+  }
+
+  async function reopenPlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/reopen`
+      )
+      toast.add({ title: t('treatmentPlans.reopened'), color: 'green' })
+      return response.data
+    } catch (error) {
+      console.error('Error reopening plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function closePlan(
+    planId: string,
+    payload: { closure_reason: string; closure_note?: string }
+  ) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/close`,
+        payload
+      )
+      toast.add({ title: t('treatmentPlans.closed'), color: 'green' })
+      return response.data
+    } catch (error) {
+      console.error('Error closing plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function reactivatePlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/reactivate`
+      )
+      toast.add({ title: t('treatmentPlans.reactivated'), color: 'green' })
+      return response.data
+    } catch (error) {
+      console.error('Error reactivating plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function logContact(
+    planId: string,
+    payload: { channel: string; note?: string }
+  ) {
+    try {
+      await api.post(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/contact-log`,
+        payload
+      )
+      toast.add({ title: t('treatmentPlans.contactLogged'), color: 'green' })
+      return true
+    } catch (error) {
+      console.error('Error logging contact:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return false
     }
   }
 
@@ -566,11 +640,17 @@ export function useTreatmentPlans() {
     reorderItems,
     completeItem,
 
+    // Workflow transitions
+    confirmPlan,
+    reopenPlan,
+    closePlan,
+    reactivatePlan,
+    logContact,
+
     // Budget operations
     linkToBudget,
     syncBudget,
     generateBudget,
-    unlockPlan,
 
     // Media operations
     addMedia,

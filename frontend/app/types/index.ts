@@ -1045,6 +1045,9 @@ export interface Budget {
   patient_notes?: string
   // Insurance
   insurance_estimate?: number
+  // Public link token (ADR 0006). Present on every budget; reception
+  // shares ``${origin}/p/budget/${public_token}`` with the patient.
+  public_token?: string
   // Timestamps
   created_at: string
   updated_at: string

@@ -30,6 +30,7 @@ from .schemas import (
     BudgetUpdate,
     BudgetVersionListResponse,
     BudgetVersionResponse,
+    SignatureMetaResponse,
     TreatmentPlanBrief,
 )
 from .service import BudgetHistoryService, BudgetItemService, BudgetService
@@ -92,22 +93,36 @@ async def get_budget(
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
 
-    # Query for treatment plan that references this budget (reverse lookup)
-    from app.modules.treatment_plan.models import TreatmentPlan
+    # Reverse lookup of the linked treatment plan via raw SQL — the
+    # treatment_plans table is owned by the treatment_plan module and
+    # we deliberately avoid importing its ORM model from here (ADR 0003).
+    # plan_number_snapshot / plan_status_snapshot on Budget already
+    # cover the common card/list use cases; this fetch is only for the
+    # detail endpoint where we expose the live plan id + title.
+    from sqlalchemy import text
 
-    result = await db.execute(
-        select(TreatmentPlan).where(
-            TreatmentPlan.budget_id == budget_id,
-            TreatmentPlan.clinic_id == ctx.clinic_id,
-            TreatmentPlan.deleted_at.is_(None),
+    plan_row = (
+        await db.execute(
+            text(
+                "SELECT id, plan_number, title, status "
+                "FROM treatment_plans "
+                "WHERE budget_id = :budget_id "
+                "  AND clinic_id = :clinic_id "
+                "  AND deleted_at IS NULL "
+                "LIMIT 1"
+            ),
+            {"budget_id": budget_id, "clinic_id": ctx.clinic_id},
         )
-    )
-    treatment_plan = result.scalar_one_or_none()
+    ).first()
 
-    # Build response with treatment plan
     response_data = BudgetDetailResponse.model_validate(budget)
-    if treatment_plan:
-        response_data.treatment_plan = TreatmentPlanBrief.model_validate(treatment_plan)
+    if plan_row:
+        response_data.treatment_plan = TreatmentPlanBrief(
+            id=plan_row.id,
+            plan_number=plan_row.plan_number,
+            title=plan_row.title,
+            status=plan_row.status,
+        )
 
     return ApiResponse(data=response_data)
 
@@ -421,24 +436,180 @@ async def cancel_budget(
     return ApiResponse(data=BudgetResponse.model_validate(budget))
 
 
-@router.post("/budgets/{budget_id}/complete", response_model=ApiResponse[BudgetResponse])
-async def complete_budget(
+# ============================================================================
+# Workflow extensions: renegotiate, accept-in-clinic, resend, set-public-code
+# ============================================================================
+
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+
+class _RenegotiateNoBody(BaseModel):
+    """Empty body for /renegotiate (kept for OpenAPI clarity)."""
+
+
+class _AcceptInClinicBody(BaseModel):
+    signer_name: str = Field(..., min_length=1, max_length=200)
+    signature_data: dict | None = Field(default=None)
+
+
+class _SetPublicCodeBody(BaseModel):
+    code: str = Field(..., min_length=4, max_length=6, pattern="^[0-9]+$")
+
+
+class _SendReminderBody(BaseModel):
+    milestone_days: int = Field(default=0, ge=0, le=365)
+
+
+@router.post("/budgets/{budget_id}/renegotiate", response_model=ApiResponse[BudgetResponse])
+async def renegotiate_budget(
+    budget_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.renegotiate"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[BudgetResponse]:
+    """Cancel a sent budget so reception can edit the plan and reissue.
+
+    Publishes ``budget.renegotiated`` so the linked treatment_plan
+    handler reopens the companion plan back to ``draft``.
+    """
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    try:
+        budget = await BudgetWorkflowService.cancel_for_renegotiation(
+            db, budget, ctx.user_id
+        )
+    except BudgetWorkflowError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=BudgetResponse.model_validate(budget))
+
+
+@router.post(
+    "/budgets/{budget_id}/accept-in-clinic",
+    response_model=ApiResponse[BudgetResponse],
+)
+async def accept_budget_in_clinic(
+    budget_id: UUID,
+    body: _AcceptInClinicBody,
+    request: Request,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.accept_in_clinic"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[BudgetResponse]:
+    """Reception captures patient acceptance with optional tablet signature."""
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    sig_payload = {
+        "signed_by_name": body.signer_name,
+        "relationship_to_patient": "patient",
+        "signature_method": "drawn" if body.signature_data else "click_accept",
+        "signature_data": body.signature_data,
+    }
+    try:
+        budget = await BudgetWorkflowService.accept_budget(
+            db,
+            budget,
+            signature_data=sig_payload,
+            accepted_by=ctx.user_id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            accepted_via="in_clinic",
+        )
+    except BudgetWorkflowError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=BudgetResponse.model_validate(budget))
+
+
+@router.post("/budgets/{budget_id}/resend", response_model=ApiResponse[BudgetResponse])
+async def resend_budget(
     budget_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("budget.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[BudgetResponse]:
-    """Mark budget as completed (all treatments done)."""
+    """Clone a finished (rejected/expired/cancelled/locked) budget to a
+    fresh draft (version+1) with a brand-new public token. Reception
+    can then edit and send the new draft."""
     budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
+    new_budget = await BudgetWorkflowService.clone_to_new_draft(db, budget, ctx.user_id)
+    return ApiResponse(data=BudgetResponse.model_validate(new_budget))
 
-    try:
-        budget = await BudgetWorkflowService.complete_budget(db, budget, ctx.user_id)
-    except BudgetWorkflowError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+@router.post(
+    "/budgets/{budget_id}/send-reminder",
+    response_model=ApiResponse[BudgetResponse],
+)
+async def send_budget_reminder(
+    budget_id: UUID,
+    body: _SendReminderBody,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[BudgetResponse]:
+    """Manual reminder dispatch — reception can prod the patient
+    outside the cron schedule."""
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    if budget.status != "sent":
+        raise HTTPException(
+            status_code=400, detail="Reminders only apply to sent budgets"
+        )
+    budget = await BudgetWorkflowService.send_reminder(
+        db, budget, milestone_days=body.milestone_days
+    )
     return ApiResponse(data=BudgetResponse.model_validate(budget))
+
+
+@router.post(
+    "/budgets/{budget_id}/set-public-code",
+    response_model=ApiResponse[BudgetResponse],
+)
+async def set_public_code(
+    budget_id: UUID,
+    body: _SetPublicCodeBody,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[BudgetResponse]:
+    """Configure the manual code for a public link when the patient
+    has neither phone nor DOB on file. The code is hashed; reception
+    is expected to share it verbally with the patient."""
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    try:
+        budget = await BudgetWorkflowService.set_public_code(db, budget, body.code)
+    except BudgetWorkflowError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=BudgetResponse.model_validate(budget))
+
+
+@router.post(
+    "/budgets/{budget_id}/unlock-public",
+    response_model=ApiResponse[BudgetResponse],
+)
+async def unlock_public_link(
+    budget_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[BudgetResponse]:
+    """Clear the lockout on the public link so the patient can retry."""
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    budget = await BudgetWorkflowService.unlock_public(db, budget)
+    return ApiResponse(data=BudgetResponse.model_validate(budget))
+
+
+# ============================================================================
+# Existing duplicate (kept for legacy paths) and the rest follow.
+# ============================================================================
 
 
 @router.post(
@@ -566,6 +737,99 @@ async def download_budget_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/budgets/{budget_id}/pdf/signed")
+async def download_signed_budget_pdf(
+    budget_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    locale: str = Query(default="es", pattern="^(es|en)$"),
+) -> Response:
+    """Download the signed PDF for an accepted budget.
+
+    Returns 404 when no signature exists yet. Renders the same
+    template as the unsigned PDF but with the signature image and
+    audit metadata burned in.
+    """
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    from .models import BudgetSignature
+
+    sig_q = (
+        select(BudgetSignature)
+        .where(
+            BudgetSignature.budget_id == budget_id,
+            BudgetSignature.clinic_id == ctx.clinic_id,
+            BudgetSignature.signature_type == "full_acceptance",
+        )
+        .order_by(BudgetSignature.signed_at.desc())
+        .limit(1)
+    )
+    signature = (await db.execute(sig_q)).scalar_one_or_none()
+    if signature is None:
+        raise HTTPException(status_code=404, detail="Budget has not been signed")
+
+    from app.core.auth.models import Clinic
+
+    clinic = await db.get(Clinic, ctx.clinic_id)
+    pdf_bytes = BudgetPDFService.generate_pdf(
+        budget,
+        clinic,
+        is_preview=False,
+        locale=locale,
+        signature=signature,
+    )
+
+    filename = f"presupuesto_{budget.budget_number}_v{budget.version}_firmado.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+@router.get(
+    "/budgets/{budget_id}/signature",
+    response_model=ApiResponse[SignatureMetaResponse],
+)
+async def get_budget_signature_meta(
+    budget_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[SignatureMetaResponse]:
+    """Return the latest acceptance signature without the raw PNG.
+
+    Powers the staff signature card. 404 when not signed yet.
+    """
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=False)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    from .models import BudgetSignature
+
+    sig_q = (
+        select(BudgetSignature)
+        .where(
+            BudgetSignature.budget_id == budget_id,
+            BudgetSignature.clinic_id == ctx.clinic_id,
+            BudgetSignature.signature_type == "full_acceptance",
+        )
+        .order_by(BudgetSignature.signed_at.desc())
+        .limit(1)
+    )
+    signature = (await db.execute(sig_q)).scalar_one_or_none()
+    if signature is None:
+        raise HTTPException(status_code=404, detail="Budget has not been signed")
+
+    return ApiResponse(data=SignatureMetaResponse.model_validate(signature))
 
 
 @router.get("/budgets/{budget_id}/pdf/preview")

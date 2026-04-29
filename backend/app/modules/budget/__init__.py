@@ -1,6 +1,7 @@
 """Budget module - dental treatment quotes management."""
 
 import logging
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -11,7 +12,8 @@ from app.core.events.types import EventType
 from app.core.plugins import BaseModule
 from app.database import async_session_maker
 
-from .models import Budget, BudgetHistory, BudgetItem, BudgetSignature
+from .models import Budget, BudgetAccessLog, BudgetHistory, BudgetItem, BudgetSignature
+from .public_router import public_router
 from .router import router
 
 logger = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ class BudgetModule(BaseModule):
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": ["patients", "catalog"],
+        "depends": ["patients", "catalog", "odontogram"],
         "installable": True,
         "auto_install": True,
         "removable": False,
@@ -44,8 +46,13 @@ class BudgetModule(BaseModule):
             "admin": ["*"],
             "dentist": ["*"],
             "hygienist": ["read"],
-            "assistant": ["read", "write"],
-            "receptionist": ["read", "write"],
+            "assistant": ["read", "write", "accept_in_clinic"],
+            "receptionist": [
+                "read",
+                "write",
+                "renegotiate",
+                "accept_in_clinic",
+            ],
         },
         "frontend": {
             "layer_path": "frontend",
@@ -62,16 +69,25 @@ class BudgetModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [Budget, BudgetItem, BudgetSignature, BudgetHistory]
+        return [Budget, BudgetItem, BudgetSignature, BudgetHistory, BudgetAccessLog]
 
     def get_router(self) -> APIRouter:
-        return router
+        # Compose authenticated + public sub-routers under one mount.
+        # Public endpoints sit under ``/public/budgets/...`` and are
+        # not gated by the clinic context dependency (see ADR 0006).
+        combined = APIRouter()
+        combined.include_router(router)
+        combined.include_router(public_router)
+        return combined
 
     def get_permissions(self) -> list[str]:
         return [
             "read",  # View budgets
             "write",  # Create/update budgets
             "admin",  # Delete budgets, manage settings
+            # Workflow extensions split out for fine-grained RBAC.
+            "renegotiate",  # Cancel a sent budget to renegotiate
+            "accept_in_clinic",  # Capture in-clinic acceptance
         ]
 
     def get_event_handlers(self) -> dict[str, Any]:
@@ -90,69 +106,51 @@ class BudgetModule(BaseModule):
     async def _on_treatment_added_to_plan(self, data: dict[str, Any]) -> None:
         """Create BudgetItem when a treatment is added to a plan.
 
-        Only creates item if the budget is in draft status. Reads the Treatment
-        to resolve catalog_item_id and primary tooth (when a single-tooth treatment).
+        Snapshot-only: the publisher (treatment_plan) sends a denormalized
+        payload with ``budget_id``, ``catalog_item_id``, ``tooth_number``,
+        ``surfaces`` and ``unit_price`` so this handler does not import
+        models from modules outside ``budget``'s ``manifest.depends``.
+        See ADR 0003.
         """
-        from .service import BudgetItemService
+        from .service import BudgetItemService, BudgetService
 
         plan_id = data.get("plan_id")
-        treatment_id = data.get("treatment_id")
+        treatment_id_raw = data.get("treatment_id")
         clinic_id = data.get("clinic_id")
+        budget_id_raw = data.get("budget_id")
+        catalog_item_id_raw = data.get("catalog_item_id")
+        tooth_number = data.get("tooth_number")
+        surfaces = data.get("surfaces")
+        unit_price_raw = data.get("unit_price")
 
-        if not plan_id or not clinic_id or not treatment_id:
+        if not plan_id or not clinic_id or not treatment_id_raw:
+            return
+        if not budget_id_raw or not catalog_item_id_raw:
+            # Plan has no budget yet, or treatment without catalog ref —
+            # nothing to mirror.
             return
 
         async with async_session_maker() as db:
             try:
-                from app.modules.odontogram.models import Treatment
-                from app.modules.treatment_plan.models import TreatmentPlan
-
-                result = await db.execute(
-                    select(TreatmentPlan.budget_id).where(
-                        TreatmentPlan.id == UUID(plan_id),
-                        TreatmentPlan.clinic_id == UUID(clinic_id),
-                    )
-                )
-                budget_id = result.scalar_one_or_none()
-                if not budget_id:
-                    return
-
-                budget = await db.get(Budget, budget_id)
+                budget = await db.get(Budget, UUID(budget_id_raw))
                 if not budget or budget.status != "draft":
                     return
-
-                from sqlalchemy.orm import selectinload
-
-                t_result = await db.execute(
-                    select(Treatment)
-                    .options(selectinload(Treatment.teeth))
-                    .where(
-                        Treatment.id == UUID(treatment_id),
-                        Treatment.clinic_id == UUID(clinic_id),
-                    )
-                )
-                treatment = t_result.scalar_one_or_none()
-                if not treatment or treatment.catalog_item_id is None:
-                    return
-
-                primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
-                primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
 
                 await BudgetItemService.create_item(
                     db,
                     UUID(clinic_id),
-                    budget_id,
+                    UUID(budget_id_raw),
                     {
-                        "catalog_item_id": treatment.catalog_item_id,
+                        "catalog_item_id": UUID(catalog_item_id_raw),
                         "quantity": 1,
-                        "treatment_id": treatment.id,
-                        "tooth_number": primary_tooth,
-                        "surfaces": primary_surfaces,
-                        "unit_price": treatment.price_snapshot,
+                        "treatment_id": UUID(treatment_id_raw),
+                        "tooth_number": tooth_number,
+                        "surfaces": surfaces,
+                        "unit_price": (
+                            Decimal(unit_price_raw) if unit_price_raw is not None else None
+                        ),
                     },
                 )
-
-                from .service import BudgetService
 
                 await BudgetService._recalculate_totals(db, budget)
                 await db.commit()
@@ -166,39 +164,30 @@ class BudgetModule(BaseModule):
     async def _on_treatment_removed_from_plan(self, data: dict[str, Any]) -> None:
         """Remove BudgetItem when a treatment is removed from a plan.
 
-        Only removes item if the budget is in draft status.
+        Snapshot-only: the publisher includes ``budget_id`` so this
+        handler does not need to read ``TreatmentPlan`` from another
+        module (ADR 0003).
         """
         from .service import BudgetService
 
         plan_id = data.get("plan_id")
-        treatment_id = data.get("treatment_id")
+        treatment_id_raw = data.get("treatment_id")
         clinic_id = data.get("clinic_id")
+        budget_id_raw = data.get("budget_id")
 
-        if not plan_id or not clinic_id or not treatment_id:
+        if not plan_id or not clinic_id or not treatment_id_raw or not budget_id_raw:
             return
 
         async with async_session_maker() as db:
             try:
-                from app.modules.treatment_plan.models import TreatmentPlan
-
-                result = await db.execute(
-                    select(TreatmentPlan.budget_id).where(
-                        TreatmentPlan.id == UUID(plan_id),
-                        TreatmentPlan.clinic_id == UUID(clinic_id),
-                    )
-                )
-                budget_id = result.scalar_one_or_none()
-                if not budget_id:
-                    return
-
-                budget = await db.get(Budget, budget_id)
+                budget = await db.get(Budget, UUID(budget_id_raw))
                 if not budget or budget.status != "draft":
                     return
 
                 item_result = await db.execute(
                     select(BudgetItem).where(
-                        BudgetItem.budget_id == budget_id,
-                        BudgetItem.treatment_id == UUID(treatment_id),
+                        BudgetItem.budget_id == UUID(budget_id_raw),
+                        BudgetItem.treatment_id == UUID(treatment_id_raw),
                     )
                 )
                 item = item_result.scalar_one_or_none()
@@ -215,78 +204,67 @@ class BudgetModule(BaseModule):
     async def _on_sync_requested(self, data: dict[str, Any]) -> None:
         """Synchronize all plan items with the budget.
 
-        Only syncs if the budget is in draft status.
+        Snapshot-only: the publisher includes ``items`` (a list of
+        denormalized item snapshots). This handler reconciles the
+        budget without reading treatment_plan / odontogram models
+        (ADR 0003).
         """
         from .service import BudgetItemService, BudgetService
 
         plan_id = data.get("plan_id")
-        budget_id = data.get("budget_id")
+        budget_id_raw = data.get("budget_id")
         clinic_id = data.get("clinic_id")
+        items_payload = data.get("items") or []
 
-        if not plan_id or not budget_id or not clinic_id:
+        if not plan_id or not budget_id_raw or not clinic_id:
             return
 
         async with async_session_maker() as db:
             try:
-                # Check budget status
-                budget = await db.get(Budget, UUID(budget_id))
+                budget = await db.get(Budget, UUID(budget_id_raw))
                 if not budget or budget.status != "draft":
-                    logger.warning(f"Cannot sync non-draft budget {budget_id}")
+                    logger.warning("Cannot sync non-draft budget %s", budget_id_raw)
                     return
-
-                from sqlalchemy.orm import selectinload
-
-                from app.modules.odontogram.models import Treatment
-                from app.modules.treatment_plan.models import PlannedTreatmentItem
-
-                plan_items_result = await db.execute(
-                    select(PlannedTreatmentItem)
-                    .options(
-                        selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
-                    )
-                    .where(
-                        PlannedTreatmentItem.treatment_plan_id == UUID(plan_id),
-                        PlannedTreatmentItem.clinic_id == UUID(clinic_id),
-                    )
-                )
-                plan_items = list(plan_items_result.scalars().all())
 
                 existing_result = await db.execute(
                     select(BudgetItem).where(
-                        BudgetItem.budget_id == UUID(budget_id),
+                        BudgetItem.budget_id == UUID(budget_id_raw),
                         BudgetItem.treatment_id.isnot(None),
                     )
                 )
-                existing_items = {
-                    item.treatment_id: item for item in existing_result.scalars().all()
+                existing_treatment_ids = {
+                    item.treatment_id for item in existing_result.scalars().all()
                 }
 
-                for plan_item in plan_items:
-                    treatment = plan_item.treatment
-                    if not treatment or not treatment.catalog_item_id:
+                for snap in items_payload:
+                    treatment_id_raw = snap.get("treatment_id")
+                    catalog_item_id_raw = snap.get("catalog_item_id")
+                    if not treatment_id_raw or not catalog_item_id_raw:
                         continue
-                    if treatment.id in existing_items:
+                    treatment_uuid = UUID(treatment_id_raw)
+                    if treatment_uuid in existing_treatment_ids:
                         continue
-                    primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
-                    primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
+                    unit_price_raw = snap.get("unit_price")
                     await BudgetItemService.create_item(
                         db,
                         UUID(clinic_id),
-                        UUID(budget_id),
+                        UUID(budget_id_raw),
                         {
-                            "catalog_item_id": treatment.catalog_item_id,
+                            "catalog_item_id": UUID(catalog_item_id_raw),
                             "quantity": 1,
-                            "treatment_id": treatment.id,
-                            "tooth_number": primary_tooth,
-                            "surfaces": primary_surfaces,
-                            "unit_price": treatment.price_snapshot,
+                            "treatment_id": treatment_uuid,
+                            "tooth_number": snap.get("tooth_number"),
+                            "surfaces": snap.get("surfaces"),
+                            "unit_price": (
+                                Decimal(unit_price_raw) if unit_price_raw is not None else None
+                            ),
                         },
                     )
 
                 await BudgetService._recalculate_totals(db, budget)
                 await db.commit()
 
-                logger.info("Synced plan %s with budget %s", plan_id, budget_id)
+                logger.info("Synced plan %s with budget %s", plan_id, budget_id_raw)
 
             except Exception as e:
                 logger.error("Error syncing plan with budget: %s", e, exc_info=True)

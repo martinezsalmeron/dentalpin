@@ -34,10 +34,11 @@ watch(searchQuery, (val) => {
 // Status filter options
 const statusOptions = computed(() => [
   { label: t('treatmentPlans.status.draft'), value: 'draft' as TreatmentPlanStatus },
+  { label: t('treatmentPlans.status.pending'), value: 'pending' as TreatmentPlanStatus },
   { label: t('treatmentPlans.status.active'), value: 'active' as TreatmentPlanStatus },
   { label: t('treatmentPlans.status.completed'), value: 'completed' as TreatmentPlanStatus },
-  { label: t('treatmentPlans.status.archived'), value: 'archived' as TreatmentPlanStatus },
-  { label: t('treatmentPlans.status.cancelled'), value: 'cancelled' as TreatmentPlanStatus }
+  { label: t('treatmentPlans.status.closed'), value: 'closed' as TreatmentPlanStatus },
+  { label: t('treatmentPlans.status.archived'), value: 'archived' as TreatmentPlanStatus }
 ])
 
 // Load plans

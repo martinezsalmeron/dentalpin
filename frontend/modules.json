@@ -3,11 +3,11 @@
     "/module_layers/patients/frontend",
     "/module_layers/catalog/frontend",
     "/module_layers/agenda/frontend",
+    "/module_layers/odontogram/frontend",
     "/module_layers/budget/frontend",
     "/module_layers/billing/frontend",
     "/module_layers/media/frontend",
     "/module_layers/notifications/frontend",
-    "/module_layers/odontogram/frontend",
     "/module_layers/patient_timeline/frontend",
     "/module_layers/patients_clinical/frontend",
     "/module_layers/reports/frontend",
@@ -29,6 +29,10 @@
       "path": "/module_layers/agenda/frontend"
     },
     {
+      "name": "odontogram",
+      "path": "/module_layers/odontogram/frontend"
+    },
+    {
       "name": "budget",
       "path": "/module_layers/budget/frontend"
     },
@@ -43,10 +47,6 @@
     {
       "name": "notifications",
       "path": "/module_layers/notifications/frontend"
-    },
-    {
-      "name": "odontogram",
-      "path": "/module_layers/odontogram/frontend"
     },
     {
       "name": "patient_timeline",

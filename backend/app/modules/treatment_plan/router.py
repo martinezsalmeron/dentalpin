@@ -11,9 +11,14 @@ from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
 from .schemas import (
+    ClosePlanRequest,
     CompleteItemRequest,
+    ContactLogRequest,
     GenerateBudgetResponse,
     LinkBudgetRequest,
+    PipelineBudgetBrief,
+    PipelineNextAppointment,
+    PipelineRow,
     PlannedTreatmentItemCreate,
     PlannedTreatmentItemResponse,
     PlannedTreatmentItemUpdate,
@@ -29,6 +34,62 @@ from .schemas import (
 from .service import PlanLockedError, TreatmentPlanService
 
 router = APIRouter()
+
+
+# -----------------------------------------------------------------------------
+# Bandeja de planes (pipeline view) — declared FIRST so the literal
+# ``/treatment-plans/pipeline`` path matches before any ``/{plan_id}``
+# pattern below it. FastAPI resolves routes in registration order.
+# -----------------------------------------------------------------------------
+
+
+PIPELINE_TABS = {
+    "por_presupuestar",
+    "esperando_paciente",
+    "sin_cita",
+    "sin_proxima_cita",
+    "cerrados",
+}
+
+
+@router.get(
+    "/treatment-plans/pipeline",
+    response_model=PaginatedApiResponse[PipelineRow],
+)
+async def list_pipeline(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    tab: str = Query(..., description="One of: " + ", ".join(sorted(PIPELINE_TABS))),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    doctor_id: UUID | None = Query(default=None),
+    q: str | None = Query(default=None, description="Free-text search"),
+) -> PaginatedApiResponse[PipelineRow]:
+    """Bandeja de planes (cross-module pipeline view).
+
+    The endpoint joins ``treatment_plans``, ``budgets`` and
+    ``appointments`` directly via SQL because all three are declared in
+    treatment_plan's manifest.depends. Filtering happens in SQL by tab.
+    """
+    if tab not in PIPELINE_TABS:
+        raise HTTPException(status_code=400, detail=f"Unknown tab '{tab}'")
+
+    rows, total = await TreatmentPlanService.list_pipeline(
+        db,
+        clinic_id=ctx.clinic_id,
+        tab=tab,
+        page=page,
+        page_size=page_size,
+        doctor_id=doctor_id,
+        search=q,
+    )
+    return PaginatedApiResponse(
+        data=rows,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -177,6 +238,129 @@ async def update_plan_status(
         return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# Workflow transitions (confirm / reopen / close / reactivate)
+# -----------------------------------------------------------------------------
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/confirm",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def confirm_treatment_plan(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.confirm"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Doctor confirms the plan (``draft`` → ``pending``).
+
+    Auto-creates the draft budget so reception can review and send.
+    """
+    try:
+        plan = await TreatmentPlanService.confirm(db, ctx.clinic_id, plan_id, ctx.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/reopen",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def reopen_treatment_plan(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Reopen a confirmed plan back to ``draft`` and cancel its budget."""
+    try:
+        plan = await TreatmentPlanService.reopen(db, ctx.clinic_id, plan_id, ctx.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/close",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def close_treatment_plan(
+    plan_id: UUID,
+    data: ClosePlanRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.close"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Move the plan to terminal ``closed`` state with a reason."""
+    try:
+        plan = await TreatmentPlanService.close(
+            db,
+            ctx.clinic_id,
+            plan_id,
+            ctx.user_id,
+            closure_reason=data.closure_reason,
+            closure_note=data.closure_note,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/reactivate",
+    response_model=ApiResponse[TreatmentPlanResponse],
+)
+async def reactivate_treatment_plan(
+    plan_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.reactivate"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[TreatmentPlanResponse]:
+    """Revive a closed plan back to ``draft`` for a fresh cycle."""
+    try:
+        plan = await TreatmentPlanService.reactivate(
+            db, ctx.clinic_id, plan_id, ctx.user_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
+
+
+@router.post(
+    "/treatment-plans/{plan_id}/contact-log",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def log_plan_contact(
+    plan_id: UUID,
+    data: ContactLogRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Record a non-state-changing contact with the patient.
+
+    The bandeja sorts ``Esperando paciente`` by ``last_contact`` so
+    reception can prioritise calls. We persist the touchpoint via the
+    plan's ``internal_notes`` for now (one-line append). A dedicated
+    contact-log table is on the v2 backlog.
+    """
+    from datetime import UTC, datetime
+
+    plan = await TreatmentPlanService.get(db, ctx.clinic_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Treatment plan not found")
+    timestamp = datetime.now(UTC).isoformat()
+    line = f"[{timestamp}] {data.channel} by {ctx.user_id}"
+    if data.note:
+        line += f" — {data.note.strip()}"
+    plan.internal_notes = (
+        f"{plan.internal_notes}\n{line}".strip() if plan.internal_notes else line
+    )
+    await db.flush()
 
 
 @router.delete("/treatment-plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -367,26 +551,6 @@ async def sync_plan_with_budget(
             detail="Cannot sync: plan not found or no budget linked",
         )
     return ApiResponse(data={"synced": True})
-
-
-@router.post(
-    "/treatment-plans/{plan_id}/unlock",
-    response_model=ApiResponse[TreatmentPlanResponse],
-)
-async def unlock_treatment_plan(
-    plan_id: UUID,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[TreatmentPlanResponse]:
-    """Unlock a plan by cancelling its linked budget so it can be modified."""
-    try:
-        plan = await TreatmentPlanService.unlock(db, ctx.clinic_id, plan_id, ctx.user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    if not plan:
-        raise HTTPException(status_code=404, detail="Treatment plan not found")
-    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
 
 
 @router.post(

@@ -9,7 +9,7 @@ Supports bilingual data (English and Spanish) via LANG setting.
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 # =============================================================================
 # Language Configuration
@@ -1404,12 +1404,13 @@ PATIENT_JOURNEYS = [
             {"week": "future", "covers": [2], "status": "scheduled"},
         ],
     },
-    # Patient 2 — Miguel / James (young adult; draft plan + draft budget + draft invoice)
+    # Patient 2 — Miguel / James (pending plan with draft budget, surfaces in
+    # bandeja tab "Por presupuestar")
     {
         "patient_idx": 2,
         "plan": {
             "id_idx": 2,
-            "status": "draft",
+            "status": "pending",
             "title": {"es": "Revisión y limpieza", "en": "Checkup and cleaning"},
             "diagnosis_notes": {
                 "es": "Paciente joven, buen estado general.",
@@ -1427,10 +1428,7 @@ PATIENT_JOURNEYS = [
             "signature": False,
             "notes": {"es": "Borrador pendiente de revisión", "en": "Draft pending review"},
         },
-        "appointments": [
-            {"week": "future", "covers": [0], "status": "scheduled"},
-            {"week": "future", "covers": [1], "status": "scheduled"},
-        ],
+        "appointments": [],
         "invoice": {
             "id_idx": 0,
             "status": "draft",
@@ -1439,44 +1437,36 @@ PATIENT_JOURNEYS = [
             "notes": {"es": "Borrador - pendiente de emitir", "en": "Draft - pending issuance"},
         },
     },
-    # Patient 3 — Carmen / Emma (sensitivity; draft budget + issued invoice for done items)
+    # Patient 3 — Carmen / Emma (pending plan with sent budget, surfaces in
+    # bandeja tab "Esperando paciente")
     {
         "patient_idx": 3,
         "plan": {
             "id_idx": 3,
-            "status": "draft",
+            "status": "pending",
             "title": {"es": "Plan de tratamiento inicial", "en": "Initial treatment plan"},
             "diagnosis_notes": {
                 "es": "Paciente con sensibilidad dental. Requiere empaste en molar.",
                 "en": "Patient with dental sensitivity. Requires filling on molar.",
             },
             "items": [
-                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
-                {"catalog_code": "DX-RXPAN", "is_global": True, "completed": True},
+                {"catalog_code": "DX-VISIT", "is_global": True},
+                {"catalog_code": "DX-RXPAN", "is_global": True},
                 {"catalog_code": "REST-COMP", "tooth": 16, "is_global": False},
             ],
         },
         "budget": {
             "id_idx": 1,
-            "status": "draft",
+            "status": "sent",
             "global_discount": None,
             "signature": False,
             "notes": {
-                "es": "Presupuesto pendiente de aceptación",
-                "en": "Budget pending acceptance",
+                "es": "Presupuesto enviado, esperando respuesta",
+                "en": "Quote sent, awaiting response",
             },
         },
-        "appointments": [
-            {"week": "past", "covers": [0, 1], "status": "completed"},
-            {"week": "future", "covers": [2], "status": "scheduled"},
-        ],
-        "invoice": {
-            "id_idx": 1,
-            "status": "issued",
-            "payments": [],
-            "covers": [0, 1],
-            "notes": {"es": "Emitida - pendiente de pago", "en": "Issued - pending payment"},
-        },
+        "appointments": [],
+        "invoice": None,
     },
     # Patient 4 — David / William (aesthetic; draft budget, no invoice yet)
     {
@@ -1497,16 +1487,13 @@ PATIENT_JOURNEYS = [
         },
         "budget": {
             "id_idx": 2,
-            "status": "draft",
+            "status": "accepted",
             "global_discount": {"type": "percentage", "value": 5},
-            "signature": False,
-            "notes": {"es": "Pendiente de aceptación", "en": "Pending acceptance"},
+            "signature": True,
+            "notes": {"es": "Aceptado, pendiente de agendar", "en": "Accepted, pending scheduling"},
         },
-        "appointments": [
-            {"week": "past", "covers": [0], "status": "completed"},
-            {"week": "future", "covers": [1], "status": "scheduled"},
-            {"week": "future", "covers": [2], "status": "scheduled"},
-        ],
+        # No appointments — surfaces in bandeja tab "Sin cita".
+        "appointments": [],
     },
     # Patient 5 — Elena / Sophia (pregnant; accepted budget with signature, partial invoice)
     {
@@ -1574,10 +1561,10 @@ PATIENT_JOURNEYS = [
                 "en": "Diabetic patient - special care",
             },
         },
+        # Past appointments only — surfaces in bandeja tab "Sin próxima cita".
         "appointments": [
             {"week": "past", "covers": [0], "status": "completed"},
             {"week": "past", "covers": [1], "status": "completed"},
-            {"week": "future", "covers": [2], "status": "scheduled"},
         ],
         "invoice": {
             "id_idx": 3,
@@ -1592,8 +1579,13 @@ PATIENT_JOURNEYS = [
         "patient_idx": 7,
         "plan": {
             "id_idx": 7,
-            "status": "active",
-            "title": {"es": "Revisión periódica", "en": "Periodic checkup"},
+            "status": "closed",
+            "closure_reason": "rejected_by_patient",
+            "closure_note": {
+                "es": "Paciente rechazó carillas estéticas por precio.",
+                "en": "Patient rejected aesthetic veneers due to pricing.",
+            },
+            "title": {"es": "Plan estético rechazado", "en": "Rejected aesthetic plan"},
             "diagnosis_notes": {
                 "es": "Control semestral. Paciente rechazó carillas estéticas.",
                 "en": "Bi-annual checkup. Patient rejected aesthetic veneers.",
@@ -1607,6 +1599,11 @@ PATIENT_JOURNEYS = [
         "budget": {
             "id_idx": 5,
             "status": "rejected",
+            "rejection_reason": "price",
+            "rejection_note": {
+                "es": "Precio de carillas demasiado alto",
+                "en": "Veneer pricing too high",
+            },
             "global_discount": None,
             "signature": False,
             "notes": {
@@ -1616,7 +1613,6 @@ PATIENT_JOURNEYS = [
         },
         "appointments": [
             {"week": "past", "covers": [0], "status": "completed"},
-            {"week": "current", "covers": [1], "status": "confirmed"},
         ],
     },
     # Patient 8 — Francisco / Alexander (penicillin allergic; accepted, paid split)
@@ -1898,6 +1894,20 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
         plan_id = TREATMENT_PLAN_IDS[plan_scenario["id_idx"]]
 
         plan_number = f"PLAN-2024-{scenario_idx + 1:04d}"
+        plan_status = plan_scenario["status"]
+
+        # Workflow timestamps. Active and completed plans went through
+        # the confirm step; closed plans carry a closure reason.
+        confirmed_at = None
+        closed_at = None
+        closure_reason = plan_scenario.get("closure_reason")
+        closure_note = plan_scenario.get("closure_note")
+        if plan_status in ("pending", "active", "completed"):
+            confirmed_at = datetime.now() - timedelta(days=30 - scenario_idx)
+        if plan_status == "closed":
+            closed_at = datetime.now() - timedelta(days=15 - scenario_idx)
+            closure_reason = closure_reason or "cancelled_by_clinic"
+
         plans.append(
             {
                 "id": plan_id,
@@ -1905,7 +1915,7 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
                 "patient_id": patient["id"],
                 "plan_number": plan_number,
                 "title": t(plan_scenario["title"]) if plan_scenario.get("title") else None,
-                "status": plan_scenario["status"],
+                "status": plan_status,
                 "budget_id": None,  # wired by seed_demo after budgets are created
                 "assigned_professional_id": USER_DENTIST_ID,
                 "created_by": USER_DENTIST_ID,
@@ -1914,6 +1924,11 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
                 else None,
                 "internal_notes": None,
                 "deleted_at": None,
+                # Workflow rework fields (PR1).
+                "confirmed_at": confirmed_at,
+                "closed_at": closed_at,
+                "closure_reason": closure_reason,
+                "closure_note": t(closure_note) if isinstance(closure_note, dict) else closure_note,
             }
         )
 
@@ -2108,6 +2123,15 @@ def generate_budgets_data(catalog_items_map: dict[str, dict], plans_result: dict
         total_tax = sum((bi["line_tax"] for bi in budget_items_local), Decimal("0.00"))
         total = subtotal - total_discount + total_tax
 
+        b_status = budget_scenario["status"]
+        accepted_via = "manual" if b_status == "accepted" else None
+        rejection_reason = (
+            budget_scenario.get("rejection_reason")
+            if b_status == "rejected"
+            else None
+        )
+        rejection_note = budget_scenario.get("rejection_note") if b_status == "rejected" else None
+
         budgets.append(
             {
                 "id": budget_id,
@@ -2116,7 +2140,7 @@ def generate_budgets_data(catalog_items_map: dict[str, dict], plans_result: dict
                 "budget_number": budget_number,
                 "version": 1,
                 "parent_budget_id": None,
-                "status": budget_scenario["status"],
+                "status": b_status,
                 "valid_from": valid_from,
                 "valid_until": valid_until,
                 "created_by": USER_DENTIST_ID,
@@ -2134,6 +2158,18 @@ def generate_budgets_data(catalog_items_map: dict[str, dict], plans_result: dict
                 "patient_notes": None,
                 "insurance_estimate": None,
                 "deleted_at": None,
+                # Workflow rework fields (PR1).
+                "accepted_via": accepted_via,
+                "rejection_reason": rejection_reason,
+                "rejection_note": t(rejection_note) if isinstance(rejection_note, dict) else rejection_note,
+                "public_token": uuid4(),
+                "viewed_at": None,
+                "last_reminder_sent_at": None,
+                "public_auth_method": "phone_last4",
+                "public_auth_secret_hash": None,
+                "public_locked_at": None,
+                "plan_number_snapshot": plan_detail["plan_number"],
+                "plan_status_snapshot": plan_detail["status"],
             }
         )
 

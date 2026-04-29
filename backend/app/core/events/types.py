@@ -43,6 +43,22 @@ class EventType:
     BUDGET_SENT = "budget.sent"
     BUDGET_ACCEPTED = "budget.accepted"
     BUDGET_REJECTED = "budget.rejected"
+    # Auto-expired by the daily cron when ``valid_until < today`` and the
+    # budget was still ``sent`` or ``draft``. Payload carries a snapshot
+    # (budget_id, plan_id, patient_id, days_overdue) so subscribers do not
+    # need to import budget models.
+    BUDGET_EXPIRED = "budget.expired"
+    # Reception cancelled a sent budget for renegotiation. The companion
+    # plan is unlocked back to ``draft``. Payload carries
+    # (budget_id, plan_id, patient_id, version, cancelled_at).
+    BUDGET_RENEGOTIATED = "budget.renegotiated"
+    # Patient opened the public link (first time). Payload carries
+    # (budget_id, plan_id, patient_id, viewed_at, ip_hash). Idempotent.
+    BUDGET_VIEWED = "budget.viewed"
+    # Automatic reminder dispatched to the patient (7d / 14d milestone).
+    # Payload carries (budget_id, plan_id, patient_id, milestone_days,
+    # sent_at). Only fired when ``budget_reminders_enabled`` for the clinic.
+    BUDGET_REMINDER_SENT = "budget.reminder_sent"
 
     # Email events
     EMAIL_SENT = "email.sent"
@@ -87,6 +103,22 @@ class EventType:
     TREATMENT_PLAN_TREATMENT_REMOVED = "treatment_plan.treatment_removed"
     TREATMENT_PLAN_TREATMENT_COMPLETED = "treatment_plan.treatment_completed"
     TREATMENT_PLAN_BUDGET_SYNC_REQUESTED = "treatment_plan.budget_sync_requested"
+    # Doctor closed the plan clinically (``draft`` → ``pending``). Payload
+    # carries a full snapshot so subscribers (budget for draft creation,
+    # patient_timeline for audit) do not need to import treatment_plan
+    # models. Snapshot fields: plan_id, plan_number, clinic_id, patient_id,
+    # patient_full_name, items[{id, catalog_item_id, tooth, surfaces,
+    # quantity, estimated_price}], total_estimated, confirmed_at,
+    # confirmed_by_user_id.
+    TREATMENT_PLAN_CONFIRMED = "treatment_plan.confirmed"
+    # Plan transitioned to terminal ``closed`` state. Payload:
+    # (plan_id, clinic_id, patient_id, closure_reason, closure_note,
+    # closed_at, closed_by_user_id, previous_status).
+    TREATMENT_PLAN_CLOSED = "treatment_plan.closed"
+    # Plan revived from ``closed`` back to ``draft``. Payload:
+    # (plan_id, clinic_id, patient_id, previous_closure_reason,
+    # reactivated_at, reactivated_by_user_id).
+    TREATMENT_PLAN_REACTIVATED = "treatment_plan.reactivated"
 
     # Treatment-plan completion audit (kept here — emitted by treatment_plan
     # when an item is completed without a clinical note, consumed by

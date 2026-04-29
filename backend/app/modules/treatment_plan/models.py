@@ -49,8 +49,22 @@ class TreatmentPlan(Base, TimestampMixin):
     plan_number: Mapped[str] = mapped_column(String(50))  # PLAN-2024-0001
     title: Mapped[str | None] = mapped_column(String(200))
 
-    # Status workflow: draft, active, completed, archived, cancelled
+    # Status workflow: draft → pending → active → completed → archived
+    # Terminal non-completed state: closed (with closure_reason). Reactivable
+    # back to draft. See ADR 0006 and docs/workflows/plan-budget-flow.md.
     status: Mapped[str] = mapped_column(String(20), default="draft")
+
+    # Closure metadata (set when status becomes ``closed``).
+    # Allowed closure_reason values:
+    #   rejected_by_patient | expired | cancelled_by_clinic |
+    #   patient_abandoned  | other
+    closure_reason: Mapped[str | None] = mapped_column(String(50))
+    closure_note: Mapped[str | None] = mapped_column(Text)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Confirmation timestamp (set on draft → pending). Used for
+    # pipeline analytics and "days waiting" sorting.
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Budget integration (one-to-one)
     budget_id: Mapped[UUID | None] = mapped_column(
@@ -87,6 +101,13 @@ class TreatmentPlan(Base, TimestampMixin):
         Index("idx_treatment_plans_patient", "patient_id"),
         Index("idx_treatment_plans_status", "clinic_id", "status"),
         Index("idx_treatment_plans_budget", "budget_id"),
+        # Tab "Cerrados" of the pipeline filters by closed_at desc.
+        Index(
+            "idx_treatment_plans_clinic_status_closed",
+            "clinic_id",
+            "status",
+            "closed_at",
+        ),
     )
 
 

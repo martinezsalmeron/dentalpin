@@ -12,6 +12,12 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { TreatmentPlanDetail } from '~~/app/types'
 
+import ConfirmPlanModal from './modals/ConfirmPlanModal.vue'
+import ReopenPlanModal from './modals/ReopenPlanModal.vue'
+import ClosePlanModal from './modals/ClosePlanModal.vue'
+import ReactivatePlanModal from './modals/ReactivatePlanModal.vue'
+import ContactLogModal from './modals/ContactLogModal.vue'
+
 const props = withDefaults(defineProps<{
   plan: TreatmentPlanDetail
   patientId: string
@@ -24,7 +30,6 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'updated': []
-  'activate': []
   'generate-budget': []
   'schedule': []
   'cancelled': []
@@ -37,11 +42,108 @@ const {
   completeItem,
   removeItem,
   reorderItems,
-  updatePlanStatus,
-  unlockPlan,
   fetchPlan,
-  loading
+  loading,
+  confirmPlan,
+  reopenPlan,
+  closePlan,
+  reactivatePlan,
+  logContact,
 } = useTreatmentPlans()
+
+// ============================================================================
+// Workflow modals — owned by this view so any parent (standalone page,
+// patient ficha clinical tab, sidebar mini-views) gets the same flow
+// without re-wiring events.
+// ============================================================================
+
+const showConfirmModal = ref(false)
+const showReopenModal = ref(false)
+const showCloseModal = ref(false)
+const showReactivateModal = ref(false)
+const showContactLogModal = ref(false)
+const transitioning = ref(false)
+
+const planSummary = computed(() => {
+  const total = props.plan.items.reduce((acc, item) => {
+    const price = item.treatment?.price_snapshot
+    return acc + (typeof price === 'number' ? price : Number(price) || 0)
+  }, 0)
+  return {
+    number: props.plan.plan_number,
+    count: props.plan.items.length,
+    total,
+  }
+})
+
+async function refreshPlan() {
+  await fetchPlan(props.plan.id)
+  emit('updated')
+  await nextTick()
+}
+
+async function onConfirmPlan() {
+  transitioning.value = true
+  try {
+    const result = await confirmPlan(props.plan.id)
+    if (result) {
+      showConfirmModal.value = false
+      await refreshPlan()
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onReopenPlan() {
+  transitioning.value = true
+  try {
+    const result = await reopenPlan(props.plan.id)
+    if (result) {
+      showReopenModal.value = false
+      await refreshPlan()
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onClosePlanSubmit(payload: { closure_reason: string; closure_note?: string }) {
+  transitioning.value = true
+  try {
+    const result = await closePlan(props.plan.id, payload)
+    if (result) {
+      showCloseModal.value = false
+      await refreshPlan()
+      emit('cancelled')
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onReactivatePlan() {
+  transitioning.value = true
+  try {
+    const result = await reactivatePlan(props.plan.id)
+    if (result) {
+      showReactivateModal.value = false
+      await refreshPlan()
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onLogContact(payload: { channel: string; note?: string }) {
+  transitioning.value = true
+  try {
+    const ok = await logContact(props.plan.id, payload)
+    if (ok) showContactLogModal.value = false
+  } finally {
+    transitioning.value = false
+  }
+}
 
 // Cross-module composable provided by the clinical_notes layer. Frontend
 // auto-imports resolve to that layer's implementation.
@@ -57,16 +159,11 @@ async function createTreatmentNote(treatmentId: string, body: string) {
 }
 
 // ============================================================================
-// Confirmation modal (draft → active)
-// ============================================================================
-
-const showActivateModal = ref(false)
-
-// ============================================================================
 // Lock state — a plan with a non-cancelled budget is locked for editing.
-// Modifying it would silently invalidate the budget already shown to the
-// patient, so mutations go through an explicit unlock flow that cancels the
-// budget (preserving traceability).
+// Mutations require explicit transitions: ``Reabrir`` (pending → draft) for
+// pre-acceptance edits, or ``Renegociar`` from the budget UI for an
+// already-accepted budget. The ``isLocked`` flag drives the read-only banner
+// and gates inline mutations.
 // ============================================================================
 
 const isLocked = computed(() => {
@@ -77,53 +174,24 @@ const isLocked = computed(() => {
 
 const effectiveReadonly = computed(() => props.readonly || isLocked.value)
 
-const showUnlockModal = ref(false)
-
-function openUnlockModal() {
-  showUnlockModal.value = true
-}
-
-function cancelUnlock() {
-  showUnlockModal.value = false
-}
-
-async function confirmUnlock() {
-  showUnlockModal.value = false
-  const result = await unlockPlan(props.plan.id)
-  if (result) {
-    // Refresh the plan so UI reflects the cancelled budget and unlocked state.
-    await fetchPlan(props.plan.id)
-    emit('updated')
-  }
-}
-
 // ============================================================================
-// Cancel plan — terminal transition from draft/active. Locked plans must
-// unlock first (explicit two-step: prevents silent budget orphaning).
+// Cancel plan — delegated to the parent's ClosePlanModal. The legacy in-line
+// modal kept for status-only cancellation (without closure_reason); the new
+// flow surfaces ``request-close`` so the page collects a reason.
 // ============================================================================
-
-const showCancelModal = ref(false)
 
 const canCancelPlan = computed(() =>
   !props.readonly
-  && !isLocked.value
-  && (props.plan.status === 'draft' || props.plan.status === 'active')
+  && (
+    props.plan.status === 'draft'
+    || props.plan.status === 'active'
+    || props.plan.status === 'pending'
+  )
 )
 
 function openCancelModal() {
-  showCancelModal.value = true
-}
-
-function cancelCancel() {
-  showCancelModal.value = false
-}
-
-async function confirmCancelPlan() {
-  showCancelModal.value = false
-  const updated = await updatePlanStatus(props.plan.id, { status: 'cancelled' })
-  if (updated) {
-    emit('cancelled')
-  }
+  // Delegates to the unified ClosePlanModal owned by this view.
+  showCloseModal.value = true
 }
 
 // ============================================================================
@@ -224,7 +292,7 @@ const canGenerateBudget = computed(() => {
 type StepState = 'current' | 'complete' | 'upcoming'
 
 interface Step {
-  key: 'plan' | 'confirm' | 'billing'
+  key: 'plan' | 'confirm' | 'inProgress'
   label: string
   icon: string
   state: StepState
@@ -232,30 +300,40 @@ interface Step {
 
 const steps = computed<Step[]>(() => {
   const status = props.plan.status
-  // Completed / archived / cancelled collapse to"all done" for this chart.
-  const allDone = status === 'completed'
+  // Map the 5 backend states to the 3-step stepper:
+  //   draft     → step 1 (Planificar) current
+  //   pending   → step 2 (Confirmar)  current — awaiting patient acceptance
+  //   active    → step 3 (En curso)   current — treatment underway
+  //   completed → all complete
+  //   closed    → frozen, last reached step stays current visually
   const isDraft = status === 'draft'
+  const isPending = status === 'pending'
   const isActive = status === 'active'
+  const isCompleted = status === 'completed'
 
   return [
     {
       key: 'plan',
       label: t('clinical.plans.steps.plan'),
       icon: 'i-lucide-clipboard-list',
-      state: isDraft ? 'current' : 'complete'
+      state: isDraft ? 'current' : 'complete',
     },
     {
       key: 'confirm',
       label: t('clinical.plans.steps.confirm'),
       icon: 'i-lucide-check-circle-2',
-      state: isDraft ? 'upcoming' : (isActive ? 'complete' : (allDone ? 'complete' : 'upcoming'))
+      state: isDraft
+        ? 'upcoming'
+        : (isPending ? 'current' : 'complete'),
     },
     {
-      key: 'billing',
-      label: t('clinical.plans.steps.billingScheduling'),
-      icon: 'i-lucide-file-plus',
-      state: isActive ? 'current' : (allDone ? 'complete' : 'upcoming')
-    }
+      key: 'inProgress',
+      label: t('clinical.plans.steps.inProgress'),
+      icon: 'i-lucide-stethoscope',
+      state: isActive
+        ? 'current'
+        : (isCompleted ? 'complete' : 'upcoming'),
+    },
   ]
 })
 
@@ -296,19 +374,14 @@ async function handleReorder(itemIds: string[]) {
   emit('updated')
 }
 
+// The legacy "Activate plan" CTA used to fire ``update_status`` with
+// ``status='active'`` — an invalid transition under the new state
+// machine (must go through ``pending``). Both the in-page CTA and
+// this open handler now delegate to the page-level ConfirmPlanModal
+// via the ``request-confirm`` event.
 function openActivateModal() {
-  showActivateModal.value = true
-}
-
-async function confirmActivate() {
-  showActivateModal.value = false
-  await updatePlanStatus(props.plan.id, { status: 'active' })
-  emit('updated')
-  emit('activate')
-}
-
-function cancelActivate() {
-  showActivateModal.value = false
+  // Big body CTA + any other "confirm plan" entry point.
+  showConfirmModal.value = true
 }
 
 function handleGenerateBudget() {
@@ -380,17 +453,6 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
         class="plan-header-actions"
       >
         <UButton
-          v-if="isLocked"
-          variant="soft"
-          size="sm"
-          color="warning"
-          icon="i-lucide-unlock"
-          :loading="loading"
-          @click="openUnlockModal"
-        >
-          {{ t('clinical.plans.modifyPlan') }}
-        </UButton>
-        <UButton
           v-if="canGenerateBudget"
           variant="soft"
           size="sm"
@@ -431,6 +493,30 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           :title="t('clinical.plans.ghostHint')"
         >
           {{ t('treatmentPlans.scheduleAppointment') }}
+        </UButton>
+
+        <!-- Workflow transitions for plans past draft. The big CTA in
+             the body owns the draft → pending action so it's not
+             duplicated up here. -->
+        <UButton
+          v-if="plan.status === 'pending'"
+          variant="soft"
+          color="warning"
+          size="sm"
+          icon="i-lucide-undo-2"
+          @click="showReopenModal = true"
+        >
+          {{ t('treatmentPlans.actions.reopen') }}
+        </UButton>
+        <UButton
+          v-if="plan.status === 'closed'"
+          variant="solid"
+          color="primary"
+          size="sm"
+          icon="i-lucide-rotate-ccw"
+          @click="showReactivateModal = true"
+        >
+          {{ t('treatmentPlans.actions.reactivate') }}
         </UButton>
 
         <UDropdownMenu
@@ -604,172 +690,49 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
       </div>
     </div>
 
-    <!-- Cancel plan confirmation modal -->
-    <UModal v-model:open="showCancelModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[var(--color-danger-soft)] flex items-center justify-center">
-                <UIcon
-                  name="i-lucide-ban"
-                  class="w-5 h-5 text-danger-accent"
-                />
-              </div>
-              <h3 class="text-h2 text-default">
-                {{ t('treatmentPlans.confirmations.cancelTitle') }}
-              </h3>
-            </div>
-          </template>
+    <!-- Workflow modals (PR1/PR2) — owned by this view so any parent
+         (standalone page, patient ficha) gets the same flow. -->
+    <ConfirmPlanModal
+      :open="showConfirmModal"
+      :plan-number="planSummary.number"
+      :item-count="planSummary.count"
+      :total-estimated="planSummary.total"
+      :loading="transitioning"
+      @update:open="(v) => (showConfirmModal = v)"
+      @confirm="onConfirmPlan"
+      @cancel="showConfirmModal = false"
+    />
+    <ReopenPlanModal
+      :open="showReopenModal"
+      :loading="transitioning"
+      @update:open="(v) => (showReopenModal = v)"
+      @confirm="onReopenPlan"
+      @cancel="showReopenModal = false"
+    />
+    <ClosePlanModal
+      :open="showCloseModal"
+      :loading="transitioning"
+      @update:open="(v) => (showCloseModal = v)"
+      @confirm="onClosePlanSubmit"
+      @cancel="showCloseModal = false"
+    />
+    <ReactivatePlanModal
+      :open="showReactivateModal"
+      :loading="transitioning"
+      :closed-at="plan.closed_at ?? null"
+      :previous-reason="plan.closure_reason ?? null"
+      @update:open="(v) => (showReactivateModal = v)"
+      @confirm="onReactivatePlan"
+      @cancel="showReactivateModal = false"
+    />
+    <ContactLogModal
+      :open="showContactLogModal"
+      :loading="transitioning"
+      @update:open="(v) => (showContactLogModal = v)"
+      @confirm="onLogContact"
+      @cancel="showContactLogModal = false"
+    />
 
-          <p class="text-body text-muted">
-            {{ t('treatmentPlans.confirmations.cancelDescription') }}
-          </p>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                @click="cancelCancel"
-              >
-                {{ t('actions.cancel') }}
-              </UButton>
-              <UButton
-                color="error"
-                icon="i-lucide-ban"
-                :loading="loading"
-                @click="confirmCancelPlan"
-              >
-                {{ t('treatmentPlans.actions.cancelPlan') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
-
-    <!-- Unlock confirmation modal — lists concrete consequences of modifying -->
-    <UModal v-model:open="showUnlockModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[var(--color-warning-soft)] flex items-center justify-center">
-                <UIcon
-                  name="i-lucide-alert-triangle"
-                  class="w-5 h-5 text-warning-accent"
-                />
-              </div>
-              <h3 class="text-h2 text-default">
-                {{ t('treatmentPlans.confirmations.unlockTitle') }}
-              </h3>
-            </div>
-          </template>
-
-          <div class="space-y-3">
-            <p class="text-body text-muted">
-              {{ t('treatmentPlans.confirmations.unlockIntro', { number: plan.budget?.budget_number || '' }) }}
-            </p>
-            <ul class="unlock-consequences">
-              <li>
-                <UIcon
-                  name="i-lucide-x-circle"
-                  class="w-4 h-4 text-danger-accent shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence1') }}</span>
-              </li>
-              <li>
-                <UIcon
-                  name="i-lucide-edit-3"
-                  class="w-4 h-4 text-warning-accent shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence2') }}</span>
-              </li>
-              <li>
-                <UIcon
-                  name="i-lucide-file-plus"
-                  class="w-4 h-4 text-info-accent shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence3') }}</span>
-              </li>
-              <li>
-                <UIcon
-                  name="i-lucide-history"
-                  class="w-4 h-4 text-subtle shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence4') }}</span>
-              </li>
-            </ul>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                @click="cancelUnlock"
-              >
-                {{ t('actions.cancel') }}
-              </UButton>
-              <UButton
-                color="warning"
-                icon="i-lucide-unlock"
-                :loading="loading"
-                @click="confirmUnlock"
-              >
-                {{ t('treatmentPlans.actions.unlockConfirm') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
-
-    <!-- Activation confirmation modal -->
-    <UModal v-model:open="showActivateModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[var(--color-primary-soft)] flex items-center justify-center">
-                <UIcon
-                  name="i-lucide-check-circle-2"
-                  class="w-5 h-5 text-primary-accent"
-                />
-              </div>
-              <h3 class="text-h2 text-default">
-                {{ t('treatmentPlans.confirmations.activateTitle') }}
-              </h3>
-            </div>
-          </template>
-
-          <p class="text-body text-muted">
-            {{ t('treatmentPlans.confirmations.activateDescription') }}
-          </p>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                @click="cancelActivate"
-              >
-                {{ t('actions.cancel') }}
-              </UButton>
-              <UButton
-                color="primary"
-                icon="i-lucide-check-circle-2"
-                :loading="loading"
-                @click="confirmActivate"
-              >
-                {{ t('treatmentPlans.actions.confirm') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
   </div>
 </template>
 
@@ -984,34 +947,4 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
   opacity: 0.85;
 }
 
-/* Unlock consequences list */
-.unlock-consequences {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  list-style: none;
-  padding: 10px 12px;
-  margin: 0;
-  background: #F8FAFC;
-  border-radius: 8px;
-  border: 1px solid #E2E8F0;
-}
-
-:root.dark .unlock-consequences {
-  background: rgba(148, 163, 184, 0.08);
-  border-color: rgba(148, 163, 184, 0.2);
-}
-
-.unlock-consequences li {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #334155;
-}
-
-:root.dark .unlock-consequences li {
-  color: #CBD5E1;
-}
 </style>

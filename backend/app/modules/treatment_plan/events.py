@@ -88,48 +88,85 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
 
 
 async def on_budget_accepted(data: dict[str, Any]) -> None:
-    """Handle budget accepted event.
+    """Activate the linked plan when its budget is accepted.
 
-    When a budget is accepted, activate the linked treatment plan if in draft.
+    Idempotent: ``TreatmentPlanService.accept_from_budget`` is a no-op
+    when the plan is already active. The plan_id is read from the
+    snapshot payload so we never need to query treatment_plan from a
+    different module's perspective.
     """
     budget_id = data.get("budget_id")
     clinic_id = data.get("clinic_id")
+    plan_id = data.get("plan_id")
 
     if not budget_id or not clinic_id:
         logger.warning("on_budget_accepted: missing budget_id or clinic_id")
         return
+    if not plan_id:
+        # Nothing to activate (orphan budget).
+        return
+
+    from .service import TreatmentPlanService
 
     async with async_session_maker() as db:
         try:
-            # Find plan linked to this budget
-            result = await db.execute(
-                select(TreatmentPlan).where(
-                    TreatmentPlan.budget_id == UUID(budget_id),
-                    TreatmentPlan.clinic_id == UUID(clinic_id),
-                )
+            await TreatmentPlanService.accept_from_budget(
+                db, UUID(clinic_id), UUID(plan_id)
             )
-            plan = result.scalar_one_or_none()
-
-            if plan and plan.status == "draft":
-                old_status = plan.status
-                plan.status = "active"
-
-                event_bus.publish(
-                    "treatment_plan.status_changed",
-                    {
-                        "plan_id": str(plan.id),
-                        "old_status": old_status,
-                        "new_status": "active",
-                        "clinic_id": clinic_id,
-                        "triggered_by": "budget_accepted",
-                    },
-                )
-
-                await db.commit()
-                logger.info(f"Activated treatment plan {plan.id} after budget acceptance")
-
+            await db.commit()
         except Exception as e:
             logger.error(f"Error processing budget acceptance: {e}", exc_info=True)
+            await db.rollback()
+
+
+async def on_budget_rejected(data: dict[str, Any]) -> None:
+    """Close the linked plan with ``rejected_by_patient`` when the
+    patient rejects the budget. Idempotent.
+    """
+    clinic_id = data.get("clinic_id")
+    plan_id = data.get("plan_id")
+    note = data.get("rejection_note")
+
+    if not clinic_id or not plan_id:
+        return
+
+    from .service import TreatmentPlanService
+
+    async with async_session_maker() as db:
+        try:
+            await TreatmentPlanService.reject_from_budget(
+                db, UUID(clinic_id), UUID(plan_id), rejection_note=note
+            )
+            await db.commit()
+        except Exception as e:
+            logger.error(f"Error processing budget rejection: {e}", exc_info=True)
+            await db.rollback()
+
+
+async def on_budget_renegotiated(data: dict[str, Any]) -> None:
+    """Reopen the linked plan back to ``draft`` when reception
+    cancels a sent budget for renegotiation. The budget itself is
+    already cancelled by the publisher; this handler skips the cancel
+    branch in ``reopen``.
+    """
+    clinic_id = data.get("clinic_id")
+    plan_id = data.get("plan_id")
+
+    if not clinic_id or not plan_id:
+        return
+
+    from .service import TreatmentPlanService
+
+    async with async_session_maker() as db:
+        try:
+            plan = await TreatmentPlanService.get(db, UUID(clinic_id), UUID(plan_id))
+            if plan and plan.status == "pending":
+                await TreatmentPlanService.reopen(
+                    db, UUID(clinic_id), UUID(plan_id), plan.created_by
+                )
+                await db.commit()
+        except Exception as e:
+            logger.error(f"Error processing budget renegotiation: {e}", exc_info=True)
             await db.rollback()
 
 

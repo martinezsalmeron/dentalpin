@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { BudgetItem, InvoiceListItem, PaginatedResponse, SignatureCreate } from '~~/app/types'
+import PublicBudgetLinkCard from '../../components/budget/PublicBudgetLinkCard.vue'
+import BudgetSignatureCard from '../../components/budget/BudgetSignatureCard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,14 +21,12 @@ const {
   acceptBudget,
   rejectBudget,
   cancelBudget,
-  completeBudget,
   duplicateBudget,
   downloadPDF,
   canEdit,
   canSend,
   canAccept,
-  canCancel,
-  canComplete
+  canCancel
 } = useBudgets()
 
 const hasActiveInvoice = ref(false)
@@ -91,6 +91,8 @@ onMounted(() => {
 const isAddItemModalOpen = ref(false)
 const isSignatureModalOpen = ref(false)
 const isSendModalOpen = ref(false)
+const isShareLinkModalOpen = ref(false)
+const isSignatureViewModalOpen = ref(false)
 const signatureAction = ref<'accept' | 'reject'>('accept')
 
 // Send form
@@ -287,26 +289,6 @@ function resetSendForm() {
   sendForm.custom_message = ''
 }
 
-async function handleComplete() {
-  if (!currentBudget.value) return
-
-  try {
-    await completeBudget(currentBudget.value.id)
-    toast.add({
-      title: t('common.success'),
-      description: t('budget.messages.completed'),
-      color: 'success'
-    })
-    await loadBudget()
-  } catch {
-    toast.add({
-      title: t('common.error'),
-      description: t('budget.errors.update'),
-      color: 'error'
-    })
-  }
-}
-
 async function handleDuplicate() {
   if (!currentBudget.value) return
 
@@ -445,6 +427,28 @@ function getItemName(item: BudgetItem): string {
               {{ t('budget.actions.send') }}
             </UButton>
 
+            <UButton
+              v-if="currentBudget.public_token && ['sent', 'accepted', 'rejected', 'expired'].includes(currentBudget.status)"
+              color="primary"
+              variant="soft"
+              icon="i-lucide-share-2"
+              size="sm"
+              @click="isShareLinkModalOpen = true"
+            >
+              {{ t('budget.publicLink.action') }}
+            </UButton>
+
+            <UButton
+              v-if="['accepted', 'completed'].includes(currentBudget.status)"
+              color="primary"
+              variant="soft"
+              icon="i-lucide-pen-tool"
+              size="sm"
+              @click="isSignatureViewModalOpen = true"
+            >
+              {{ t('budget.signature.viewAction') }}
+            </UButton>
+
             <template v-if="canAccept(currentBudget) && can('budget.write')">
               <UButton
                 color="error"
@@ -473,17 +477,6 @@ function getItemName(item: BudgetItem): string {
               @click="goToCreateInvoice"
             >
               {{ t('invoice.createFromBudget') }}
-            </UButton>
-
-            <UButton
-              v-if="canComplete(currentBudget) && can('budget.write')"
-              color="success"
-              variant="outline"
-              icon="i-lucide-check-circle"
-              size="sm"
-              @click="handleComplete"
-            >
-              {{ t('budget.actions.complete') }}
             </UButton>
 
             <!-- Secondary actions in dropdown -->
@@ -791,6 +784,7 @@ function getItemName(item: BudgetItem): string {
               </div>
             </div>
           </UCard>
+
         </div>
       </div>
     </template>
@@ -961,6 +955,36 @@ function getItemName(item: BudgetItem): string {
             </div>
           </template>
         </UCard>
+      </template>
+    </UModal>
+
+    <!-- View signature modal -->
+    <UModal v-model:open="isSignatureViewModalOpen">
+      <template #content>
+        <div class="p-1">
+          <BudgetSignatureCard
+            v-if="currentBudget && ['accepted', 'completed'].includes(currentBudget.status)"
+            :budget-id="currentBudget.id"
+            :budget-status="currentBudget.status"
+            :locale="locale"
+          />
+        </div>
+      </template>
+    </UModal>
+
+    <!-- Share public link modal -->
+    <UModal v-model:open="isShareLinkModalOpen">
+      <template #content>
+        <div class="p-1">
+          <PublicBudgetLinkCard
+            v-if="currentBudget?.public_token"
+            :token="currentBudget.public_token"
+            :status="currentBudget.status"
+            :patient-phone="currentBudget.patient?.phone"
+            :patient-first-name="currentBudget.patient?.first_name"
+            :budget-number="currentBudget.budget_number"
+          />
+        </div>
       </template>
     </UModal>
   </div>

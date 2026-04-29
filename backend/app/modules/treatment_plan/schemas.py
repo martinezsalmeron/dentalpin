@@ -1,6 +1,6 @@
 """Treatment plan module Pydantic schemas."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -110,7 +110,69 @@ class TreatmentPlanUpdate(BaseModel):
 class TreatmentPlanStatusUpdate(BaseModel):
     """Change plan status."""
 
-    status: str = Field(..., pattern="^(draft|active|completed|archived|cancelled)$")
+    status: str = Field(..., pattern="^(draft|pending|active|completed|archived|closed)$")
+
+
+class ClosePlanRequest(BaseModel):
+    """Body for ``POST /treatment-plans/{id}/close``."""
+
+    closure_reason: str = Field(
+        ...,
+        pattern=(
+            "^(rejected_by_patient|expired|cancelled_by_clinic|"
+            "patient_abandoned|other)$"
+        ),
+    )
+    closure_note: str | None = Field(default=None, max_length=2000)
+
+
+class ContactLogRequest(BaseModel):
+    """Body for ``POST /treatment-plans/{id}/contact-log``.
+
+    Records a non-state-changing reception touchpoint with the patient
+    so the bandeja can sort by ``last_contact``.
+    """
+
+    channel: str = Field(..., pattern="^(call|whatsapp|email|in_person|other)$")
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class PipelineBudgetBrief(BaseModel):
+    """Budget metadata embedded in a pipeline row."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: str
+    total: float | None = None
+    valid_until: date | None = None
+    last_reminder_sent_at: datetime | None = None
+    viewed_at: datetime | None = None
+
+
+class PipelineNextAppointment(BaseModel):
+    """Compact representation of the next scheduled appointment."""
+
+    id: UUID
+    start_at: datetime
+    cabinet_id: UUID | None = None
+    professional_id: UUID | None = None
+
+
+class PipelineRow(BaseModel):
+    """One row in the bandeja de planes (``GET /pipeline``)."""
+
+    plan_id: UUID
+    plan_number: str
+    plan_title: str | None = None
+    plan_status: str
+    days_in_status: int
+    closure_reason: str | None = None
+    items_total: int
+    items_completed: int
+    patient: PatientBrief
+    budget: PipelineBudgetBrief | None = None
+    next_appointment: PipelineNextAppointment | None = None
 
 
 class TreatmentPlanResponse(BaseModel):

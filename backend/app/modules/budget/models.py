@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     Float,
@@ -91,6 +92,64 @@ class Budget(Base, TimestampMixin):
     insurance_estimate: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2), default=None
     )  # Reserved for insurance module
+
+    # Acceptance / rejection metadata --------------------------------------
+    # ``remote_link`` (patient via public link) | ``in_clinic`` (reception
+    # captured the acceptance with optional tablet signature) | ``manual``
+    # (legacy or pre-public-link records).
+    accepted_via: Mapped[str | None] = mapped_column(String(20), default=None)
+    # When the patient rejects from the public link the rejection_reason
+    # is one of the closed-list keys (price/time/second_opinion/other) and
+    # rejection_note carries the optional free-text comment.
+    rejection_reason: Mapped[str | None] = mapped_column(String(50), default=None)
+    rejection_note: Mapped[str | None] = mapped_column(Text, default=None)
+
+    # Public link metadata (see ADR 0006) ---------------------------------
+    # ``public_token`` is the UUID embedded in the patient-facing link.
+    # Generated when the budget is created; never recycled. A new token is
+    # minted on resend (clone to v+1).
+    public_token: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), default=uuid4, unique=True, index=True
+    )
+    # First time the public link was opened (for "viewed but not
+    # responded" inbox markers). Idempotent.
+    viewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    # Last automatic reminder dispatched (7d / 14d milestones).
+    last_reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    # Auth method resolved at send-time. ``phone_last4`` (default when the
+    # patient record has phone digits) | ``dob`` (fallback when phone is
+    # missing) | ``manual_code`` (last resort: reception sets a code,
+    # communicated verbally). ``none`` only for clinics that opt-in via
+    # ``clinic.settings.budget_public_auth_disabled``.
+    public_auth_method: Mapped[str] = mapped_column(String(20), default="phone_last4")
+    # Hashed code (bcrypt/argon2) for ``public_auth_method=manual_code``.
+    # Nullable for the other methods (verification reads from Patient).
+    public_auth_secret_hash: Mapped[str | None] = mapped_column(
+        String(255), default=None
+    )
+    # Set when the budget exceeds the lockout threshold (10 failed
+    # verification attempts). Token becomes inert until reception
+    # reissues. See ``BudgetAccessLog``.
+    public_locked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+
+    # Plan snapshots ------------------------------------------------------
+    # Read-only denormalized fields populated when the budget is created
+    # from a treatment plan. Let endpoints that live in the budget module
+    # render plan context without importing ``treatment_plan`` models.
+    # Real-time plan state lives in the treatment_plan module — query
+    # that module for live status. See ADR 0003.
+    plan_number_snapshot: Mapped[str | None] = mapped_column(
+        String(50), default=None
+    )
+    plan_status_snapshot: Mapped[str | None] = mapped_column(
+        String(20), default=None
+    )
 
     # Soft delete
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
@@ -308,4 +367,38 @@ class BudgetHistory(Base):
         Index("idx_budget_history_budget", "budget_id"),
         Index("idx_budget_history_clinic", "clinic_id"),
         Index("idx_budget_history_changed_at", "changed_at"),
+    )
+
+
+class BudgetAccessLog(Base):
+    """Audit row per public-link verification attempt.
+
+    Captures both successful and failed verification attempts of the
+    patient-facing public link (see ADR 0006). Powers the rate-limit
+    and lockout policy:
+
+    - 5 failed attempts in 15 minutes per token → 429 (transient).
+    - 10 total failed attempts → ``Budget.public_locked_at`` set →
+      token becomes inert; reception must reissue.
+
+    A daily cron purges rows older than 90 days (retention policy).
+    """
+
+    __tablename__ = "budget_access_logs"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    budget_id: Mapped[UUID] = mapped_column(
+        ForeignKey("budgets.id", ondelete="CASCADE"), index=True
+    )
+    attempted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now()
+    )
+    # SHA-256 of the requester IP (privacy-preserving — we don't store
+    # the raw IP). Same client → same hash, so rate-limit windows work.
+    ip_hash: Mapped[str] = mapped_column(String(64))
+    success: Mapped[bool] = mapped_column(Boolean)
+    method_attempted: Mapped[str] = mapped_column(String(20))
+
+    __table_args__ = (
+        Index("idx_budget_access_logs_budget_attempted", "budget_id", "attempted_at"),
     )

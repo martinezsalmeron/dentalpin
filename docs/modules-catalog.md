@@ -12,18 +12,18 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 |--------|---------|----------|---------|---------|-----------|-------------|-------|----------|----------|
 | `agenda` | 0.4.0 | official | patients, catalog | auto | no | 4 | 5 | 0 | yes |
 | `billing` | 0.1.0 | official | patients, catalog, budget | auto | no | 3 | 3 | 1 | yes |
-| `budget` | 0.1.0 | official | patients, catalog | auto | no | 3 | 2 | 4 | yes |
+| `budget` | 0.1.0 | official | patients, catalog, odontogram | auto | no | 5 | 7 | 4 | yes |
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 0 | yes |
 | `clinical_notes` | 0.1.0 | official | patients, odontogram, treatment_plan, media | auto | no | 2 | 0 | 0 | yes |
 | `media` | 0.1.0 | official | patients | auto | no | 2 | 2 | 1 | yes |
 | `notifications` | 0.1.0 | official | patients, agenda, budget, billing | auto | no | 8 | 0 | 6 | yes |
 | `odontogram` | 0.3.0 | official | patients, catalog | auto | no | 4 | 4 | 0 | yes |
-| `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 24 | yes |
+| `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 32 | yes |
 | `patients` | 0.1.0 | official | — | auto | no | 2 | 3 | 0 | yes |
 | `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 2 | 0 | yes |
 | `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
-| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 2 | 13 | 3 | yes |
+| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 21 | 5 | yes |
 | `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 1 | 1 | yes |
 
 ## Modules
@@ -82,15 +82,22 @@ Dental treatment quotes, versioning, signatures.
 - **License:** BSL-1.1
 - **Category:** official
 - **Install policy:** installable=True · auto_install=True · removable=False
-- **Depends:** `patients`, `catalog`
+- **Depends:** `patients`, `catalog`, `odontogram`
 - **Frontend layer:** `frontend`
 - **Permissions:**
+  - `budget.accept_in_clinic`
   - `budget.admin`
   - `budget.read`
+  - `budget.renegotiate`
   - `budget.write`
 - **Events emitted:**
   - `budget.accepted`
+  - `budget.expired`
+  - `budget.rejected`
+  - `budget.reminder_sent`
+  - `budget.renegotiated`
   - `budget.sent`
+  - `budget.viewed`
 - **Events consumed:**
   - `odontogram.treatment.performed`
   - `treatment_plan.budget_sync_requested`
@@ -228,7 +235,12 @@ Patient timeline — unified activity log.
   - `appointment.no_show`
   - `appointment.scheduled`
   - `budget.accepted`
+  - `budget.expired`
+  - `budget.rejected`
+  - `budget.reminder_sent`
+  - `budget.renegotiated`
   - `budget.sent`
+  - `budget.viewed`
   - `clinical_notes.administrative_created`
   - `clinical_notes.diagnosis_created`
   - `clinical_notes.plan_created`
@@ -240,8 +252,11 @@ Patient timeline — unified activity log.
   - `invoice.paid`
   - `odontogram.treatment.performed`
   - `patient.medical_updated`
+  - `treatment_plan.closed`
+  - `treatment_plan.confirmed`
   - `treatment_plan.created`
   - `treatment_plan.item_completed_without_note`
+  - `treatment_plan.reactivated`
   - `treatment_plan.treatment_completed`
 - **Module CLAUDE.md:** [`backend/app/modules/patient_timeline/CLAUDE.md`](../backend/app/modules/patient_timeline/CLAUDE.md)
 
@@ -340,21 +355,28 @@ Patient treatment plans with budget + odontogram sync.
 - **Depends:** `patients`, `agenda`, `odontogram`, `catalog`, `budget`, `media`
 - **Frontend layer:** `frontend`
 - **Permissions:**
+  - `treatment_plan.plans.close`
+  - `treatment_plan.plans.confirm`
+  - `treatment_plan.plans.reactivate`
   - `treatment_plan.plans.read`
   - `treatment_plan.plans.write`
 - **Events emitted:**
   - `treatment_plan.budget_sync_requested`
+  - `treatment_plan.closed`
+  - `treatment_plan.confirmed`
   - `treatment_plan.created`
   - `treatment_plan.item_completed_without_note`
   - `treatment_plan.items_reordered`
+  - `treatment_plan.reactivated`
   - `treatment_plan.status_changed`
   - `treatment_plan.treatment_added`
   - `treatment_plan.treatment_completed`
   - `treatment_plan.treatment_removed`
-  - `treatment_plan.unlocked`
 - **Events consumed:**
   - `appointment.completed`
   - `budget.accepted`
+  - `budget.rejected`
+  - `budget.renegotiated`
   - `odontogram.treatment.performed`
 - **Module CLAUDE.md:** [`backend/app/modules/treatment_plan/CLAUDE.md`](../backend/app/modules/treatment_plan/CLAUDE.md)
 

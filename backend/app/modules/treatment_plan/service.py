@@ -28,6 +28,34 @@ def _treatment_loader() -> selectinload:
     )
 
 
+# Allowed status transitions for ``TreatmentPlan``. See ADR 0006 and
+# docs/workflows/plan-budget-flow-tech-plan.md §3.1 for the model.
+#
+#   draft     ──confirm──► pending ──accept──► active ──complete──► completed
+#                            │                    │
+#                            │ rejected/expired   │ cancelled by clinic
+#                            ▼                    ▼
+#                                       closed (closure_reason)
+#                                          │
+#                                          └── reactivate ──► draft
+VALID_PLAN_TRANSITIONS: dict[str, set[str]] = {
+    "draft": {"pending", "closed"},
+    "pending": {"active", "draft", "closed"},
+    "active": {"completed", "closed"},
+    "completed": {"archived"},
+    "closed": {"draft"},
+    "archived": set(),
+}
+
+VALID_CLOSURE_REASONS: set[str] = {
+    "rejected_by_patient",
+    "expired",
+    "cancelled_by_clinic",
+    "patient_abandoned",
+    "other",
+}
+
+
 class PlanLockedError(ValueError):
     """Raised when a mutation is attempted on a plan locked by an active budget."""
 
@@ -239,16 +267,7 @@ class TreatmentPlanService:
         if old_status == new_status:
             return plan
 
-        # Validate status transitions
-        valid_transitions = {
-            "draft": ["active", "cancelled"],
-            "active": ["completed", "cancelled"],
-            "completed": ["archived"],
-            "cancelled": ["draft"],  # Can reopen
-            "archived": [],  # Terminal state
-        }
-
-        if new_status not in valid_transitions.get(old_status, []):
+        if new_status not in VALID_PLAN_TRANSITIONS.get(old_status, set()):
             raise ValueError(f"Invalid status transition from {old_status} to {new_status}")
 
         # Cannot activate plan without items
@@ -259,7 +278,7 @@ class TreatmentPlanService:
 
         # Terminal transitions drop the plan's hold on its planned Treatments — clean
         # up any that become orphaned so the odontogram reflects reality.
-        if new_status in ("cancelled", "archived"):
+        if new_status in ("closed", "archived"):
             await TreatmentPlanService._cleanup_orphan_planned_treatments(
                 db, clinic_id, plan, user_id
             )
@@ -411,6 +430,11 @@ class TreatmentPlanService:
         )
         item = reloaded.scalar_one()
 
+        # Snapshot payload — see ADR 0003. The budget module subscribes
+        # without importing treatment_plan/odontogram models.
+        treatment = item.treatment
+        primary_tooth = treatment.teeth[0].tooth_number if treatment and treatment.teeth else None
+        primary_surfaces = treatment.teeth[0].surfaces if treatment and treatment.teeth else None
         event_bus.publish(
             "treatment_plan.treatment_added",
             {
@@ -419,6 +443,19 @@ class TreatmentPlanService:
                 "treatment_id": str(treatment_id),
                 "clinic_id": str(clinic_id),
                 "patient_id": str(plan.patient_id),
+                "budget_id": str(plan.budget_id) if plan.budget_id else None,
+                "catalog_item_id": (
+                    str(treatment.catalog_item_id)
+                    if treatment and treatment.catalog_item_id
+                    else None
+                ),
+                "tooth_number": primary_tooth,
+                "surfaces": primary_surfaces,
+                "unit_price": (
+                    str(treatment.price_snapshot)
+                    if treatment and treatment.price_snapshot is not None
+                    else None
+                ),
             },
         )
 
@@ -574,6 +611,8 @@ class TreatmentPlanService:
 
                 await TreatmentService.delete(db, clinic_id, treatment_id, user_id)
 
+        # Snapshot payload — budget needs ``budget_id`` to find the
+        # matching line without importing treatment_plan models.
         event_bus.publish(
             "treatment_plan.treatment_removed",
             {
@@ -581,6 +620,7 @@ class TreatmentPlanService:
                 "item_id": str(item_id),
                 "treatment_id": str(treatment_id),
                 "clinic_id": str(clinic_id),
+                "budget_id": str(plan.budget_id) if plan.budget_id else None,
             },
         )
 
@@ -748,55 +788,6 @@ class TreatmentPlanService:
 
         return plan
 
-    @staticmethod
-    async def unlock(
-        db: AsyncSession,
-        clinic_id: UUID,
-        plan_id: UUID,
-        user_id: UUID,
-    ) -> TreatmentPlan | None:
-        """Unlock a plan by cancelling its linked budget.
-
-        Used when the clinician needs to modify a plan that already has a
-        budget issued to the patient. The budget transitions to `cancelled`
-        (preserving history for traceability) and the plan becomes mutable
-        again. A new budget can be generated afterwards.
-        """
-        from app.modules.budget.models import Budget
-        from app.modules.budget.workflow import BudgetWorkflowError, BudgetWorkflowService
-
-        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
-        if not plan:
-            return None
-
-        if not plan.budget_id:
-            raise ValueError("Plan has no budget to unlock")
-
-        budget = await db.get(Budget, plan.budget_id)
-        if not budget or budget.clinic_id != clinic_id:
-            raise ValueError("Linked budget not found")
-
-        if budget.status == "cancelled":
-            return plan
-
-        try:
-            await BudgetWorkflowService.cancel_budget(
-                db, budget, user_id, reason="Plan unlocked for modification"
-            )
-        except BudgetWorkflowError as e:
-            raise ValueError(str(e)) from e
-
-        event_bus.publish(
-            "treatment_plan.unlocked",
-            {
-                "plan_id": str(plan_id),
-                "budget_id": str(budget.id),
-                "clinic_id": str(clinic_id),
-                "user_id": str(user_id),
-            },
-        )
-
-        return plan
 
     @staticmethod
     async def request_budget_sync(
@@ -804,10 +795,47 @@ class TreatmentPlanService:
         clinic_id: UUID,
         plan_id: UUID,
     ) -> bool:
-        """Request budget module to sync items."""
+        """Request budget module to sync items.
+
+        Builds a denormalized items snapshot so the budget handler can
+        reconcile without importing treatment_plan / odontogram models
+        (ADR 0003).
+        """
         plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
         if not plan or not plan.budget_id:
             return False
+
+        plan_items = await db.execute(
+            select(PlannedTreatmentItem)
+            .options(
+                selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
+            )
+            .where(
+                PlannedTreatmentItem.treatment_plan_id == plan_id,
+                PlannedTreatmentItem.clinic_id == clinic_id,
+            )
+        )
+        items_payload = []
+        for plan_item in plan_items.scalars().all():
+            treatment = plan_item.treatment
+            if not treatment or not treatment.catalog_item_id:
+                continue
+            primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
+            primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
+            items_payload.append(
+                {
+                    "item_id": str(plan_item.id),
+                    "treatment_id": str(treatment.id),
+                    "catalog_item_id": str(treatment.catalog_item_id),
+                    "tooth_number": primary_tooth,
+                    "surfaces": primary_surfaces,
+                    "unit_price": (
+                        str(treatment.price_snapshot)
+                        if treatment.price_snapshot is not None
+                        else None
+                    ),
+                }
+            )
 
         event_bus.publish(
             "treatment_plan.budget_sync_requested",
@@ -815,10 +843,609 @@ class TreatmentPlanService:
                 "plan_id": str(plan_id),
                 "budget_id": str(plan.budget_id),
                 "clinic_id": str(clinic_id),
+                "items": items_payload,
             },
         )
 
         return True
+
+    # -------------------------------------------------------------------------
+    # Bandeja de planes (cross-module pipeline view)
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    async def list_pipeline(
+        db: AsyncSession,
+        clinic_id: UUID,
+        tab: str,
+        page: int = 1,
+        page_size: int = 20,
+        doctor_id: UUID | None = None,
+        search: str | None = None,
+    ) -> tuple[list[dict], int]:
+        """Pipeline bandeja query — joins plans + budgets + appointments.
+
+        Returns ``(rows, total)`` with rows shaped as ``PipelineRow``
+        dicts ready to be returned by FastAPI. The query is implemented
+        with raw SQL because the JOIN spans three modules
+        (treatment_plan + budget + agenda) and `treatment_plan`'s
+        manifest declares the dependency on both. Splitting into ORM
+        round-trips would be N+1; doing it in one statement is fastest
+        and pageable.
+        """
+        from sqlalchemy import text as sa_text
+
+        # ----- per-tab WHERE clause ------------------------------------
+        # Five tabs documented in docs/workflows/plan-budget-flow.md §5.
+        if tab == "por_presupuestar":
+            tab_where = "p.status = 'pending' AND b.status = 'draft'"
+            order_by = "COALESCE(p.confirmed_at, p.created_at) DESC"
+        elif tab == "esperando_paciente":
+            tab_where = "p.status = 'pending' AND b.status IN ('sent', 'expired')"
+            order_by = "COALESCE(p.confirmed_at, p.created_at) ASC"  # oldest first
+        elif tab == "sin_cita":
+            tab_where = (
+                "p.status = 'active' "
+                "AND COALESCE(appt.future_count, 0) = 0 "
+                "AND COALESCE(appt.past_count, 0) = 0"
+            )
+            order_by = "p.updated_at DESC"
+        elif tab == "sin_proxima_cita":
+            tab_where = (
+                "p.status = 'active' "
+                "AND COALESCE(appt.future_count, 0) = 0 "
+                "AND COALESCE(appt.past_count, 0) > 0 "
+                "AND COALESCE(items.pending_count, 0) > 0"
+            )
+            order_by = "appt.last_past_at DESC NULLS LAST"
+        elif tab == "cerrados":
+            tab_where = (
+                "p.status = 'closed' "
+                "AND p.closed_at >= (NOW() - INTERVAL '90 days')"
+            )
+            order_by = "p.closed_at DESC"
+        else:
+            raise ValueError(f"Unknown pipeline tab '{tab}'")
+
+        params: dict[str, object] = {"clinic_id": clinic_id}
+        extra_where = ""
+        if doctor_id is not None:
+            extra_where += " AND p.assigned_professional_id = :doctor_id"
+            params["doctor_id"] = doctor_id
+        if search:
+            extra_where += (
+                " AND (p.plan_number ILIKE :q "
+                "OR pat.first_name ILIKE :q "
+                "OR pat.last_name ILIKE :q)"
+            )
+            params["q"] = f"%{search}%"
+
+        # ----- shared SELECT --------------------------------------------
+        base_sql = f"""
+            WITH item_counts AS (
+                SELECT
+                    treatment_plan_id AS plan_id,
+                    COUNT(*) AS total_count,
+                    COUNT(*) FILTER (WHERE status = 'completed') AS completed_count,
+                    COUNT(*) FILTER (WHERE status = 'pending') AS pending_count
+                FROM planned_treatment_items
+                WHERE clinic_id = :clinic_id
+                GROUP BY treatment_plan_id
+            ),
+            plan_appts AS (
+                SELECT
+                    pti.treatment_plan_id AS plan_id,
+                    COUNT(*) FILTER (
+                        WHERE a.start_time >= NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS future_count,
+                    COUNT(*) FILTER (
+                        WHERE a.start_time < NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS past_count,
+                    MAX(a.start_time) FILTER (
+                        WHERE a.start_time < NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS last_past_at,
+                    MIN(a.start_time) FILTER (
+                        WHERE a.start_time >= NOW()
+                          AND a.status NOT IN ('cancelled', 'no_show')
+                    ) AS next_future_at
+                FROM planned_treatment_items pti
+                JOIN appointment_treatments at ON at.planned_treatment_item_id = pti.id
+                JOIN appointments a ON a.id = at.appointment_id
+                WHERE pti.clinic_id = :clinic_id
+                GROUP BY pti.treatment_plan_id
+            ),
+            next_appt AS (
+                SELECT DISTINCT ON (pti.treatment_plan_id)
+                    pti.treatment_plan_id AS plan_id,
+                    a.id AS id,
+                    a.start_time AS start_at,
+                    a.cabinet_id AS cabinet_id,
+                    a.professional_id AS professional_id
+                FROM planned_treatment_items pti
+                JOIN appointment_treatments at ON at.planned_treatment_item_id = pti.id
+                JOIN appointments a ON a.id = at.appointment_id
+                WHERE pti.clinic_id = :clinic_id
+                  AND a.start_time >= NOW()
+                  AND a.status NOT IN ('cancelled', 'no_show')
+                ORDER BY pti.treatment_plan_id, a.start_time ASC
+            )
+            SELECT
+                p.id AS plan_id,
+                p.plan_number,
+                p.title AS plan_title,
+                p.status AS plan_status,
+                p.closure_reason,
+                p.confirmed_at,
+                p.closed_at,
+                p.updated_at,
+                pat.id AS patient_id,
+                pat.first_name,
+                pat.last_name,
+                pat.phone,
+                COALESCE(items.total_count, 0) AS items_total,
+                COALESCE(items.completed_count, 0) AS items_completed,
+                b.id AS budget_id,
+                b.status AS budget_status,
+                b.total AS budget_total,
+                b.valid_until,
+                b.last_reminder_sent_at,
+                b.viewed_at,
+                na.id AS next_appt_id,
+                na.start_at AS next_appt_start_at,
+                na.cabinet_id AS next_appt_cabinet,
+                na.professional_id AS next_appt_professional
+            FROM treatment_plans p
+            JOIN patients pat ON pat.id = p.patient_id
+            LEFT JOIN budgets b ON b.id = p.budget_id
+            LEFT JOIN item_counts items ON items.plan_id = p.id
+            LEFT JOIN plan_appts appt ON appt.plan_id = p.id
+            LEFT JOIN next_appt na ON na.plan_id = p.id
+            WHERE p.clinic_id = :clinic_id
+              AND p.deleted_at IS NULL
+              AND ({tab_where})
+              {extra_where}
+        """
+
+        # ----- count + page ---------------------------------------------
+        count_result = await db.execute(
+            sa_text(f"SELECT COUNT(*) AS total FROM ({base_sql}) sub"),
+            params,
+        )
+        total = count_result.scalar() or 0
+
+        page_params = dict(params)
+        page_params["limit"] = page_size
+        page_params["offset"] = (page - 1) * page_size
+        rows_result = await db.execute(
+            sa_text(f"{base_sql} ORDER BY {order_by} LIMIT :limit OFFSET :offset"),
+            page_params,
+        )
+
+        # ----- shape rows -----------------------------------------------
+        now = datetime.now(UTC)
+        out: list[dict] = []
+        for r in rows_result.mappings().all():
+            anchor = (
+                r["confirmed_at"] or r["closed_at"] or r["updated_at"]
+            )
+            days_in_status = (
+                (now - anchor).days if anchor is not None else 0
+            )
+            patient_brief = {
+                "id": r["patient_id"],
+                "first_name": r["first_name"],
+                "last_name": r["last_name"],
+                "phone": r["phone"],
+            }
+            budget_brief = None
+            if r["budget_id"]:
+                budget_brief = {
+                    "id": r["budget_id"],
+                    "status": r["budget_status"],
+                    "total": float(r["budget_total"])
+                    if r["budget_total"] is not None
+                    else None,
+                    "valid_until": r["valid_until"],
+                    "last_reminder_sent_at": r["last_reminder_sent_at"],
+                    "viewed_at": r["viewed_at"],
+                }
+            next_appt = None
+            if r["next_appt_id"]:
+                next_appt = {
+                    "id": r["next_appt_id"],
+                    "start_at": r["next_appt_start_at"],
+                    "cabinet_id": r["next_appt_cabinet"],
+                    "professional_id": r["next_appt_professional"],
+                }
+            out.append(
+                {
+                    "plan_id": r["plan_id"],
+                    "plan_number": r["plan_number"],
+                    "plan_title": r["plan_title"],
+                    "plan_status": r["plan_status"],
+                    "days_in_status": max(days_in_status, 0),
+                    "closure_reason": r["closure_reason"],
+                    "items_total": r["items_total"],
+                    "items_completed": r["items_completed"],
+                    "patient": patient_brief,
+                    "budget": budget_brief,
+                    "next_appointment": next_appt,
+                }
+            )
+        return out, total
+
+    # -------------------------------------------------------------------------
+    # Workflow Transitions (confirm / close / reactivate)
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _build_plan_snapshot(plan: TreatmentPlan, patient: Patient | None) -> dict:
+        """Build the snapshot payload used for cross-module events."""
+        items_payload = []
+        total_estimated = 0.0
+        for item in plan.items:
+            treatment = item.treatment
+            if treatment is None:
+                continue
+            primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
+            primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
+            unit_price = (
+                str(treatment.price_snapshot)
+                if treatment.price_snapshot is not None
+                else None
+            )
+            if unit_price is not None:
+                try:
+                    total_estimated += float(unit_price)
+                except (TypeError, ValueError):
+                    pass
+            items_payload.append(
+                {
+                    "item_id": str(item.id),
+                    "treatment_id": str(treatment.id),
+                    "catalog_item_id": (
+                        str(treatment.catalog_item_id)
+                        if treatment.catalog_item_id
+                        else None
+                    ),
+                    "tooth_number": primary_tooth,
+                    "surfaces": primary_surfaces,
+                    "unit_price": unit_price,
+                }
+            )
+        patient_full_name = None
+        if patient is not None:
+            parts = [patient.first_name, patient.last_name]
+            patient_full_name = " ".join(p for p in parts if p) or None
+        return {
+            "plan_id": str(plan.id),
+            "plan_number": plan.plan_number,
+            "clinic_id": str(plan.clinic_id),
+            "patient_id": str(plan.patient_id),
+            "patient_full_name": patient_full_name,
+            "items": items_payload,
+            "total_estimated": str(total_estimated),
+        }
+
+    @staticmethod
+    async def confirm(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+        user_id: UUID,
+    ) -> TreatmentPlan:
+        """Doctor confirmation: ``draft`` → ``pending``.
+
+        Side effects:
+
+        - Sets ``confirmed_at`` and increments the workflow timestamp.
+        - Calls ``BudgetService.create_from_plan`` to provision a draft
+          budget reusing the plan items as a snapshot. Atomicity is
+          guaranteed: if budget creation fails, the whole transaction
+          rolls back. ``treatment_plan`` declares ``budget`` in its
+          ``manifest.depends`` so the direct call respects the module
+          contract.
+        - Publishes ``treatment_plan.confirmed`` with a snapshot
+          payload so subscribers (patient_timeline, future hooks) do
+          not need to import treatment_plan models.
+        """
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            raise ValueError("Plan not found")
+
+        if plan.status != "draft":
+            raise ValueError(f"Cannot confirm plan in status '{plan.status}'")
+        if not plan.items:
+            raise ValueError("Cannot confirm plan without treatments")
+
+        # Atomic transition.
+        plan.status = "pending"
+        plan.confirmed_at = datetime.now(UTC)
+
+        # Resolve patient for the snapshot. The relationship is OK to
+        # use — patients is in our depends.
+        patient = await db.get(Patient, plan.patient_id)
+        snapshot = TreatmentPlanService._build_plan_snapshot(plan, patient)
+        snapshot["confirmed_at"] = plan.confirmed_at.isoformat()
+        snapshot["confirmed_by_user_id"] = str(user_id)
+
+        # Create the draft budget alongside the transition. budget is in
+        # treatment_plan.manifest.depends so the direct service call is
+        # allowed (see treatment_plan/CLAUDE.md "Plan→budget direct
+        # call carve-out"). Budget creation is idempotent: if a budget
+        # already exists for the plan, BudgetService skips creation.
+        from app.modules.budget.service import BudgetService
+
+        budget = await BudgetService.create_from_plan_snapshot(
+            db,
+            clinic_id=clinic_id,
+            user_id=user_id,
+            snapshot=snapshot,
+        )
+        if budget is not None and plan.budget_id is None:
+            plan.budget_id = budget.id
+
+        await db.flush()
+
+        event_bus.publish(EventType.TREATMENT_PLAN_CONFIRMED, snapshot)
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_STATUS_CHANGED,
+            {
+                "plan_id": str(plan.id),
+                "old_status": "draft",
+                "new_status": "pending",
+                "clinic_id": str(clinic_id),
+            },
+        )
+        return plan
+
+    @staticmethod
+    async def reopen(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+        user_id: UUID,
+    ) -> TreatmentPlan:
+        """Reopen a confirmed plan back to ``draft``.
+
+        Cancels the linked budget if there is one (so reception can
+        edit items again). The companion budget event is published by
+        ``BudgetWorkflowService.cancel_budget``.
+        """
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            raise ValueError("Plan not found")
+        if plan.status != "pending":
+            raise ValueError(f"Cannot reopen plan in status '{plan.status}'")
+
+        # Cancel linked budget if one exists. The plan ↔ budget unlock
+        # is the established carve-out (treatment_plan depends on
+        # budget) — see ADR 0003.
+        if plan.budget_id and plan.budget is not None and plan.budget.status != "cancelled":
+            from app.modules.budget.workflow import BudgetWorkflowService
+
+            await BudgetWorkflowService.cancel_budget(
+                db,
+                plan.budget,
+                user_id,
+                reason="Plan reopened for editing",
+            )
+
+        plan.status = "draft"
+        plan.confirmed_at = None
+        await db.flush()
+
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_STATUS_CHANGED,
+            {
+                "plan_id": str(plan.id),
+                "old_status": "pending",
+                "new_status": "draft",
+                "clinic_id": str(clinic_id),
+            },
+        )
+        return plan
+
+    @staticmethod
+    async def close(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+        user_id: UUID,
+        closure_reason: str,
+        closure_note: str | None = None,
+    ) -> TreatmentPlan:
+        """Move the plan to terminal ``closed`` state.
+
+        Allowed from ``draft``, ``pending`` or ``active``. The reason
+        must be one of the catalogue keys in ``VALID_CLOSURE_REASONS``
+        — free-text detail belongs in ``closure_note``.
+        """
+        if closure_reason not in VALID_CLOSURE_REASONS:
+            raise ValueError(f"Unknown closure_reason '{closure_reason}'")
+
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            raise ValueError("Plan not found")
+        if "closed" not in VALID_PLAN_TRANSITIONS.get(plan.status, set()):
+            raise ValueError(f"Cannot close plan in status '{plan.status}'")
+
+        previous_status = plan.status
+        plan.status = "closed"
+        plan.closure_reason = closure_reason
+        plan.closure_note = closure_note
+        plan.closed_at = datetime.now(UTC)
+
+        # Drop the plan's hold on its planned Treatments.
+        await TreatmentPlanService._cleanup_orphan_planned_treatments(
+            db, clinic_id, plan, user_id
+        )
+        await db.flush()
+
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_CLOSED,
+            {
+                "plan_id": str(plan.id),
+                "clinic_id": str(clinic_id),
+                "patient_id": str(plan.patient_id),
+                "closure_reason": closure_reason,
+                "closure_note": closure_note,
+                "closed_at": plan.closed_at.isoformat(),
+                "closed_by_user_id": str(user_id),
+                "previous_status": previous_status,
+            },
+        )
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_STATUS_CHANGED,
+            {
+                "plan_id": str(plan.id),
+                "old_status": previous_status,
+                "new_status": "closed",
+                "clinic_id": str(clinic_id),
+            },
+        )
+        return plan
+
+    @staticmethod
+    async def reactivate(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+        user_id: UUID,
+    ) -> TreatmentPlan:
+        """Revive a closed plan back to ``draft`` for a new cycle."""
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            raise ValueError("Plan not found")
+        if plan.status != "closed":
+            raise ValueError(f"Cannot reactivate plan in status '{plan.status}'")
+
+        previous_reason = plan.closure_reason
+        plan.status = "draft"
+        plan.closure_reason = None
+        plan.closure_note = None
+        plan.closed_at = None
+        plan.confirmed_at = None
+        await db.flush()
+
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_REACTIVATED,
+            {
+                "plan_id": str(plan.id),
+                "clinic_id": str(clinic_id),
+                "patient_id": str(plan.patient_id),
+                "previous_closure_reason": previous_reason,
+                "reactivated_at": datetime.now(UTC).isoformat(),
+                "reactivated_by_user_id": str(user_id),
+            },
+        )
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_STATUS_CHANGED,
+            {
+                "plan_id": str(plan.id),
+                "old_status": "closed",
+                "new_status": "draft",
+                "clinic_id": str(clinic_id),
+            },
+        )
+        return plan
+
+    @staticmethod
+    async def accept_from_budget(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+    ) -> TreatmentPlan | None:
+        """``pending`` → ``active`` triggered by ``budget.accepted``.
+
+        Idempotent: if the plan is already active or closed, returns the
+        current plan without raising.
+        """
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            return None
+        if plan.status == "active":
+            return plan
+        if plan.status != "pending":
+            logger.warning(
+                "Ignoring budget.accepted for plan %s in status '%s'",
+                plan_id,
+                plan.status,
+            )
+            return plan
+
+        plan.status = "active"
+        await db.flush()
+
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_STATUS_CHANGED,
+            {
+                "plan_id": str(plan.id),
+                "old_status": "pending",
+                "new_status": "active",
+                "clinic_id": str(clinic_id),
+            },
+        )
+        return plan
+
+    @staticmethod
+    async def reject_from_budget(
+        db: AsyncSession,
+        clinic_id: UUID,
+        plan_id: UUID,
+        rejection_note: str | None = None,
+    ) -> TreatmentPlan | None:
+        """Close the plan in response to ``budget.rejected``.
+
+        Sets ``closure_reason='rejected_by_patient'``. Idempotent: if
+        the plan is already closed or beyond pending, no-op.
+        """
+        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
+        if not plan:
+            return None
+        if plan.status == "closed":
+            return plan
+        if plan.status != "pending":
+            logger.warning(
+                "Ignoring budget.rejected for plan %s in status '%s'",
+                plan_id,
+                plan.status,
+            )
+            return plan
+
+        previous_status = plan.status
+        plan.status = "closed"
+        plan.closure_reason = "rejected_by_patient"
+        plan.closure_note = rejection_note
+        plan.closed_at = datetime.now(UTC)
+        await db.flush()
+
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_CLOSED,
+            {
+                "plan_id": str(plan.id),
+                "clinic_id": str(clinic_id),
+                "patient_id": str(plan.patient_id),
+                "closure_reason": "rejected_by_patient",
+                "closure_note": rejection_note,
+                "closed_at": plan.closed_at.isoformat(),
+                "closed_by_user_id": None,
+                "previous_status": previous_status,
+            },
+        )
+        event_bus.publish(
+            EventType.TREATMENT_PLAN_STATUS_CHANGED,
+            {
+                "plan_id": str(plan.id),
+                "old_status": previous_status,
+                "new_status": "closed",
+                "clinic_id": str(clinic_id),
+            },
+        )
+        return plan
 
     # -------------------------------------------------------------------------
     # Media Operations

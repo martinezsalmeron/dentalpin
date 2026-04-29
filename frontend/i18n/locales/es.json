@@ -17,6 +17,7 @@
     "patients": "Pacientes",
     "appointments": "Agenda",
     "treatmentPlans": "Planes de tratamiento",
+    "pipeline": "Bandeja de planes",
     "budgets": "Presupuestos",
     "invoices": "Facturas",
     "reports": "Informes",
@@ -629,7 +630,7 @@
       "steps": {
         "plan": "Planificar",
         "confirm": "Confirmar",
-        "billingScheduling": "Presupuesto + Citas"
+        "inProgress": "En curso"
       },
       "confirmCta": {
         "titleWithItems": "Confirmar plan",
@@ -639,11 +640,10 @@
       "ghostHint": "Disponible tras confirmar el plan",
       "addedToPlan": "Añadido al plan",
       "addingToPlan": "Añadiendo a este plan",
-      "modifyPlan": "Modificar plan",
       "cancelPlan": "Cancelar plan",
       "locked": {
         "title": "Plan bloqueado",
-        "subtitle": "Presupuesto {number} emitido. Para modificar el plan, debes cancelar el presupuesto actual.",
+        "subtitle": "Presupuesto {number} emitido. Para editar tratamientos, usa Reabrir (si está pendiente) o Renegociar el presupuesto.",
         "viewBudget": "Ver presupuesto"
       }
     },
@@ -1328,12 +1328,12 @@
     "generateBudget": "Generar presupuesto",
     "scheduleAppointment": "Programar cita",
     "status": {
-      "title": "Estado",
       "draft": "Borrador",
+      "pending": "Pendiente",
       "active": "Activo",
       "completed": "Completado",
-      "archived": "Archivado",
-      "cancelled": "Cancelado"
+      "closed": "Cerrado",
+      "archived": "Archivado"
     },
     "fields": {
       "title": "Título",
@@ -1359,8 +1359,11 @@
       "generateBudget": "Generar presupuesto",
       "linkBudget": "Vincular presupuesto",
       "syncBudget": "Sincronizar presupuesto",
-      "unlockConfirm": "Cancelar presupuesto y modificar",
-      "cancelPlan": "Cancelar plan"
+      "cancelPlan": "Cancelar plan",
+      "reopen": "Reabrir",
+      "close": "Cerrar plan",
+      "reactivate": "Reactivar plan",
+      "logContact": "Marcar contactado"
     },
     "items": {
       "title": "Tratamientos",
@@ -1401,7 +1404,6 @@
     "deleted": "Plan de tratamiento eliminado",
     "budgetLinked": "Presupuesto vinculado al plan",
     "budgetSynced": "Presupuesto sincronizado",
-    "unlocked": "Plan desbloqueado. El presupuesto se ha cancelado.",
     "errors": {
       "load": "Error al cargar planes de tratamiento",
       "create": "Error al crear plan de tratamiento",
@@ -1432,7 +1434,8 @@
     "visitNote": {
       "title": "Nota clínica de visita",
       "save": "Guardar nota",
-      "empty": "Sin nota clínica todavía"
+      "empty": "Sin nota clínica todavía",
+      "saved": "Nota guardada"
     },
     "clinicalNotesTab": "Notas clínicas",
     "filterBy": {
@@ -1461,7 +1464,86 @@
       "general": {
         "followUp": "Seguimiento general"
       }
+    },
+    "closureReason": {
+      "rejected_by_patient": "Rechazado por paciente",
+      "expired": "Caducado",
+      "cancelled_by_clinic": "Cancelado por la clínica",
+      "patient_abandoned": "Paciente abandonó",
+      "other": "Otro motivo"
+    },
+    "confirmed": "Plan confirmado",
+    "reopened": "Plan reabierto",
+    "closed": "Plan cerrado",
+    "reactivated": "Plan reactivado",
+    "contactLogged": "Contacto registrado",
+    "modals": {
+      "confirm": {
+        "title": "Confirmar plan",
+        "description": "El plan pasará a Pendiente y se generará un presupuesto borrador para que recepción lo revise. Una vez confirmado, los tratamientos quedan bloqueados.",
+        "submit": "Confirmar plan"
+      },
+      "reopen": {
+        "title": "Reabrir plan para editar",
+        "description": "Esto cancelará el presupuesto vigente. El plan vuelve a Borrador para que puedas modificar tratamientos.",
+        "submit": "Reabrir"
+      },
+      "close": {
+        "title": "Cerrar plan",
+        "description": "Selecciona el motivo de cierre. Los tratamientos pendientes quedarán archivados.",
+        "reasonLabel": "Motivo",
+        "noteLabel": "Nota (opcional)",
+        "submit": "Cerrar plan"
+      },
+      "reactivate": {
+        "title": "Reactivar plan cerrado",
+        "description": "Esto reactivará un plan cerrado el {date} por «{reason}». ¿Continuar?",
+        "submit": "Reactivar"
+      },
+      "contactLog": {
+        "title": "Marcar contactado",
+        "description": "Registra el seguimiento sin cambiar el estado del plan.",
+        "channelLabel": "Canal",
+        "noteLabel": "Nota (opcional)",
+        "submit": "Registrar"
+      }
     }
+  },
+  "pipeline": {
+    "title": "Bandeja de planes",
+    "description": "Gestiona la pipeline comercial de tratamientos.",
+    "tabs": {
+      "por_presupuestar": "Por presupuestar",
+      "esperando_paciente": "Esperando paciente",
+      "sin_cita": "Sin cita",
+      "sin_proxima_cita": "Sin próxima cita",
+      "cerrados": "Cerrados"
+    },
+    "row": {
+      "patient": "Paciente",
+      "plan": "Plan",
+      "budget": "Presupuesto",
+      "items": "Tratamientos",
+      "daysIn": "{n} d en estado",
+      "nextAppt": "Próx. cita",
+      "noNextAppt": "Sin cita",
+      "noBudget": "Sin presupuesto"
+    },
+    "actions": {
+      "open": "Abrir",
+      "send": "Enviar",
+      "remind": "Reenviar",
+      "schedule": "Agendar",
+      "scheduleNext": "Agendar siguiente",
+      "reactivate": "Reactivar",
+      "call": "Llamar",
+      "whatsapp": "WhatsApp",
+      "markContacted": "Marcar contactado",
+      "acceptInClinic": "Aceptar en clínica"
+    },
+    "search": "Buscar por nombre o número…",
+    "empty": "Sin filas en este tab.",
+    "loading": "Cargando…"
   },
   "budget": {
     "title": "Presupuestos",
@@ -1527,12 +1609,17 @@
       "acceptPartial": "Aceptar seleccionados",
       "reject": "Rechazar",
       "cancel": "Cancelar presupuesto",
-      "complete": "Marcar completado",
       "duplicate": "Crear nueva versión",
       "downloadPdf": "Descargar PDF",
       "previewPdf": "Vista previa PDF",
       "startTreatment": "Iniciar tratamiento",
-      "completeTreatment": "Completar tratamiento"
+      "completeTreatment": "Completar tratamiento",
+      "renegotiate": "Renegociar",
+      "acceptInClinic": "Aceptar en clínica",
+      "resend": "Reenviar",
+      "sendReminder": "Enviar recordatorio",
+      "setPublicCode": "Definir código",
+      "unlockPublic": "Desbloquear acceso"
     },
     "items": {
       "title": "Tratamientos",
@@ -1557,7 +1644,21 @@
     },
     "signature": {
       "title": "Firma digital",
+      "viewAction": "Ver firma",
       "signedBy": "Firmado por",
+      "signedAt": "Firmado el",
+      "methodLabel": "Método",
+      "relationshipLabel": "Relación",
+      "documentHash": "Hash del documento (SHA-256)",
+      "hashHint": "Hash {short} — vincula la firma a este PDF exacto. Cualquier cambio invalidaría la firma.",
+      "downloadSignedPdf": "Descargar PDF firmado",
+      "downloadError": "No se pudo descargar el PDF firmado.",
+      "notSigned": "Aún no se ha capturado firma para este presupuesto.",
+      "method": {
+        "drawn": "Firma manuscrita",
+        "clickAccept": "Aceptación con un clic",
+        "external": "Proveedor externo"
+      },
       "email": "Email",
       "relationship": "Relación con el paciente",
       "patient": "Paciente",
@@ -1620,7 +1721,6 @@
       "accepted": "Presupuesto aceptado",
       "rejected": "Presupuesto rechazado",
       "cancelled": "Presupuesto cancelado",
-      "completed": "Presupuesto completado",
       "duplicated": "Nueva versión creada",
       "itemAdded": "Tratamiento añadido",
       "itemUpdated": "Tratamiento actualizado",
@@ -1650,11 +1750,152 @@
     "pdf": {
       "generating": "Generando PDF...",
       "downloadError": "Error al descargar PDF"
+    },
+    "modals": {
+      "renegotiate": {
+        "title": "Renegociar presupuesto",
+        "description": "Esto cancelará el presupuesto actual y reabrirá el plan a Borrador para que puedas ajustar los tratamientos.",
+        "submit": "Renegociar"
+      },
+      "acceptInClinic": {
+        "title": "Aceptar presupuesto en clínica",
+        "description": "Captura la conformidad del paciente. Puedes recoger una firma manuscrita en tablet (opcional).",
+        "signerLabel": "Nombre completo del firmante",
+        "captureSignature": "Capturar firma",
+        "submit": "Marcar como aceptado"
+      },
+      "setPublicCode": {
+        "title": "Definir código de acceso",
+        "description": "Este paciente no tiene teléfono ni fecha de nacimiento en su ficha. Define un código de 4-6 dígitos y compártelo con el paciente verbalmente. NO incluyas el código en el email.",
+        "codeLabel": "Código (4-6 dígitos)",
+        "submit": "Guardar código"
+      }
+    },
+    "publicLink": {
+      "action": "Compartir enlace",
+      "title": "Enlace para el paciente",
+      "help": "Copia este enlace y compártelo con el paciente por WhatsApp, SMS o email. Le pediremos un dato de verificación antes de mostrarle el presupuesto.",
+      "copy": "Copiar enlace",
+      "copied": "¡Copiado!",
+      "whatsapp": "Enviar por WhatsApp",
+      "whatsappNoPhone": "El paciente no tiene teléfono en su ficha",
+      "whatsappGreeting": "Hola {name}, aquí tienes tu presupuesto:",
+      "whatsappGreetingFallback": "Hola, aquí tienes tu presupuesto:",
+      "preview": "Previsualizar",
+      "statusSent": "Enviado",
+      "statusAccepted": "Aceptado",
+      "statusRejected": "Rechazado",
+      "statusExpired": "Caducado"
+    },
+    "public": {
+      "title": "Tu presupuesto",
+      "intro": "{clinic} te ha enviado este presupuesto. Revisa los tratamientos y elige una opción.",
+      "greeting": "Hola, {name}",
+      "subtitle": "Tu plan de tratamiento personalizado",
+      "budgetNumber": "Presupuesto",
+      "issuedOn": "Emitido el {date}",
+      "items": "Tratamientos incluidos",
+      "tooth": "Pieza {number}",
+      "subtotal": "Subtotal",
+      "discount": "Descuento",
+      "tax": "IVA",
+      "total": "Total a pagar",
+      "validUntil": "Válido hasta {date}",
+      "trustSecure": "Conexión segura",
+      "trustEncrypted": "Datos cifrados",
+      "trustSignature": "Firma con validez legal",
+      "needHelp": "¿Necesitas ayuda? Llama a la clínica",
+      "noteFromClinic": "Mensaje de la clínica",
+      "callClinic": "Llamar a la clínica",
+      "emailClinic": "Enviar email",
+      "cta_accept": "Aceptar y firmar",
+      "cta_reject": "No me interesa",
+      "expired": "Este presupuesto ha caducado. Contacta con la clínica.",
+      "locked": "Acceso bloqueado por demasiados intentos. Llama a la clínica.",
+      "already_accepted": "Ya has aceptado este presupuesto. La clínica te contactará para agendar tu primera cita.",
+      "already_rejected": "Has rechazado este presupuesto. Si cambias de opinión, llama a la clínica.",
+      "download": {
+        "signedPdf": "Descargar PDF firmado",
+        "notSigned": "Este presupuesto aún no tiene firma asociada.",
+        "error": "No se pudo descargar el PDF. Inténtalo de nuevo.",
+        "reauthIntro": "Por seguridad, vuelve a verificar tu identidad para descargar el PDF firmado."
+      },
+      "verify": {
+        "title": "Verifica tu identidad",
+        "intro": "Para proteger tu información, confirma un dato antes de ver tu presupuesto.",
+        "phone_last4_label": "Últimos 4 dígitos de tu teléfono",
+        "dob_label": "Tu fecha de nacimiento",
+        "manual_code_label": "Código que te ha dado la clínica",
+        "submit": "Continuar",
+        "invalid": "Dato incorrecto. Inténtalo de nuevo.",
+        "locked": "Acceso bloqueado por demasiados intentos. Llama a la clínica.",
+        "rate_limited": "Demasiados intentos. Espera 15 minutos."
+      },
+      "accept": {
+        "title": "Aceptar y firmar",
+        "signerLabel": "Tu nombre completo",
+        "signatureLabel": "Firma aquí (opcional)",
+        "signatureClear": "Borrar",
+        "consent": "Confirmo que acepto este presupuesto y autorizo el tratamiento descrito.",
+        "submit": "Confirmar aceptación",
+        "success": "¡Listo! La clínica te contactará para agendar tu primera cita."
+      },
+      "reject": {
+        "title": "No me interesa",
+        "intro": "¿Por qué no te interesa este presupuesto?",
+        "reasonLabel": "Motivo",
+        "noteLabel": "Comentario (opcional)",
+        "submit": "Confirmar rechazo",
+        "success": "Hemos avisado a la clínica.",
+        "reasons": {
+          "price": "Precio",
+          "time": "Falta de tiempo",
+          "second_opinion": "Segunda opinión",
+          "other": "Otro motivo"
+        }
+      }
+    },
+    "settings": {
+      "title": "Ajustes de presupuestos",
+      "description": "Configura caducidad, recordatorios y verificación del link público.",
+      "cards": {
+        "expiry": {
+          "title": "Caducidad y auto-cierre",
+          "description": "Define cuántos días vale un presupuesto antes de caducar y cuándo cerrar automáticamente los planes."
+        },
+        "reminders": {
+          "title": "Recordatorios automáticos",
+          "description": "Activa los recordatorios a los 7 y 14 días sin respuesta del paciente."
+        },
+        "publicLink": {
+          "title": "Link público y verificación",
+          "description": "Configura la protección del link del presupuesto que ve el paciente."
+        }
+      },
+      "expiry": {
+        "validityDays": "Días de validez del presupuesto",
+        "validityHelp": "Tras este número de días sin respuesta el presupuesto pasa a Caducado (rango 7-180).",
+        "autoCloseDays": "Días para auto-cerrar el plan",
+        "autoCloseHelp": "Tras este número de días con presupuesto caducado y sin acción, el plan pasa a Cerrado (rango 7-180).",
+        "save": "Guardar"
+      },
+      "reminders": {
+        "enabled": "Enviar recordatorios automáticos a los 7 y 14 días",
+        "enabledHelp": "Cuando está activo, el sistema envía un email recordando al paciente que tiene un presupuesto pendiente. Si está desactivado, recepción persigue manualmente.",
+        "save": "Guardar"
+      },
+      "publicLink": {
+        "authDisabled": "Desactivar verificación del link público",
+        "authDisabledHelp": "Cuando está activo, el paciente puede ver el presupuesto sólo con el link (sin pedir teléfono ni fecha de nacimiento). Asume el riesgo si el link se reenvía.",
+        "save": "Guardar"
+      },
+      "saved": "Ajustes guardados"
     }
   },
   "invoice": {
     "title": "Facturas",
     "description": "Gestiona facturas y pagos de pacientes",
+    "createFromBudget": "Crear factura desde presupuesto",
     "new": "Nueva factura",
     "edit": "Editar factura",
     "view": "Ver factura",
@@ -1729,6 +1970,9 @@
     "quantityToInvoice": "Cantidad a facturar",
     "availableQuantity": "Disponible",
     "alreadyInvoiced": "Ya facturado",
+    "remaining": "Pendiente",
+    "noItemsAvailable": "No hay tratamientos disponibles para facturar",
+    "allItemsInvoiced": "Todos los tratamientos están facturados",
     "status": {
       "draft": "Borrador",
       "issued": "Emitida",
@@ -2087,6 +2331,17 @@
     }
   },
   "notifications": {
+    "communications": {
+      "language": {
+        "cardTitle": "Idioma de comunicaciones",
+        "cardDescription": "Idioma usado en la vista pública del presupuesto, emails y SMS al paciente.",
+        "title": "Idioma de comunicaciones con el paciente",
+        "label": "Idioma",
+        "help": "Se aplica a la vista pública del presupuesto y a las plantillas de email/SMS automáticas. La interfaz interna del personal usa su propio idioma de cuenta.",
+        "save": "Guardar",
+        "saved": "Idioma guardado"
+      }
+    },
     "title": "Notificaciones",
     "description": "Configura las notificaciones por email de la clínica",
     "pageDescription": "Configura qué notificaciones se envían automáticamente y cuáles requieren envío manual.",

@@ -17,6 +17,7 @@
     "patients": "Patients",
     "appointments": "Schedule",
     "treatmentPlans": "Treatment Plans",
+    "pipeline": "Plans pipeline",
     "budgets": "Quotes",
     "invoices": "Invoices",
     "reports": "Reports",
@@ -608,7 +609,7 @@
       "steps": {
         "plan": "Plan",
         "confirm": "Confirm",
-        "billingScheduling": "Quote + Appointments"
+        "inProgress": "In progress"
       },
       "confirmCta": {
         "titleWithItems": "Confirm plan",
@@ -618,11 +619,10 @@
       "ghostHint": "Available after confirming the plan",
       "addedToPlan": "Added to plan",
       "addingToPlan": "Adding to this plan",
-      "modifyPlan": "Modify plan",
       "cancelPlan": "Cancel plan",
       "locked": {
         "title": "Plan locked",
-        "subtitle": "Quote {number} has been issued. To modify the plan, the current quote must be cancelled.",
+        "subtitle": "Quote {number} has been issued. To edit treatments, use Reopen (if pending) or Renegotiate the quote.",
         "viewBudget": "View quote"
       }
     },
@@ -1306,12 +1306,12 @@
     "generateBudget": "Generate quote",
     "scheduleAppointment": "Schedule appointment",
     "status": {
-      "title": "Status",
       "draft": "Draft",
+      "pending": "Pending",
       "active": "Active",
       "completed": "Completed",
-      "archived": "Archived",
-      "cancelled": "Cancelled"
+      "closed": "Closed",
+      "archived": "Archived"
     },
     "fields": {
       "title": "Title",
@@ -1337,8 +1337,11 @@
       "generateBudget": "Generate quote",
       "linkBudget": "Link quote",
       "syncBudget": "Sync quote",
-      "unlockConfirm": "Cancel quote and modify",
-      "cancelPlan": "Cancel plan"
+      "cancelPlan": "Cancel plan",
+      "reopen": "Reopen",
+      "close": "Close plan",
+      "reactivate": "Reactivate plan",
+      "logContact": "Log contact"
     },
     "items": {
       "title": "Treatments",
@@ -1379,7 +1382,6 @@
     "deleted": "Treatment plan deleted",
     "budgetLinked": "Budget linked to plan",
     "budgetSynced": "Budget synced",
-    "unlocked": "Plan unlocked. The quote has been cancelled.",
     "errors": {
       "load": "Error loading treatment plans",
       "create": "Error creating treatment plan",
@@ -1410,7 +1412,8 @@
     "visitNote": {
       "title": "Visit clinical note",
       "save": "Save note",
-      "empty": "No visit note yet"
+      "empty": "No visit note yet",
+      "saved": "Note saved"
     },
     "clinicalNotesTab": "Clinical notes",
     "filterBy": {
@@ -1439,7 +1442,86 @@
       "general": {
         "followUp": "General follow-up"
       }
+    },
+    "closureReason": {
+      "rejected_by_patient": "Rejected by patient",
+      "expired": "Expired",
+      "cancelled_by_clinic": "Cancelled by clinic",
+      "patient_abandoned": "Patient abandoned",
+      "other": "Other reason"
+    },
+    "confirmed": "Plan confirmed",
+    "reopened": "Plan reopened",
+    "closed": "Plan closed",
+    "reactivated": "Plan reactivated",
+    "contactLogged": "Contact logged",
+    "modals": {
+      "confirm": {
+        "title": "Confirm plan",
+        "description": "The plan will move to Pending and a draft quote will be auto-created. Treatments become read-only once confirmed.",
+        "submit": "Confirm plan"
+      },
+      "reopen": {
+        "title": "Reopen plan for editing",
+        "description": "This will cancel the current quote. The plan returns to Draft so you can edit treatments.",
+        "submit": "Reopen"
+      },
+      "close": {
+        "title": "Close plan",
+        "description": "Choose the closure reason. Pending treatments will be archived.",
+        "reasonLabel": "Reason",
+        "noteLabel": "Note (optional)",
+        "submit": "Close plan"
+      },
+      "reactivate": {
+        "title": "Reactivate closed plan",
+        "description": "This will reactivate a plan closed on {date} as «{reason}». Continue?",
+        "submit": "Reactivate"
+      },
+      "contactLog": {
+        "title": "Log contact",
+        "description": "Records the touchpoint without changing the plan status.",
+        "channelLabel": "Channel",
+        "noteLabel": "Note (optional)",
+        "submit": "Log"
+      }
     }
+  },
+  "pipeline": {
+    "title": "Plans pipeline",
+    "description": "Manage the treatment pipeline.",
+    "tabs": {
+      "por_presupuestar": "To quote",
+      "esperando_paciente": "Awaiting patient",
+      "sin_cita": "No appointment",
+      "sin_proxima_cita": "No next appointment",
+      "cerrados": "Closed"
+    },
+    "row": {
+      "patient": "Patient",
+      "plan": "Plan",
+      "budget": "Quote",
+      "items": "Treatments",
+      "daysIn": "{n} days in status",
+      "nextAppt": "Next appt",
+      "noNextAppt": "No appointment",
+      "noBudget": "No quote"
+    },
+    "actions": {
+      "open": "Open",
+      "send": "Send",
+      "remind": "Resend",
+      "schedule": "Schedule",
+      "scheduleNext": "Schedule next",
+      "reactivate": "Reactivate",
+      "call": "Call",
+      "whatsapp": "WhatsApp",
+      "markContacted": "Mark contacted",
+      "acceptInClinic": "Accept in clinic"
+    },
+    "search": "Search by name or number…",
+    "empty": "No rows in this tab.",
+    "loading": "Loading…"
   },
   "budget": {
     "title": "Quotes",
@@ -1505,12 +1587,17 @@
       "acceptPartial": "Accept selected",
       "reject": "Reject",
       "cancel": "Cancel quote",
-      "complete": "Mark completed",
       "duplicate": "Create new version",
       "downloadPdf": "Download PDF",
       "previewPdf": "Preview PDF",
       "startTreatment": "Start treatment",
-      "completeTreatment": "Complete treatment"
+      "completeTreatment": "Complete treatment",
+      "renegotiate": "Renegotiate",
+      "acceptInClinic": "Accept in clinic",
+      "resend": "Resend",
+      "sendReminder": "Send reminder",
+      "setPublicCode": "Set access code",
+      "unlockPublic": "Unlock access"
     },
     "items": {
       "title": "Treatments",
@@ -1535,7 +1622,21 @@
     },
     "signature": {
       "title": "Digital signature",
+      "viewAction": "View signature",
       "signedBy": "Signed by",
+      "signedAt": "Signed on",
+      "methodLabel": "Method",
+      "relationshipLabel": "Relationship",
+      "documentHash": "Document hash (SHA-256)",
+      "hashHint": "Hash {short} — binds the signature to this exact PDF. Any change would invalidate it.",
+      "downloadSignedPdf": "Download signed PDF",
+      "downloadError": "Could not download the signed PDF.",
+      "notSigned": "No signature has been captured for this quote yet.",
+      "method": {
+        "drawn": "Hand-drawn signature",
+        "clickAccept": "Click-to-accept",
+        "external": "External provider"
+      },
       "email": "Email",
       "relationship": "Relationship to patient",
       "patient": "Patient",
@@ -1598,7 +1699,6 @@
       "accepted": "Quote accepted",
       "rejected": "Quote rejected",
       "cancelled": "Quote cancelled",
-      "completed": "Quote completed",
       "duplicated": "New version created",
       "itemAdded": "Treatment added",
       "itemUpdated": "Treatment updated",
@@ -1628,9 +1728,160 @@
     "pdf": {
       "generating": "Generating PDF...",
       "downloadError": "Error downloading PDF"
+    },
+    "modals": {
+      "renegotiate": {
+        "title": "Renegotiate quote",
+        "description": "This will cancel the current quote and reopen the plan to Draft so you can adjust treatments.",
+        "submit": "Renegotiate"
+      },
+      "acceptInClinic": {
+        "title": "Accept quote in clinic",
+        "description": "Capture the patient acceptance. You can collect a tablet signature (optional).",
+        "signerLabel": "Signer full name",
+        "captureSignature": "Capture signature",
+        "submit": "Mark accepted"
+      },
+      "setPublicCode": {
+        "title": "Set access code",
+        "description": "This patient has neither phone nor date of birth on file. Set a 4-6 digit code and share it verbally with the patient. DO NOT include the code in the email.",
+        "codeLabel": "Code (4-6 digits)",
+        "submit": "Save code"
+      }
+    },
+    "publicLink": {
+      "action": "Share link",
+      "title": "Patient link",
+      "help": "Copy this link and share it with the patient via WhatsApp, SMS or email. They will be asked for one verification detail before viewing the quote.",
+      "copy": "Copy link",
+      "copied": "Copied!",
+      "whatsapp": "Send via WhatsApp",
+      "whatsappNoPhone": "The patient has no phone on file",
+      "whatsappGreeting": "Hi {name}, here's your quote:",
+      "whatsappGreetingFallback": "Hi, here's your quote:",
+      "preview": "Preview",
+      "statusSent": "Sent",
+      "statusAccepted": "Accepted",
+      "statusRejected": "Rejected",
+      "statusExpired": "Expired"
+    },
+    "public": {
+      "title": "Your quote",
+      "intro": "{clinic} has sent you this quote. Review the treatments and choose an option.",
+      "greeting": "Hello, {name}",
+      "subtitle": "Your personalised treatment plan",
+      "budgetNumber": "Quote",
+      "issuedOn": "Issued on {date}",
+      "items": "Treatments included",
+      "tooth": "Tooth {number}",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "tax": "VAT",
+      "total": "Total",
+      "validUntil": "Valid until {date}",
+      "trustSecure": "Secure connection",
+      "trustEncrypted": "Encrypted data",
+      "trustSignature": "Legally binding signature",
+      "needHelp": "Need help? Call the clinic",
+      "noteFromClinic": "Message from the clinic",
+      "callClinic": "Call the clinic",
+      "emailClinic": "Send email",
+      "cta_accept": "Accept and sign",
+      "cta_reject": "Not interested",
+      "expired": "This quote has expired. Please contact the clinic.",
+      "locked": "Access locked after too many attempts. Please call the clinic.",
+      "already_accepted": "You already accepted this quote. The clinic will contact you to schedule your first appointment.",
+      "already_rejected": "You rejected this quote. If you change your mind, please call the clinic.",
+      "download": {
+        "signedPdf": "Download signed PDF",
+        "notSigned": "This quote has no signature attached yet.",
+        "error": "Could not download the PDF. Please try again.",
+        "reauthIntro": "For security, please verify your identity again to download the signed PDF."
+      },
+      "verify": {
+        "title": "Verify your identity",
+        "intro": "To protect your information, confirm one detail before viewing your quote.",
+        "phone_last4_label": "Last 4 digits of your phone",
+        "dob_label": "Your date of birth",
+        "manual_code_label": "Code given to you by the clinic",
+        "submit": "Continue",
+        "invalid": "Incorrect detail. Please try again.",
+        "locked": "Access locked after too many attempts. Please call the clinic.",
+        "rate_limited": "Too many attempts. Wait 15 minutes."
+      },
+      "accept": {
+        "title": "Accept and sign",
+        "signerLabel": "Your full name",
+        "signatureLabel": "Sign here (optional)",
+        "signatureClear": "Clear",
+        "consent": "I accept this quote and authorise the described treatment.",
+        "submit": "Confirm acceptance",
+        "success": "Done! The clinic will contact you to schedule your first appointment."
+      },
+      "reject": {
+        "title": "Not interested",
+        "intro": "Why is this quote not for you?",
+        "reasonLabel": "Reason",
+        "noteLabel": "Comment (optional)",
+        "submit": "Confirm rejection",
+        "success": "We have notified the clinic.",
+        "reasons": {
+          "price": "Price",
+          "time": "Lack of time",
+          "second_opinion": "Second opinion",
+          "other": "Other reason"
+        }
+      }
+    },
+    "settings": {
+      "title": "Quote settings",
+      "description": "Configure expiry, reminders and public-link verification.",
+      "cards": {
+        "expiry": {
+          "title": "Expiry and auto-close",
+          "description": "How long a quote is valid before expiring and when to auto-close pending plans."
+        },
+        "reminders": {
+          "title": "Automatic reminders",
+          "description": "Toggle 7d / 14d email reminders to patients with no response."
+        },
+        "publicLink": {
+          "title": "Public link and verification",
+          "description": "Configure the protection of the patient-facing quote link."
+        }
+      },
+      "expiry": {
+        "validityDays": "Quote validity (days)",
+        "validityHelp": "After this many days without response the quote becomes Expired (range 7-180).",
+        "autoCloseDays": "Days before auto-closing the plan",
+        "autoCloseHelp": "Plans with an expired quote and no action for this many days move to Closed (range 7-180).",
+        "save": "Save"
+      },
+      "reminders": {
+        "enabled": "Send automatic reminders at 7d and 14d",
+        "enabledHelp": "When on, the system emails the patient about pending quotes. When off, reception follows up manually.",
+        "save": "Save"
+      },
+      "publicLink": {
+        "authDisabled": "Disable public link verification",
+        "authDisabledHelp": "When on, the patient sees the quote with the link only — no phone or DOB challenge. Accept the risk if the link is shared.",
+        "save": "Save"
+      },
+      "saved": "Settings saved"
     }
   },
   "notifications": {
+    "communications": {
+      "language": {
+        "cardTitle": "Communications language",
+        "cardDescription": "Language used in the patient-facing quote view, emails and SMS.",
+        "title": "Patient communications language",
+        "label": "Language",
+        "help": "Applies to the patient-facing quote view and the automated email/SMS templates. Staff UI keeps each user's own language preference.",
+        "save": "Save",
+        "saved": "Language saved"
+      }
+    },
     "title": "Notifications",
     "description": "Configure clinic email notifications",
     "pageDescription": "Configure which notifications are sent automatically and which require manual sending.",
@@ -1871,16 +2122,15 @@
         "credit_note_created": "Credit note created"
       }
     },
-    "fromBudget": {
-      "title": "Create invoice from quote",
-      "selectItems": "Select items to invoice",
-      "availableQuantity": "Available",
-      "quantityToInvoice": "Qty to invoice",
-      "alreadyInvoiced": "Already invoiced",
-      "remaining": "Remaining",
-      "noItemsAvailable": "No items available to invoice",
-      "allItemsInvoiced": "All items have been invoiced"
-    },
+    "fromBudget": "Create invoice from quote",
+    "selectItems": "Select items to invoice",
+    "selectItemsHint": "Select the quote items you want to invoice",
+    "availableQuantity": "Available",
+    "quantityToInvoice": "Qty to invoice",
+    "alreadyInvoiced": "Already invoiced",
+    "remaining": "Remaining",
+    "noItemsAvailable": "No items available to invoice",
+    "allItemsInvoiced": "All items have been invoiced",
     "series": {
       "title": "Invoice series",
       "prefix": "Prefix",

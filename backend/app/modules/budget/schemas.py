@@ -42,6 +42,7 @@ class PatientBrief(BaseModel):
     first_name: str
     last_name: str
     email: str | None = None
+    phone: str | None = None
 
     class Config:
         from_attributes = True
@@ -243,6 +244,29 @@ class SignatureResponse(BaseModel):
         from_attributes = True
 
 
+class SignatureMetaResponse(BaseModel):
+    """Signature metadata without the raw PNG payload.
+
+    Used by staff/public endpoints that surface "this budget has been
+    signed" info without shipping the full signature_data blob.
+    """
+
+    id: UUID
+    budget_id: UUID
+    signature_type: str
+    signed_by_name: str
+    signed_by_email: str | None
+    relationship_to_patient: str
+    signature_method: str
+    ip_address: str | None
+    signed_at: datetime
+    document_hash: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ============================================================================
 # Budget History Schemas
 # ============================================================================
@@ -355,6 +379,11 @@ class BudgetResponse(BaseModel):
 
     # Insurance
     insurance_estimate: Decimal | None
+
+    # Public-link token (ADR 0006). Generated at creation time; the
+    # patient-facing URL is rendered client-side as
+    # ``${origin}/p/budget/${public_token}``.
+    public_token: UUID | None = None
 
     # Timestamps
     created_at: datetime

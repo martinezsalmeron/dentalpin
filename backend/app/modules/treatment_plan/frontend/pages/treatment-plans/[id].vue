@@ -8,32 +8,26 @@ const {
   currentPlan,
   loading,
   fetchPlan,
-  generateBudget
+  generateBudget,
 } = useTreatmentPlans()
 
 const planId = computed(() => route.params.id as string)
 
-// Load plan on mount
 onMounted(async () => {
   await fetchPlan(planId.value)
 })
 
-// Watch for route changes
 watch(planId, async (newId) => {
-  if (newId) {
-    await fetchPlan(newId)
-  }
+  if (newId) await fetchPlan(newId)
 })
 
-// Computed
 const patientId = computed(() => currentPlan.value?.patient_id || '')
 
-// Refresh plan after changes
 async function handleUpdated() {
   await fetchPlan(planId.value)
+  await nextTick()
 }
 
-// Handle budget generation with navigation
 async function handleGenerateBudget() {
   const result = await generateBudget(planId.value)
   if (result?.budget_id) {
@@ -46,14 +40,12 @@ async function handleGenerateBudget() {
   }
 }
 
-// Handle schedule appointment
 function handleSchedule() {
   if (patientId.value) {
     router.push(`/appointments?patient_id=${patientId.value}`)
   }
 }
 
-// After cancellation, drop back to the patient's plans list.
 function handleCancelled() {
   if (patientId.value) {
     router.push(`/patients/${patientId.value}?tab=clinical&clinicalMode=plans`)
@@ -97,7 +89,9 @@ function handleCancelled() {
       </UButton>
     </UCard>
 
-    <!-- Plan detail using unified component -->
+    <!-- Plan detail. PlanDetailView owns the workflow modals (confirm,
+         reopen, close, reactivate, contact-log) so the same flow runs
+         in the patient ficha (PlansMode) without re-wiring. -->
     <PlanDetailView
       v-else
       :plan="currentPlan"
