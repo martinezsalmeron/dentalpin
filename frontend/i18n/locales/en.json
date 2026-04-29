@@ -1735,6 +1735,21 @@
         "submit": "Save code"
       }
     },
+    "publicLink": {
+      "title": "Patient link",
+      "help": "Copy this link and share it with the patient via WhatsApp, SMS or email. They will be asked for one verification detail before viewing the quote.",
+      "copy": "Copy link",
+      "copied": "Copied!",
+      "whatsapp": "Send via WhatsApp",
+      "whatsappNoPhone": "The patient has no phone on file",
+      "whatsappGreeting": "Hi {name}, here's your quote:",
+      "whatsappGreetingFallback": "Hi, here's your quote:",
+      "preview": "Preview",
+      "statusSent": "Sent",
+      "statusAccepted": "Accepted",
+      "statusRejected": "Rejected",
+      "statusExpired": "Expired"
+    },
     "public": {
       "title": "Your quote",
       "intro": "{clinic} has sent you this quote. Review the treatments and choose an option.",

@@ -356,6 +356,11 @@ class BudgetResponse(BaseModel):
     # Insurance
     insurance_estimate: Decimal | None
 
+    # Public-link token (ADR 0006). Generated at creation time; the
+    # patient-facing URL is rendered client-side as
+    # ``${origin}/p/budget/${public_token}``.
+    public_token: UUID | None = None
+
     # Timestamps
     created_at: datetime
     updated_at: datetime

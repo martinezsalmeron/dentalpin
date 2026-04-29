@@ -467,6 +467,19 @@ function getItemName(item: BudgetItem): string {
         </div>
       </div>
 
+      <!-- Public link card — visible whenever the budget can still be
+           opened by the patient (sent / accepted / rejected just so
+           reception can recover the URL). Hidden for draft so the
+           team doesn't share a link before sending. -->
+      <PublicBudgetLinkCard
+        v-if="currentBudget.public_token && ['sent', 'accepted', 'rejected', 'expired'].includes(currentBudget.status)"
+        :token="currentBudget.public_token"
+        :status="currentBudget.status"
+        :patient-phone="currentBudget.patient?.phone"
+        :patient-first-name="currentBudget.patient?.first_name"
+        :budget-number="currentBudget.budget_number"
+      />
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main content -->
         <div class="lg:col-span-2 space-y-6">
