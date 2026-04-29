@@ -79,6 +79,11 @@ def _cookie_name(token: UUID) -> str:
 
 
 def _issue_session_cookie(response: Response, budget_id: UUID, token: UUID) -> None:
+    """Set the per-token cookie. Path matches the module mount prefix
+    (``/api/v1/budget/public/budgets/<token>``) so the browser sends
+    it on the data-bearing endpoints. The legacy
+    ``/api/v1/public/...`` path was wrong because the budget module
+    is mounted with prefix ``/api/v1/budget`` (loader.py:181)."""
     expires_at = datetime.now(UTC) + PUBLIC_SESSION_TTL
     payload = {
         "sub": str(budget_id),
@@ -90,7 +95,7 @@ def _issue_session_cookie(response: Response, budget_id: UUID, token: UUID) -> N
         key=_cookie_name(token),
         value=encoded,
         max_age=int(PUBLIC_SESSION_TTL.total_seconds()),
-        path=f"/api/v1/public/budgets/{token}",
+        path=f"/api/v1/budget/public/budgets/{token}",
         httponly=True,
         secure=settings.ENVIRONMENT == "production",
         samesite="strict",
