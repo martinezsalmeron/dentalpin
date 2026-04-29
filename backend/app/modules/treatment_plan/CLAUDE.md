@@ -4,6 +4,21 @@ Patient treatment plans with budget + odontogram sync. **Heaviest
 `depends` in the system** — this module is an integration hub. Read
 this file before changing any cross-module flow.
 
+## State machine
+
+```
+draft ──confirm──► pending ──accept──► active ──complete──► completed
+  ▲                  │                    │
+  │                  │ rejected/expired   │ cancelled by clinic
+  │                  ▼                    ▼
+  └─── reactivate ◄──────  closed  ◄─────┘
+                       (closure_reason)
+```
+
+`closure_reason` ∈ `{rejected_by_patient, expired,
+cancelled_by_clinic, patient_abandoned, other}`. See ADR 0006 and
+`docs/workflows/plan-budget-flow.md` (staff manual).
+
 ## Public API
 
 Routes mounted at `/api/v1/treatment-plans/`.
@@ -15,6 +30,12 @@ Routes mounted at `/api/v1/treatment-plans/`.
 - `POST  /treatment-plans/{id}/items`   — add item from catalog or odontogram tooth treatment
 - `PUT   /treatment-plans/{id}/items/reorder`
 - `POST  /treatment-plans/{id}/items/{item_id}/complete`
+- `POST  /treatment-plans/{id}/confirm`     — `plans.confirm`; draft → pending
+- `POST  /treatment-plans/{id}/reopen`      — pending → draft, cancels linked budget
+- `POST  /treatment-plans/{id}/close`       — `plans.close`; any → closed
+- `POST  /treatment-plans/{id}/reactivate`  — `plans.reactivate`; closed → draft
+- `POST  /treatment-plans/{id}/contact-log` — record reception touchpoint
+- `GET   /treatment-plans/pipeline`         — bandeja (5 tabs)
 
 > **Notes endpoints moved.** Since issue #60 the `clinical_notes` module
 > owns every clinical-note CRUD path (`/api/v1/clinical_notes/*`). The
@@ -39,10 +60,13 @@ the `clinical_notes` module since issue #60.
 |---|---|---|
 | `treatment_plan.created` | plan created | consumed by `patient_timeline` |
 | `treatment_plan.status_changed` | status transition | currently no subscribers |
-| `treatment_plan.treatment_added` | item added | consumed by `budget` (sync) |
-| `treatment_plan.treatment_removed` | item removed | consumed by `budget` (sync) |
+| `treatment_plan.confirmed` | draft → pending | snapshot payload (items, totals, patient). Subscriber: `patient_timeline`. |
+| `treatment_plan.closed` | any → closed | payload includes `closure_reason`. Subscriber: `patient_timeline`. |
+| `treatment_plan.reactivated` | closed → draft | Subscriber: `patient_timeline`. |
+| `treatment_plan.treatment_added` | item added | snapshot payload (catalog_item_id, tooth, surfaces, unit_price, budget_id). Subscriber: `budget`. |
+| `treatment_plan.treatment_removed` | item removed | payload includes `budget_id`. Subscriber: `budget`. |
 | `treatment_plan.treatment_completed` | item marked done | consumed by `patient_timeline` |
-| `treatment_plan.budget_sync_requested` | manual resync | consumed by `budget` |
+| `treatment_plan.budget_sync_requested` | manual resync | snapshot payload includes full `items[]`. Subscriber: `budget`. |
 | `treatment_plan.item_completed_without_note` | completion check | consumed by `patient_timeline` |
 
 Clinical-note created events (`clinical_notes.{administrative,diagnosis,treatment,plan}_created`) live in the `clinical_notes` module.
@@ -57,7 +81,9 @@ Clinical-note created events (`clinical_notes.{administrative,diagnosis,treatmen
 | Event | Handler | Effect |
 |---|---|---|
 | `appointment.completed`         | `on_appointment_completed`  | mark planned items as performed if linked |
-| `budget.accepted`               | `on_budget_accepted`        | sync plan ↔ budget state |
+| `budget.accepted`               | `on_budget_accepted`        | pending → active (idempotent) |
+| `budget.rejected`               | `on_budget_rejected`        | pending → closed (closure_reason=rejected_by_patient) |
+| `budget.renegotiated`           | `on_budget_renegotiated`    | pending → draft (budget already cancelled by publisher) |
 | `odontogram.treatment.performed` | `on_treatment_performed`   | mark planned item completed when its tooth treatment is performed |
 
 ## Lifecycle
@@ -67,11 +93,17 @@ Clinical-note created events (`clinical_notes.{administrative,diagnosis,treatmen
 
 ## Gotchas
 
-- **Don't import budget/odontogram services directly for writes.**
-  Use the event bus. Reads against modules in `depends` are OK.
-- **Plan ↔ budget sync goes through events**, not direct calls. Adding
-  a treatment to a plan publishes `treatment_plan.treatment_added`;
-  the budget module's handler creates the matching budget line.
+- **Plan → budget direct call is the carve-out.** `confirm()` calls
+  `BudgetService.create_from_plan_snapshot` synchronously to keep the
+  draft-budget creation transactional with the state transition.
+  Allowed because `budget` is in `manifest.depends`. Item-level
+  add/remove sync remains event-driven (the snapshot payloads carry
+  enough data so `budget` doesn't import treatment_plan).
+- **Plan ↔ budget item sync goes through events**, not direct calls.
+  Adding a treatment to a plan publishes
+  `treatment_plan.treatment_added` with a denormalized snapshot
+  (catalog_item_id, tooth, surfaces, unit_price, budget_id); the
+  budget module's handler creates the matching budget line.
 - **Item completion has two paths**: the user marks an item complete
   here, or the odontogram fires `odontogram.treatment.performed`. Both
   must converge to the same state — keep them idempotent.
@@ -83,11 +115,16 @@ Clinical-note created events (`clinical_notes.{administrative,diagnosis,treatmen
 - **Don't import `clinical_notes`.** The dependency is one-way:
   `clinical_notes → treatment_plan`. The frontend calls both modules
   during completion; do not add a server-side cross-module import.
+- **Auto-close cron lives here** (`tasks.py:auto_close_expired_plans`),
+  not in budget — closing a plan is a treatment_plan write and budget
+  is in this module's depends, so the read of `budgets` from the
+  cron query is allowed.
 
 ## Related ADRs
 
 - `docs/adr/0001-modular-plugin-architecture.md`
 - `docs/adr/0003-event-bus-over-direct-imports.md`
+- `docs/adr/0006-budget-public-link-2-factor-auth.md`
 
 ## CHANGELOG
 

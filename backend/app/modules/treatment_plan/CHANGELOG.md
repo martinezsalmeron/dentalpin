@@ -6,6 +6,36 @@
 - Documented two string-literal events (`treatment_plan.items_reordered`,
   `treatment_plan.unlocked`) that are not yet in the `EventType` enum.
 
+### Added (plan/budget workflow rework, 2026-04-29)
+
+- New plan states: `pending` (between confirm and accept) and `closed`
+  (terminal non-completed state) with `closure_reason`, `closure_note`,
+  `closed_at`, `confirmed_at` columns.
+- Workflow transitions: `confirm` (draft → pending, auto-creates draft
+  budget via direct call to BudgetService), `reopen`, `close`,
+  `reactivate`, plus `accept_from_budget` / `reject_from_budget` for
+  the budget event handlers.
+- New endpoints:
+  - `POST /treatment-plans/{id}/{confirm,reopen,close,reactivate}`
+  - `POST /treatment-plans/{id}/contact-log`
+  - `GET  /treatment-plans/pipeline` (5-tab cross-module bandeja).
+- Granular permissions `plans.{confirm,close,reactivate}`.
+  Receptionist role gains close + reactivate.
+- Three new events with snapshot payloads:
+  `treatment_plan.{confirmed,closed,reactivated}`. Subscribers
+  (patient_timeline) consume payload data only — no cross-module ORM
+  reads.
+- `auto_close_expired_plans` cron (daily 03:00) — closes pending plans
+  whose budget has been expired beyond the per-clinic threshold.
+- Plan ↔ budget direct call carve-out: `confirm()` calls
+  `BudgetService.create_from_plan_snapshot` synchronously (budget is
+  in `manifest.depends`). Documented in CLAUDE.md.
+
+### Removed
+
+- Legacy `cancelled` plan status (migrated to
+  `closed` + `closure_reason='cancelled_by_clinic'`).
+
 ### Removed (issue #60 — clinical-notes extraction)
 
 - `ClinicalNote` and `ClinicalNoteAttachment` models, schemas, service

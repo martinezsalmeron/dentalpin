@@ -322,7 +322,140 @@ async def on_budget_accepted(data: dict) -> None:
         data=data,
         source_id_key="budget_id",
         title=f"Presupuesto aceptado: {number}" if number else "Presupuesto aceptado",
-        event_data={"budget_number": number, "total": data.get("total")},
+        event_data={
+            "budget_number": number,
+            "total": data.get("total"),
+            "accepted_via": data.get("accepted_via"),
+        },
+    )
+
+
+async def on_budget_rejected(data: dict) -> None:
+    number = data.get("budget_number")
+    await _record(
+        event_type=EventType.BUDGET_REJECTED,
+        event_category="financial",
+        source_table="budgets",
+        data=data,
+        source_id_key="budget_id",
+        title=f"Presupuesto rechazado: {number}" if number else "Presupuesto rechazado",
+        event_data={
+            "budget_number": number,
+            "rejection_reason": data.get("rejection_reason"),
+            "rejection_note": data.get("rejection_note"),
+        },
+    )
+
+
+async def on_budget_expired(data: dict) -> None:
+    number = data.get("budget_number")
+    await _record(
+        event_type=EventType.BUDGET_EXPIRED,
+        event_category="financial",
+        source_table="budgets",
+        data=data,
+        source_id_key="budget_id",
+        title=f"Presupuesto caducado: {number}" if number else "Presupuesto caducado",
+        event_data={
+            "budget_number": number,
+            "days_overdue": data.get("days_overdue"),
+        },
+    )
+
+
+async def on_budget_renegotiated(data: dict) -> None:
+    await _record(
+        event_type=EventType.BUDGET_RENEGOTIATED,
+        event_category="financial",
+        source_table="budgets",
+        data=data,
+        source_id_key="budget_id",
+        title="Presupuesto en renegociación",
+        event_data={"plan_id": data.get("plan_id")},
+    )
+
+
+async def on_budget_viewed(data: dict) -> None:
+    await _record(
+        event_type=EventType.BUDGET_VIEWED,
+        event_category="financial",
+        source_table="budgets",
+        data=data,
+        source_id_key="budget_id",
+        title="Presupuesto visto por el paciente",
+        occurred_at_key="viewed_at",
+    )
+
+
+async def on_budget_reminder_sent(data: dict) -> None:
+    milestone = data.get("milestone_days")
+    await _record(
+        event_type=EventType.BUDGET_REMINDER_SENT,
+        event_category="financial",
+        source_table="budgets",
+        data=data,
+        source_id_key="budget_id",
+        title=(
+            f"Recordatorio enviado ({milestone}d)" if milestone
+            else "Recordatorio enviado"
+        ),
+        occurred_at_key="sent_at",
+        event_data={"milestone_days": milestone},
+    )
+
+
+async def on_treatment_plan_confirmed(data: dict) -> None:
+    plan_number = data.get("plan_number")
+    await _record(
+        event_type=EventType.TREATMENT_PLAN_CONFIRMED,
+        event_category="treatment",
+        source_table="treatment_plans",
+        data=data,
+        source_id_key="plan_id",
+        title=(
+            f"Plan confirmado: {plan_number}" if plan_number else "Plan confirmado"
+        ),
+        occurred_at_key="confirmed_at",
+        created_by_key="confirmed_by_user_id",
+        event_data={
+            "plan_number": plan_number,
+            "total_estimated": data.get("total_estimated"),
+        },
+    )
+
+
+async def on_treatment_plan_closed(data: dict) -> None:
+    reason = data.get("closure_reason") or "other"
+    await _record(
+        event_type=EventType.TREATMENT_PLAN_CLOSED,
+        event_category="treatment",
+        source_table="treatment_plans",
+        data=data,
+        source_id_key="plan_id",
+        title=f"Plan cerrado ({reason})",
+        occurred_at_key="closed_at",
+        created_by_key="closed_by_user_id",
+        event_data={
+            "closure_reason": reason,
+            "closure_note": data.get("closure_note"),
+            "previous_status": data.get("previous_status"),
+        },
+    )
+
+
+async def on_treatment_plan_reactivated(data: dict) -> None:
+    await _record(
+        event_type=EventType.TREATMENT_PLAN_REACTIVATED,
+        event_category="treatment",
+        source_table="treatment_plans",
+        data=data,
+        source_id_key="plan_id",
+        title="Plan reactivado",
+        occurred_at_key="reactivated_at",
+        created_by_key="reactivated_by_user_id",
+        event_data={
+            "previous_closure_reason": data.get("previous_closure_reason"),
+        },
     )
 
 
