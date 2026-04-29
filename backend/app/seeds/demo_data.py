@@ -1404,12 +1404,13 @@ PATIENT_JOURNEYS = [
             {"week": "future", "covers": [2], "status": "scheduled"},
         ],
     },
-    # Patient 2 — Miguel / James (young adult; draft plan + draft budget + draft invoice)
+    # Patient 2 — Miguel / James (pending plan with draft budget, surfaces in
+    # bandeja tab "Por presupuestar")
     {
         "patient_idx": 2,
         "plan": {
             "id_idx": 2,
-            "status": "draft",
+            "status": "pending",
             "title": {"es": "Revisión y limpieza", "en": "Checkup and cleaning"},
             "diagnosis_notes": {
                 "es": "Paciente joven, buen estado general.",
@@ -1427,10 +1428,7 @@ PATIENT_JOURNEYS = [
             "signature": False,
             "notes": {"es": "Borrador pendiente de revisión", "en": "Draft pending review"},
         },
-        "appointments": [
-            {"week": "future", "covers": [0], "status": "scheduled"},
-            {"week": "future", "covers": [1], "status": "scheduled"},
-        ],
+        "appointments": [],
         "invoice": {
             "id_idx": 0,
             "status": "draft",
@@ -1439,44 +1437,36 @@ PATIENT_JOURNEYS = [
             "notes": {"es": "Borrador - pendiente de emitir", "en": "Draft - pending issuance"},
         },
     },
-    # Patient 3 — Carmen / Emma (sensitivity; draft budget + issued invoice for done items)
+    # Patient 3 — Carmen / Emma (pending plan with sent budget, surfaces in
+    # bandeja tab "Esperando paciente")
     {
         "patient_idx": 3,
         "plan": {
             "id_idx": 3,
-            "status": "draft",
+            "status": "pending",
             "title": {"es": "Plan de tratamiento inicial", "en": "Initial treatment plan"},
             "diagnosis_notes": {
                 "es": "Paciente con sensibilidad dental. Requiere empaste en molar.",
                 "en": "Patient with dental sensitivity. Requires filling on molar.",
             },
             "items": [
-                {"catalog_code": "DX-VISIT", "is_global": True, "completed": True},
-                {"catalog_code": "DX-RXPAN", "is_global": True, "completed": True},
+                {"catalog_code": "DX-VISIT", "is_global": True},
+                {"catalog_code": "DX-RXPAN", "is_global": True},
                 {"catalog_code": "REST-COMP", "tooth": 16, "is_global": False},
             ],
         },
         "budget": {
             "id_idx": 1,
-            "status": "draft",
+            "status": "sent",
             "global_discount": None,
             "signature": False,
             "notes": {
-                "es": "Presupuesto pendiente de aceptación",
-                "en": "Budget pending acceptance",
+                "es": "Presupuesto enviado, esperando respuesta",
+                "en": "Quote sent, awaiting response",
             },
         },
-        "appointments": [
-            {"week": "past", "covers": [0, 1], "status": "completed"},
-            {"week": "future", "covers": [2], "status": "scheduled"},
-        ],
-        "invoice": {
-            "id_idx": 1,
-            "status": "issued",
-            "payments": [],
-            "covers": [0, 1],
-            "notes": {"es": "Emitida - pendiente de pago", "en": "Issued - pending payment"},
-        },
+        "appointments": [],
+        "invoice": None,
     },
     # Patient 4 — David / William (aesthetic; draft budget, no invoice yet)
     {
@@ -1497,16 +1487,13 @@ PATIENT_JOURNEYS = [
         },
         "budget": {
             "id_idx": 2,
-            "status": "draft",
+            "status": "accepted",
             "global_discount": {"type": "percentage", "value": 5},
-            "signature": False,
-            "notes": {"es": "Pendiente de aceptación", "en": "Pending acceptance"},
+            "signature": True,
+            "notes": {"es": "Aceptado, pendiente de agendar", "en": "Accepted, pending scheduling"},
         },
-        "appointments": [
-            {"week": "past", "covers": [0], "status": "completed"},
-            {"week": "future", "covers": [1], "status": "scheduled"},
-            {"week": "future", "covers": [2], "status": "scheduled"},
-        ],
+        # No appointments — surfaces in bandeja tab "Sin cita".
+        "appointments": [],
     },
     # Patient 5 — Elena / Sophia (pregnant; accepted budget with signature, partial invoice)
     {
@@ -1574,10 +1561,10 @@ PATIENT_JOURNEYS = [
                 "en": "Diabetic patient - special care",
             },
         },
+        # Past appointments only — surfaces in bandeja tab "Sin próxima cita".
         "appointments": [
             {"week": "past", "covers": [0], "status": "completed"},
             {"week": "past", "covers": [1], "status": "completed"},
-            {"week": "future", "covers": [2], "status": "scheduled"},
         ],
         "invoice": {
             "id_idx": 3,
@@ -1592,8 +1579,13 @@ PATIENT_JOURNEYS = [
         "patient_idx": 7,
         "plan": {
             "id_idx": 7,
-            "status": "active",
-            "title": {"es": "Revisión periódica", "en": "Periodic checkup"},
+            "status": "closed",
+            "closure_reason": "rejected_by_patient",
+            "closure_note": {
+                "es": "Paciente rechazó carillas estéticas por precio.",
+                "en": "Patient rejected aesthetic veneers due to pricing.",
+            },
+            "title": {"es": "Plan estético rechazado", "en": "Rejected aesthetic plan"},
             "diagnosis_notes": {
                 "es": "Control semestral. Paciente rechazó carillas estéticas.",
                 "en": "Bi-annual checkup. Patient rejected aesthetic veneers.",
@@ -1607,6 +1599,11 @@ PATIENT_JOURNEYS = [
         "budget": {
             "id_idx": 5,
             "status": "rejected",
+            "rejection_reason": "price",
+            "rejection_note": {
+                "es": "Precio de carillas demasiado alto",
+                "en": "Veneer pricing too high",
+            },
             "global_discount": None,
             "signature": False,
             "notes": {
@@ -1616,7 +1613,6 @@ PATIENT_JOURNEYS = [
         },
         "appointments": [
             {"week": "past", "covers": [0], "status": "completed"},
-            {"week": "current", "covers": [1], "status": "confirmed"},
         ],
     },
     # Patient 8 — Francisco / Alexander (penicillin allergic; accepted, paid split)
