@@ -1821,17 +1821,7 @@
         "publicLink": {
           "title": "Public link and verification",
           "description": "Configure the protection of the patient-facing quote link."
-        },
-        "language": {
-          "title": "Communications language",
-          "description": "Language used in the patient-facing quote link and future automated emails / SMS."
         }
-      },
-      "language": {
-        "title": "Patient communications language",
-        "label": "Language",
-        "help": "Applies to the patient-facing quote view and the automated email/SMS templates. Staff UI keeps each user's own language preference.",
-        "save": "Save"
       },
       "expiry": {
         "validityDays": "Quote validity (days)",
@@ -1854,6 +1844,17 @@
     }
   },
   "notifications": {
+    "communications": {
+      "language": {
+        "cardTitle": "Communications language",
+        "cardDescription": "Language used in the patient-facing quote view, emails and SMS.",
+        "title": "Patient communications language",
+        "label": "Language",
+        "help": "Applies to the patient-facing quote view and the automated email/SMS templates. Staff UI keeps each user's own language preference.",
+        "save": "Save",
+        "saved": "Language saved"
+      }
+    },
     "title": "Notifications",
     "description": "Configure clinic email notifications",
     "pageDescription": "Configure which notifications are sent automatically and which require manual sending.",

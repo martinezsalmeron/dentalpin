@@ -46,16 +46,4 @@ export default defineNuxtPlugin(() => {
     searchKeywords: ['budget', 'presupuesto', 'public', 'link', 'auth', 'verificacion', 'security'],
     order: 52,
   })
-
-  registerSettingsPage({
-    path: 'communications-language',
-    category: 'billing',
-    labelKey: 'budget.settings.cards.language.title',
-    descriptionKey: 'budget.settings.cards.language.description',
-    icon: 'i-lucide-languages',
-    permission: 'admin.clinic.write',
-    component: () => import('../components/settings/ClinicLanguagePage.vue'),
-    searchKeywords: ['idioma', 'language', 'language', 'comunicaciones', 'communications'],
-    order: 53,
-  })
 })

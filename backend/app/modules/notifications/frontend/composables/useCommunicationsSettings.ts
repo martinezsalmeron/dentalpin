@@ -35,7 +35,10 @@ export function useCommunicationsSettings() {
         payload,
       )
       settings.value = response.data
-      toast.add({ title: t('budget.settings.saved'), color: 'success' })
+      toast.add({
+        title: t('notifications.communications.language.saved'),
+        color: 'success',
+      })
       return true
     } catch {
       toast.add({ title: t('errors.updateFailed'), color: 'error' })
