@@ -1225,7 +1225,7 @@ class TreatmentPlanService:
         # is the established carve-out (treatment_plan depends on
         # budget) — see ADR 0003.
         if plan.budget_id and plan.budget is not None and plan.budget.status != "cancelled":
-            from app.modules.budget.service import BudgetWorkflowService
+            from app.modules.budget.workflow import BudgetWorkflowService
 
             await BudgetWorkflowService.cancel_budget(
                 db,
