@@ -2096,16 +2096,15 @@
         "credit_note_created": "Credit note created"
       }
     },
-    "fromBudget": {
-      "title": "Create invoice from quote",
-      "selectItems": "Select items to invoice",
-      "availableQuantity": "Available",
-      "quantityToInvoice": "Qty to invoice",
-      "alreadyInvoiced": "Already invoiced",
-      "remaining": "Remaining",
-      "noItemsAvailable": "No items available to invoice",
-      "allItemsInvoiced": "All items have been invoiced"
-    },
+    "fromBudget": "Create invoice from quote",
+    "selectItems": "Select items to invoice",
+    "selectItemsHint": "Select the quote items you want to invoice",
+    "availableQuantity": "Available",
+    "quantityToInvoice": "Qty to invoice",
+    "alreadyInvoiced": "Already invoiced",
+    "remaining": "Remaining",
+    "noItemsAvailable": "No items available to invoice",
+    "allItemsInvoiced": "All items have been invoiced",
     "series": {
       "title": "Invoice series",
       "prefix": "Prefix",

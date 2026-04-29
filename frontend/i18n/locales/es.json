@@ -1954,6 +1954,9 @@
     "quantityToInvoice": "Cantidad a facturar",
     "availableQuantity": "Disponible",
     "alreadyInvoiced": "Ya facturado",
+    "remaining": "Pendiente",
+    "noItemsAvailable": "No hay tratamientos disponibles para facturar",
+    "allItemsInvoiced": "Todos los tratamientos están facturados",
     "status": {
       "draft": "Borrador",
       "issued": "Emitida",
