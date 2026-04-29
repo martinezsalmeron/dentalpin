@@ -21,8 +21,16 @@ export interface PublicMeta {
   locked: boolean
   expired: boolean
   already_decided: boolean
-  clinic_name: string | null
   decided_status: string | null
+  clinic_name: string | null
+  clinic_phone: string | null
+  clinic_email: string | null
+  clinic_address_line: string | null
+  patient_first_name: string | null
+  budget_number: string | null
+  budget_total: string | null
+  budget_currency: string | null
+  valid_until: string | null
 }
 
 export interface PublicBudgetItem {

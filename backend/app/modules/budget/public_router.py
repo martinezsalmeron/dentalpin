@@ -129,8 +129,17 @@ class PublicBudgetMeta(BaseModel):
     locked: bool = False
     expired: bool = False
     already_decided: bool = False
-    clinic_name: str | None = None
     decided_status: str | None = None
+    # Trust + personalization signals.
+    clinic_name: str | None = None
+    clinic_phone: str | None = None
+    clinic_email: str | None = None
+    clinic_address_line: str | None = None
+    patient_first_name: str | None = None
+    budget_number: str | None = None
+    budget_total: str | None = None
+    budget_currency: str | None = None
+    valid_until: str | None = None
 
 
 class PublicVerifyBody(BaseModel):
@@ -172,18 +181,34 @@ async def get_public_budget_meta(
     expired = budget.valid_until is not None and budget.valid_until < today
     already_decided = budget.status in {"accepted", "rejected"}
 
-    # Resolve clinic name via raw SQL — Clinic lives in core/auth, not
-    # in budget.depends, but the lookup is a single label string and
-    # we cite ADR 0006 for the trade-off.
+    # Resolve clinic + patient context via raw SQL. Both ``clinics`` and
+    # ``patients`` live in modules already declared in budget.depends so
+    # this is just a denormalised display read — kept as raw SQL to
+    # avoid pulling the full ORM models for one row.
     from sqlalchemy import text as _text
 
-    row = (
+    clinic_row = (
         await db.execute(
-            _text("SELECT name FROM clinics WHERE id = :id"),
+            _text("SELECT name, phone, email, address FROM clinics WHERE id = :id"),
             {"id": budget.clinic_id},
         )
     ).first()
-    clinic_name = row.name if row else None
+    clinic_name = clinic_row.name if clinic_row else None
+    clinic_phone = clinic_row.phone if clinic_row else None
+    clinic_email = clinic_row.email if clinic_row else None
+    clinic_address_line: str | None = None
+    if clinic_row and clinic_row.address:
+        addr = clinic_row.address or {}
+        parts = [addr.get("street"), addr.get("city"), addr.get("postal_code")]
+        clinic_address_line = ", ".join(p for p in parts if p) or None
+
+    patient_row = (
+        await db.execute(
+            _text("SELECT first_name FROM patients WHERE id = :id"),
+            {"id": budget.patient_id},
+        )
+    ).first()
+    patient_first_name = patient_row.first_name if patient_row else None
 
     method = budget.public_auth_method
     requires_verification = method != "none" and not already_decided
@@ -194,8 +219,16 @@ async def get_public_budget_meta(
             locked=locked,
             expired=expired,
             already_decided=already_decided,
-            clinic_name=clinic_name,
             decided_status=budget.status if already_decided else None,
+            clinic_name=clinic_name,
+            clinic_phone=clinic_phone,
+            clinic_email=clinic_email,
+            clinic_address_line=clinic_address_line,
+            patient_first_name=patient_first_name,
+            budget_number=budget.budget_number,
+            budget_total=str(budget.total) if budget.total is not None else None,
+            budget_currency=budget.currency,
+            valid_until=budget.valid_until.isoformat() if budget.valid_until else None,
         )
     )
 
