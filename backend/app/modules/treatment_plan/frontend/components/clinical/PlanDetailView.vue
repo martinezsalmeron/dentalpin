@@ -408,17 +408,9 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           {{ t('treatmentPlans.scheduleAppointment') }}
         </UButton>
 
-        <!-- New workflow transitions (PR1/PR2) -->
-        <UButton
-          v-if="plan.status === 'draft' && plan.items.length > 0"
-          variant="solid"
-          color="primary"
-          size="sm"
-          icon="i-lucide-check-circle"
-          @click="emit('request-confirm')"
-        >
-          {{ t('treatmentPlans.actions.confirm') }}
-        </UButton>
+        <!-- Workflow transitions for plans past draft. The big CTA in
+             the body owns the draft → pending action so it's not
+             duplicated up here. -->
         <UButton
           v-if="plan.status === 'pending'"
           variant="soft"
