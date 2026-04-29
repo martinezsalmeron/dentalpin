@@ -196,8 +196,9 @@ const reasonOptions = computed(() => [
 
 <template>
   <div class="max-w-3xl mx-auto px-4 py-6 space-y-4">
-    <!-- Loading -->
-    <div v-if="loading && !meta" class="space-y-3">
+    <!-- Loading: also covers the brief window between mount and the
+         first /meta response. -->
+    <div v-if="!meta" class="space-y-3">
       <USkeleton class="h-12 w-2/3" />
       <USkeleton class="h-4 w-1/2" />
       <USkeleton class="h-64 w-full" />

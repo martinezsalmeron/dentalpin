@@ -60,7 +60,14 @@ export type VerifyError =
 
 function apiBase(): string {
   const config = useRuntimeConfig()
-  return (config.public.apiBase as string) || ''
+  // The host frontend exposes the backend URL as ``public.apiBaseUrl``
+  // (see frontend/nuxt.config.ts). Falling back to ``apiBase`` keeps
+  // the composable resilient if the key gets renamed.
+  return (
+    (config.public.apiBaseUrl as string)
+    || (config.public.apiBase as string)
+    || ''
+  )
 }
 
 export function usePublicBudget(token: string) {
