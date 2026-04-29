@@ -4,6 +4,25 @@
 
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 
+### Added (patient view, 2026-04-29 — PR3)
+
+- Patient-facing public budget view at ``/p/budget/<token>``
+  (frontend route allowlisted in ``auth.global.ts``).
+- New ``public`` Nuxt layout — clinic header, mobile-first content,
+  no app sidebar.
+- ``usePublicBudget`` composable wrapping the six public endpoints
+  with ``credentials: 'include'`` so the HttpOnly cookie session
+  flows through.
+- ``BudgetVerifyForm`` component renders the right input per
+  ``meta.method`` (phone_last4 / dob / manual_code) and surfaces
+  the error states (invalid, locked, rate_limited, expired).
+- Page state machine: cold (locked / expired / already-decided) →
+  verify form → budget detail with three CTAs (accept with
+  optional signature, reject with reason, "I have questions" /
+  request changes).
+- i18n strings for the whole patient flow under
+  ``budget.public.*`` in ES + EN.
+
 ### Added (frontend, 2026-04-29 — PR2)
 
 - Workflow modals (`components/clinical/modals/`):

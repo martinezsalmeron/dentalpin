@@ -1780,6 +1780,66 @@
         "submit": "Guardar código"
       }
     },
+    "public": {
+      "title": "Tu presupuesto",
+      "intro": "{clinic} te ha enviado este presupuesto. Revisa los tratamientos y elige una opción.",
+      "items": "Tratamientos",
+      "tooth": "Pieza {number}",
+      "subtotal": "Subtotal",
+      "discount": "Descuento",
+      "tax": "IVA",
+      "total": "Total",
+      "validUntil": "Válido hasta {date}",
+      "cta_accept": "Aceptar y firmar",
+      "cta_doubts": "Tengo dudas",
+      "cta_reject": "No me interesa",
+      "expired": "Este presupuesto ha caducado. Contacta con la clínica.",
+      "locked": "Acceso bloqueado por demasiados intentos. Llama a la clínica.",
+      "already_accepted": "Ya has aceptado este presupuesto. La clínica te contactará para agendar tu primera cita.",
+      "already_rejected": "Has rechazado este presupuesto. Si cambias de opinión, llama a la clínica.",
+      "verify": {
+        "title": "Verifica tu identidad",
+        "intro": "Para proteger tu información, confirma un dato antes de ver tu presupuesto.",
+        "phone_last4_label": "Últimos 4 dígitos de tu teléfono",
+        "dob_label": "Tu fecha de nacimiento",
+        "manual_code_label": "Código que te ha dado la clínica",
+        "submit": "Continuar",
+        "invalid": "Dato incorrecto. Inténtalo de nuevo.",
+        "locked": "Acceso bloqueado por demasiados intentos. Llama a la clínica.",
+        "rate_limited": "Demasiados intentos. Espera 15 minutos."
+      },
+      "accept": {
+        "title": "Aceptar y firmar",
+        "signerLabel": "Tu nombre completo",
+        "signatureLabel": "Firma aquí (opcional)",
+        "signatureClear": "Borrar",
+        "consent": "Confirmo que acepto este presupuesto y autorizo el tratamiento descrito.",
+        "submit": "Confirmar aceptación",
+        "success": "¡Listo! La clínica te contactará para agendar tu primera cita."
+      },
+      "reject": {
+        "title": "No me interesa",
+        "intro": "¿Por qué no te interesa este presupuesto?",
+        "reasonLabel": "Motivo",
+        "noteLabel": "Comentario (opcional)",
+        "submit": "Confirmar rechazo",
+        "success": "Hemos avisado a la clínica.",
+        "reasons": {
+          "price": "Precio",
+          "time": "Falta de tiempo",
+          "second_opinion": "Segunda opinión",
+          "other": "Otro motivo"
+        }
+      },
+      "doubts": {
+        "title": "Tengo dudas",
+        "intro": "Cuéntanos qué te preocupa para que podamos llamarte.",
+        "reasonLabel": "Motivo",
+        "noteLabel": "Comentario (opcional)",
+        "submit": "Enviar consulta",
+        "success": "Hemos avisado a la clínica. Te contactarán pronto."
+      }
+    },
     "settings": {
       "title": "Ajustes de presupuestos",
       "description": "Configura caducidad, recordatorios y verificación del link público.",

@@ -1758,6 +1758,66 @@
         "submit": "Save code"
       }
     },
+    "public": {
+      "title": "Your quote",
+      "intro": "{clinic} has sent you this quote. Review the treatments and choose an option.",
+      "items": "Treatments",
+      "tooth": "Tooth {number}",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "tax": "VAT",
+      "total": "Total",
+      "validUntil": "Valid until {date}",
+      "cta_accept": "Accept and sign",
+      "cta_doubts": "I have questions",
+      "cta_reject": "Not interested",
+      "expired": "This quote has expired. Please contact the clinic.",
+      "locked": "Access locked after too many attempts. Please call the clinic.",
+      "already_accepted": "You already accepted this quote. The clinic will contact you to schedule your first appointment.",
+      "already_rejected": "You rejected this quote. If you change your mind, please call the clinic.",
+      "verify": {
+        "title": "Verify your identity",
+        "intro": "To protect your information, confirm one detail before viewing your quote.",
+        "phone_last4_label": "Last 4 digits of your phone",
+        "dob_label": "Your date of birth",
+        "manual_code_label": "Code given to you by the clinic",
+        "submit": "Continue",
+        "invalid": "Incorrect detail. Please try again.",
+        "locked": "Access locked after too many attempts. Please call the clinic.",
+        "rate_limited": "Too many attempts. Wait 15 minutes."
+      },
+      "accept": {
+        "title": "Accept and sign",
+        "signerLabel": "Your full name",
+        "signatureLabel": "Sign here (optional)",
+        "signatureClear": "Clear",
+        "consent": "I accept this quote and authorise the described treatment.",
+        "submit": "Confirm acceptance",
+        "success": "Done! The clinic will contact you to schedule your first appointment."
+      },
+      "reject": {
+        "title": "Not interested",
+        "intro": "Why is this quote not for you?",
+        "reasonLabel": "Reason",
+        "noteLabel": "Comment (optional)",
+        "submit": "Confirm rejection",
+        "success": "We have notified the clinic.",
+        "reasons": {
+          "price": "Price",
+          "time": "Lack of time",
+          "second_opinion": "Second opinion",
+          "other": "Other reason"
+        }
+      },
+      "doubts": {
+        "title": "I have questions",
+        "intro": "Tell us what concerns you so we can call you back.",
+        "reasonLabel": "Reason",
+        "noteLabel": "Comment (optional)",
+        "submit": "Send query",
+        "success": "We have notified the clinic. They will contact you soon."
+      }
+    },
     "settings": {
       "title": "Quote settings",
       "description": "Configure expiry, reminders and public-link verification.",
