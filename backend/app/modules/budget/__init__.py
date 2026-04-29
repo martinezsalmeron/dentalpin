@@ -13,6 +13,7 @@ from app.core.plugins import BaseModule
 from app.database import async_session_maker
 
 from .models import Budget, BudgetAccessLog, BudgetHistory, BudgetItem, BudgetSignature
+from .public_router import public_router
 from .router import router
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,13 @@ class BudgetModule(BaseModule):
         return [Budget, BudgetItem, BudgetSignature, BudgetHistory, BudgetAccessLog]
 
     def get_router(self) -> APIRouter:
-        return router
+        # Compose authenticated + public sub-routers under one mount.
+        # Public endpoints sit under ``/public/budgets/...`` and are
+        # not gated by the clinic context dependency (see ADR 0006).
+        combined = APIRouter()
+        combined.include_router(router)
+        combined.include_router(public_router)
+        return combined
 
     def get_permissions(self) -> list[str]:
         return [

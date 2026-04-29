@@ -1,0 +1,423 @@
+"""Public budget endpoints (no staff auth, two-factor verification).
+
+Implements the patient-facing flow described in
+``docs/adr/0006-budget-public-link-2-factor-auth.md``:
+
+1. ``GET    /api/v1/public/budgets/{token}/meta``      → returns
+   the auth method the SPA should ask for (or ``none``), the
+   ``locked``/``expired`` flags and the clinic name. No PII.
+2. ``POST   /api/v1/public/budgets/{token}/verify``    → patient
+   submits the verification value (phone last 4, DOB, or manual
+   code). On success a signed cookie is set, scoped to the token.
+3. ``GET    /api/v1/public/budgets/{token}``           → returns
+   the budget detail (only with cookie or method=none). Marks the
+   budget as viewed on the first call.
+4. ``POST   /api/v1/public/budgets/{token}/accept``    → records
+   acceptance + signature.
+5. ``POST   /api/v1/public/budgets/{token}/reject``    → records
+   rejection.
+6. ``POST   /api/v1/public/budgets/{token}/request-changes`` →
+   logs that the patient asked questions; no state change.
+
+Rate limits via ``slowapi`` (``5/15minute`` per token, ``20/hour``
+per IP, ``60/minute`` for ``/meta``). Sessions are HS256 JWTs
+signed with ``settings.BUDGET_PUBLIC_SECRET_KEY`` (falls back to
+``SECRET_KEY`` only in dev).
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import UTC, datetime, timedelta
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from jose import JWTError, jwt
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.core.auth.router import limiter
+from app.core.schemas import ApiResponse
+from app.database import get_db
+
+from .schemas import BudgetDetailResponse
+from .service import BudgetService
+from .workflow import (
+    PUBLIC_AUTH_METHODS,
+    PUBLIC_REJECTION_REASONS,
+    PUBLIC_SESSION_TTL,
+    BudgetWorkflowService,
+    _hash_ip,
+)
+
+logger = logging.getLogger(__name__)
+
+public_router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Cookie session helpers
+# ---------------------------------------------------------------------------
+
+
+def _public_secret() -> str:
+    """Resolve the secret used to sign public budget session cookies.
+
+    Production deploys must set ``BUDGET_PUBLIC_SECRET_KEY``. In
+    development we fall back to ``SECRET_KEY`` so local runs work
+    without extra setup, but this is logged once on startup.
+    """
+    return settings.BUDGET_PUBLIC_SECRET_KEY or settings.SECRET_KEY
+
+
+def _cookie_name(token: UUID) -> str:
+    """Cookie name is scoped per token so a stolen cookie from one
+    budget cannot unlock another."""
+    return f"bdg_session_{token}"
+
+
+def _issue_session_cookie(response: Response, budget_id: UUID, token: UUID) -> None:
+    expires_at = datetime.now(UTC) + PUBLIC_SESSION_TTL
+    payload = {
+        "sub": str(budget_id),
+        "tok": str(token),
+        "exp": int(expires_at.timestamp()),
+    }
+    encoded = jwt.encode(payload, _public_secret(), algorithm=settings.ALGORITHM)
+    response.set_cookie(
+        key=_cookie_name(token),
+        value=encoded,
+        max_age=int(PUBLIC_SESSION_TTL.total_seconds()),
+        path=f"/api/v1/public/budgets/{token}",
+        httponly=True,
+        secure=settings.ENVIRONMENT == "production",
+        samesite="strict",
+    )
+
+
+def _verify_session_cookie(token: UUID, raw: str | None) -> UUID | None:
+    if not raw:
+        return None
+    try:
+        payload = jwt.decode(raw, _public_secret(), algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return None
+    if payload.get("tok") != str(token):
+        return None
+    sub = payload.get("sub")
+    try:
+        return UUID(sub) if sub else None
+    except (TypeError, ValueError):
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Public schemas (no clinic_id, no PII beyond what the patient owns)
+# ---------------------------------------------------------------------------
+
+
+class PublicBudgetMeta(BaseModel):
+    requires_verification: bool
+    method: str
+    locked: bool = False
+    expired: bool = False
+    already_decided: bool = False
+    clinic_name: str | None = None
+    decided_status: str | None = None
+
+
+class PublicVerifyBody(BaseModel):
+    method: str = Field(..., pattern="^(phone_last4|dob|manual_code|none)$")
+    value: str = Field(..., min_length=1, max_length=64)
+
+
+class PublicAcceptBody(BaseModel):
+    signer_name: str = Field(..., min_length=1, max_length=200)
+    signature_data: dict | None = Field(default=None)
+
+
+class PublicRejectBody(BaseModel):
+    reason: str = Field(...)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+# ---------------------------------------------------------------------------
+# /meta — first hit, no cookie required
+# ---------------------------------------------------------------------------
+
+
+@public_router.get(
+    "/public/budgets/{token}/meta",
+    response_model=ApiResponse[PublicBudgetMeta],
+)
+@limiter.limit("60/minute")
+async def get_public_budget_meta(
+    token: UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PublicBudgetMeta]:
+    budget = await BudgetService.get_by_public_token(db, token)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget link not found")
+
+    locked = budget.public_locked_at is not None
+    today = datetime.now(UTC).date()
+    expired = budget.valid_until is not None and budget.valid_until < today
+    already_decided = budget.status in {"accepted", "rejected"}
+
+    # Resolve clinic name via raw SQL — Clinic lives in core/auth, not
+    # in budget.depends, but the lookup is a single label string and
+    # we cite ADR 0006 for the trade-off.
+    from sqlalchemy import text as _text
+
+    row = (
+        await db.execute(
+            _text("SELECT name FROM clinics WHERE id = :id"),
+            {"id": budget.clinic_id},
+        )
+    ).first()
+    clinic_name = row.name if row else None
+
+    method = budget.public_auth_method
+    requires_verification = method != "none" and not already_decided
+    return ApiResponse(
+        data=PublicBudgetMeta(
+            requires_verification=requires_verification,
+            method=method,
+            locked=locked,
+            expired=expired,
+            already_decided=already_decided,
+            clinic_name=clinic_name,
+            decided_status=budget.status if already_decided else None,
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# /verify — exchange a knowledge factor for a session cookie
+# ---------------------------------------------------------------------------
+
+
+@public_router.post(
+    "/public/budgets/{token}/verify",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("5/15minute", key_func=lambda request: str(request.path_params.get("token")))
+@limiter.limit("20/hour")
+async def verify_public_budget(
+    token: UUID,
+    body: PublicVerifyBody,
+    request: Request,
+    response: Response,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    if body.method not in PUBLIC_AUTH_METHODS:
+        raise HTTPException(status_code=400, detail="Invalid method")
+
+    budget = await BudgetService.get_by_public_token(db, token)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget link not found")
+    if budget.status in {"accepted", "rejected"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Budget already decided",
+        )
+
+    ip_hash = _hash_ip(request.client.host if request.client else None)
+    ok, err = await BudgetWorkflowService.verify_public_access(
+        db, budget, method=body.method, value=body.value, ip_hash=ip_hash
+    )
+    await db.commit()
+
+    if not ok:
+        if err == "locked":
+            raise HTTPException(status_code=423, detail="locked")
+        if err == "expired":
+            raise HTTPException(status_code=410, detail="expired")
+        if err == "rate_limited":
+            raise HTTPException(status_code=429, detail="rate_limited")
+        # method_mismatch / invalid both surface as 401 to the SPA.
+        raise HTTPException(status_code=401, detail=err or "invalid")
+
+    _issue_session_cookie(response, budget.id, token)
+
+
+# ---------------------------------------------------------------------------
+# Cookie-protected endpoints
+# ---------------------------------------------------------------------------
+
+
+async def _require_session(
+    token: UUID,
+    db: AsyncSession,
+    cookie_value: str | None,
+):
+    """Resolve the budget for a public-cookie-protected route."""
+    budget = await BudgetService.get_by_public_token(db, token)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget link not found")
+    if budget.public_auth_method != "none":
+        # method=none does not need a cookie; otherwise the cookie must
+        # match the budget id and not be expired.
+        sub = _verify_session_cookie(token, cookie_value)
+        if sub is None or sub != budget.id:
+            raise HTTPException(status_code=401, detail="verification_required")
+    return budget
+
+
+@public_router.get(
+    "/public/budgets/{token}",
+    response_model=ApiResponse[BudgetDetailResponse],
+)
+@limiter.limit("30/minute")
+async def get_public_budget(
+    token: UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[BudgetDetailResponse]:
+    cookie_value = request.cookies.get(_cookie_name(token))
+    budget = await _require_session(token, db, cookie_value)
+
+    today = datetime.now(UTC).date()
+    if budget.valid_until is not None and budget.valid_until < today:
+        raise HTTPException(status_code=410, detail="expired")
+
+    ip_hash = _hash_ip(request.client.host if request.client else None)
+    await BudgetWorkflowService.mark_viewed(db, budget, ip_hash=ip_hash)
+    await db.commit()
+
+    # Reload with items eagerly loaded for the response.
+    budget = await BudgetService.get_budget(
+        db, budget.clinic_id, budget.id, include_items=True
+    )
+    return ApiResponse(data=BudgetDetailResponse.model_validate(budget))
+
+
+@public_router.post(
+    "/public/budgets/{token}/accept",
+    response_model=ApiResponse[PublicBudgetMeta],
+)
+@limiter.limit("10/minute")
+async def accept_public_budget(
+    token: UUID,
+    body: PublicAcceptBody,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PublicBudgetMeta]:
+    cookie_value = request.cookies.get(_cookie_name(token))
+    budget = await _require_session(token, db, cookie_value)
+    if budget.status in {"accepted", "rejected"}:
+        raise HTTPException(status_code=409, detail="Budget already decided")
+
+    sig_payload = {
+        "signed_by_name": body.signer_name,
+        "relationship_to_patient": "patient",
+        "signature_method": "drawn" if body.signature_data else "click_accept",
+        "signature_data": body.signature_data,
+    }
+    try:
+        # Reload with items required by accept_budget validation.
+        full_budget = await BudgetService.get_budget(
+            db, budget.clinic_id, budget.id, include_items=True
+        )
+        await BudgetWorkflowService.accept_budget(
+            db,
+            full_budget,
+            signature_data=sig_payload,
+            accepted_by=full_budget.created_by,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            accepted_via="remote_link",
+        )
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    await db.commit()
+    return ApiResponse(
+        data=PublicBudgetMeta(
+            requires_verification=False,
+            method=budget.public_auth_method,
+            already_decided=True,
+            decided_status="accepted",
+        )
+    )
+
+
+@public_router.post(
+    "/public/budgets/{token}/reject",
+    response_model=ApiResponse[PublicBudgetMeta],
+)
+@limiter.limit("10/minute")
+async def reject_public_budget(
+    token: UUID,
+    body: PublicRejectBody,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PublicBudgetMeta]:
+    cookie_value = request.cookies.get(_cookie_name(token))
+    budget = await _require_session(token, db, cookie_value)
+    if budget.status in {"accepted", "rejected"}:
+        raise HTTPException(status_code=409, detail="Budget already decided")
+    if body.reason not in PUBLIC_REJECTION_REASONS:
+        raise HTTPException(status_code=400, detail="Invalid reason")
+
+    try:
+        full_budget = await BudgetService.get_budget(
+            db, budget.clinic_id, budget.id, include_items=True
+        )
+        await BudgetWorkflowService.reject_budget(
+            db,
+            full_budget,
+            rejected_by=full_budget.created_by,
+            reason=body.reason,
+            note=body.note,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    await db.commit()
+    return ApiResponse(
+        data=PublicBudgetMeta(
+            requires_verification=False,
+            method=budget.public_auth_method,
+            already_decided=True,
+            decided_status="rejected",
+        )
+    )
+
+
+@public_router.post(
+    "/public/budgets/{token}/request-changes",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("10/minute")
+async def request_budget_changes(
+    token: UUID,
+    body: PublicRejectBody,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Patient asked for changes. No state change — just an audit row
+    in BudgetHistory and a notification surface for reception.
+    """
+    cookie_value = request.cookies.get(_cookie_name(token))
+    budget = await _require_session(token, db, cookie_value)
+    if body.reason not in PUBLIC_REJECTION_REASONS:
+        raise HTTPException(status_code=400, detail="Invalid reason")
+
+    from .service import BudgetHistoryService
+
+    await BudgetHistoryService.add_entry(
+        db,
+        clinic_id=budget.clinic_id,
+        budget_id=budget.id,
+        action="request_changes",
+        changed_by=budget.created_by,
+        new_state={"reason": body.reason, "note": body.note},
+        notes="Patient requested changes from the public link",
+    )
+    await db.commit()

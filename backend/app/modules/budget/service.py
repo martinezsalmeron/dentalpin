@@ -366,6 +366,22 @@ class BudgetService:
         return budget
 
     @staticmethod
+    async def get_by_public_token(
+        db: AsyncSession,
+        token: UUID,
+    ) -> Budget | None:
+        """Fetch a budget by its ``public_token`` (no clinic scope, since
+        the token itself is the access factor — see ADR 0006). Returns
+        ``None`` if missing or soft-deleted."""
+        result = await db.execute(
+            select(Budget).where(
+                Budget.public_token == token,
+                Budget.deleted_at.is_(None),
+            )
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def create_from_plan_snapshot(
         db: AsyncSession,
         clinic_id: UUID,
