@@ -435,15 +435,19 @@ export function useTreatmentPlans() {
   // Workflow transitions (confirm / reopen / close / reactivate)
   // ---------------------------------------------------------------------
 
+  // Workflow transitions intentionally DO NOT mutate ``currentPlan`` —
+  // the page handler always follows the action with a full
+  // ``fetchPlan`` so the UI reflects the canonical server state
+  // (including budget_id, items[], confirmed_at, closure metadata,
+  // etc.). Local merges from the action response had race conditions
+  // because the ``TreatmentPlan`` schema returned here lacks ``items``.
+
   async function confirmPlan(planId: string) {
     loading.value = true
     try {
       const response = await api.post<ApiResponse<TreatmentPlan>>(
         `/api/v1/treatment_plan/treatment-plans/${planId}/confirm`
       )
-      if (currentPlan.value?.id === planId) {
-        currentPlan.value = { ...currentPlan.value, ...response.data }
-      }
       toast.add({ title: t('treatmentPlans.confirmed'), color: 'green' })
       return response.data
     } catch (error) {
@@ -461,9 +465,6 @@ export function useTreatmentPlans() {
       const response = await api.post<ApiResponse<TreatmentPlan>>(
         `/api/v1/treatment_plan/treatment-plans/${planId}/reopen`
       )
-      if (currentPlan.value?.id === planId) {
-        currentPlan.value = { ...currentPlan.value, ...response.data }
-      }
       toast.add({ title: t('treatmentPlans.reopened'), color: 'green' })
       return response.data
     } catch (error) {
@@ -485,9 +486,6 @@ export function useTreatmentPlans() {
         `/api/v1/treatment_plan/treatment-plans/${planId}/close`,
         payload
       )
-      if (currentPlan.value?.id === planId) {
-        currentPlan.value = { ...currentPlan.value, ...response.data }
-      }
       toast.add({ title: t('treatmentPlans.closed'), color: 'green' })
       return response.data
     } catch (error) {
@@ -505,9 +503,6 @@ export function useTreatmentPlans() {
       const response = await api.post<ApiResponse<TreatmentPlan>>(
         `/api/v1/treatment_plan/treatment-plans/${planId}/reactivate`
       )
-      if (currentPlan.value?.id === planId) {
-        currentPlan.value = { ...currentPlan.value, ...response.data }
-      }
       toast.add({ title: t('treatmentPlans.reactivated'), color: 'green' })
       return response.data
     } catch (error) {

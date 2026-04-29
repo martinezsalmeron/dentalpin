@@ -10,6 +10,7 @@ const router = useRouter()
 const { t } = useI18n()
 const toast = useToast()
 
+const plans = useTreatmentPlans()
 const {
   currentPlan,
   loading,
@@ -20,7 +21,7 @@ const {
   closePlan,
   reactivatePlan,
   logContact,
-} = useTreatmentPlans()
+} = plans
 
 const planId = computed(() => route.params.id as string)
 
@@ -35,7 +36,11 @@ watch(planId, async (newId) => {
 const patientId = computed(() => currentPlan.value?.patient_id || '')
 
 async function handleUpdated() {
+  // Force a full refetch after any workflow transition. Some PlanDetailView
+  // sub-components keep their own snapshot; nulling currentPlan first
+  // guarantees Vue re-renders the whole subtree with fresh data.
   await fetchPlan(planId.value)
+  await nextTick()
 }
 
 async function handleGenerateBudget() {
