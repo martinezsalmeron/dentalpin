@@ -17,6 +17,7 @@
     "patients": "Pacientes",
     "appointments": "Agenda",
     "treatmentPlans": "Planes de tratamiento",
+    "pipeline": "Bandeja de planes",
     "budgets": "Presupuestos",
     "invoices": "Facturas",
     "reports": "Informes",
@@ -1461,7 +1462,101 @@
       "general": {
         "followUp": "Seguimiento general"
       }
+    },
+    "status": {
+      "draft": "Borrador",
+      "pending": "Pendiente",
+      "active": "Activo",
+      "completed": "Completado",
+      "closed": "Cerrado",
+      "archived": "Archivado"
+    },
+    "closureReason": {
+      "rejected_by_patient": "Rechazado por paciente",
+      "expired": "Caducado",
+      "cancelled_by_clinic": "Cancelado por la clínica",
+      "patient_abandoned": "Paciente abandonó",
+      "other": "Otro motivo"
+    },
+    "actions": {
+      "confirm": "Confirmar plan",
+      "reopen": "Reabrir",
+      "close": "Cerrar plan",
+      "reactivate": "Reactivar plan",
+      "logContact": "Marcar contactado"
+    },
+    "confirmed": "Plan confirmado",
+    "reopened": "Plan reabierto",
+    "closed": "Plan cerrado",
+    "reactivated": "Plan reactivado",
+    "contactLogged": "Contacto registrado",
+    "modals": {
+      "confirm": {
+        "title": "Confirmar plan",
+        "description": "El plan pasará a Pendiente y se generará un presupuesto borrador para que recepción lo revise. Una vez confirmado, los tratamientos quedan bloqueados.",
+        "submit": "Confirmar plan"
+      },
+      "reopen": {
+        "title": "Reabrir plan para editar",
+        "description": "Esto cancelará el presupuesto vigente. El plan vuelve a Borrador para que puedas modificar tratamientos.",
+        "submit": "Reabrir"
+      },
+      "close": {
+        "title": "Cerrar plan",
+        "description": "Selecciona el motivo de cierre. Los tratamientos pendientes quedarán archivados.",
+        "reasonLabel": "Motivo",
+        "noteLabel": "Nota (opcional)",
+        "submit": "Cerrar plan"
+      },
+      "reactivate": {
+        "title": "Reactivar plan cerrado",
+        "description": "Esto reactivará un plan cerrado el {date} por «{reason}». ¿Continuar?",
+        "submit": "Reactivar"
+      },
+      "contactLog": {
+        "title": "Marcar contactado",
+        "description": "Registra el seguimiento sin cambiar el estado del plan.",
+        "channelLabel": "Canal",
+        "noteLabel": "Nota (opcional)",
+        "submit": "Registrar"
+      }
     }
+  },
+  "pipeline": {
+    "title": "Bandeja de planes",
+    "description": "Gestiona la pipeline comercial de tratamientos.",
+    "tabs": {
+      "por_presupuestar": "Por presupuestar",
+      "esperando_paciente": "Esperando paciente",
+      "sin_cita": "Sin cita",
+      "sin_proxima_cita": "Sin próxima cita",
+      "cerrados": "Cerrados"
+    },
+    "row": {
+      "patient": "Paciente",
+      "plan": "Plan",
+      "budget": "Presupuesto",
+      "items": "Tratamientos",
+      "daysIn": "{n} d en estado",
+      "nextAppt": "Próx. cita",
+      "noNextAppt": "Sin cita",
+      "noBudget": "Sin presupuesto"
+    },
+    "actions": {
+      "open": "Abrir",
+      "send": "Enviar",
+      "remind": "Reenviar",
+      "schedule": "Agendar",
+      "scheduleNext": "Agendar siguiente",
+      "reactivate": "Reactivar",
+      "call": "Llamar",
+      "whatsapp": "WhatsApp",
+      "markContacted": "Marcar contactado",
+      "acceptInClinic": "Aceptar en clínica"
+    },
+    "search": "Buscar por nombre o número…",
+    "empty": "Sin filas en este tab.",
+    "loading": "Cargando…"
   },
   "budget": {
     "title": "Presupuestos",
@@ -1650,6 +1745,70 @@
     "pdf": {
       "generating": "Generando PDF...",
       "downloadError": "Error al descargar PDF"
+    },
+    "actions": {
+      "renegotiate": "Renegociar",
+      "acceptInClinic": "Aceptar en clínica",
+      "resend": "Reenviar",
+      "sendReminder": "Enviar recordatorio",
+      "setPublicCode": "Definir código",
+      "unlockPublic": "Desbloquear acceso"
+    },
+    "modals": {
+      "renegotiate": {
+        "title": "Renegociar presupuesto",
+        "description": "Esto cancelará el presupuesto actual y reabrirá el plan a Borrador para que puedas ajustar los tratamientos.",
+        "submit": "Renegociar"
+      },
+      "acceptInClinic": {
+        "title": "Aceptar presupuesto en clínica",
+        "description": "Captura la conformidad del paciente. Puedes recoger una firma manuscrita en tablet (opcional).",
+        "signerLabel": "Nombre completo del firmante",
+        "captureSignature": "Capturar firma",
+        "submit": "Marcar como aceptado"
+      },
+      "setPublicCode": {
+        "title": "Definir código de acceso",
+        "description": "Este paciente no tiene teléfono ni fecha de nacimiento en su ficha. Define un código de 4-6 dígitos y compártelo con el paciente verbalmente. NO incluyas el código en el email.",
+        "codeLabel": "Código (4-6 dígitos)",
+        "submit": "Guardar código"
+      }
+    },
+    "settings": {
+      "title": "Ajustes de presupuestos",
+      "description": "Configura caducidad, recordatorios y verificación del link público.",
+      "cards": {
+        "expiry": {
+          "title": "Caducidad y auto-cierre",
+          "description": "Define cuántos días vale un presupuesto antes de caducar y cuándo cerrar automáticamente los planes."
+        },
+        "reminders": {
+          "title": "Recordatorios automáticos",
+          "description": "Activa los recordatorios a los 7 y 14 días sin respuesta del paciente."
+        },
+        "publicLink": {
+          "title": "Link público y verificación",
+          "description": "Configura la protección del link del presupuesto que ve el paciente."
+        }
+      },
+      "expiry": {
+        "validityDays": "Días de validez del presupuesto",
+        "validityHelp": "Tras este número de días sin respuesta el presupuesto pasa a Caducado (rango 7-180).",
+        "autoCloseDays": "Días para auto-cerrar el plan",
+        "autoCloseHelp": "Tras este número de días con presupuesto caducado y sin acción, el plan pasa a Cerrado (rango 7-180).",
+        "save": "Guardar"
+      },
+      "reminders": {
+        "enabled": "Enviar recordatorios automáticos a los 7 y 14 días",
+        "enabledHelp": "Cuando está activo, el sistema envía un email recordando al paciente que tiene un presupuesto pendiente. Si está desactivado, recepción persigue manualmente.",
+        "save": "Guardar"
+      },
+      "publicLink": {
+        "authDisabled": "Desactivar verificación del link público",
+        "authDisabledHelp": "Cuando está activo, el paciente puede ver el presupuesto sólo con el link (sin pedir teléfono ni fecha de nacimiento). Asume el riesgo si el link se reenvía.",
+        "save": "Guardar"
+      },
+      "saved": "Ajustes guardados"
     }
   },
   "invoice": {

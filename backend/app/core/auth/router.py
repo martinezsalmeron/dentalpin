@@ -598,3 +598,77 @@ async def update_clinic_metadata(
     await db.refresh(clinic)
 
     return ApiResponse(data=ClinicMetadataResponse.model_validate(clinic))
+
+
+# ---------------------------------------------------------------------------
+# Per-clinic settings (JSONB ``clinic.settings``).
+#
+# Module-specific settings live under namespaced keys so each module
+# can read its own subset without colliding. The settings PATCH
+# endpoint lives in core because ``Clinic`` is a core entity, but the
+# accepted keys are validated against per-module schemas.
+# ---------------------------------------------------------------------------
+
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+
+class _BudgetSettingsPatch(BaseModel):
+    """Subset of clinic.settings keys owned by the budget module."""
+
+    budget_expiry_days: int | None = Field(default=None, ge=7, le=180)
+    plan_auto_close_days_after_expiry: int | None = Field(default=None, ge=7, le=180)
+    budget_reminders_enabled: bool | None = None
+    budget_public_auth_disabled: bool | None = None
+
+
+class _BudgetSettingsResponse(BaseModel):
+    budget_expiry_days: int = 30
+    plan_auto_close_days_after_expiry: int = 30
+    budget_reminders_enabled: bool = False
+    budget_public_auth_disabled: bool = False
+
+
+def _read_budget_settings(raw: dict | None) -> _BudgetSettingsResponse:
+    raw = raw or {}
+    return _BudgetSettingsResponse(
+        budget_expiry_days=int(raw.get("budget_expiry_days", 30)),
+        plan_auto_close_days_after_expiry=int(
+            raw.get("plan_auto_close_days_after_expiry", 30)
+        ),
+        budget_reminders_enabled=bool(raw.get("budget_reminders_enabled", False)),
+        budget_public_auth_disabled=bool(raw.get("budget_public_auth_disabled", False)),
+    )
+
+
+@router.get(
+    "/clinic/settings/budget",
+    response_model=ApiResponse[_BudgetSettingsResponse],
+)
+async def get_budget_settings(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.read"))],
+) -> ApiResponse[_BudgetSettingsResponse]:
+    """Read the budget-related toggles from the clinic settings."""
+    return ApiResponse(data=_read_budget_settings(ctx.clinic.settings))
+
+
+@router.patch(
+    "/clinic/settings/budget",
+    response_model=ApiResponse[_BudgetSettingsResponse],
+)
+async def update_budget_settings(
+    data: _BudgetSettingsPatch,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[_BudgetSettingsResponse]:
+    """Update budget-related clinic settings (admin only)."""
+    clinic = ctx.clinic
+    current = dict(clinic.settings or {})
+    payload = data.model_dump(exclude_unset=True)
+    current.update(payload)
+    clinic.settings = current
+    await db.commit()
+    await db.refresh(clinic)
+    return ApiResponse(data=_read_budget_settings(clinic.settings))

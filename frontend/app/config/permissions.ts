@@ -41,7 +41,9 @@ export const PERMISSIONS = {
   budget: {
     read: 'budget.read',
     write: 'budget.write',
-    admin: 'budget.admin'
+    admin: 'budget.admin',
+    renegotiate: 'budget.renegotiate',
+    acceptInClinic: 'budget.accept_in_clinic'
   },
   billing: {
     read: 'billing.read',
@@ -69,7 +71,10 @@ export const PERMISSIONS = {
   },
   treatmentPlans: {
     read: 'treatment_plan.plans.read',
-    write: 'treatment_plan.plans.write'
+    write: 'treatment_plan.plans.write',
+    confirm: 'treatment_plan.plans.confirm',
+    close: 'treatment_plan.plans.close',
+    reactivate: 'treatment_plan.plans.reactivate'
   },
   clinicalNotes: {
     read: 'clinical_notes.notes.read',
@@ -95,7 +100,9 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/settings/modules': PERMISSIONS.admin.clinicRead,
   '/settings/notifications': PERMISSIONS.notifications.settingsRead,
   '/treatment-plans': PERMISSIONS.treatmentPlans.read,
+  '/treatment-plans/pipeline': PERMISSIONS.treatmentPlans.read,
   '/budgets': PERMISSIONS.budget.read,
+  '/settings/budgets': PERMISSIONS.admin.clinicRead,
   '/invoices': PERMISSIONS.billing.read,
   '/reports': PERMISSIONS.reports.billingRead,
   '/reports/billing': PERMISSIONS.reports.billingRead,

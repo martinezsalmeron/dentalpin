@@ -17,6 +17,7 @@
     "patients": "Patients",
     "appointments": "Schedule",
     "treatmentPlans": "Treatment Plans",
+    "pipeline": "Plans pipeline",
     "budgets": "Quotes",
     "invoices": "Invoices",
     "reports": "Reports",
@@ -1439,7 +1440,101 @@
       "general": {
         "followUp": "General follow-up"
       }
+    },
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "active": "Active",
+      "completed": "Completed",
+      "closed": "Closed",
+      "archived": "Archived"
+    },
+    "closureReason": {
+      "rejected_by_patient": "Rejected by patient",
+      "expired": "Expired",
+      "cancelled_by_clinic": "Cancelled by clinic",
+      "patient_abandoned": "Patient abandoned",
+      "other": "Other reason"
+    },
+    "actions": {
+      "confirm": "Confirm plan",
+      "reopen": "Reopen",
+      "close": "Close plan",
+      "reactivate": "Reactivate plan",
+      "logContact": "Log contact"
+    },
+    "confirmed": "Plan confirmed",
+    "reopened": "Plan reopened",
+    "closed": "Plan closed",
+    "reactivated": "Plan reactivated",
+    "contactLogged": "Contact logged",
+    "modals": {
+      "confirm": {
+        "title": "Confirm plan",
+        "description": "The plan will move to Pending and a draft quote will be auto-created. Treatments become read-only once confirmed.",
+        "submit": "Confirm plan"
+      },
+      "reopen": {
+        "title": "Reopen plan for editing",
+        "description": "This will cancel the current quote. The plan returns to Draft so you can edit treatments.",
+        "submit": "Reopen"
+      },
+      "close": {
+        "title": "Close plan",
+        "description": "Choose the closure reason. Pending treatments will be archived.",
+        "reasonLabel": "Reason",
+        "noteLabel": "Note (optional)",
+        "submit": "Close plan"
+      },
+      "reactivate": {
+        "title": "Reactivate closed plan",
+        "description": "This will reactivate a plan closed on {date} as «{reason}». Continue?",
+        "submit": "Reactivate"
+      },
+      "contactLog": {
+        "title": "Log contact",
+        "description": "Records the touchpoint without changing the plan status.",
+        "channelLabel": "Channel",
+        "noteLabel": "Note (optional)",
+        "submit": "Log"
+      }
     }
+  },
+  "pipeline": {
+    "title": "Plans pipeline",
+    "description": "Manage the treatment pipeline.",
+    "tabs": {
+      "por_presupuestar": "To quote",
+      "esperando_paciente": "Awaiting patient",
+      "sin_cita": "No appointment",
+      "sin_proxima_cita": "No next appointment",
+      "cerrados": "Closed"
+    },
+    "row": {
+      "patient": "Patient",
+      "plan": "Plan",
+      "budget": "Quote",
+      "items": "Treatments",
+      "daysIn": "{n} days in status",
+      "nextAppt": "Next appt",
+      "noNextAppt": "No appointment",
+      "noBudget": "No quote"
+    },
+    "actions": {
+      "open": "Open",
+      "send": "Send",
+      "remind": "Resend",
+      "schedule": "Schedule",
+      "scheduleNext": "Schedule next",
+      "reactivate": "Reactivate",
+      "call": "Call",
+      "whatsapp": "WhatsApp",
+      "markContacted": "Mark contacted",
+      "acceptInClinic": "Accept in clinic"
+    },
+    "search": "Search by name or number…",
+    "empty": "No rows in this tab.",
+    "loading": "Loading…"
   },
   "budget": {
     "title": "Quotes",
@@ -1628,6 +1723,70 @@
     "pdf": {
       "generating": "Generating PDF...",
       "downloadError": "Error downloading PDF"
+    },
+    "actions": {
+      "renegotiate": "Renegotiate",
+      "acceptInClinic": "Accept in clinic",
+      "resend": "Resend",
+      "sendReminder": "Send reminder",
+      "setPublicCode": "Set access code",
+      "unlockPublic": "Unlock access"
+    },
+    "modals": {
+      "renegotiate": {
+        "title": "Renegotiate quote",
+        "description": "This will cancel the current quote and reopen the plan to Draft so you can adjust treatments.",
+        "submit": "Renegotiate"
+      },
+      "acceptInClinic": {
+        "title": "Accept quote in clinic",
+        "description": "Capture the patient acceptance. You can collect a tablet signature (optional).",
+        "signerLabel": "Signer full name",
+        "captureSignature": "Capture signature",
+        "submit": "Mark accepted"
+      },
+      "setPublicCode": {
+        "title": "Set access code",
+        "description": "This patient has neither phone nor date of birth on file. Set a 4-6 digit code and share it verbally with the patient. DO NOT include the code in the email.",
+        "codeLabel": "Code (4-6 digits)",
+        "submit": "Save code"
+      }
+    },
+    "settings": {
+      "title": "Quote settings",
+      "description": "Configure expiry, reminders and public-link verification.",
+      "cards": {
+        "expiry": {
+          "title": "Expiry and auto-close",
+          "description": "How long a quote is valid before expiring and when to auto-close pending plans."
+        },
+        "reminders": {
+          "title": "Automatic reminders",
+          "description": "Toggle 7d / 14d email reminders to patients with no response."
+        },
+        "publicLink": {
+          "title": "Public link and verification",
+          "description": "Configure the protection of the patient-facing quote link."
+        }
+      },
+      "expiry": {
+        "validityDays": "Quote validity (days)",
+        "validityHelp": "After this many days without response the quote becomes Expired (range 7-180).",
+        "autoCloseDays": "Days before auto-closing the plan",
+        "autoCloseHelp": "Plans with an expired quote and no action for this many days move to Closed (range 7-180).",
+        "save": "Save"
+      },
+      "reminders": {
+        "enabled": "Send automatic reminders at 7d and 14d",
+        "enabledHelp": "When on, the system emails the patient about pending quotes. When off, reception follows up manually.",
+        "save": "Save"
+      },
+      "publicLink": {
+        "authDisabled": "Disable public link verification",
+        "authDisabledHelp": "When on, the patient sees the quote with the link only — no phone or DOB challenge. Accept the risk if the link is shared.",
+        "save": "Save"
+      },
+      "saved": "Settings saved"
     }
   },
   "notifications": {

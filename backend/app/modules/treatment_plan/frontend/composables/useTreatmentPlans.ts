@@ -431,6 +431,112 @@ export function useTreatmentPlans() {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Workflow transitions (confirm / reopen / close / reactivate)
+  // ---------------------------------------------------------------------
+
+  async function confirmPlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/confirm`
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({ title: t('treatmentPlans.confirmed'), color: 'green' })
+      return response.data
+    } catch (error) {
+      console.error('Error confirming plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function reopenPlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/reopen`
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({ title: t('treatmentPlans.reopened'), color: 'green' })
+      return response.data
+    } catch (error) {
+      console.error('Error reopening plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function closePlan(
+    planId: string,
+    payload: { closure_reason: string; closure_note?: string }
+  ) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/close`,
+        payload
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({ title: t('treatmentPlans.closed'), color: 'green' })
+      return response.data
+    } catch (error) {
+      console.error('Error closing plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function reactivatePlan(planId: string) {
+    loading.value = true
+    try {
+      const response = await api.post<ApiResponse<TreatmentPlan>>(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/reactivate`
+      )
+      if (currentPlan.value?.id === planId) {
+        currentPlan.value = { ...currentPlan.value, ...response.data }
+      }
+      toast.add({ title: t('treatmentPlans.reactivated'), color: 'green' })
+      return response.data
+    } catch (error) {
+      console.error('Error reactivating plan:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function logContact(
+    planId: string,
+    payload: { channel: string; note?: string }
+  ) {
+    try {
+      await api.post(
+        `/api/v1/treatment_plan/treatment-plans/${planId}/contact-log`,
+        payload
+      )
+      toast.add({ title: t('treatmentPlans.contactLogged'), color: 'green' })
+      return true
+    } catch (error) {
+      console.error('Error logging contact:', error)
+      toast.add({ title: t('errors.updateFailed'), color: 'red' })
+      return false
+    }
+  }
+
   // Unlock plan (cancels linked budget to allow modifications)
   async function unlockPlan(planId: string) {
     loading.value = true
@@ -565,6 +671,13 @@ export function useTreatmentPlans() {
     removeItem,
     reorderItems,
     completeItem,
+
+    // Workflow transitions
+    confirmPlan,
+    reopenPlan,
+    closePlan,
+    reactivatePlan,
+    logContact,
 
     // Budget operations
     linkToBudget,
