@@ -4,7 +4,18 @@
 
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 
-### Added (plan/budget workflow rework, 2026-04-29)
+### Added (frontend, 2026-04-29 — PR2)
+
+- Workflow modals (`components/clinical/modals/`):
+  `RenegotiateBudgetModal`, `AcceptInClinicModal`,
+  `SetPublicCodeModal`. The accept-in-clinic modal includes an
+  optional canvas signature pad (PNG-encoded).
+- Settings area `/settings/budgets/{,expiry,reminders,public-link}`
+  with a new `useBudgetSettings` composable wired to
+  `GET / PATCH /api/v1/auth/clinic/settings/budget` (admin-only).
+- New i18n strings for the budget workflow + settings copy.
+
+### Added (plan/budget workflow rework, 2026-04-29 — PR1)
 
 - Acceptance / rejection metadata: `accepted_via`, `rejection_reason`,
   `rejection_note` columns. `accept_budget` accepts an

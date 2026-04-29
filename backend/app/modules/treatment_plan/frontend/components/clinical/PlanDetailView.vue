@@ -28,6 +28,12 @@ const emit = defineEmits<{
   'generate-budget': []
   'schedule': []
   'cancelled': []
+  // Workflow rework (PR1/PR2) — page handles modal + service call.
+  'request-confirm': []
+  'request-reopen': []
+  'request-close': []
+  'request-reactivate': []
+  'request-contact-log': []
 }>()
 
 const { t } = useI18n()
@@ -106,8 +112,11 @@ const showCancelModal = ref(false)
 
 const canCancelPlan = computed(() =>
   !props.readonly
-  && !isLocked.value
-  && (props.plan.status === 'draft' || props.plan.status === 'active')
+  && (
+    props.plan.status === 'draft'
+    || props.plan.status === 'active'
+    || props.plan.status === 'pending'
+  )
 )
 
 function openCancelModal() {
@@ -119,11 +128,11 @@ function cancelCancel() {
 }
 
 async function confirmCancelPlan() {
+  // Routes through the new close flow in the parent page so the
+  // standard ClosePlanModal collects ``closure_reason`` and the
+  // service call uses ``TreatmentPlanService.close``.
   showCancelModal.value = false
-  const updated = await updatePlanStatus(props.plan.id, { status: 'cancelled' })
-  if (updated) {
-    emit('cancelled')
-  }
+  emit('request-close')
 }
 
 // ============================================================================
@@ -431,6 +440,38 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           :title="t('clinical.plans.ghostHint')"
         >
           {{ t('treatmentPlans.scheduleAppointment') }}
+        </UButton>
+
+        <!-- New workflow transitions (PR1/PR2) -->
+        <UButton
+          v-if="plan.status === 'draft' && plan.items.length > 0"
+          variant="solid"
+          color="primary"
+          size="sm"
+          icon="i-lucide-check-circle"
+          @click="emit('request-confirm')"
+        >
+          {{ t('treatmentPlans.actions.confirm') }}
+        </UButton>
+        <UButton
+          v-if="plan.status === 'pending'"
+          variant="soft"
+          color="warning"
+          size="sm"
+          icon="i-lucide-undo-2"
+          @click="emit('request-reopen')"
+        >
+          {{ t('treatmentPlans.actions.reopen') }}
+        </UButton>
+        <UButton
+          v-if="plan.status === 'closed'"
+          variant="solid"
+          color="primary"
+          size="sm"
+          icon="i-lucide-rotate-ccw"
+          @click="emit('request-reactivate')"
+        >
+          {{ t('treatmentPlans.actions.reactivate') }}
         </UButton>
 
         <UDropdownMenu

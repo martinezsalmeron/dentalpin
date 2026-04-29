@@ -6,7 +6,24 @@
 - Documented two string-literal events (`treatment_plan.items_reordered`,
   `treatment_plan.unlocked`) that are not yet in the `EventType` enum.
 
-### Added (plan/budget workflow rework, 2026-04-29)
+### Added (frontend, 2026-04-29 — PR2)
+
+- Page `/treatment-plans/pipeline` (bandeja de planes) with five
+  tabs powered by the new `usePipeline` composable. Search box +
+  call/WhatsApp quick-actions per row.
+- Workflow modals (`components/clinical/modals/`):
+  `ConfirmPlanModal`, `ReopenPlanModal`, `ClosePlanModal`,
+  `ReactivatePlanModal`, `ContactLogModal`.
+- `useTreatmentPlans` gains `confirmPlan`, `reopenPlan`, `closePlan`,
+  `reactivatePlan`, `logContact` actions wired to the PR1 endpoints.
+- `PlanDetailView` exposes `Confirm` / `Reopen` / `Reactivate` buttons
+  contextual to the plan status; the legacy "Cancel plan" button now
+  delegates to the unified `ClosePlanModal` (closure_reason +
+  closure_note).
+- Navigation entry `nav.pipeline` linked to the bandeja.
+- Status filter on the plans index updated to the new state set.
+
+### Added (plan/budget workflow rework, 2026-04-29 — PR1)
 
 - New plan states: `pending` (between confirm and accept) and `closed`
   (terminal non-completed state) with `closure_reason`, `closure_note`,
