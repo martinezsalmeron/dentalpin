@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { BudgetItem, InvoiceListItem, PaginatedResponse, SignatureCreate } from '~~/app/types'
+import PublicBudgetLinkCard from '../../components/budget/PublicBudgetLinkCard.vue'
 
 const route = useRoute()
 const router = useRouter()
