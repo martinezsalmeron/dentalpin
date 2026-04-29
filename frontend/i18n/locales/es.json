@@ -1758,6 +1758,7 @@
       }
     },
     "publicLink": {
+      "action": "Compartir enlace",
       "title": "Enlace para el paciente",
       "help": "Copia este enlace y compártelo con el paciente por WhatsApp, SMS o email. Le pediremos un dato de verificación antes de mostrarle el presupuesto.",
       "copy": "Copiar enlace",

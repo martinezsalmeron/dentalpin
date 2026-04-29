@@ -90,6 +90,7 @@ onMounted(() => {
 const isAddItemModalOpen = ref(false)
 const isSignatureModalOpen = ref(false)
 const isSendModalOpen = ref(false)
+const isShareLinkModalOpen = ref(false)
 const signatureAction = ref<'accept' | 'reject'>('accept')
 
 // Send form
@@ -424,6 +425,17 @@ function getItemName(item: BudgetItem): string {
               {{ t('budget.actions.send') }}
             </UButton>
 
+            <UButton
+              v-if="currentBudget.public_token && ['sent', 'accepted', 'rejected', 'expired'].includes(currentBudget.status)"
+              color="primary"
+              variant="soft"
+              icon="i-lucide-share-2"
+              size="sm"
+              @click="isShareLinkModalOpen = true"
+            >
+              {{ t('budget.publicLink.action') }}
+            </UButton>
+
             <template v-if="canAccept(currentBudget) && can('budget.write')">
               <UButton
                 color="error"
@@ -467,19 +479,6 @@ function getItemName(item: BudgetItem): string {
           </div>
         </div>
       </div>
-
-      <!-- Public link card — visible whenever the budget can still be
-           opened by the patient (sent / accepted / rejected just so
-           reception can recover the URL). Hidden for draft so the
-           team doesn't share a link before sending. -->
-      <PublicBudgetLinkCard
-        v-if="currentBudget.public_token && ['sent', 'accepted', 'rejected', 'expired'].includes(currentBudget.status)"
-        :token="currentBudget.public_token"
-        :status="currentBudget.status"
-        :patient-phone="currentBudget.patient?.phone"
-        :patient-first-name="currentBudget.patient?.first_name"
-        :budget-number="currentBudget.budget_number"
-      />
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main content -->
@@ -942,6 +941,22 @@ function getItemName(item: BudgetItem): string {
             </div>
           </template>
         </UCard>
+      </template>
+    </UModal>
+
+    <!-- Share public link modal -->
+    <UModal v-model:open="isShareLinkModalOpen">
+      <template #content>
+        <div class="p-1">
+          <PublicBudgetLinkCard
+            v-if="currentBudget?.public_token"
+            :token="currentBudget.public_token"
+            :status="currentBudget.status"
+            :patient-phone="currentBudget.patient?.phone"
+            :patient-first-name="currentBudget.patient?.first_name"
+            :budget-number="currentBudget.budget_number"
+          />
+        </div>
       </template>
     </UModal>
   </div>

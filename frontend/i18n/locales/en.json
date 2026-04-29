@@ -1736,6 +1736,7 @@
       }
     },
     "publicLink": {
+      "action": "Share link",
       "title": "Patient link",
       "help": "Copy this link and share it with the patient via WhatsApp, SMS or email. They will be asked for one verification detail before viewing the quote.",
       "copy": "Copy link",
