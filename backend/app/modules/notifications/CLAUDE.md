@@ -45,6 +45,14 @@ None.
   prints to stdout — use it in dev.
 - **Templates are i18n-aware** (Spanish UI strings). Never hardcode
   copy in handlers — use a template.
+- **Locale resolution order**:
+  1. Patient preference (``NotificationPreference.preferred_locale``).
+  2. Clinic-wide default (``clinic.settings.communication_language``).
+  3. ``DEFAULT_COMMUNICATION_LOCALE`` ("es") if neither is set.
+  Encapsulated in ``service.resolve_clinic_communication_locale``.
+  The clinic-wide setting is owned by this module — UI lives at
+  ``/settings/communications/language`` (registered via
+  ``frontend/plugins/settings.client.ts``).
 - **Preferences are per-patient + per-event-type.** Honour them before
   enqueueing.
 

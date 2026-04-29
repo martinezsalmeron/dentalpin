@@ -5,12 +5,42 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.email import EmailResult, email_service
 from app.core.email.providers.base import EmailStatus
 from app.core.events import EventType, event_bus
+
+# Default locale used for patient-facing communications when neither a
+# clinic preference nor a patient preference is set. Matches the
+# project's primary user base (Spain).
+DEFAULT_COMMUNICATION_LOCALE = "es"
+
+
+async def resolve_clinic_communication_locale(
+    db: AsyncSession,
+    clinic_id: UUID,
+) -> str:
+    """Read ``clinics.settings.communication_language`` for the given
+    clinic. Falls back to :data:`DEFAULT_COMMUNICATION_LOCALE` when the
+    clinic row is missing or the key isn't set.
+
+    Used as the default locale for outbound emails / SMS — patient
+    preferences (``NotificationPreference.preferred_locale``) override
+    when present.
+    """
+    row = (
+        await db.execute(
+            text("SELECT settings FROM clinics WHERE id = :id"),
+            {"id": clinic_id},
+        )
+    ).first()
+    if not row:
+        return DEFAULT_COMMUNICATION_LOCALE
+    settings = row.settings or {}
+    lang = settings.get("communication_language") if isinstance(settings, dict) else None
+    return lang or DEFAULT_COMMUNICATION_LOCALE
 
 from .models import (
     ClinicNotificationSettings,
@@ -635,11 +665,12 @@ class NotificationService:
                     error_message=reason,
                 )
 
-        # Get patient locale preference
-        locale = "es"
+        # Resolve locale: clinic-wide default (settings.communication_language)
+        # → patient preference override when present.
+        locale = await resolve_clinic_communication_locale(db, clinic_id)
         if patient_id:
             prefs = await NotificationService.get_patient_preferences(db, clinic_id, patient_id)
-            if prefs:
+            if prefs and prefs.preferred_locale:
                 locale = prefs.preferred_locale
 
         # Get template
