@@ -72,8 +72,11 @@ Public subset (no staff auth, 2-factor verification — ADR 0006) under
   budget cannot unlock another.
 - **`BUDGET_PUBLIC_SECRET_KEY`** signs the public session cookies and
   is independent from the global `SECRET_KEY`. Falls back in dev only.
-- **`budget.completed`** is published from the workflow when a budget
-  becomes the basis for an invoice; the billing module subscribes.
+- ``budget.completed`` no longer exists. The transition
+  ``accepted → completed`` and the manual "Mark completed" button
+  were removed in 2026-04: ``completed`` was a bookkeeping flag
+  with no auto-trigger and no real consumer. Use invoice paid /
+  fully invoiced as the financial-closure signal instead.
 
 ## Related ADRs
 

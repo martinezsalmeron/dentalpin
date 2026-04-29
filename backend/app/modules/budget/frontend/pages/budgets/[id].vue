@@ -19,14 +19,12 @@ const {
   acceptBudget,
   rejectBudget,
   cancelBudget,
-  completeBudget,
   duplicateBudget,
   downloadPDF,
   canEdit,
   canSend,
   canAccept,
-  canCancel,
-  canComplete
+  canCancel
 } = useBudgets()
 
 const hasActiveInvoice = ref(false)
@@ -287,26 +285,6 @@ function resetSendForm() {
   sendForm.custom_message = ''
 }
 
-async function handleComplete() {
-  if (!currentBudget.value) return
-
-  try {
-    await completeBudget(currentBudget.value.id)
-    toast.add({
-      title: t('common.success'),
-      description: t('budget.messages.completed'),
-      color: 'success'
-    })
-    await loadBudget()
-  } catch {
-    toast.add({
-      title: t('common.error'),
-      description: t('budget.errors.update'),
-      color: 'error'
-    })
-  }
-}
-
 async function handleDuplicate() {
   if (!currentBudget.value) return
 
@@ -473,17 +451,6 @@ function getItemName(item: BudgetItem): string {
               @click="goToCreateInvoice"
             >
               {{ t('invoice.createFromBudget') }}
-            </UButton>
-
-            <UButton
-              v-if="canComplete(currentBudget) && can('budget.write')"
-              color="success"
-              variant="outline"
-              icon="i-lucide-check-circle"
-              size="sm"
-              @click="handleComplete"
-            >
-              {{ t('budget.actions.complete') }}
             </UButton>
 
             <!-- Secondary actions in dropdown -->

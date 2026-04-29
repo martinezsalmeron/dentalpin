@@ -22,7 +22,10 @@ Routes mounted at `/api/v1/billing/`.
 
 ## Events consumed
 
-- `budget.completed` → derives the invoice from a completed budget.
+- _none today_. The legacy ``budget.completed`` subscription was
+  removed in 2026-04 — that event was never actually published, so
+  the handler was orphaned. Re-add a subscription here when invoices
+  need to react to budget lifecycle events again.
 
 ## Lifecycle
 

@@ -1306,12 +1306,12 @@
     "generateBudget": "Generate quote",
     "scheduleAppointment": "Schedule appointment",
     "status": {
-      "title": "Status",
       "draft": "Draft",
+      "pending": "Pending",
       "active": "Active",
       "completed": "Completed",
-      "archived": "Archived",
-      "cancelled": "Cancelled"
+      "closed": "Closed",
+      "archived": "Archived"
     },
     "fields": {
       "title": "Title",
@@ -1442,14 +1442,6 @@
       "general": {
         "followUp": "General follow-up"
       }
-    },
-    "status": {
-      "draft": "Draft",
-      "pending": "Pending",
-      "active": "Active",
-      "completed": "Completed",
-      "closed": "Closed",
-      "archived": "Archived"
     },
     "closureReason": {
       "rejected_by_patient": "Rejected by patient",
@@ -1595,12 +1587,17 @@
       "acceptPartial": "Accept selected",
       "reject": "Reject",
       "cancel": "Cancel quote",
-      "complete": "Mark completed",
       "duplicate": "Create new version",
       "downloadPdf": "Download PDF",
       "previewPdf": "Preview PDF",
       "startTreatment": "Start treatment",
-      "completeTreatment": "Complete treatment"
+      "completeTreatment": "Complete treatment",
+      "renegotiate": "Renegotiate",
+      "acceptInClinic": "Accept in clinic",
+      "resend": "Resend",
+      "sendReminder": "Send reminder",
+      "setPublicCode": "Set access code",
+      "unlockPublic": "Unlock access"
     },
     "items": {
       "title": "Treatments",
@@ -1688,7 +1685,6 @@
       "accepted": "Quote accepted",
       "rejected": "Quote rejected",
       "cancelled": "Quote cancelled",
-      "completed": "Quote completed",
       "duplicated": "New version created",
       "itemAdded": "Treatment added",
       "itemUpdated": "Treatment updated",
@@ -1718,25 +1714,6 @@
     "pdf": {
       "generating": "Generating PDF...",
       "downloadError": "Error downloading PDF"
-    },
-    "actions": {
-      "send": "Send to patient",
-      "accept": "Accept quote",
-      "acceptPartial": "Accept selected",
-      "reject": "Reject",
-      "cancel": "Cancel quote",
-      "complete": "Mark completed",
-      "duplicate": "Create new version",
-      "downloadPdf": "Download PDF",
-      "previewPdf": "Preview PDF",
-      "startTreatment": "Start treatment",
-      "completeTreatment": "Complete treatment",
-      "renegotiate": "Renegotiate",
-      "acceptInClinic": "Accept in clinic",
-      "resend": "Resend",
-      "sendReminder": "Send reminder",
-      "setPublicCode": "Set access code",
-      "unlockPublic": "Unlock access"
     },
     "modals": {
       "renegotiate": {

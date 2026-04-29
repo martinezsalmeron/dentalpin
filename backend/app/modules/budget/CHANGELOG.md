@@ -4,6 +4,20 @@
 
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 
+### Removed (2026-04-29)
+
+- ``BudgetWorkflowService.complete_budget`` + ``POST /budgets/{id}/complete``
+  endpoint + the "Marcar completado" button. The transition
+  ``accepted → completed`` was a bookkeeping flag with no auto-
+  trigger and no real consumer (the documented ``budget.completed``
+  event was never actually published). Use invoice paid / fully
+  invoiced as the financial-closure signal instead. The
+  ``InvoiceService.on_budget_completed`` handler in billing is
+  also removed.
+- Frontend: ``completeBudget`` action and ``canComplete`` helper
+  in ``useBudgets``; the ``budget.actions.complete`` and
+  ``budget.messages.completed`` i18n keys.
+
 ### Added (patient view, 2026-04-29 — PR3)
 
 - Patient-facing public budget view at ``/p/budget/<token>``

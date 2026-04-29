@@ -991,16 +991,6 @@ class InvoiceService:
 
         return invoice
 
-    @staticmethod
-    async def on_budget_completed(event_data: dict[str, Any]) -> None:
-        """Event handler for budget.completed event.
-
-        Marks budget as ready for invoicing (notification only).
-        """
-        # This is a placeholder for future notification integration
-        pass
-
-
 class PaymentService:
     """Service for payment operations."""
 

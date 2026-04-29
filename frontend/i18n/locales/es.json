@@ -1328,12 +1328,12 @@
     "generateBudget": "Generar presupuesto",
     "scheduleAppointment": "Programar cita",
     "status": {
-      "title": "Estado",
       "draft": "Borrador",
+      "pending": "Pendiente",
       "active": "Activo",
       "completed": "Completado",
-      "archived": "Archivado",
-      "cancelled": "Cancelado"
+      "closed": "Cerrado",
+      "archived": "Archivado"
     },
     "fields": {
       "title": "Título",
@@ -1464,14 +1464,6 @@
       "general": {
         "followUp": "Seguimiento general"
       }
-    },
-    "status": {
-      "draft": "Borrador",
-      "pending": "Pendiente",
-      "active": "Activo",
-      "completed": "Completado",
-      "closed": "Cerrado",
-      "archived": "Archivado"
     },
     "closureReason": {
       "rejected_by_patient": "Rechazado por paciente",
@@ -1617,12 +1609,17 @@
       "acceptPartial": "Aceptar seleccionados",
       "reject": "Rechazar",
       "cancel": "Cancelar presupuesto",
-      "complete": "Marcar completado",
       "duplicate": "Crear nueva versión",
       "downloadPdf": "Descargar PDF",
       "previewPdf": "Vista previa PDF",
       "startTreatment": "Iniciar tratamiento",
-      "completeTreatment": "Completar tratamiento"
+      "completeTreatment": "Completar tratamiento",
+      "renegotiate": "Renegociar",
+      "acceptInClinic": "Aceptar en clínica",
+      "resend": "Reenviar",
+      "sendReminder": "Enviar recordatorio",
+      "setPublicCode": "Definir código",
+      "unlockPublic": "Desbloquear acceso"
     },
     "items": {
       "title": "Tratamientos",
@@ -1710,7 +1707,6 @@
       "accepted": "Presupuesto aceptado",
       "rejected": "Presupuesto rechazado",
       "cancelled": "Presupuesto cancelado",
-      "completed": "Presupuesto completado",
       "duplicated": "Nueva versión creada",
       "itemAdded": "Tratamiento añadido",
       "itemUpdated": "Tratamiento actualizado",
@@ -1740,25 +1736,6 @@
     "pdf": {
       "generating": "Generando PDF...",
       "downloadError": "Error al descargar PDF"
-    },
-    "actions": {
-      "send": "Enviar al paciente",
-      "accept": "Aceptar presupuesto",
-      "acceptPartial": "Aceptar seleccionados",
-      "reject": "Rechazar",
-      "cancel": "Cancelar presupuesto",
-      "complete": "Marcar completado",
-      "duplicate": "Crear nueva versión",
-      "downloadPdf": "Descargar PDF",
-      "previewPdf": "Vista previa PDF",
-      "startTreatment": "Iniciar tratamiento",
-      "completeTreatment": "Completar tratamiento",
-      "renegotiate": "Renegociar",
-      "acceptInClinic": "Aceptar en clínica",
-      "resend": "Reenviar",
-      "sendReminder": "Enviar recordatorio",
-      "setPublicCode": "Definir código",
-      "unlockPublic": "Desbloquear acceso"
     },
     "modals": {
       "renegotiate": {

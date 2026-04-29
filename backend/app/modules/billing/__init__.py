@@ -67,11 +67,11 @@ class BillingModule(BaseModule):
         ]
 
     def get_event_handlers(self) -> dict:
-        from .service import InvoiceService
-
-        return {
-            "budget.completed": InvoiceService.on_budget_completed,
-        }
+        # ``budget.completed`` was never actually published; the handler
+        # was orphaned. Removed alongside the ``BudgetWorkflowService.complete_budget``
+        # path. Re-add a subscription here when invoices need to react
+        # to budget lifecycle events again.
+        return {}
 
     def get_tools(self) -> list:
         return []

@@ -435,26 +435,6 @@ async def cancel_budget(
     return ApiResponse(data=BudgetResponse.model_validate(budget))
 
 
-@router.post("/budgets/{budget_id}/complete", response_model=ApiResponse[BudgetResponse])
-async def complete_budget(
-    budget_id: UUID,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("budget.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[BudgetResponse]:
-    """Mark budget as completed (all treatments done)."""
-    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
-    if not budget:
-        raise HTTPException(status_code=404, detail="Budget not found")
-
-    try:
-        budget = await BudgetWorkflowService.complete_budget(db, budget, ctx.user_id)
-    except BudgetWorkflowError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    return ApiResponse(data=BudgetResponse.model_validate(budget))
-
-
 # ============================================================================
 # Workflow extensions: renegotiate, accept-in-clinic, resend, set-public-code
 # ============================================================================

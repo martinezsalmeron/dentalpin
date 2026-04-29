@@ -17,12 +17,15 @@ from .service import BudgetHistoryService
 
 logger = logging.getLogger(__name__)
 
-# Valid status transitions
+# Valid status transitions. ``completed`` is no longer a reachable
+# status — kept as a no-op terminal entry so existing rows persisted
+# from older versions still satisfy the can_transition lookup
+# without surfacing in any new flow.
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "draft": ["sent", "accepted", "rejected", "cancelled"],
     "sent": ["accepted", "rejected", "expired", "cancelled"],
-    "accepted": ["completed", "cancelled"],
-    "completed": [],  # Terminal state
+    "accepted": ["cancelled"],
+    "completed": [],  # Legacy terminal state — no new transitions land here
     "rejected": [],  # Terminal state
     "expired": [],  # Terminal state
     "cancelled": [],  # Terminal state
@@ -367,33 +370,6 @@ class BudgetWorkflowService:
 
         return budget
 
-    @staticmethod
-    async def complete_budget(
-        db: AsyncSession,
-        budget: Budget,
-        completed_by: UUID,
-    ) -> Budget:
-        """Mark budget as completed (all work done)."""
-        if not BudgetWorkflowService.can_transition(budget.status, "completed"):
-            raise BudgetWorkflowError(f"Cannot complete budget from status '{budget.status}'")
-
-        previous_status = budget.status
-        budget.status = "completed"
-
-        # Add history
-        await BudgetHistoryService.add_entry(
-            db,
-            clinic_id=budget.clinic_id,
-            budget_id=budget.id,
-            action="status_changed",
-            changed_by=completed_by,
-            previous_state={"status": previous_status},
-            new_state={"status": "completed"},
-        )
-
-        await db.flush()
-
-        return budget
 
     @staticmethod
     async def check_expired_budgets(

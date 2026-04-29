@@ -268,17 +268,6 @@ export function useBudgets() {
     return response.data
   }
 
-  async function completeBudget(id: string): Promise<Budget> {
-    const response = await api.post<ApiResponse<Budget>>(
-      `/api/v1/budget/budgets/${id}/complete`,
-      {}
-    )
-
-    // Update local state
-    updateBudgetStatus(id, response.data.status)
-
-    return response.data
-  }
 
   async function duplicateBudget(id: string): Promise<BudgetDetail> {
     const response = await api.post<ApiResponse<BudgetDetail>>(
@@ -404,10 +393,6 @@ export function useBudgets() {
     return !['completed', 'rejected', 'expired', 'cancelled'].includes(budget.status)
   }
 
-  function canComplete(budget: Budget | BudgetDetail | BudgetListItem): boolean {
-    return budget.status === 'accepted'
-  }
-
   function canDuplicate(_budget: Budget | BudgetDetail | BudgetListItem): boolean {
     return true // Can always create a new version
   }
@@ -447,7 +432,6 @@ export function useBudgets() {
     acceptBudget,
     rejectBudget,
     cancelBudget,
-    completeBudget,
     duplicateBudget,
 
     // Versions and history
@@ -465,7 +449,6 @@ export function useBudgets() {
     canAccept,
     canReject,
     canCancel,
-    canComplete,
     canDuplicate
   }
 }
