@@ -12,6 +12,12 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { TreatmentPlanDetail } from '~~/app/types'
 
+import ConfirmPlanModal from './modals/ConfirmPlanModal.vue'
+import ReopenPlanModal from './modals/ReopenPlanModal.vue'
+import ClosePlanModal from './modals/ClosePlanModal.vue'
+import ReactivatePlanModal from './modals/ReactivatePlanModal.vue'
+import ContactLogModal from './modals/ContactLogModal.vue'
+
 const props = withDefaults(defineProps<{
   plan: TreatmentPlanDetail
   patientId: string
@@ -27,12 +33,6 @@ const emit = defineEmits<{
   'generate-budget': []
   'schedule': []
   'cancelled': []
-  // Workflow rework (PR1/PR2) — page handles modal + service call.
-  'request-confirm': []
-  'request-reopen': []
-  'request-close': []
-  'request-reactivate': []
-  'request-contact-log': []
 }>()
 
 const { t } = useI18n()
@@ -43,8 +43,107 @@ const {
   removeItem,
   reorderItems,
   fetchPlan,
-  loading
+  loading,
+  confirmPlan,
+  reopenPlan,
+  closePlan,
+  reactivatePlan,
+  logContact,
 } = useTreatmentPlans()
+
+// ============================================================================
+// Workflow modals — owned by this view so any parent (standalone page,
+// patient ficha clinical tab, sidebar mini-views) gets the same flow
+// without re-wiring events.
+// ============================================================================
+
+const showConfirmModal = ref(false)
+const showReopenModal = ref(false)
+const showCloseModal = ref(false)
+const showReactivateModal = ref(false)
+const showContactLogModal = ref(false)
+const transitioning = ref(false)
+
+const planSummary = computed(() => {
+  const total = props.plan.items.reduce((acc, item) => {
+    const price = item.treatment?.price_snapshot
+    return acc + (typeof price === 'number' ? price : Number(price) || 0)
+  }, 0)
+  return {
+    number: props.plan.plan_number,
+    count: props.plan.items.length,
+    total,
+  }
+})
+
+async function refreshPlan() {
+  await fetchPlan(props.plan.id)
+  emit('updated')
+  await nextTick()
+}
+
+async function onConfirmPlan() {
+  transitioning.value = true
+  try {
+    const result = await confirmPlan(props.plan.id)
+    if (result) {
+      showConfirmModal.value = false
+      await refreshPlan()
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onReopenPlan() {
+  transitioning.value = true
+  try {
+    const result = await reopenPlan(props.plan.id)
+    if (result) {
+      showReopenModal.value = false
+      await refreshPlan()
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onClosePlanSubmit(payload: { closure_reason: string; closure_note?: string }) {
+  transitioning.value = true
+  try {
+    const result = await closePlan(props.plan.id, payload)
+    if (result) {
+      showCloseModal.value = false
+      await refreshPlan()
+      emit('cancelled')
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onReactivatePlan() {
+  transitioning.value = true
+  try {
+    const result = await reactivatePlan(props.plan.id)
+    if (result) {
+      showReactivateModal.value = false
+      await refreshPlan()
+    }
+  } finally {
+    transitioning.value = false
+  }
+}
+
+async function onLogContact(payload: { channel: string; note?: string }) {
+  transitioning.value = true
+  try {
+    const ok = await logContact(props.plan.id, payload)
+    if (ok) showContactLogModal.value = false
+  } finally {
+    transitioning.value = false
+  }
+}
 
 // Cross-module composable provided by the clinical_notes layer. Frontend
 // auto-imports resolve to that layer's implementation.
@@ -81,8 +180,6 @@ const effectiveReadonly = computed(() => props.readonly || isLocked.value)
 // flow surfaces ``request-close`` so the page collects a reason.
 // ============================================================================
 
-const showCancelModal = ref(false)
-
 const canCancelPlan = computed(() =>
   !props.readonly
   && (
@@ -93,19 +190,8 @@ const canCancelPlan = computed(() =>
 )
 
 function openCancelModal() {
-  showCancelModal.value = true
-}
-
-function cancelCancel() {
-  showCancelModal.value = false
-}
-
-async function confirmCancelPlan() {
-  // Routes through the new close flow in the parent page so the
-  // standard ClosePlanModal collects ``closure_reason`` and the
-  // service call uses ``TreatmentPlanService.close``.
-  showCancelModal.value = false
-  emit('request-close')
+  // Delegates to the unified ClosePlanModal owned by this view.
+  showCloseModal.value = true
 }
 
 // ============================================================================
@@ -294,7 +380,8 @@ async function handleReorder(itemIds: string[]) {
 // this open handler now delegate to the page-level ConfirmPlanModal
 // via the ``request-confirm`` event.
 function openActivateModal() {
-  emit('request-confirm')
+  // Big body CTA + any other "confirm plan" entry point.
+  showConfirmModal.value = true
 }
 
 function handleGenerateBudget() {
@@ -417,7 +504,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           color="warning"
           size="sm"
           icon="i-lucide-undo-2"
-          @click="emit('request-reopen')"
+          @click="showReopenModal = true"
         >
           {{ t('treatmentPlans.actions.reopen') }}
         </UButton>
@@ -427,7 +514,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           color="primary"
           size="sm"
           icon="i-lucide-rotate-ccw"
-          @click="emit('request-reactivate')"
+          @click="showReactivateModal = true"
         >
           {{ t('treatmentPlans.actions.reactivate') }}
         </UButton>
@@ -603,50 +690,48 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
       </div>
     </div>
 
-    <!-- Cancel plan confirmation modal -->
-    <UModal v-model:open="showCancelModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[var(--color-danger-soft)] flex items-center justify-center">
-                <UIcon
-                  name="i-lucide-ban"
-                  class="w-5 h-5 text-danger-accent"
-                />
-              </div>
-              <h3 class="text-h2 text-default">
-                {{ t('treatmentPlans.confirmations.cancelTitle') }}
-              </h3>
-            </div>
-          </template>
-
-          <p class="text-body text-muted">
-            {{ t('treatmentPlans.confirmations.cancelDescription') }}
-          </p>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                @click="cancelCancel"
-              >
-                {{ t('actions.cancel') }}
-              </UButton>
-              <UButton
-                color="error"
-                icon="i-lucide-ban"
-                :loading="loading"
-                @click="confirmCancelPlan"
-              >
-                {{ t('treatmentPlans.actions.cancelPlan') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
+    <!-- Workflow modals (PR1/PR2) — owned by this view so any parent
+         (standalone page, patient ficha) gets the same flow. -->
+    <ConfirmPlanModal
+      :open="showConfirmModal"
+      :plan-number="planSummary.number"
+      :item-count="planSummary.count"
+      :total-estimated="planSummary.total"
+      :loading="transitioning"
+      @update:open="(v) => (showConfirmModal = v)"
+      @confirm="onConfirmPlan"
+      @cancel="showConfirmModal = false"
+    />
+    <ReopenPlanModal
+      :open="showReopenModal"
+      :loading="transitioning"
+      @update:open="(v) => (showReopenModal = v)"
+      @confirm="onReopenPlan"
+      @cancel="showReopenModal = false"
+    />
+    <ClosePlanModal
+      :open="showCloseModal"
+      :loading="transitioning"
+      @update:open="(v) => (showCloseModal = v)"
+      @confirm="onClosePlanSubmit"
+      @cancel="showCloseModal = false"
+    />
+    <ReactivatePlanModal
+      :open="showReactivateModal"
+      :loading="transitioning"
+      :closed-at="plan.closed_at ?? null"
+      :previous-reason="plan.closure_reason ?? null"
+      @update:open="(v) => (showReactivateModal = v)"
+      @confirm="onReactivatePlan"
+      @cancel="showReactivateModal = false"
+    />
+    <ContactLogModal
+      :open="showContactLogModal"
+      :loading="transitioning"
+      @update:open="(v) => (showContactLogModal = v)"
+      @confirm="onLogContact"
+      @cancel="showContactLogModal = false"
+    />
 
   </div>
 </template>
