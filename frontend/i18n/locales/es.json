@@ -1795,7 +1795,6 @@
       "callClinic": "Llamar a la clínica",
       "emailClinic": "Enviar email",
       "cta_accept": "Aceptar y firmar",
-      "cta_doubts": "Tengo dudas",
       "cta_reject": "No me interesa",
       "expired": "Este presupuesto ha caducado. Contacta con la clínica.",
       "locked": "Acceso bloqueado por demasiados intentos. Llama a la clínica.",
@@ -1834,14 +1833,6 @@
           "second_opinion": "Segunda opinión",
           "other": "Otro motivo"
         }
-      },
-      "doubts": {
-        "title": "Tengo dudas",
-        "intro": "Cuéntanos qué te preocupa para que podamos llamarte.",
-        "reasonLabel": "Motivo",
-        "noteLabel": "Comentario (opcional)",
-        "submit": "Enviar consulta",
-        "success": "Hemos avisado a la clínica. Te contactarán pronto."
       }
     },
     "settings": {

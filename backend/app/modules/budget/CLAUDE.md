@@ -18,7 +18,6 @@ Public subset (no staff auth, 2-factor verification — ADR 0006) under
 - `GET    /`                 (cookie-protected; idempotent viewed_at)
 - `POST   /accept`           (cookie-protected)
 - `POST   /reject`           (cookie-protected)
-- `POST   /request-changes`  (cookie-protected; no state change)
 
 ## Dependencies
 

@@ -16,8 +16,6 @@ Implements the patient-facing flow described in
    acceptance + signature.
 5. ``POST   /api/v1/public/budgets/{token}/reject``    → records
    rejection.
-6. ``POST   /api/v1/public/budgets/{token}/request-changes`` →
-   logs that the patient asked questions; no state change.
 
 Rate limits via ``slowapi`` (``5/15minute`` per token, ``20/hour``
 per IP, ``60/minute`` for ``/meta``). Sessions are HS256 JWTs
@@ -438,34 +436,3 @@ async def reject_public_budget(
     )
 
 
-@public_router.post(
-    "/public/budgets/{token}/request-changes",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-@limiter.limit("10/minute")
-async def request_budget_changes(
-    token: UUID,
-    body: PublicRejectBody,
-    request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
-    """Patient asked for changes. No state change — just an audit row
-    in BudgetHistory and a notification surface for reception.
-    """
-    cookie_value = request.cookies.get(_cookie_name(token))
-    budget = await _require_session(token, db, cookie_value)
-    if body.reason not in PUBLIC_REJECTION_REASONS:
-        raise HTTPException(status_code=400, detail="Invalid reason")
-
-    from .service import BudgetHistoryService
-
-    await BudgetHistoryService.add_entry(
-        db,
-        clinic_id=budget.clinic_id,
-        budget_id=budget.id,
-        action="request_changes",
-        changed_by=budget.created_by,
-        new_state={"reason": body.reason, "note": body.note},
-        notes="Patient requested changes from the public link",
-    )
-    await db.commit()

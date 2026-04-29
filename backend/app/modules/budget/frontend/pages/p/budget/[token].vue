@@ -34,7 +34,6 @@ const {
   verify,
   accept,
   reject,
-  requestChanges,
 } = usePublicBudget(token.value)
 
 async function applyClinicLanguage() {
@@ -64,11 +63,10 @@ onMounted(async () => {
   }
 })
 
-// ----- accept / reject / doubts modal state ---------------------------
+// ----- accept / reject modal state ---------------------------
 
 const showAccept = ref(false)
 const showReject = ref(false)
-const showDoubts = ref(false)
 
 const signerName = ref('')
 const signaturePng = ref<string | null>(null)
@@ -76,9 +74,6 @@ const consentChecked = ref(false)
 
 const rejectReason = ref<'price' | 'time' | 'second_opinion' | 'other'>('price')
 const rejectNote = ref('')
-
-const doubtsReason = ref<'price' | 'time' | 'second_opinion' | 'other'>('price')
-const doubtsNote = ref('')
 
 async function onVerifySubmit(payload: { method: string; value: string }) {
   const ok = await verify(payload.method as never, payload.value)
@@ -157,14 +152,6 @@ async function onRejectSubmit() {
     note: rejectNote.value.trim() || undefined,
   })
   showReject.value = false
-}
-
-async function onDoubtsSubmit() {
-  await requestChanges({
-    reason: doubtsReason.value,
-    note: doubtsNote.value.trim() || undefined,
-  })
-  showDoubts.value = false
 }
 
 // ----- formatting helpers ---------------------------------------------
@@ -430,9 +417,6 @@ const greeting = computed(() => {
           <UButton color="primary" size="xl" block @click="showAccept = true">
             {{ t('budget.public.cta_accept') }}
           </UButton>
-          <UButton color="neutral" variant="soft" size="lg" block @click="showDoubts = true">
-            {{ t('budget.public.cta_doubts') }}
-          </UButton>
           <button
             type="button"
             class="reject-link"
@@ -474,10 +458,6 @@ const greeting = computed(() => {
           {{ t('budget.public.cta_accept') }}
         </UButton>
         <div class="mobile-cta-secondary">
-          <button type="button" @click="showDoubts = true">
-            {{ t('budget.public.cta_doubts') }}
-          </button>
-          <span aria-hidden="true">·</span>
           <button type="button" @click="showReject = true">
             {{ t('budget.public.cta_reject') }}
           </button>
@@ -581,39 +561,6 @@ const greeting = computed(() => {
       </template>
     </UModal>
 
-    <!-- Doubts modal -->
-    <UModal v-model:open="showDoubts">
-      <template #content>
-        <UCard>
-          <template #header>
-            <h3 class="text-lg font-semibold">{{ t('budget.public.doubts.title') }}</h3>
-          </template>
-
-          <div class="space-y-4">
-            <p class="text-sm text-[var(--ui-text-muted)]">
-              {{ t('budget.public.doubts.intro') }}
-            </p>
-            <UFormField :label="t('budget.public.doubts.reasonLabel')">
-              <USelect v-model="doubtsReason" :items="reasonOptions" class="w-full" />
-            </UFormField>
-            <UFormField :label="t('budget.public.doubts.noteLabel')">
-              <UTextarea v-model="doubtsNote" :rows="3" :maxlength="2000" />
-            </UFormField>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton color="neutral" variant="ghost" @click="showDoubts = false">
-                {{ t('common.cancel') }}
-              </UButton>
-              <UButton color="primary" :loading="submitting" @click="onDoubtsSubmit">
-                {{ t('budget.public.doubts.submit') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
   </div>
 </template>
 

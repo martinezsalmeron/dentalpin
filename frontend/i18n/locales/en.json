@@ -1773,7 +1773,6 @@
       "callClinic": "Call the clinic",
       "emailClinic": "Send email",
       "cta_accept": "Accept and sign",
-      "cta_doubts": "I have questions",
       "cta_reject": "Not interested",
       "expired": "This quote has expired. Please contact the clinic.",
       "locked": "Access locked after too many attempts. Please call the clinic.",
@@ -1812,14 +1811,6 @@
           "second_opinion": "Second opinion",
           "other": "Other reason"
         }
-      },
-      "doubts": {
-        "title": "I have questions",
-        "intro": "Tell us what concerns you so we can call you back.",
-        "reasonLabel": "Reason",
-        "noteLabel": "Comment (optional)",
-        "submit": "Send query",
-        "success": "We have notified the clinic. They will contact you soon."
       }
     },
     "settings": {

@@ -1,13 +1,12 @@
 /**
  * Patient-facing budget flow.
  *
- * Wraps the six public endpoints (ADR 0006):
+ * Wraps the five public endpoints (ADR 0006):
  *   GET    /api/v1/budget/public/budgets/{token}/meta
  *   POST   /api/v1/budget/public/budgets/{token}/verify   → cookie
  *   GET    /api/v1/budget/public/budgets/{token}          (cookie)
  *   POST   /api/v1/budget/public/budgets/{token}/accept   (cookie)
  *   POST   /api/v1/budget/public/budgets/{token}/reject   (cookie)
- *   POST   /api/v1/budget/public/budgets/{token}/request-changes
  *
  * The session cookie is HttpOnly + path-scoped to ``{token}`` and managed
  * server-side; ``credentials: 'include'`` ensures the browser sends it.
@@ -191,25 +190,6 @@ export function usePublicBudget(token: string) {
     }
   }
 
-  async function requestChanges(payload: {
-    reason: string
-    note?: string
-  }): Promise<boolean> {
-    submitting.value = true
-    try {
-      await $fetch(`${baseUrl.value}/request-changes`, {
-        method: 'POST',
-        body: payload,
-        credentials: 'include',
-      })
-      return true
-    } catch {
-      return false
-    } finally {
-      submitting.value = false
-    }
-  }
-
   return {
     meta,
     budget,
@@ -224,6 +204,5 @@ export function usePublicBudget(token: string) {
     verify,
     accept,
     reject,
-    requestChanges,
   }
 }
