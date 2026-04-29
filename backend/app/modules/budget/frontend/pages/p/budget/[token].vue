@@ -234,16 +234,9 @@ const reasonOptions = computed(() => [
       :description="t('budget.public.already_rejected')"
     />
 
-    <!-- Verify form -->
-    <BudgetVerifyForm
-      v-else-if="meta?.requires_verification"
-      :method="meta.method"
-      :verifying="verifying"
-      :error="lastError"
-      @submit="onVerifySubmit"
-    />
-
-    <!-- Budget view -->
+    <!-- Budget view (renders once we have the budget detail — that's
+         the canonical signal that the cookie session is valid, since
+         the GET succeeded). -->
     <template v-else-if="budget">
       <header class="space-y-1">
         <h1 class="text-2xl font-semibold">{{ t('budget.public.title') }}</h1>
@@ -312,6 +305,16 @@ const reasonOptions = computed(() => [
         </UButton>
       </div>
     </template>
+
+    <!-- Verify form — last fallback. Reached when meta requires
+         verification AND we have not yet hydrated the budget. -->
+    <BudgetVerifyForm
+      v-else-if="meta?.requires_verification"
+      :method="meta.method"
+      :verifying="verifying"
+      :error="lastError"
+      @submit="onVerifySubmit"
+    />
 
     <!-- Accept modal -->
     <UModal v-model:open="showAccept">
