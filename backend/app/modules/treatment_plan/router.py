@@ -37,6 +37,62 @@ router = APIRouter()
 
 
 # -----------------------------------------------------------------------------
+# Bandeja de planes (pipeline view) — declared FIRST so the literal
+# ``/treatment-plans/pipeline`` path matches before any ``/{plan_id}``
+# pattern below it. FastAPI resolves routes in registration order.
+# -----------------------------------------------------------------------------
+
+
+PIPELINE_TABS = {
+    "por_presupuestar",
+    "esperando_paciente",
+    "sin_cita",
+    "sin_proxima_cita",
+    "cerrados",
+}
+
+
+@router.get(
+    "/treatment-plans/pipeline",
+    response_model=PaginatedApiResponse[PipelineRow],
+)
+async def list_pipeline(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("treatment_plan.plans.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    tab: str = Query(..., description="One of: " + ", ".join(sorted(PIPELINE_TABS))),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    doctor_id: UUID | None = Query(default=None),
+    q: str | None = Query(default=None, description="Free-text search"),
+) -> PaginatedApiResponse[PipelineRow]:
+    """Bandeja de planes (cross-module pipeline view).
+
+    The endpoint joins ``treatment_plans``, ``budgets`` and
+    ``appointments`` directly via SQL because all three are declared in
+    treatment_plan's manifest.depends. Filtering happens in SQL by tab.
+    """
+    if tab not in PIPELINE_TABS:
+        raise HTTPException(status_code=400, detail=f"Unknown tab '{tab}'")
+
+    rows, total = await TreatmentPlanService.list_pipeline(
+        db,
+        clinic_id=ctx.clinic_id,
+        tab=tab,
+        page=page,
+        page_size=page_size,
+        doctor_id=doctor_id,
+        search=q,
+    )
+    return PaginatedApiResponse(
+        data=rows,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+# -----------------------------------------------------------------------------
 # Treatment Plans CRUD
 # -----------------------------------------------------------------------------
 
@@ -305,60 +361,6 @@ async def log_plan_contact(
         f"{plan.internal_notes}\n{line}".strip() if plan.internal_notes else line
     )
     await db.flush()
-
-
-# -----------------------------------------------------------------------------
-# Bandeja de planes (pipeline view)
-# -----------------------------------------------------------------------------
-
-
-PIPELINE_TABS = {
-    "por_presupuestar",
-    "esperando_paciente",
-    "sin_cita",
-    "sin_proxima_cita",
-    "cerrados",
-}
-
-
-@router.get(
-    "/treatment-plans/pipeline",
-    response_model=PaginatedApiResponse[PipelineRow],
-)
-async def list_pipeline(
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("treatment_plan.plans.read"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    tab: str = Query(..., description="One of: " + ", ".join(sorted(PIPELINE_TABS))),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    doctor_id: UUID | None = Query(default=None),
-    q: str | None = Query(default=None, description="Free-text search"),
-) -> PaginatedApiResponse[PipelineRow]:
-    """Bandeja de planes (cross-module pipeline view).
-
-    The endpoint joins ``treatment_plans``, ``budgets`` and
-    ``appointments`` directly via SQL because all three are declared in
-    treatment_plan's manifest.depends. Filtering happens in SQL by tab.
-    """
-    if tab not in PIPELINE_TABS:
-        raise HTTPException(status_code=400, detail=f"Unknown tab '{tab}'")
-
-    rows, total = await TreatmentPlanService.list_pipeline(
-        db,
-        clinic_id=ctx.clinic_id,
-        tab=tab,
-        page=page,
-        page_size=page_size,
-        doctor_id=doctor_id,
-        search=q,
-    )
-    return PaginatedApiResponse(
-        data=rows,
-        total=total,
-        page=page,
-        page_size=page_size,
-    )
 
 
 @router.delete("/treatment-plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)

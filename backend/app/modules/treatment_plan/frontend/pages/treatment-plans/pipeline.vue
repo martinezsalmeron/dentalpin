@@ -59,14 +59,17 @@ function changePage(next: number) {
   refresh()
 }
 
-async function changeTab(next: PipelineTab) {
+watch(tab, async (next, prev) => {
+  if (next === prev) return
   await router.replace({ query: { ...route.query, tab: next } })
-  await setTab(next)
-}
+  page.value = 1
+  await fetchPipeline({ tab: next, page: 1 })
+})
 
 onMounted(async () => {
   const initialTab = (route.query.tab as PipelineTab) || 'por_presupuestar'
-  await setTab(initialTab)
+  tab.value = initialTab
+  await fetchPipeline({ tab: initialTab, page: 1 })
 })
 
 // ----- per-row helpers ------------------------------------------------
@@ -144,9 +147,8 @@ function whatsappPatient(row: PipelineRow) {
     </header>
 
     <UTabs
+      v-model="tab"
       :items="tabItems"
-      :model-value="tab"
-      @update:model-value="(val: any) => changeTab(val as PipelineTab)"
       class="w-full"
     />
 
