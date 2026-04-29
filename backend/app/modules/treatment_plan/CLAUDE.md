@@ -71,10 +71,9 @@ the `clinical_notes` module since issue #60.
 
 Clinical-note created events (`clinical_notes.{administrative,diagnosis,treatment,plan}_created`) live in the `clinical_notes` module.
 
-> Two literals — `treatment_plan.items_reordered` (`service.py:515`)
-> and `treatment_plan.unlocked` (`service.py:801`) — are still
-> string-only. Adding them to `EventType` is a TODO; the events
-> catalog surfaces them under "missing from EventType enum".
+> One literal — `treatment_plan.items_reordered` — is still string-only.
+> Adding it to `EventType` is a TODO; the events catalog surfaces it
+> under "missing from EventType enum".
 
 ## Events consumed
 

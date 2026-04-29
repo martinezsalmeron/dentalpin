@@ -619,11 +619,10 @@
       "ghostHint": "Available after confirming the plan",
       "addedToPlan": "Added to plan",
       "addingToPlan": "Adding to this plan",
-      "modifyPlan": "Modify plan",
       "cancelPlan": "Cancel plan",
       "locked": {
         "title": "Plan locked",
-        "subtitle": "Quote {number} has been issued. To modify the plan, the current quote must be cancelled.",
+        "subtitle": "Quote {number} has been issued. To edit treatments, use Reopen (if pending) or Renegotiate the quote.",
         "viewBudget": "View quote"
       }
     },
@@ -1338,8 +1337,11 @@
       "generateBudget": "Generate quote",
       "linkBudget": "Link quote",
       "syncBudget": "Sync quote",
-      "unlockConfirm": "Cancel quote and modify",
-      "cancelPlan": "Cancel plan"
+      "cancelPlan": "Cancel plan",
+      "reopen": "Reopen",
+      "close": "Close plan",
+      "reactivate": "Reactivate plan",
+      "logContact": "Log contact"
     },
     "items": {
       "title": "Treatments",
@@ -1380,7 +1382,6 @@
     "deleted": "Treatment plan deleted",
     "budgetLinked": "Budget linked to plan",
     "budgetSynced": "Budget synced",
-    "unlocked": "Plan unlocked. The quote has been cancelled.",
     "errors": {
       "load": "Error loading treatment plans",
       "create": "Error creating treatment plan",
@@ -1411,7 +1412,8 @@
     "visitNote": {
       "title": "Visit clinical note",
       "save": "Save note",
-      "empty": "No visit note yet"
+      "empty": "No visit note yet",
+      "saved": "Note saved"
     },
     "clinicalNotesTab": "Clinical notes",
     "filterBy": {
@@ -1455,26 +1457,6 @@
       "cancelled_by_clinic": "Cancelled by clinic",
       "patient_abandoned": "Patient abandoned",
       "other": "Other reason"
-    },
-    "actions": {
-      "activate": "Activate plan",
-      "confirm": "Confirm plan",
-      "complete": "Mark completed",
-      "generateBudget": "Generate quote",
-      "linkBudget": "Link quote",
-      "syncBudget": "Sync quote",
-      "unlockConfirm": "Cancel quote and modify",
-      "cancelPlan": "Cancel plan",
-      "reopen": "Reopen",
-      "close": "Close plan",
-      "reactivate": "Reactivate plan",
-      "logContact": "Log contact"
-    },
-    "visitNote": {
-      "title": "Visit clinical note",
-      "save": "Save note",
-      "empty": "No visit note yet",
-      "saved": "Note saved"
     },
     "confirmed": "Plan confirmed",
     "reopened": "Plan reopened",

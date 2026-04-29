@@ -78,8 +78,6 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - `treatment_plan.items_reordered` — 1 site(s):
   - `backend/app/modules/treatment_plan/service.py:552`
-- `treatment_plan.unlocked` — 1 site(s):
-  - `backend/app/modules/treatment_plan/service.py:829`
 
 ## Detail
 
@@ -456,7 +454,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_BUDGET_SYNC_REQUESTED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:889`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:840`
 - **Subscribers:**
   - `budget`
 
@@ -464,8 +462,8 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_CLOSED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1337`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1475`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1288`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1426`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -473,7 +471,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_CONFIRMED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1242`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1193`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -497,7 +495,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_REACTIVATED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1383`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1334`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -507,12 +505,12 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 - **Publishers:**
   - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:287`
   - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:746`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1243`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1290`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1350`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1394`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1432`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1488`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1194`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1241`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1301`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1345`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1383`
+  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1439`
 - **Subscribers:** —
 
 ### `treatment_plan.treatment_added`

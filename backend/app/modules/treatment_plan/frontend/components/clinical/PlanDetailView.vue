@@ -44,7 +44,6 @@ const {
   removeItem,
   reorderItems,
   updatePlanStatus,
-  unlockPlan,
   fetchPlan,
   loading
 } = useTreatmentPlans()
@@ -70,9 +69,10 @@ const showActivateModal = ref(false)
 
 // ============================================================================
 // Lock state — a plan with a non-cancelled budget is locked for editing.
-// Modifying it would silently invalidate the budget already shown to the
-// patient, so mutations go through an explicit unlock flow that cancels the
-// budget (preserving traceability).
+// Mutations require explicit transitions: ``Reabrir`` (pending → draft) for
+// pre-acceptance edits, or ``Renegociar`` from the budget UI for an
+// already-accepted budget. The ``isLocked`` flag drives the read-only banner
+// and gates inline mutations.
 // ============================================================================
 
 const isLocked = computed(() => {
@@ -83,29 +83,10 @@ const isLocked = computed(() => {
 
 const effectiveReadonly = computed(() => props.readonly || isLocked.value)
 
-const showUnlockModal = ref(false)
-
-function openUnlockModal() {
-  showUnlockModal.value = true
-}
-
-function cancelUnlock() {
-  showUnlockModal.value = false
-}
-
-async function confirmUnlock() {
-  showUnlockModal.value = false
-  const result = await unlockPlan(props.plan.id)
-  if (result) {
-    // Refresh the plan so UI reflects the cancelled budget and unlocked state.
-    await fetchPlan(props.plan.id)
-    emit('updated')
-  }
-}
-
 // ============================================================================
-// Cancel plan — terminal transition from draft/active. Locked plans must
-// unlock first (explicit two-step: prevents silent budget orphaning).
+// Cancel plan — delegated to the parent's ClosePlanModal. The legacy in-line
+// modal kept for status-only cancellation (without closure_reason); the new
+// flow surfaces ``request-close`` so the page collects a reason.
 // ============================================================================
 
 const showCancelModal = ref(false)
@@ -388,17 +369,6 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
         v-if="!readonly"
         class="plan-header-actions"
       >
-        <UButton
-          v-if="isLocked"
-          variant="soft"
-          size="sm"
-          color="warning"
-          icon="i-lucide-unlock"
-          :loading="loading"
-          @click="openUnlockModal"
-        >
-          {{ t('clinical.plans.modifyPlan') }}
-        </UButton>
         <UButton
           v-if="canGenerateBudget"
           variant="soft"
@@ -690,83 +660,6 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
       </template>
     </UModal>
 
-    <!-- Unlock confirmation modal — lists concrete consequences of modifying -->
-    <UModal v-model:open="showUnlockModal">
-      <template #content>
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[var(--color-warning-soft)] flex items-center justify-center">
-                <UIcon
-                  name="i-lucide-alert-triangle"
-                  class="w-5 h-5 text-warning-accent"
-                />
-              </div>
-              <h3 class="text-h2 text-default">
-                {{ t('treatmentPlans.confirmations.unlockTitle') }}
-              </h3>
-            </div>
-          </template>
-
-          <div class="space-y-3">
-            <p class="text-body text-muted">
-              {{ t('treatmentPlans.confirmations.unlockIntro', { number: plan.budget?.budget_number || '' }) }}
-            </p>
-            <ul class="unlock-consequences">
-              <li>
-                <UIcon
-                  name="i-lucide-x-circle"
-                  class="w-4 h-4 text-danger-accent shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence1') }}</span>
-              </li>
-              <li>
-                <UIcon
-                  name="i-lucide-edit-3"
-                  class="w-4 h-4 text-warning-accent shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence2') }}</span>
-              </li>
-              <li>
-                <UIcon
-                  name="i-lucide-file-plus"
-                  class="w-4 h-4 text-info-accent shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence3') }}</span>
-              </li>
-              <li>
-                <UIcon
-                  name="i-lucide-history"
-                  class="w-4 h-4 text-subtle shrink-0"
-                />
-                <span>{{ t('treatmentPlans.confirmations.unlockConsequence4') }}</span>
-              </li>
-            </ul>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                @click="cancelUnlock"
-              >
-                {{ t('actions.cancel') }}
-              </UButton>
-              <UButton
-                color="warning"
-                icon="i-lucide-unlock"
-                :loading="loading"
-                @click="confirmUnlock"
-              >
-                {{ t('treatmentPlans.actions.unlockConfirm') }}
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
-
     <!-- Activation confirmation modal -->
     <UModal v-model:open="showActivateModal">
       <template #content>
@@ -1025,34 +918,4 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
   opacity: 0.85;
 }
 
-/* Unlock consequences list */
-.unlock-consequences {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  list-style: none;
-  padding: 10px 12px;
-  margin: 0;
-  background: #F8FAFC;
-  border-radius: 8px;
-  border: 1px solid #E2E8F0;
-}
-
-:root.dark .unlock-consequences {
-  background: rgba(148, 163, 184, 0.08);
-  border-color: rgba(148, 163, 184, 0.2);
-}
-
-.unlock-consequences li {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #334155;
-}
-
-:root.dark .unlock-consequences li {
-  color: #CBD5E1;
-}
 </style>

@@ -788,55 +788,6 @@ class TreatmentPlanService:
 
         return plan
 
-    @staticmethod
-    async def unlock(
-        db: AsyncSession,
-        clinic_id: UUID,
-        plan_id: UUID,
-        user_id: UUID,
-    ) -> TreatmentPlan | None:
-        """Unlock a plan by cancelling its linked budget.
-
-        Used when the clinician needs to modify a plan that already has a
-        budget issued to the patient. The budget transitions to `cancelled`
-        (preserving history for traceability) and the plan becomes mutable
-        again. A new budget can be generated afterwards.
-        """
-        from app.modules.budget.models import Budget
-        from app.modules.budget.workflow import BudgetWorkflowError, BudgetWorkflowService
-
-        plan = await TreatmentPlanService.get(db, clinic_id, plan_id)
-        if not plan:
-            return None
-
-        if not plan.budget_id:
-            raise ValueError("Plan has no budget to unlock")
-
-        budget = await db.get(Budget, plan.budget_id)
-        if not budget or budget.clinic_id != clinic_id:
-            raise ValueError("Linked budget not found")
-
-        if budget.status == "cancelled":
-            return plan
-
-        try:
-            await BudgetWorkflowService.cancel_budget(
-                db, budget, user_id, reason="Plan unlocked for modification"
-            )
-        except BudgetWorkflowError as e:
-            raise ValueError(str(e)) from e
-
-        event_bus.publish(
-            "treatment_plan.unlocked",
-            {
-                "plan_id": str(plan_id),
-                "budget_id": str(budget.id),
-                "clinic_id": str(clinic_id),
-                "user_id": str(user_id),
-            },
-        )
-
-        return plan
 
     @staticmethod
     async def request_budget_sync(

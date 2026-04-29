@@ -537,33 +537,6 @@ export function useTreatmentPlans() {
     }
   }
 
-  // Unlock plan (cancels linked budget to allow modifications)
-  async function unlockPlan(planId: string) {
-    loading.value = true
-    try {
-      const response = await api.post<ApiResponse<TreatmentPlan>>(
-        `/api/v1/treatment_plan/treatment-plans/${planId}/unlock`
-      )
-      if (currentPlan.value?.id === planId) {
-        currentPlan.value = { ...currentPlan.value, ...response.data }
-      }
-      toast.add({
-        title: t('treatmentPlans.unlocked'),
-        color: 'green'
-      })
-      return response.data
-    } catch (error) {
-      console.error('Error unlocking plan:', error)
-      toast.add({
-        title: t('errors.updateFailed'),
-        color: 'red'
-      })
-      return null
-    } finally {
-      loading.value = false
-    }
-  }
-
   // Add media to item
   async function addMedia(itemId: string, data: TreatmentMediaCreate) {
     try {
@@ -683,7 +656,6 @@ export function useTreatmentPlans() {
     linkToBudget,
     syncBudget,
     generateBudget,
-    unlockPlan,
 
     // Media operations
     addMedia,

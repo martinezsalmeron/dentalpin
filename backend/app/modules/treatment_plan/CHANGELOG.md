@@ -3,8 +3,16 @@
 ## Unreleased
 
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
-- Documented two string-literal events (`treatment_plan.items_reordered`,
-  `treatment_plan.unlocked`) that are not yet in the `EventType` enum.
+- Documented one string-literal event (`treatment_plan.items_reordered`)
+  that is not yet in the `EventType` enum.
+
+### Removed (2026-04-29)
+
+- Legacy unlock flow (`POST /treatment-plans/{id}/unlock`,
+  `TreatmentPlanService.unlock`, `treatment_plan.unlocked` event,
+  ``Modificar plan`` button + modal). Superseded by the new workflow:
+  ``Reabrir`` for ``pending`` plans and ``Renegociar`` from the
+  budget UI for accepted budgets.
 
 ### Added (frontend, 2026-04-29 — PR2)
 

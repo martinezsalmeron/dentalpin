@@ -554,26 +554,6 @@ async def sync_plan_with_budget(
 
 
 @router.post(
-    "/treatment-plans/{plan_id}/unlock",
-    response_model=ApiResponse[TreatmentPlanResponse],
-)
-async def unlock_treatment_plan(
-    plan_id: UUID,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[TreatmentPlanResponse]:
-    """Unlock a plan by cancelling its linked budget so it can be modified."""
-    try:
-        plan = await TreatmentPlanService.unlock(db, ctx.clinic_id, plan_id, ctx.user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    if not plan:
-        raise HTTPException(status_code=404, detail="Treatment plan not found")
-    return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
-
-
-@router.post(
     "/treatment-plans/{plan_id}/generate-budget",
     response_model=ApiResponse[GenerateBudgetResponse],
     status_code=status.HTTP_201_CREATED,

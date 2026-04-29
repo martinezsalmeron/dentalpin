@@ -435,57 +435,6 @@ async def test_remove_item_blocked_when_budget_generated(
 
 
 @pytest.mark.asyncio
-async def test_unlock_plan_cancels_budget_and_allows_modifications(
-    client: AsyncClient, auth_headers: dict, setup: dict
-) -> None:
-    """Unlock cancels the linked budget and restores mutability of the plan."""
-    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
-    await client.patch(
-        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/status",
-        headers=auth_headers,
-        json={"status": "active"},
-    )
-    budget_resp = await client.post(
-        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/generate-budget",
-        headers=auth_headers,
-    )
-    budget_id = budget_resp.json()["data"]["budget_id"]
-
-    # Unlock.
-    r = await client.post(
-        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/unlock",
-        headers=auth_headers,
-    )
-    assert r.status_code == 200, r.text
-
-    # Budget moved to cancelled.
-    b = await client.get(f"/api/v1/budget/budgets/{budget_id}", headers=auth_headers)
-    assert b.status_code == 200, b.text
-    assert b.json()["data"]["status"] == "cancelled"
-
-    # Can now add an item.
-    new_treatment_id = await _create_treatment(client, auth_headers, setup, tooth_number=15)
-    r = await client.post(
-        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/items",
-        headers=auth_headers,
-        json={"treatment_id": new_treatment_id},
-    )
-    assert r.status_code == 201, r.text
-
-
-@pytest.mark.asyncio
-async def test_unlock_plan_without_budget_returns_400(
-    client: AsyncClient, auth_headers: dict, setup: dict
-) -> None:
-    plan_id, _ = await _create_plan_with_items(client, auth_headers, setup, [16])
-    r = await client.post(
-        f"/api/v1/treatment_plan/treatment-plans/{plan_id}/unlock",
-        headers=auth_headers,
-    )
-    assert r.status_code == 400, r.text
-
-
-@pytest.mark.asyncio
 async def test_cancel_plan_removes_planned_treatments(
     client: AsyncClient, auth_headers: dict, setup: dict
 ) -> None:

@@ -640,11 +640,10 @@
       "ghostHint": "Disponible tras confirmar el plan",
       "addedToPlan": "Añadido al plan",
       "addingToPlan": "Añadiendo a este plan",
-      "modifyPlan": "Modificar plan",
       "cancelPlan": "Cancelar plan",
       "locked": {
         "title": "Plan bloqueado",
-        "subtitle": "Presupuesto {number} emitido. Para modificar el plan, debes cancelar el presupuesto actual.",
+        "subtitle": "Presupuesto {number} emitido. Para editar tratamientos, usa Reabrir (si está pendiente) o Renegociar el presupuesto.",
         "viewBudget": "Ver presupuesto"
       }
     },
@@ -1360,8 +1359,11 @@
       "generateBudget": "Generar presupuesto",
       "linkBudget": "Vincular presupuesto",
       "syncBudget": "Sincronizar presupuesto",
-      "unlockConfirm": "Cancelar presupuesto y modificar",
-      "cancelPlan": "Cancelar plan"
+      "cancelPlan": "Cancelar plan",
+      "reopen": "Reabrir",
+      "close": "Cerrar plan",
+      "reactivate": "Reactivar plan",
+      "logContact": "Marcar contactado"
     },
     "items": {
       "title": "Tratamientos",
@@ -1402,7 +1404,6 @@
     "deleted": "Plan de tratamiento eliminado",
     "budgetLinked": "Presupuesto vinculado al plan",
     "budgetSynced": "Presupuesto sincronizado",
-    "unlocked": "Plan desbloqueado. El presupuesto se ha cancelado.",
     "errors": {
       "load": "Error al cargar planes de tratamiento",
       "create": "Error al crear plan de tratamiento",
@@ -1433,7 +1434,8 @@
     "visitNote": {
       "title": "Nota clínica de visita",
       "save": "Guardar nota",
-      "empty": "Sin nota clínica todavía"
+      "empty": "Sin nota clínica todavía",
+      "saved": "Nota guardada"
     },
     "clinicalNotesTab": "Notas clínicas",
     "filterBy": {
@@ -1477,26 +1479,6 @@
       "cancelled_by_clinic": "Cancelado por la clínica",
       "patient_abandoned": "Paciente abandonó",
       "other": "Otro motivo"
-    },
-    "actions": {
-      "activate": "Activar plan",
-      "confirm": "Confirmar plan",
-      "complete": "Marcar completado",
-      "generateBudget": "Generar presupuesto",
-      "linkBudget": "Vincular presupuesto",
-      "syncBudget": "Sincronizar presupuesto",
-      "unlockConfirm": "Cancelar presupuesto y modificar",
-      "cancelPlan": "Cancelar plan",
-      "reopen": "Reabrir",
-      "close": "Cerrar plan",
-      "reactivate": "Reactivar plan",
-      "logContact": "Marcar contactado"
-    },
-    "visitNote": {
-      "title": "Nota clínica de visita",
-      "save": "Guardar nota",
-      "empty": "Sin nota clínica todavía",
-      "saved": "Nota guardada"
     },
     "confirmed": "Plan confirmado",
     "reopened": "Plan reabierto",

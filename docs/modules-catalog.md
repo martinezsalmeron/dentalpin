@@ -23,7 +23,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 2 | 0 | yes |
 | `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
-| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 22 | 5 | yes |
+| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 21 | 5 | yes |
 | `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 1 | 1 | yes |
 
 ## Modules
@@ -372,7 +372,6 @@ Patient treatment plans with budget + odontogram sync.
   - `treatment_plan.treatment_added`
   - `treatment_plan.treatment_completed`
   - `treatment_plan.treatment_removed`
-  - `treatment_plan.unlocked`
 - **Events consumed:**
   - `appointment.completed`
   - `budget.accepted`
