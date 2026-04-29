@@ -18,6 +18,7 @@
  * via ``credentials: 'include'``.
  */
 
+import type { PublicBudgetItem } from '../../../composables/usePublicBudget'
 import BudgetVerifyForm from '../../../components/public/BudgetVerifyForm.vue'
 
 definePageMeta({ layout: 'public' })
@@ -173,6 +174,21 @@ function formatMoney(amount: number, currency = 'EUR'): string {
   }
 }
 
+function itemName(item: PublicBudgetItem): string {
+  const names = item.catalog_item?.names
+  if (names) {
+    return (
+      names[locale.value]
+      || names['es']
+      || names['en']
+      || Object.values(names)[0]
+      || item.catalog_item?.internal_code
+      || '—'
+    )
+  }
+  return item.catalog_item?.internal_code || '—'
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   try {
@@ -257,7 +273,7 @@ const reasonOptions = computed(() => [
           <li v-for="item in budget.items" :key="item.id" class="py-3 flex items-start justify-between gap-4">
             <div class="min-w-0">
               <p class="font-medium truncate">
-                {{ item.catalog_item?.name || '—' }}
+                {{ itemName(item) }}
               </p>
               <p v-if="item.tooth_number" class="text-xs text-[var(--ui-text-muted)] mt-1">
                 {{ t('budget.public.tooth', { number: item.tooth_number }) }}

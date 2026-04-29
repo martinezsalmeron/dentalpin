@@ -32,7 +32,12 @@ export interface PublicBudgetItem {
   line_total: number
   tooth_number: number | null
   notes: string | null
-  catalog_item?: { name?: string; description?: string } | null
+  // Backend exposes ``names`` as an i18n map (es/en/...). Pick the
+  // current locale or fall back in the template.
+  catalog_item?: {
+    internal_code?: string
+    names?: Record<string, string>
+  } | null
 }
 
 export interface PublicBudget {
