@@ -1479,11 +1479,24 @@
       "other": "Otro motivo"
     },
     "actions": {
+      "activate": "Activar plan",
       "confirm": "Confirmar plan",
+      "complete": "Marcar completado",
+      "generateBudget": "Generar presupuesto",
+      "linkBudget": "Vincular presupuesto",
+      "syncBudget": "Sincronizar presupuesto",
+      "unlockConfirm": "Cancelar presupuesto y modificar",
+      "cancelPlan": "Cancelar plan",
       "reopen": "Reabrir",
       "close": "Cerrar plan",
       "reactivate": "Reactivar plan",
       "logContact": "Marcar contactado"
+    },
+    "visitNote": {
+      "title": "Nota clínica de visita",
+      "save": "Guardar nota",
+      "empty": "Sin nota clínica todavía",
+      "saved": "Nota guardada"
     },
     "confirmed": "Plan confirmado",
     "reopened": "Plan reabierto",
@@ -1747,6 +1760,17 @@
       "downloadError": "Error al descargar PDF"
     },
     "actions": {
+      "send": "Enviar al paciente",
+      "accept": "Aceptar presupuesto",
+      "acceptPartial": "Aceptar seleccionados",
+      "reject": "Rechazar",
+      "cancel": "Cancelar presupuesto",
+      "complete": "Marcar completado",
+      "duplicate": "Crear nueva versión",
+      "downloadPdf": "Descargar PDF",
+      "previewPdf": "Vista previa PDF",
+      "startTreatment": "Iniciar tratamiento",
+      "completeTreatment": "Completar tratamiento",
       "renegotiate": "Renegociar",
       "acceptInClinic": "Aceptar en clínica",
       "resend": "Reenviar",

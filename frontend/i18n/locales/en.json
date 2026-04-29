@@ -1457,11 +1457,24 @@
       "other": "Other reason"
     },
     "actions": {
+      "activate": "Activate plan",
       "confirm": "Confirm plan",
+      "complete": "Mark completed",
+      "generateBudget": "Generate quote",
+      "linkBudget": "Link quote",
+      "syncBudget": "Sync quote",
+      "unlockConfirm": "Cancel quote and modify",
+      "cancelPlan": "Cancel plan",
       "reopen": "Reopen",
       "close": "Close plan",
       "reactivate": "Reactivate plan",
       "logContact": "Log contact"
+    },
+    "visitNote": {
+      "title": "Visit clinical note",
+      "save": "Save note",
+      "empty": "No visit note yet",
+      "saved": "Note saved"
     },
     "confirmed": "Plan confirmed",
     "reopened": "Plan reopened",
@@ -1725,6 +1738,17 @@
       "downloadError": "Error downloading PDF"
     },
     "actions": {
+      "send": "Send to patient",
+      "accept": "Accept quote",
+      "acceptPartial": "Accept selected",
+      "reject": "Reject",
+      "cancel": "Cancel quote",
+      "complete": "Mark completed",
+      "duplicate": "Create new version",
+      "downloadPdf": "Download PDF",
+      "previewPdf": "Preview PDF",
+      "startTreatment": "Start treatment",
+      "completeTreatment": "Complete treatment",
       "renegotiate": "Renegotiate",
       "acceptInClinic": "Accept in clinic",
       "resend": "Resend",

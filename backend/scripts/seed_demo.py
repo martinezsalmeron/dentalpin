@@ -37,6 +37,7 @@ from app.modules.billing.models import Invoice, InvoiceItem, InvoiceSeries, Paym
 from app.modules.budget.models import Budget, BudgetItem, BudgetSignature
 from app.modules.catalog.models import TreatmentCatalogItem
 from app.modules.catalog.seed import seed_catalog
+from app.modules.clinical_notes.seed import seed_clinical_notes_demo
 from app.modules.media.models import Document  # noqa: F401 - needed for relationship resolution
 from app.modules.odontogram.models import ToothRecord, Treatment, TreatmentTooth
 from app.modules.patient_timeline.models import (
@@ -588,34 +589,48 @@ async def main(lang: str = "en") -> None:
         password_hash = hash_password("demo1234")
 
         try:
-            print("[1/9] Creating clinic...")
+            print("[1/10] Creating clinic...")
             await seed_clinic(db)
 
-            print("\n[2/9] Creating users...")
+            print("\n[2/10] Creating users...")
             await seed_users(db, password_hash)
 
-            print("\n[3/9] Creating patients...")
+            print("\n[3/10] Creating patients...")
             await seed_patients(db)
 
-            print("\n[4/9] Creating treatment catalog...")
+            print("\n[4/10] Creating treatment catalog...")
             catalog_result = await seed_catalog(db, CLINIC_ID)
             print(f"  Created {catalog_result['categories']} categories")
             print(f"  Created {catalog_result['items']} catalog items")
             catalog_map = await _load_catalog_map(db)
 
-            print("\n[5/9] Creating odontogram data...")
+            print("\n[5/10] Creating odontogram data...")
             await seed_odontogram(db)
 
-            print("\n[6/9] Creating treatment plans...")
+            print("\n[6/10] Creating treatment plans...")
             plans_result = await seed_treatment_plans(db, catalog_map)
 
-            print("\n[7/9] Creating budgets (derived from plans)...")
+            print("\n[7/10] Creating clinical notes (admin/diagnosis/plan/treatment)...")
+            notes_stats = await seed_clinical_notes_demo(
+                db,
+                clinic_id=CLINIC_ID,
+                dentist_id=USER_DENTIST_ID,
+                hygienist_id=USER_HYGIENIST_ID,
+            )
+            print(
+                f"  Administrative: {notes_stats['administrative']} | "
+                f"Diagnosis: {notes_stats['diagnosis']} | "
+                f"Plan: {notes_stats['treatment_plan']} | "
+                f"Treatment: {notes_stats['treatment']}"
+            )
+
+            print("\n[8/10] Creating budgets (derived from plans)...")
             budgets_result = await seed_budgets(db, catalog_map, plans_result)
 
-            print("\n[8/9] Creating appointments (anchored to plan items)...")
+            print("\n[9/10] Creating appointments (anchored to plan items)...")
             await seed_appointments(db, plans_result)
 
-            print("\n[9/9] Creating invoice series + invoices (derived from budgets)...")
+            print("\n[10/10] Creating invoice series + invoices (derived from budgets)...")
             await seed_invoice_series(db)
             await seed_invoices(db, catalog_map, budgets_result)
 
