@@ -26,6 +26,7 @@ export interface PublicMeta {
   clinic_phone: string | null
   clinic_email: string | null
   clinic_address_line: string | null
+  clinic_language: string | null
   patient_first_name: string | null
   budget_number: string | null
   budget_total: string | null

@@ -16,7 +16,9 @@ import BudgetVerifyForm from '../../../components/public/BudgetVerifyForm.vue'
 definePageMeta({ layout: 'public' })
 
 const route = useRoute()
-const { t, locale } = useI18n()
+const i18n = useI18n()
+const { t, locale } = i18n
+const setLocale = (i18n as unknown as { setLocale?: (l: string) => Promise<void> }).setLocale
 
 const token = computed(() => route.params.token as string)
 
@@ -35,8 +37,23 @@ const {
   requestChanges,
 } = usePublicBudget(token.value)
 
+async function applyClinicLanguage() {
+  const lang = meta.value?.clinic_language
+  if (!lang || lang === locale.value) return
+  if (typeof setLocale === 'function') {
+    try {
+      await setLocale(lang)
+    } catch {
+      // ignore: keep current locale
+    }
+  } else {
+    locale.value = lang as never
+  }
+}
+
 onMounted(async () => {
   await fetchMeta()
+  await applyClinicLanguage()
   if (
     meta.value
     && !meta.value.requires_verification

@@ -1843,7 +1843,17 @@
         "publicLink": {
           "title": "Link público y verificación",
           "description": "Configura la protección del link del presupuesto que ve el paciente."
+        },
+        "language": {
+          "title": "Idioma de comunicaciones",
+          "description": "Idioma usado en el link del presupuesto al paciente y en futuros emails y SMS."
         }
+      },
+      "language": {
+        "title": "Idioma de comunicaciones con el paciente",
+        "label": "Idioma",
+        "help": "Se aplica a la vista pública del presupuesto y a las plantillas de email/SMS automáticas. La interfaz interna del personal usa su propio idioma de cuenta.",
+        "save": "Guardar"
       },
       "expiry": {
         "validityDays": "Días de validez del presupuesto",

@@ -672,3 +672,61 @@ async def update_budget_settings(
     await db.commit()
     await db.refresh(clinic)
     return ApiResponse(data=_read_budget_settings(clinic.settings))
+
+
+# ---------------------------------------------------------------------------
+# Communications settings (clinic-wide). Drives the language used for
+# patient-facing pages (public budget link), email templates, and
+# future SMS / WhatsApp messages.
+# ---------------------------------------------------------------------------
+
+
+class _CommunicationsSettingsPatch(BaseModel):
+    language: str | None = Field(default=None, pattern="^(es|en)$")
+
+
+class _CommunicationsSettingsResponse(BaseModel):
+    language: str = "es"
+
+
+def _read_communications_settings(raw: dict | None) -> _CommunicationsSettingsResponse:
+    raw = raw or {}
+    return _CommunicationsSettingsResponse(
+        language=str(raw.get("communication_language", "es")),
+    )
+
+
+@router.get(
+    "/clinic/settings/communications",
+    response_model=ApiResponse[_CommunicationsSettingsResponse],
+)
+async def get_communications_settings(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.read"))],
+) -> ApiResponse[_CommunicationsSettingsResponse]:
+    """Read the clinic-wide communications language."""
+    return ApiResponse(data=_read_communications_settings(ctx.clinic.settings))
+
+
+@router.patch(
+    "/clinic/settings/communications",
+    response_model=ApiResponse[_CommunicationsSettingsResponse],
+)
+async def update_communications_settings(
+    data: _CommunicationsSettingsPatch,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("admin.clinic.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[_CommunicationsSettingsResponse]:
+    """Update the clinic-wide communications language.
+
+    Persists under ``clinic.settings.communication_language``.
+    """
+    clinic = ctx.clinic
+    current = dict(clinic.settings or {})
+    if data.language is not None:
+        current["communication_language"] = data.language
+    clinic.settings = current
+    await db.commit()
+    await db.refresh(clinic)
+    return ApiResponse(data=_read_communications_settings(clinic.settings))

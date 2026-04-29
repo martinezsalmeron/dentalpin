@@ -135,6 +135,7 @@ class PublicBudgetMeta(BaseModel):
     clinic_phone: str | None = None
     clinic_email: str | None = None
     clinic_address_line: str | None = None
+    clinic_language: str | None = None
     patient_first_name: str | None = None
     budget_number: str | None = None
     budget_total: str | None = None
@@ -189,7 +190,10 @@ async def get_public_budget_meta(
 
     clinic_row = (
         await db.execute(
-            _text("SELECT name, phone, email, address FROM clinics WHERE id = :id"),
+            _text(
+                "SELECT name, phone, email, address, settings "
+                "FROM clinics WHERE id = :id"
+            ),
             {"id": budget.clinic_id},
         )
     ).first()
@@ -197,10 +201,15 @@ async def get_public_budget_meta(
     clinic_phone = clinic_row.phone if clinic_row else None
     clinic_email = clinic_row.email if clinic_row else None
     clinic_address_line: str | None = None
+    clinic_language: str | None = None
     if clinic_row and clinic_row.address:
         addr = clinic_row.address or {}
         parts = [addr.get("street"), addr.get("city"), addr.get("postal_code")]
         clinic_address_line = ", ".join(p for p in parts if p) or None
+    if clinic_row and clinic_row.settings:
+        clinic_language = (clinic_row.settings or {}).get("communication_language")
+    # Default to Spanish — matches the project's primary user base.
+    clinic_language = clinic_language or "es"
 
     patient_row = (
         await db.execute(
@@ -224,6 +233,7 @@ async def get_public_budget_meta(
             clinic_phone=clinic_phone,
             clinic_email=clinic_email,
             clinic_address_line=clinic_address_line,
+            clinic_language=clinic_language,
             patient_first_name=patient_first_name,
             budget_number=budget.budget_number,
             budget_total=str(budget.total) if budget.total is not None else None,
