@@ -267,9 +267,7 @@ async def process_clinic(db: AsyncSession, clinic_id) -> int:
     # rejected state is durable when handlers query the DB. The bus
     # itself runs handlers as background tasks and swallows errors.
     for r in newly_rejected:
-        friendly = error_messages.friendly_error(
-            r.aeat_codigo_error, r.aeat_descripcion_error
-        )
+        friendly = error_messages.friendly_error(r.aeat_codigo_error, r.aeat_descripcion_error)
         event_bus.publish(
             EventType.VERIFACTU_RECORD_REJECTED,
             {

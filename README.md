@@ -79,7 +79,7 @@ All users have password: `demo1234`
 | assistant@demo.clinic | assistant | Emily Davis | Ana Martínez Ruiz |
 | receptionist@demo.clinic | receptionist | Jessica Brown | Laura Sánchez Pérez |
 
-See [docs/DEMO.md](docs/DEMO.md) for full details on demo data.
+See [docs/user-manual/demo.md](docs/user-manual/demo.md) for full details on demo data.
 
 ## Tech Stack
 
@@ -167,7 +167,7 @@ npm run dev
 # Backend unit + integration (in Docker)
 docker-compose exec backend python -m pytest -v
 
-# Slow Alembic round-trip (opt-in, see docs/creating-modules.md)
+# Slow Alembic round-trip (opt-in, see docs/technical/creating-modules.md)
 docker-compose exec backend python -m pytest -v -m alembic_roundtrip
 
 # Frontend unit (vitest)
@@ -197,7 +197,7 @@ docker-compose up -d
 ./scripts/e2e.sh --ui
 ```
 
-Full runbook + fixture reference: [docs/e2e-testing.md](docs/e2e-testing.md).
+Full runbook + fixture reference: [docs/technical/e2e-testing.md](docs/technical/e2e-testing.md).
 
 ## Architecture
 

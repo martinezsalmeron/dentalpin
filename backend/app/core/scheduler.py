@@ -67,14 +67,30 @@ def init_scheduler() -> None:
     from app.modules.treatment_plan.tasks import auto_close_expired_plans
 
     _budget_jobs = [
-        ("expire_budgets", expire_budgets, CronTrigger(hour=2, minute=0),
-         "Mark draft/sent budgets past valid_until as expired (daily 02:00)"),
-        ("send_budget_reminders", send_budget_reminders, CronTrigger(hour=9, minute=0),
-         "Email patients about pending budgets at 7d/14d milestones (daily 09:00)"),
-        ("auto_close_expired_plans", auto_close_expired_plans, CronTrigger(hour=3, minute=0),
-         "Close pending plans whose budgets have been expired > N days (daily 03:00)"),
-        ("purge_budget_access_logs", purge_budget_access_logs, CronTrigger(hour=4, minute=0),
-         "Drop budget_access_logs older than 90 days (daily 04:00)"),
+        (
+            "expire_budgets",
+            expire_budgets,
+            CronTrigger(hour=2, minute=0),
+            "Mark draft/sent budgets past valid_until as expired (daily 02:00)",
+        ),
+        (
+            "send_budget_reminders",
+            send_budget_reminders,
+            CronTrigger(hour=9, minute=0),
+            "Email patients about pending budgets at 7d/14d milestones (daily 09:00)",
+        ),
+        (
+            "auto_close_expired_plans",
+            auto_close_expired_plans,
+            CronTrigger(hour=3, minute=0),
+            "Close pending plans whose budgets have been expired > N days (daily 03:00)",
+        ),
+        (
+            "purge_budget_access_logs",
+            purge_budget_access_logs,
+            CronTrigger(hour=4, minute=0),
+            "Drop budget_access_logs older than 90 days (daily 04:00)",
+        ),
     ]
     for job_id, fn, trigger, name in _budget_jobs:
         if scheduler.get_job(job_id):

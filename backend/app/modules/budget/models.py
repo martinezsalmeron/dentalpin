@@ -113,9 +113,7 @@ class Budget(Base, TimestampMixin):
     )
     # First time the public link was opened (for "viewed but not
     # responded" inbox markers). Idempotent.
-    viewed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     # Last automatic reminder dispatched (7d / 14d milestones).
     last_reminder_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), default=None
@@ -128,15 +126,11 @@ class Budget(Base, TimestampMixin):
     public_auth_method: Mapped[str] = mapped_column(String(20), default="phone_last4")
     # Hashed code (bcrypt/argon2) for ``public_auth_method=manual_code``.
     # Nullable for the other methods (verification reads from Patient).
-    public_auth_secret_hash: Mapped[str | None] = mapped_column(
-        String(255), default=None
-    )
+    public_auth_secret_hash: Mapped[str | None] = mapped_column(String(255), default=None)
     # Set when the budget exceeds the lockout threshold (10 failed
     # verification attempts). Token becomes inert until reception
     # reissues. See ``BudgetAccessLog``.
-    public_locked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    public_locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     # Plan snapshots ------------------------------------------------------
     # Read-only denormalized fields populated when the budget is created
@@ -144,12 +138,8 @@ class Budget(Base, TimestampMixin):
     # render plan context without importing ``treatment_plan`` models.
     # Real-time plan state lives in the treatment_plan module — query
     # that module for live status. See ADR 0003.
-    plan_number_snapshot: Mapped[str | None] = mapped_column(
-        String(50), default=None
-    )
-    plan_status_snapshot: Mapped[str | None] = mapped_column(
-        String(20), default=None
-    )
+    plan_number_snapshot: Mapped[str | None] = mapped_column(String(50), default=None)
+    plan_status_snapshot: Mapped[str | None] = mapped_column(String(20), default=None)
 
     # Soft delete
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)

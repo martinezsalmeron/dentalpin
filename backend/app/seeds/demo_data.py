@@ -2126,9 +2126,7 @@ def generate_budgets_data(catalog_items_map: dict[str, dict], plans_result: dict
         b_status = budget_scenario["status"]
         accepted_via = "manual" if b_status == "accepted" else None
         rejection_reason = (
-            budget_scenario.get("rejection_reason")
-            if b_status == "rejected"
-            else None
+            budget_scenario.get("rejection_reason") if b_status == "rejected" else None
         )
         rejection_note = budget_scenario.get("rejection_note") if b_status == "rejected" else None
 
@@ -2161,7 +2159,9 @@ def generate_budgets_data(catalog_items_map: dict[str, dict], plans_result: dict
                 # Workflow rework fields (PR1).
                 "accepted_via": accepted_via,
                 "rejection_reason": rejection_reason,
-                "rejection_note": t(rejection_note) if isinstance(rejection_note, dict) else rejection_note,
+                "rejection_note": t(rejection_note)
+                if isinstance(rejection_note, dict)
+                else rejection_note,
                 "public_token": uuid4(),
                 "viewed_at": None,
                 "last_reminder_sent_at": None,

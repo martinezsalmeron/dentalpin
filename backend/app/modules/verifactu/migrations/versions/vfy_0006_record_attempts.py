@@ -46,13 +46,9 @@ def upgrade() -> None:
         sa.Column("aeat_descripcion_error", sa.Text(), nullable=True),
         sa.Column("aeat_response_xml", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["record_id"], ["verifactu_records.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["record_id"], ["verifactu_records.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "record_id", "attempt_no", name="uq_verifactu_attempt_record_no"
-        ),
+        sa.UniqueConstraint("record_id", "attempt_no", name="uq_verifactu_attempt_record_no"),
     )
     op.create_index(
         "ix_verifactu_record_attempts_record_id",

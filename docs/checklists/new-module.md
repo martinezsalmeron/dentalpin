@@ -1,6 +1,6 @@
 # Checklist: new module
 
-Lookup-optimized version of `docs/creating-modules.md`. Tick each box.
+Lookup-optimized version of `docs/technical/creating-modules.md`. Tick each box.
 For deeper rationale on any line, follow the link.
 
 ## Skeleton

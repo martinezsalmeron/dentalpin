@@ -656,7 +656,7 @@ Tracked in issue #42. Phase 1 landed the core contract; Phase 2/3 extend the sys
 | Audit log | ✅ | `agent_audit_logs` table, every tool attempt recorded |
 | Approval queue (backend) | ✅ | `agent_approval_queue` + service + endpoints |
 | `agents.*` RBAC | ✅ | `agents.view/supervise/configure/manage` permissions |
-| Docs | ✅ | `docs/creating-modules.md` §12 "AI agent integration" |
+| Docs | ✅ | `docs/technical/creating-modules.md` §12 "AI agent integration" |
 
 **Phase 2 — UX + First Agent 🟠 P1**
 

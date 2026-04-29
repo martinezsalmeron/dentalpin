@@ -477,9 +477,7 @@ async def renegotiate_budget(
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
     try:
-        budget = await BudgetWorkflowService.cancel_for_renegotiation(
-            db, budget, ctx.user_id
-        )
+        budget = await BudgetWorkflowService.cancel_for_renegotiation(db, budget, ctx.user_id)
     except BudgetWorkflowError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return ApiResponse(data=BudgetResponse.model_validate(budget))
@@ -556,9 +554,7 @@ async def send_budget_reminder(
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
     if budget.status != "sent":
-        raise HTTPException(
-            status_code=400, detail="Reminders only apply to sent budgets"
-        )
+        raise HTTPException(status_code=400, detail="Reminders only apply to sent budgets")
     budget = await BudgetWorkflowService.send_reminder(
         db, budget, milestone_days=body.milestone_days
     )

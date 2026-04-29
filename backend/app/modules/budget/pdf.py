@@ -85,7 +85,7 @@ class BudgetPDFService:
         """Render the signature block — empty when no signature, with
         the captured PNG + audit footer otherwise."""
         if signature is None:
-            return f'''
+            return f"""
             <div class="signature-section">
                 <div class="signature-box">
                     <div class="signature-line"></div>
@@ -96,7 +96,7 @@ class BudgetPDFService:
                     <div class="signature-label">{labels["clinic_signature"]}</div>
                 </div>
             </div>
-            '''
+            """
 
         # Resolve signature image. ``signature_method='drawn'`` carries
         # the PNG as a data URI under ``signature_data.png``. Other
@@ -109,9 +109,7 @@ class BudgetPDFService:
                 png_data = raw_png
 
         signed_at_str = (
-            signature.signed_at.strftime("%d/%m/%Y %H:%M")
-            if signature.signed_at
-            else "—"
+            signature.signed_at.strftime("%d/%m/%Y %H:%M") if signature.signed_at else "—"
         )
         method_key = signature.signature_method or "click_accept"
         method_label = labels.get(
@@ -119,20 +117,17 @@ class BudgetPDFService:
             labels.get("signature_method_click_accept", method_key),
         )
         signature_visual = (
-            f'<img src="{png_data}" alt="" '
-            f'style="max-width: 100%; max-height: 80px;" />'
+            f'<img src="{png_data}" alt="" style="max-width: 100%; max-height: 80px;" />'
             if png_data
             else f'<div style="font-family: cursive; font-size: 14pt; '
             f'padding: 18px 0 4px; border-bottom: 1px solid #333;">'
-            f'{signature.signed_by_name}</div>'
+            f"{signature.signed_by_name}</div>"
         )
         # Document hash is set by accept_budget after rendering once.
         # Render placeholder when missing (first-pass render).
-        doc_hash_short = (
-            (signature.document_hash[:16] + "…") if signature.document_hash else "—"
-        )
+        doc_hash_short = (signature.document_hash[:16] + "…") if signature.document_hash else "—"
 
-        return f'''
+        return f"""
         <div class="signature-section">
             <div class="signature-box signature-box-signed">
                 <div class="signature-line">{signature_visual}</div>
@@ -151,7 +146,7 @@ class BudgetPDFService:
                 <div class="signature-label">{labels["clinic_signature"]}</div>
             </div>
         </div>
-        '''
+        """
 
     @staticmethod
     def _generate_html(

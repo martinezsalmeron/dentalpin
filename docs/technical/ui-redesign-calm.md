@@ -212,7 +212,7 @@ ui: {
   - `shadow-*`
   - `rounded-*`
   - `text-xs|sm|base|lg|xl|2xl|3xl`
-- Output: `docs/design/ui-redesign-baseline.md` con la matriz de archivos a tocar.
+- Output: `docs/technical/ui-redesign-baseline.md` con la matriz de archivos a tocar.
 
 ### Fase 1 — Tokens y tema base (1–2 días)
 
@@ -299,7 +299,7 @@ Las variables CSS del odontograma ya existen en `main.css`. Re-armonizarlas con 
 - Verificar focus visible en **todos** los elementos interactivos (anillo `--color-primary-500` 2 px + offset 2 px).
 - Verificar `prefers-reduced-motion`: deshabilitar transiciones de hover/expand.
 - Verificar tamaños de tap targets ≥ 44 px en móvil.
-- Capturar **screenshots after** equivalentes a fase 0. Generar `docs/design/ui-redesign-comparison.md` con before/after.
+- Capturar **screenshots after** equivalentes a fase 0. Generar `docs/technical/ui-redesign-comparison.md` con before/after.
 
 ---
 
@@ -358,7 +358,7 @@ Mínimos no negociables:
 ## 8. Validación
 
 ### Visual
-- Screenshots before/after por vista (claro y oscuro) → `docs/design/ui-redesign-comparison.md`.
+- Screenshots before/after por vista (claro y oscuro) → `docs/technical/ui-redesign-comparison.md`.
 - Revisión cruzada en pantalla calibrada y en tablet (gabinete real).
 
 ### Automatizada
@@ -405,6 +405,6 @@ Mínimos no negociables:
 2. Configuración de tema Nuxt UI en `app.config.ts`.
 3. Composables y componentes compartidos nuevos: `useDensity`, `DensityToggle`, `PageHeader`, `EmptyState`.
 4. Refactor visual de layouts, ficha de paciente, dashboard, agenda, odontograma, presupuestos, planes, facturas, settings.
-5. `docs/design/ui-redesign-baseline.md` (inventario fase 0).
-6. `docs/design/ui-redesign-comparison.md` (before/after screenshots).
+5. `docs/technical/ui-redesign-baseline.md` (inventario fase 0).
+6. `docs/technical/ui-redesign-comparison.md` (before/after screenshots).
 7. Una serie de PRs por fase, sin cambios de comportamiento, con visual QA documentado.

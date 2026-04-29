@@ -31,11 +31,10 @@ if str(ROOT) not in sys.path:
 
 from sqlalchemy import select  # noqa: E402
 
-from app.database import async_session_maker  # noqa: E402
-
 # Force SQLAlchemy to resolve every cross-module relationship by
 # loading all module models the same way the app does at startup.
 from app.core.plugins.loader import load_modules  # noqa: E402
+from app.database import async_session_maker  # noqa: E402
 from app.main import app as _app  # noqa: E402
 
 load_modules(_app)
@@ -51,9 +50,7 @@ async def main() -> int:
     no_record = 0
 
     async with async_session_maker() as db:
-        invs_q = await db.execute(
-            select(Invoice).where(Invoice.compliance_data.is_not(None))
-        )
+        invs_q = await db.execute(select(Invoice).where(Invoice.compliance_data.is_not(None)))
         invoices = list(invs_q.scalars())
 
         for inv in invoices:

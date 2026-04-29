@@ -65,9 +65,15 @@ async def test_compliance_severity_filter_returns_only_matching(
     me = await client.get("/api/v1/auth/me", headers=auth_headers)
     user_id = me.json()["data"]["user"]["id"]
 
-    await _make_invoice(db_session, test_clinic, test_patient, user_id, severity="ok", number="FAC-2026-0001")
-    await _make_invoice(db_session, test_clinic, test_patient, user_id, severity="error", number="FAC-2026-0002")
-    await _make_invoice(db_session, test_clinic, test_patient, user_id, severity=None, number="FAC-2026-0003")
+    await _make_invoice(
+        db_session, test_clinic, test_patient, user_id, severity="ok", number="FAC-2026-0001"
+    )
+    await _make_invoice(
+        db_session, test_clinic, test_patient, user_id, severity="error", number="FAC-2026-0002"
+    )
+    await _make_invoice(
+        db_session, test_clinic, test_patient, user_id, severity=None, number="FAC-2026-0003"
+    )
     await db_session.commit()
 
     r_all = await client.get("/api/v1/billing/invoices", headers=auth_headers)
@@ -96,9 +102,15 @@ async def test_compliance_severity_multivalue(
     me = await client.get("/api/v1/auth/me", headers=auth_headers)
     user_id = me.json()["data"]["user"]["id"]
 
-    await _make_invoice(db_session, test_clinic, test_patient, user_id, severity="ok", number="FAC-2026-0010")
-    await _make_invoice(db_session, test_clinic, test_patient, user_id, severity="warning", number="FAC-2026-0011")
-    await _make_invoice(db_session, test_clinic, test_patient, user_id, severity="error", number="FAC-2026-0012")
+    await _make_invoice(
+        db_session, test_clinic, test_patient, user_id, severity="ok", number="FAC-2026-0010"
+    )
+    await _make_invoice(
+        db_session, test_clinic, test_patient, user_id, severity="warning", number="FAC-2026-0011"
+    )
+    await _make_invoice(
+        db_session, test_clinic, test_patient, user_id, severity="error", number="FAC-2026-0012"
+    )
     await db_session.commit()
 
     r = await client.get(
@@ -112,11 +124,14 @@ async def test_compliance_severity_multivalue(
 
 @pytest.mark.asyncio
 async def test_compliance_severity_invalid_value_rejected(
-    client: AsyncClient, auth_headers: dict[str, str]
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    test_clinic: Clinic,
 ) -> None:
     r = await client.get(
         "/api/v1/billing/invoices?compliance_severity=catastrophic",
         headers=auth_headers,
     )
     assert r.status_code == 422
-    assert "compliance_severity" in r.json()["detail"].lower() or "catastrophic" in str(r.json())
+    body = str(r.json()).lower()
+    assert "compliance_severity" in body or "catastrophic" in body

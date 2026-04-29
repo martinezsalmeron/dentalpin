@@ -5,8 +5,9 @@ This document is the **single source of truth** for visual design in DentalPin. 
 DentalPin is clinical software used by dentists, hygienists, assistants and receptionists for **8+ hour shifts**. The design system optimises for **calm, legibility and clinical safety** in that order. Aesthetics serve those goals — they never override them.
 
 > **Companion docs**
-> - Implementation plan: `docs/design/ui-redesign-calm-technical-plan.md`
-> - Module-level UX plans: `docs/design/*.md`
+> - Implementation plan: `docs/technical/ui-redesign-calm.md`
+> - Module / feature UX briefs: `docs/features/*.md`
+> - Module / feature tech plans: `docs/technical/*.md`
 
 ---
 

@@ -12,6 +12,14 @@ from app.core.email import EmailResult, email_service
 from app.core.email.providers.base import EmailStatus
 from app.core.events import EventType, event_bus
 
+from .models import (
+    ClinicNotificationSettings,
+    ClinicSmtpSettings,
+    EmailLog,
+    EmailTemplate,
+    NotificationPreference,
+)
+
 # Default locale used for patient-facing communications when neither a
 # clinic preference nor a patient preference is set. Matches the
 # project's primary user base (Spain).
@@ -42,13 +50,6 @@ async def resolve_clinic_communication_locale(
     lang = settings.get("communication_language") if isinstance(settings, dict) else None
     return lang or DEFAULT_COMMUNICATION_LOCALE
 
-from .models import (
-    ClinicNotificationSettings,
-    ClinicSmtpSettings,
-    EmailLog,
-    EmailTemplate,
-    NotificationPreference,
-)
 
 logger = logging.getLogger(__name__)
 

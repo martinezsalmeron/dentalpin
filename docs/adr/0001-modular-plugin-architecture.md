@@ -76,7 +76,7 @@ role-permission seeds in a single `manifest` dict on the module class.
 
 ## References
 
-- `docs/creating-modules.md` — module-author contract
+- `docs/technical/creating-modules.md` — module-author contract
 - `backend/app/core/plugins/base.py:21` — `BaseModule`
 - `backend/app/core/plugins/manifest.py` — manifest schema
 - `backend/app/core/plugins/loader.py:159` — `discover_modules`

@@ -81,15 +81,11 @@ def upgrade() -> None:
     )
     op.add_column(
         "budgets",
-        sa.Column(
-            "public_auth_secret_hash", sa.String(length=255), nullable=True
-        ),
+        sa.Column("public_auth_secret_hash", sa.String(length=255), nullable=True),
     )
     op.add_column(
         "budgets",
-        sa.Column(
-            "public_locked_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("public_locked_at", sa.DateTime(timezone=True), nullable=True),
     )
 
     # Plan snapshots (denormalized read-only mirrors)

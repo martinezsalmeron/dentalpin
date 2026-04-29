@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-04-18
 **Estado:** Listo para ejecutar
-**Documento de diseño:** `treatment-addition-ux.md` v2
+**Documento de diseño:** [`treatment-addition.md`](../features/treatment-addition.md) v2
 
 ---
 

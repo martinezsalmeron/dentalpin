@@ -23,10 +23,10 @@ from app.database import get_db
 from .models import (
     VerifactuCertificate,
     VerifactuRecord,
+    VerifactuRecordAttempt,
     VerifactuSettings,
     VerifactuVatClassification,
 )
-from .models import VerifactuRecordAttempt
 from .schemas import (
     CertificateUploadResponse,
     NifCheckResponse,
@@ -544,9 +544,7 @@ async def retry_record(
         raise HTTPException(status_code=400, detail="Registro ya aceptado")
 
     code = rec.aeat_codigo_error or 0
-    is_business_transient = rec.state == "failed_transient" and (
-        code == -2 or code >= 1000
-    )
+    is_business_transient = rec.state == "failed_transient" and (code == -2 or code >= 1000)
     is_regenable = rec.state in ("rejected", "failed_validation") or is_business_transient
     if regenerate and is_regenable:
         from .hook import regenerate_record
@@ -638,10 +636,7 @@ async def list_record_attempts(
         .order_by(VerifactuRecordAttempt.attempt_no.asc())
     )
     return ApiResponse(
-        data=[
-            VerifactuRecordAttemptResponse.model_validate(a)
-            for a in attempts_q.scalars()
-        ]
+        data=[VerifactuRecordAttemptResponse.model_validate(a) for a in attempts_q.scalars()]
     )
 
 

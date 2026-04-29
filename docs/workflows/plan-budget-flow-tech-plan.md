@@ -889,6 +889,6 @@ firmada con `BUDGET_PUBLIC_SECRET_KEY` independiente.
 - Documento de uso: `docs/workflows/plan-budget-flow.md`.
 - Módulo Treatment Plan: `backend/app/modules/treatment_plan/CLAUDE.md`.
 - Módulo Budget: `docs/modules/budget.md` + `backend/app/modules/budget/CLAUDE.md`.
-- Creación de módulos: `docs/creating-modules.md`.
+- Creación de módulos: `docs/technical/creating-modules.md`.
 - Glosario: `docs/glossary.md`.
 - ADRs relevantes: `docs/adr/` (consultar índice).

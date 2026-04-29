@@ -118,10 +118,7 @@ class ClosePlanRequest(BaseModel):
 
     closure_reason: str = Field(
         ...,
-        pattern=(
-            "^(rejected_by_patient|expired|cancelled_by_clinic|"
-            "patient_abandoned|other)$"
-        ),
+        pattern=("^(rejected_by_patient|expired|cancelled_by_clinic|patient_abandoned|other)$"),
     )
     closure_note: str | None = Field(default=None, max_length=2000)
 

@@ -320,9 +320,7 @@ class InvoiceWorkflowService:
             # Treat both as UTC; the DB stores TIMESTAMPTZ so updated_at
             # is timezone-aware. The frontend echoes whatever was served.
             if abs((invoice.updated_at - expected_updated_at).total_seconds()) > 1:
-                raise InvoiceWorkflowError(
-                    "concurrent edit detected — refresh and try again"
-                )
+                raise InvoiceWorkflowError("concurrent edit detected — refresh and try again")
 
         if invoice.status != "draft":
             hook = BillingHookRegistry.get_for_clinic(invoice.clinic) if invoice.clinic else None
@@ -333,8 +331,7 @@ class InvoiceWorkflowService:
             allowed, reason = await hook.can_edit_billing_party(invoice, db)
             if not allowed:
                 raise InvoiceWorkflowError(
-                    reason
-                    or "Edición no permitida por la normativa de cumplimiento de este país."
+                    reason or "Edición no permitida por la normativa de cumplimiento de este país."
                 )
 
         previous = {

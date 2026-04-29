@@ -77,7 +77,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 These literals appear in `event_bus.publish(...)` but do not match any `EventType` constant. Add them to `backend/app/core/events/types.py` to keep the enum authoritative.
 
 - `treatment_plan.items_reordered` — 1 site(s):
-  - `backend/app/modules/treatment_plan/service.py:552`
+  - `app/app/modules/treatment_plan/service.py:552`
 
 ## Detail
 
@@ -85,7 +85,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.AGENDA_VISIT_NOTE_UPDATED`
 - **Publishers:**
-  - `agenda` — `backend/app/modules/agenda/service.py:812`
+  - `agenda` — `app/app/modules/agenda/service.py:812`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -93,7 +93,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.APPOINTMENT_CABINET_CHANGED`
 - **Publishers:**
-  - `agenda` — `backend/app/modules/agenda/service.py:749`
+  - `agenda` — `app/app/modules/agenda/service.py:749`
 - **Subscribers:** —
 
 ### `appointment.cancelled`
@@ -145,7 +145,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.APPOINTMENT_SCHEDULED`
 - **Publishers:**
-  - `agenda` — `backend/app/modules/agenda/service.py:453`
+  - `agenda` — `app/app/modules/agenda/service.py:453`
 - **Subscribers:**
   - `notifications`
   - `patient_timeline`
@@ -155,14 +155,14 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.APPOINTMENT_STATUS_CHANGED`
 - **Publishers:**
-  - `agenda` — `backend/app/modules/agenda/service.py:678`
+  - `agenda` — `app/app/modules/agenda/service.py:678`
 - **Subscribers:** —
 
 ### `appointment.updated`
 
 - **Constant:** `EventType.APPOINTMENT_UPDATED`
 - **Publishers:**
-  - `agenda` — `backend/app/modules/agenda/service.py:578`
+  - `agenda` — `app/app/modules/agenda/service.py:578`
 - **Subscribers:**
   - `schedules`
 
@@ -170,7 +170,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.BUDGET_ACCEPTED`
 - **Publishers:**
-  - `budget` — `backend/app/modules/budget/workflow.py:248`
+  - `budget` — `app/app/modules/budget/workflow.py:298`
 - **Subscribers:**
   - `notifications`
   - `patient_timeline`
@@ -186,7 +186,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.BUDGET_EXPIRED`
 - **Publishers:**
-  - `budget` — `backend/app/modules/budget/workflow.py:454`
+  - `budget` — `app/app/modules/budget/workflow.py:472`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -194,7 +194,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.BUDGET_REJECTED`
 - **Publishers:**
-  - `budget` — `backend/app/modules/budget/workflow.py:325`
+  - `budget` — `app/app/modules/budget/workflow.py:375`
 - **Subscribers:**
   - `patient_timeline`
   - `treatment_plan`
@@ -203,7 +203,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.BUDGET_REMINDER_SENT`
 - **Publishers:**
-  - `budget` — `backend/app/modules/budget/workflow.py:584`
+  - `budget` — `app/app/modules/budget/workflow.py:598`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -211,7 +211,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.BUDGET_RENEGOTIATED`
 - **Publishers:**
-  - `budget` — `backend/app/modules/budget/workflow.py:529`
+  - `budget` — `app/app/modules/budget/workflow.py:543`
 - **Subscribers:**
   - `patient_timeline`
   - `treatment_plan`
@@ -220,7 +220,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.BUDGET_SENT`
 - **Publishers:**
-  - `budget` — `backend/app/modules/budget/workflow.py:160`
+  - `budget` — `app/app/modules/budget/workflow.py:160`
 - **Subscribers:**
   - `notifications`
   - `patient_timeline`
@@ -229,7 +229,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.BUDGET_VIEWED`
 - **Publishers:**
-  - `budget` — `backend/app/modules/budget/workflow.py:557`
+  - `budget` — `app/app/modules/budget/workflow.py:571`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -277,14 +277,14 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.DOCUMENT_DELETED`
 - **Publishers:**
-  - `media` — `backend/app/modules/media/service.py:178`
+  - `media` — `app/app/modules/media/service.py:178`
 - **Subscribers:** —
 
 ### `document.uploaded`
 
 - **Constant:** `EventType.DOCUMENT_UPLOADED`
 - **Publishers:**
-  - `media` — `backend/app/modules/media/service.py:138`
+  - `media` — `app/app/modules/media/service.py:138`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -318,7 +318,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.INVOICE_ISSUED`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/workflow.py:278`
+  - `billing` — `app/app/modules/billing/workflow.py:278`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -326,7 +326,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.INVOICE_PAID`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/workflow.py:491`
+  - `billing` — `app/app/modules/billing/workflow.py:488`
 - **Subscribers:**
   - `patient_timeline`
   - `verifactu`
@@ -341,7 +341,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.INVOICE_SENT`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/router.py:659`
+  - `billing` — `app/app/modules/billing/router.py:659`
 - **Subscribers:**
   - `notifications`
 
@@ -373,21 +373,21 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_ADDED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:730`
+  - `odontogram` — `app/app/modules/odontogram/service.py:730`
 - **Subscribers:** —
 
 ### `odontogram.treatment.deleted`
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_DELETED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:876`
+  - `odontogram` — `app/app/modules/odontogram/service.py:876`
 - **Subscribers:** —
 
 ### `odontogram.treatment.performed`
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_PERFORMED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:830`
+  - `odontogram` — `app/app/modules/odontogram/service.py:830`
 - **Subscribers:**
   - `budget`
   - `patient_timeline`
@@ -397,14 +397,14 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_STATUS_CHANGED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:774`
+  - `odontogram` — `app/app/modules/odontogram/service.py:774`
 - **Subscribers:** —
 
 ### `patient.archived`
 
 - **Constant:** `EventType.PATIENT_ARCHIVED`
 - **Publishers:**
-  - `patients` — `backend/app/modules/patients/service.py:142`
+  - `patients` — `app/app/modules/patients/service.py:142`
 - **Subscribers:**
   - `media`
 
@@ -412,7 +412,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.PATIENT_CREATED`
 - **Publishers:**
-  - `patients` — `backend/app/modules/patients/service.py:113`
+  - `patients` — `app/app/modules/patients/service.py:113`
 - **Subscribers:**
   - `notifications`
 
@@ -420,8 +420,8 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.PATIENT_MEDICAL_UPDATED`
 - **Publishers:**
-  - `patients_clinical` — `backend/app/modules/patients_clinical/router.py:94`
-  - `patients_clinical` — `backend/app/modules/patients_clinical/router.py:593`
+  - `patients_clinical` — `app/app/modules/patients_clinical/router.py:94`
+  - `patients_clinical` — `app/app/modules/patients_clinical/router.py:593`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -429,7 +429,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.PATIENT_UPDATED`
 - **Publishers:**
-  - `patients` — `backend/app/modules/patients/service.py:131`
+  - `patients` — `app/app/modules/patients/service.py:131`
 - **Subscribers:** —
 
 ### `payment.recorded`
@@ -454,7 +454,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_BUDGET_SYNC_REQUESTED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:840`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:837`
 - **Subscribers:**
   - `budget`
 
@@ -462,8 +462,8 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_CLOSED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1288`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1426`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1268`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1406`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -471,7 +471,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_CONFIRMED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1193`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1175`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -479,7 +479,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_CREATED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:221`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:221`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -487,7 +487,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_ITEM_COMPLETED_WITHOUT_NOTE`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:710`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:710`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -495,7 +495,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_REACTIVATED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1334`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1314`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -503,21 +503,21 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_STATUS_CHANGED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:287`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:746`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1194`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1241`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1301`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1345`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1383`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:1439`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:287`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:746`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1176`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1223`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1281`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1325`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1363`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:1419`
 - **Subscribers:** —
 
 ### `treatment_plan.treatment_added`
 
 - **Constant:** `EventType.TREATMENT_PLAN_TREATMENT_ADDED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:438`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:438`
 - **Subscribers:**
   - `budget`
 
@@ -525,9 +525,9 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_TREATMENT_COMPLETED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/events.py:61`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/events.py:201`
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:693`
+  - `treatment_plan` — `app/app/modules/treatment_plan/events.py:61`
+  - `treatment_plan` — `app/app/modules/treatment_plan/events.py:199`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:693`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -535,7 +535,7 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.TREATMENT_PLAN_TREATMENT_REMOVED`
 - **Publishers:**
-  - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:616`
+  - `treatment_plan` — `app/app/modules/treatment_plan/service.py:616`
 - **Subscribers:**
   - `budget`
 
@@ -543,5 +543,5 @@ These literals appear in `event_bus.publish(...)` but do not match any `EventTyp
 
 - **Constant:** `EventType.VERIFACTU_RECORD_REJECTED`
 - **Publishers:**
-  - `verifactu` — `backend/app/modules/verifactu/services/submission_queue.py:273`
+  - `verifactu` — `app/app/modules/verifactu/services/submission_queue.py:271`
 - **Subscribers:** —

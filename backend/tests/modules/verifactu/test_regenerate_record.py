@@ -52,11 +52,7 @@ async def _seed_user(db: AsyncSession, clinic: Clinic) -> User:
         is_active=True,
     )
     db.add(user)
-    db.add(
-        ClinicMembership(
-            id=uuid4(), user_id=user.id, clinic_id=clinic.id, role="admin"
-        )
-    )
+    db.add(ClinicMembership(id=uuid4(), user_id=user.id, clinic_id=clinic.id, role="admin"))
     await db.flush()
     return user
 
@@ -136,13 +132,11 @@ async def _seed_invoice(
     )
     db.add(item)
     await db.flush()
-    await db.refresh(inv)
+    await db.refresh(inv, attribute_names=["items"])
     return inv
 
 
-async def _issue_record(
-    db: AsyncSession, hook: VerifactuHook, invoice: Invoice
-) -> VerifactuRecord:
+async def _issue_record(db: AsyncSession, hook: VerifactuHook, invoice: Invoice) -> VerifactuRecord:
     payload = await hook.on_invoice_issued(invoice, db)
     assert payload, "hook returned empty payload — settings not enabled?"
     record_id = payload["ES"]["record_id"]

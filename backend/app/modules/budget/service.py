@@ -402,8 +402,8 @@ class BudgetService:
         from sqlalchemy import text
 
         from .workflow import (
-            BudgetWorkflowService,
             DEFAULT_BUDGET_VALIDITY_DAYS,
+            BudgetWorkflowService,
             _resolve_clinic_settings,
         )
 
@@ -434,9 +434,7 @@ class BudgetService:
             return existing
 
         clinic_settings = await _resolve_clinic_settings(db, clinic_id)
-        validity_days = int(
-            clinic_settings.get("budget_expiry_days", DEFAULT_BUDGET_VALIDITY_DAYS)
-        )
+        validity_days = int(clinic_settings.get("budget_expiry_days", DEFAULT_BUDGET_VALIDITY_DAYS))
         today = date.today()
 
         budget_number = await BudgetNumberService.generate_number(db, clinic_id)
@@ -479,11 +477,7 @@ class BudgetService:
                     "treatment_id": UUID(treatment_id_raw),
                     "tooth_number": item_snapshot.get("tooth_number"),
                     "surfaces": item_snapshot.get("surfaces"),
-                    "unit_price": (
-                        Decimal(unit_price_raw)
-                        if unit_price_raw is not None
-                        else None
-                    ),
+                    "unit_price": (Decimal(unit_price_raw) if unit_price_raw is not None else None),
                 },
             )
 

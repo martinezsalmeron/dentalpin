@@ -26,7 +26,7 @@ signed with ``settings.BUDGET_PUBLIC_SECRET_KEY`` (falls back to
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -188,10 +188,7 @@ async def get_public_budget_meta(
 
     clinic_row = (
         await db.execute(
-            _text(
-                "SELECT name, phone, email, address, settings "
-                "FROM clinics WHERE id = :id"
-            ),
+            _text("SELECT name, phone, email, address, settings FROM clinics WHERE id = :id"),
             {"id": budget.clinic_id},
         )
     ).first()
@@ -335,9 +332,7 @@ async def get_public_budget(
     await db.commit()
 
     # Reload with items eagerly loaded for the response.
-    budget = await BudgetService.get_budget(
-        db, budget.clinic_id, budget.id, include_items=True
-    )
+    budget = await BudgetService.get_budget(db, budget.clinic_id, budget.id, include_items=True)
     return ApiResponse(data=BudgetDetailResponse.model_validate(budget))
 
 
@@ -436,8 +431,10 @@ async def download_public_signed_budget_pdf(
 
     clinic_row = (
         await db.execute(
-            _text("SELECT id, name, address, phone, email, settings, tax_id, legal_name "
-                  "FROM clinics WHERE id = :id"),
+            _text(
+                "SELECT id, name, address, phone, email, settings, tax_id, legal_name "
+                "FROM clinics WHERE id = :id"
+            ),
             {"id": budget.clinic_id},
         )
     ).first()
@@ -518,5 +515,3 @@ async def reject_public_budget(
             decided_status="rejected",
         )
     )
-
-

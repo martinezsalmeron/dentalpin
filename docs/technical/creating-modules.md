@@ -52,7 +52,7 @@ marketplace) is post-v1.
 
 ### Manifest
 
-See `docs/core-api.md` for the full schema. Key fields:
+See `docs/technical/core-api.md` for the full schema. Key fields:
 
 | Field | Required | Purpose |
 |-------|----------|---------|
@@ -694,7 +694,7 @@ sort fails loud).
 
 ### Events
 
-The core publishes a fixed catalog of events. See `docs/core-api.md`
+The core publishes a fixed catalog of events. See `docs/technical/core-api.md`
 for the full list + payload schemas. Common ones:
 
 - `patient.created`, `patient.updated`, `patient.medical_updated`
@@ -1196,7 +1196,7 @@ Rules:
 
 - `backend/app/core/agents/` — the contract itself. Start with
   `tools/registry.py` to see the call chokepoint.
-- `docs/design/module-system-architecture.md` — why tools and events
+- `docs/technical/module-system-architecture.md` — why tools and events
   are two separate extension points.
 
 ---
@@ -1229,15 +1229,15 @@ Before tagging a community module release:
   until the first release). Critical issues trigger a coordinated
   disclosure.
 - **Breaking changes to the core API** follow the deprecation policy
-  described in `docs/core-api.md`.
+  described in `docs/technical/core-api.md`.
 
 ---
 
 ## Where to go next
 
-- `docs/core-api.md` — full public API reference.
-- `docs/operations.md` — admin/self-hoster guide.
-- `docs/design/module-system-architecture.md` — why things are the
+- `docs/technical/core-api.md` — full public API reference.
+- `docs/user-manual/operations.md` — admin/self-hoster guide.
+- `docs/technical/module-system-architecture.md` — why things are the
   way they are.
 - `tests/fixtures/sample_module/` — minimal working module you can
   copy.

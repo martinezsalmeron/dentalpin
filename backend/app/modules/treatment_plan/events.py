@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app.core.events import event_bus
 from app.database import async_session_maker
 
-from .models import PlannedTreatmentItem, TreatmentPlan
+from .models import PlannedTreatmentItem
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +110,7 @@ async def on_budget_accepted(data: dict[str, Any]) -> None:
 
     async with async_session_maker() as db:
         try:
-            await TreatmentPlanService.accept_from_budget(
-                db, UUID(clinic_id), UUID(plan_id)
-            )
+            await TreatmentPlanService.accept_from_budget(db, UUID(clinic_id), UUID(plan_id))
             await db.commit()
         except Exception as e:
             logger.error(f"Error processing budget acceptance: {e}", exc_info=True)

@@ -51,7 +51,7 @@ DentalPin follows a layered architecture:
 |----------|---------|
 | [CLAUDE.md](CLAUDE.md) | Comprehensive technical documentation |
 | [TODOS.md](TODOS.md) | Roadmap and feature backlog |
-| [docs/creating-modules.md](docs/creating-modules.md) | Module development guide |
+| [docs/technical/creating-modules.md](docs/technical/creating-modules.md) | Module development guide |
 
 ---
 
@@ -300,7 +300,7 @@ On the frontend, use permission-aware components:
 
 ## Creating Modules
 
-DentalPin has a plugin architecture. See the full guide: [docs/creating-modules.md](docs/creating-modules.md)
+DentalPin has a plugin architecture. See the full guide: [docs/technical/creating-modules.md](docs/technical/creating-modules.md)
 
 ### Quick Overview
 

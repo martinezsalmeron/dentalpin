@@ -318,6 +318,6 @@ pipeline checks every PR touching `backend/app/core/` for:
 
 ## Where to go next
 
-- `docs/creating-modules.md` — the full authoring guide.
-- `docs/operations.md` — install/restart/backup/troubleshooting for admins.
+- `docs/technical/creating-modules.md` — the full authoring guide.
+- `docs/user-manual/operations.md` — install/restart/backup/troubleshooting for admins.
 - `backend/tests/fixtures/sample_module/` — minimal working example.

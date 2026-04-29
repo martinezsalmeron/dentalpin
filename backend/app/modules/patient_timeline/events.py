@@ -395,10 +395,7 @@ async def on_budget_reminder_sent(data: dict) -> None:
         source_table="budgets",
         data=data,
         source_id_key="budget_id",
-        title=(
-            f"Recordatorio enviado ({milestone}d)" if milestone
-            else "Recordatorio enviado"
-        ),
+        title=(f"Recordatorio enviado ({milestone}d)" if milestone else "Recordatorio enviado"),
         occurred_at_key="sent_at",
         event_data={"milestone_days": milestone},
     )
@@ -412,9 +409,7 @@ async def on_treatment_plan_confirmed(data: dict) -> None:
         source_table="treatment_plans",
         data=data,
         source_id_key="plan_id",
-        title=(
-            f"Plan confirmado: {plan_number}" if plan_number else "Plan confirmado"
-        ),
+        title=(f"Plan confirmado: {plan_number}" if plan_number else "Plan confirmado"),
         occurred_at_key="confirmed_at",
         created_by_key="confirmed_by_user_id",
         event_data={

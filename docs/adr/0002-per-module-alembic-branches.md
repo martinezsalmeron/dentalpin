@@ -66,5 +66,5 @@ Operational implications:
 ## References
 
 - Issue #56
-- `docs/creating-modules.md` §3 (`migrations/`)
+- `docs/technical/creating-modules.md` §3 (`migrations/`)
 - Alembic branch labels docs: <https://alembic.sqlalchemy.org/en/latest/branches.html>

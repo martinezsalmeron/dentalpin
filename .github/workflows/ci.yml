@@ -135,6 +135,23 @@ jobs:
         run: |
           python scripts/generate_catalogs.py --check
 
+  docs-layout:
+    # Enforces the docs/ taxonomy from root CLAUDE.md "Documentation policy".
+    # Fails if a new markdown file is dropped at docs/ root, an unknown
+    # folder is added under docs/, or an image is placed outside
+    # docs/screenshots or docs/diagrams.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check docs layout
+        run: python scripts/check_docs_layout.py
+
   frontend-lint:
     runs-on: ubuntu-latest
     steps:

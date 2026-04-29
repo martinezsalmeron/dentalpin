@@ -633,9 +633,7 @@ def _read_budget_settings(raw: dict | None) -> _BudgetSettingsResponse:
     raw = raw or {}
     return _BudgetSettingsResponse(
         budget_expiry_days=int(raw.get("budget_expiry_days", 30)),
-        plan_auto_close_days_after_expiry=int(
-            raw.get("plan_auto_close_days_after_expiry", 30)
-        ),
+        plan_auto_close_days_after_expiry=int(raw.get("plan_auto_close_days_after_expiry", 30)),
         budget_reminders_enabled=bool(raw.get("budget_reminders_enabled", False)),
         budget_public_auth_disabled=bool(raw.get("budget_public_auth_disabled", False)),
     )

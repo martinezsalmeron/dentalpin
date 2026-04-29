@@ -91,4 +91,4 @@ backend/app/modules/{module_name}/
 3. Implement required methods
 4. Module auto-discovered on startup
 
-See [Creating Modules](../creating-modules.md) for detailed guide.
+See [Creating Modules](../technical/creating-modules.md) for detailed guide.

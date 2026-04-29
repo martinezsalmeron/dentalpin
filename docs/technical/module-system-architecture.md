@@ -808,7 +808,7 @@ Nota: ahorro vs plan original ~2-4 días porque no se toca clinical (split Patie
 ### Etapa 7 — Hardening y documentación (3-4 días)
 - Test end-to-end con módulo community simulado.
 - Documentar Core API pública con ejemplos.
-- Guía "tu primer módulo DentalPin" en `docs/creating-modules.md` (refactor del actual).
+- Guía "tu primer módulo DentalPin" en `docs/technical/creating-modules.md` (refactor del actual).
 - CI: test del sistema modular con y sin módulos no-legacy instalados. Clinical siempre instalado (es legacy, no removible).
 - CI: validador de manifiestos + FKs cross-module.
 
