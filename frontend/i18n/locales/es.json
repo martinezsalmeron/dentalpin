@@ -630,7 +630,7 @@
       "steps": {
         "plan": "Planificar",
         "confirm": "Confirmar",
-        "billingScheduling": "Presupuesto + Citas"
+        "inProgress": "En curso"
       },
       "confirmCta": {
         "titleWithItems": "Confirmar plan",

@@ -609,7 +609,7 @@
       "steps": {
         "plan": "Plan",
         "confirm": "Confirm",
-        "billingScheduling": "Quote + Appointments"
+        "inProgress": "In progress"
       },
       "confirmCta": {
         "titleWithItems": "Confirm plan",

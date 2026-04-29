@@ -214,7 +214,7 @@ const canGenerateBudget = computed(() => {
 type StepState = 'current' | 'complete' | 'upcoming'
 
 interface Step {
-  key: 'plan' | 'confirm' | 'billing'
+  key: 'plan' | 'confirm' | 'inProgress'
   label: string
   icon: string
   state: StepState
@@ -222,30 +222,40 @@ interface Step {
 
 const steps = computed<Step[]>(() => {
   const status = props.plan.status
-  // Completed / archived / cancelled collapse to"all done" for this chart.
-  const allDone = status === 'completed'
+  // Map the 5 backend states to the 3-step stepper:
+  //   draft     → step 1 (Planificar) current
+  //   pending   → step 2 (Confirmar)  current — awaiting patient acceptance
+  //   active    → step 3 (En curso)   current — treatment underway
+  //   completed → all complete
+  //   closed    → frozen, last reached step stays current visually
   const isDraft = status === 'draft'
+  const isPending = status === 'pending'
   const isActive = status === 'active'
+  const isCompleted = status === 'completed'
 
   return [
     {
       key: 'plan',
       label: t('clinical.plans.steps.plan'),
       icon: 'i-lucide-clipboard-list',
-      state: isDraft ? 'current' : 'complete'
+      state: isDraft ? 'current' : 'complete',
     },
     {
       key: 'confirm',
       label: t('clinical.plans.steps.confirm'),
       icon: 'i-lucide-check-circle-2',
-      state: isDraft ? 'upcoming' : (isActive ? 'complete' : (allDone ? 'complete' : 'upcoming'))
+      state: isDraft
+        ? 'upcoming'
+        : (isPending ? 'current' : 'complete'),
     },
     {
-      key: 'billing',
-      label: t('clinical.plans.steps.billingScheduling'),
-      icon: 'i-lucide-file-plus',
-      state: isActive ? 'current' : (allDone ? 'complete' : 'upcoming')
-    }
+      key: 'inProgress',
+      label: t('clinical.plans.steps.inProgress'),
+      icon: 'i-lucide-stethoscope',
+      state: isActive
+        ? 'current'
+        : (isCompleted ? 'complete' : 'upcoming'),
+    },
   ]
 })
 
