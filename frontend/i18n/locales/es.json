@@ -1644,7 +1644,21 @@
     },
     "signature": {
       "title": "Firma digital",
+      "viewAction": "Ver firma",
       "signedBy": "Firmado por",
+      "signedAt": "Firmado el",
+      "methodLabel": "Método",
+      "relationshipLabel": "Relación",
+      "documentHash": "Hash del documento (SHA-256)",
+      "hashHint": "Hash {short} — vincula la firma a este PDF exacto. Cualquier cambio invalidaría la firma.",
+      "downloadSignedPdf": "Descargar PDF firmado",
+      "downloadError": "No se pudo descargar el PDF firmado.",
+      "notSigned": "Aún no se ha capturado firma para este presupuesto.",
+      "method": {
+        "drawn": "Firma manuscrita",
+        "clickAccept": "Aceptación con un clic",
+        "external": "Proveedor externo"
+      },
       "email": "Email",
       "relationship": "Relación con el paciente",
       "patient": "Paciente",
@@ -1800,6 +1814,12 @@
       "locked": "Acceso bloqueado por demasiados intentos. Llama a la clínica.",
       "already_accepted": "Ya has aceptado este presupuesto. La clínica te contactará para agendar tu primera cita.",
       "already_rejected": "Has rechazado este presupuesto. Si cambias de opinión, llama a la clínica.",
+      "download": {
+        "signedPdf": "Descargar PDF firmado",
+        "notSigned": "Este presupuesto aún no tiene firma asociada.",
+        "error": "No se pudo descargar el PDF. Inténtalo de nuevo.",
+        "reauthIntro": "Por seguridad, vuelve a verificar tu identidad para descargar el PDF firmado."
+      },
       "verify": {
         "title": "Verifica tu identidad",
         "intro": "Para proteger tu información, confirma un dato antes de ver tu presupuesto.",
@@ -1875,6 +1895,7 @@
   "invoice": {
     "title": "Facturas",
     "description": "Gestiona facturas y pagos de pacientes",
+    "createFromBudget": "Crear factura desde presupuesto",
     "new": "Nueva factura",
     "edit": "Editar factura",
     "view": "Ver factura",

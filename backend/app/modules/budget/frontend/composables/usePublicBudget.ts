@@ -172,6 +172,32 @@ export function usePublicBudget(token: string) {
     }
   }
 
+  async function downloadSignedPdf(): Promise<'ok' | 'verification_required' | 'not_signed' | 'error'> {
+    try {
+      const response = await fetch(`${baseUrl.value}/pdf/signed`, {
+        credentials: 'include',
+      })
+      if (response.status === 401) return 'verification_required'
+      if (response.status === 404) return 'not_signed'
+      if (!response.ok) return 'error'
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const cd = response.headers.get('Content-Disposition')
+      const match = cd?.match(/filename="?(.+?)"?$/)
+      link.download = match?.[1] || `presupuesto_firmado.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      return 'ok'
+    } catch {
+      return 'error'
+    }
+  }
+
   async function reject(payload: { reason: string; note?: string }): Promise<boolean> {
     submitting.value = true
     try {
@@ -204,5 +230,6 @@ export function usePublicBudget(token: string) {
     verify,
     accept,
     reject,
+    downloadSignedPdf,
   }
 }

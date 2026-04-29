@@ -391,6 +391,90 @@ async def accept_public_budget(
     )
 
 
+@public_router.get("/public/budgets/{token}/pdf/signed")
+@limiter.limit("10/minute", key_func=lambda request: str(request.path_params.get("token")))
+async def download_public_signed_budget_pdf(
+    token: UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Patient-facing download of the signed PDF.
+
+    Same cookie + token scope as the rest of the public flow. 404
+    when the budget has not been accepted yet. Audited via
+    ``BudgetAccessLog`` (success=True so it never contributes to the
+    lockout counter).
+    """
+    cookie_value = request.cookies.get(_cookie_name(token))
+    budget = await _require_session(token, db, cookie_value)
+    if budget.status != "accepted":
+        raise HTTPException(status_code=404, detail="Budget has not been accepted")
+
+    from sqlalchemy import select as _select
+
+    from .models import BudgetAccessLog, BudgetSignature
+    from .pdf import BudgetPDFService
+
+    sig_q = (
+        _select(BudgetSignature)
+        .where(
+            BudgetSignature.budget_id == budget.id,
+            BudgetSignature.signature_type == "full_acceptance",
+        )
+        .order_by(BudgetSignature.signed_at.desc())
+        .limit(1)
+    )
+    signature = (await db.execute(sig_q)).scalar_one_or_none()
+    if signature is None:
+        raise HTTPException(status_code=404, detail="Budget has not been signed")
+
+    full_budget = await BudgetService.get_budget(
+        db, budget.clinic_id, budget.id, include_items=True
+    )
+
+    from sqlalchemy import text as _text
+
+    clinic_row = (
+        await db.execute(
+            _text("SELECT id, name, address, phone, email, settings, tax_id, legal_name "
+                  "FROM clinics WHERE id = :id"),
+            {"id": budget.clinic_id},
+        )
+    ).first()
+    clinic_settings = (
+        clinic_row.settings if clinic_row and isinstance(clinic_row.settings, dict) else {}
+    ) or {}
+    locale = str(clinic_settings.get("communication_language") or "es")
+
+    pdf_bytes = BudgetPDFService.generate_pdf(
+        full_budget,
+        clinic_row,
+        is_preview=False,
+        locale=locale,
+        signature=signature,
+    )
+
+    db.add(
+        BudgetAccessLog(
+            budget_id=budget.id,
+            ip_hash=_hash_ip(request.client.host if request.client else None),
+            success=True,
+            method_attempted="download_signed_pdf",
+        )
+    )
+    await db.commit()
+
+    filename = f"presupuesto_{budget.budget_number}_v{budget.version}_firmado.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
 @public_router.post(
     "/public/budgets/{token}/reject",
     response_model=ApiResponse[PublicBudgetMeta],

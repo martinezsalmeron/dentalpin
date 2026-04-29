@@ -247,6 +247,58 @@ class BudgetWorkflowService:
 
         await db.flush()
 
+        # Render the signed PDF once and persist its SHA-256 hash on
+        # the signature row. Lets compliance tooling later detect any
+        # tampering with stored / re-rendered PDFs. Best-effort:
+        # WeasyPrint failures (e.g. missing system fonts in dev) must
+        # not block the acceptance — log and continue.
+        try:
+            from .pdf import BudgetPDFService
+
+            clinic_row = await db.execute(
+                text(
+                    "SELECT id, name, address, phone, email, settings, "
+                    "tax_id, legal_name FROM clinics WHERE id = :id"
+                ),
+                {"id": budget.clinic_id},
+            )
+            clinic = clinic_row.first()
+            if clinic is not None:
+                clinic_settings = (
+                    clinic.settings if isinstance(clinic.settings, dict) else {}
+                ) or {}
+                locale = str(clinic_settings.get("communication_language") or "es")
+                # Re-fetch budget with items eagerly loaded for the PDF.
+                from sqlalchemy.orm import selectinload
+
+                from .models import Budget as _Budget
+
+                hydrated = (
+                    await db.execute(
+                        select(_Budget)
+                        .options(selectinload(_Budget.items))
+                        .where(_Budget.id == budget.id)
+                    )
+                ).scalar_one_or_none()
+                if hydrated is not None:
+                    pdf_bytes = BudgetPDFService.generate_pdf(
+                        hydrated,
+                        clinic,  # type: ignore[arg-type]
+                        is_preview=False,
+                        locale=locale,
+                        signature=signature,
+                    )
+                    signature.document_hash = BudgetPDFService.generate_pdf_hash(
+                        pdf_bytes
+                    )
+                    await db.flush()
+        except Exception as exc:
+            logger.warning(
+                "Could not compute document_hash for budget %s: %s",
+                budget.id,
+                exc,
+            )
+
         plan_id = await BudgetWorkflowService._lookup_plan_id(db, budget.id)
         event_bus.publish(
             EventType.BUDGET_ACCEPTED,

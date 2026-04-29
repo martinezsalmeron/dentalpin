@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic
 
-from .models import Budget
+from .models import Budget, BudgetSignature
 
 
 class BudgetPDFService:
@@ -40,6 +40,7 @@ class BudgetPDFService:
         clinic: "Clinic",
         is_preview: bool = False,
         locale: str = "es",
+        signature: "BudgetSignature | None" = None,
     ) -> bytes:
         """Generate PDF for a budget.
 
@@ -48,12 +49,22 @@ class BudgetPDFService:
             clinic: The clinic for branding
             is_preview: If True, adds DRAFT watermark
             locale: Language for labels (es/en)
+            signature: Optional accepted signature. When set, the PDF
+                replaces the empty patient signature line with the
+                captured PNG (for ``signature_method='drawn'``) and
+                appends an audit footer with signer name, date,
+                channel and document hash. ``generate_pdf_hash`` should
+                be called on the resulting bytes by the caller and
+                persisted on ``BudgetSignature.document_hash`` for
+                tamper detection.
 
         Returns:
             PDF content as bytes
         """
         # Generate HTML content
-        html_content = BudgetPDFService._generate_html(budget, clinic, is_preview, locale)
+        html_content = BudgetPDFService._generate_html(
+            budget, clinic, is_preview, locale, signature
+        )
 
         # Convert to PDF
         pdf_bytes = BudgetPDFService._html_to_pdf(html_content)
@@ -66,11 +77,89 @@ class BudgetPDFService:
         return hashlib.sha256(pdf_bytes).hexdigest()
 
     @staticmethod
+    def _render_signature_section(
+        signature: "BudgetSignature | None",
+        labels: dict,
+        locale: str,
+    ) -> str:
+        """Render the signature block — empty when no signature, with
+        the captured PNG + audit footer otherwise."""
+        if signature is None:
+            return f'''
+            <div class="signature-section">
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">{labels["patient_signature"]}</div>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">{labels["clinic_signature"]}</div>
+                </div>
+            </div>
+            '''
+
+        # Resolve signature image. ``signature_method='drawn'`` carries
+        # the PNG as a data URI under ``signature_data.png``. Other
+        # methods (click_accept, external) just render the typed name
+        # under the line.
+        png_data = None
+        if isinstance(signature.signature_data, dict):
+            raw_png = signature.signature_data.get("png")
+            if isinstance(raw_png, str) and raw_png.startswith("data:image"):
+                png_data = raw_png
+
+        signed_at_str = (
+            signature.signed_at.strftime("%d/%m/%Y %H:%M")
+            if signature.signed_at
+            else "—"
+        )
+        method_key = signature.signature_method or "click_accept"
+        method_label = labels.get(
+            f"signature_method_{method_key}",
+            labels.get("signature_method_click_accept", method_key),
+        )
+        signature_visual = (
+            f'<img src="{png_data}" alt="" '
+            f'style="max-width: 100%; max-height: 80px;" />'
+            if png_data
+            else f'<div style="font-family: cursive; font-size: 14pt; '
+            f'padding: 18px 0 4px; border-bottom: 1px solid #333;">'
+            f'{signature.signed_by_name}</div>'
+        )
+        # Document hash is set by accept_budget after rendering once.
+        # Render placeholder when missing (first-pass render).
+        doc_hash_short = (
+            (signature.document_hash[:16] + "…") if signature.document_hash else "—"
+        )
+
+        return f'''
+        <div class="signature-section">
+            <div class="signature-box signature-box-signed">
+                <div class="signature-line">{signature_visual}</div>
+                <div class="signature-label">{labels["patient_signature"]}</div>
+                <div class="signature-meta">
+                    <div><strong>{labels["signed_by"]}:</strong> {signature.signed_by_name}</div>
+                    <div><strong>{labels["signed_at"]}:</strong> {signed_at_str}</div>
+                    <div><strong>{labels["signature_method"]}:</strong> {method_label}</div>
+                    <div class="signature-hash">
+                        <strong>{labels["document_hash"]}:</strong> <code>{doc_hash_short}</code>
+                    </div>
+                </div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">{labels["clinic_signature"]}</div>
+            </div>
+        </div>
+        '''
+
+    @staticmethod
     def _generate_html(
         budget: Budget,
         clinic: "Clinic",
         is_preview: bool,
         locale: str,
+        signature: "BudgetSignature | None" = None,
     ) -> str:
         """Generate HTML content for the budget."""
         # Localized labels
@@ -337,15 +426,33 @@ class BudgetPDFService:
                     display: inline-block;
                     width: 45%;
                     margin-right: 5%;
+                    vertical-align: top;
                 }}
                 .signature-line {{
                     border-bottom: 1px solid #333;
-                    height: 50px;
+                    height: 80px;
                     margin-bottom: 5px;
+                    display: flex;
+                    align-items: flex-end;
+                    justify-content: center;
                 }}
                 .signature-label {{
                     font-size: 9pt;
                     color: #666;
+                }}
+                .signature-meta {{
+                    margin-top: 10px;
+                    font-size: 8pt;
+                    color: #475569;
+                    line-height: 1.5;
+                }}
+                .signature-meta strong {{
+                    color: #0f172a;
+                }}
+                .signature-hash code {{
+                    font-family: ui-monospace, Menlo, Consolas, monospace;
+                    font-size: 7pt;
+                    color: #64748b;
                 }}
 
                 .footer {{
@@ -480,16 +587,7 @@ class BudgetPDFService:
             else ""
         }
 
-            <div class="signature-section">
-                <div class="signature-box">
-                    <div class="signature-line"></div>
-                    <div class="signature-label">{labels["patient_signature"]}</div>
-                </div>
-                <div class="signature-box">
-                    <div class="signature-line"></div>
-                    <div class="signature-label">{labels["clinic_signature"]}</div>
-                </div>
-            </div>
+            {BudgetPDFService._render_signature_section(signature, labels, locale)}
 
             <div class="footer">
                 {labels["generated_by"]} DentalPin | {date.today().strftime("%d/%m/%Y %H:%M")}
@@ -545,6 +643,13 @@ class BudgetPDFService:
             "notes": "Observaciones",
             "patient_signature": "Firma del Paciente",
             "clinic_signature": "Firma de la Clínica",
+            "signed_by": "Firmado por",
+            "signed_at": "Fecha de firma",
+            "signature_method": "Canal",
+            "signature_method_drawn": "Firma manuscrita",
+            "signature_method_click_accept": "Aceptación digital",
+            "signature_method_external": "Firma externa",
+            "document_hash": "Hash del documento",
             "generated_by": "Generado por",
             "status": {
                 "draft": "Borrador",
@@ -584,6 +689,13 @@ class BudgetPDFService:
             "notes": "Notes",
             "patient_signature": "Patient Signature",
             "clinic_signature": "Clinic Signature",
+            "signed_by": "Signed by",
+            "signed_at": "Signed on",
+            "signature_method": "Channel",
+            "signature_method_drawn": "Handwritten signature",
+            "signature_method_click_accept": "Digital acceptance",
+            "signature_method_external": "External signature",
+            "document_hash": "Document hash",
             "generated_by": "Generated by",
             "status": {
                 "draft": "Draft",

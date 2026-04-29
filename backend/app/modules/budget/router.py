@@ -30,6 +30,7 @@ from .schemas import (
     BudgetUpdate,
     BudgetVersionListResponse,
     BudgetVersionResponse,
+    SignatureMetaResponse,
     TreatmentPlanBrief,
 )
 from .service import BudgetHistoryService, BudgetItemService, BudgetService
@@ -736,6 +737,99 @@ async def download_budget_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/budgets/{budget_id}/pdf/signed")
+async def download_signed_budget_pdf(
+    budget_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    locale: str = Query(default="es", pattern="^(es|en)$"),
+) -> Response:
+    """Download the signed PDF for an accepted budget.
+
+    Returns 404 when no signature exists yet. Renders the same
+    template as the unsigned PDF but with the signature image and
+    audit metadata burned in.
+    """
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=True)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    from .models import BudgetSignature
+
+    sig_q = (
+        select(BudgetSignature)
+        .where(
+            BudgetSignature.budget_id == budget_id,
+            BudgetSignature.clinic_id == ctx.clinic_id,
+            BudgetSignature.signature_type == "full_acceptance",
+        )
+        .order_by(BudgetSignature.signed_at.desc())
+        .limit(1)
+    )
+    signature = (await db.execute(sig_q)).scalar_one_or_none()
+    if signature is None:
+        raise HTTPException(status_code=404, detail="Budget has not been signed")
+
+    from app.core.auth.models import Clinic
+
+    clinic = await db.get(Clinic, ctx.clinic_id)
+    pdf_bytes = BudgetPDFService.generate_pdf(
+        budget,
+        clinic,
+        is_preview=False,
+        locale=locale,
+        signature=signature,
+    )
+
+    filename = f"presupuesto_{budget.budget_number}_v{budget.version}_firmado.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+@router.get(
+    "/budgets/{budget_id}/signature",
+    response_model=ApiResponse[SignatureMetaResponse],
+)
+async def get_budget_signature_meta(
+    budget_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("budget.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[SignatureMetaResponse]:
+    """Return the latest acceptance signature without the raw PNG.
+
+    Powers the staff signature card. 404 when not signed yet.
+    """
+    budget = await BudgetService.get_budget(db, ctx.clinic_id, budget_id, include_items=False)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    from .models import BudgetSignature
+
+    sig_q = (
+        select(BudgetSignature)
+        .where(
+            BudgetSignature.budget_id == budget_id,
+            BudgetSignature.clinic_id == ctx.clinic_id,
+            BudgetSignature.signature_type == "full_acceptance",
+        )
+        .order_by(BudgetSignature.signed_at.desc())
+        .limit(1)
+    )
+    signature = (await db.execute(sig_q)).scalar_one_or_none()
+    if signature is None:
+        raise HTTPException(status_code=404, detail="Budget has not been signed")
+
+    return ApiResponse(data=SignatureMetaResponse.model_validate(signature))
 
 
 @router.get("/budgets/{budget_id}/pdf/preview")

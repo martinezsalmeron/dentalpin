@@ -18,6 +18,20 @@ import type {
   PaginatedResponse
 } from '~~/app/types'
 
+export interface BudgetSignatureMeta {
+  id: string
+  budget_id: string
+  signature_type: string
+  signed_by_name: string
+  signed_by_email: string | null
+  relationship_to_patient: string
+  signature_method: string
+  ip_address: string | null
+  signed_at: string
+  document_hash: string | null
+  created_at: string
+}
+
 export interface BudgetListParams {
   page?: number
   page_size?: number
@@ -327,18 +341,23 @@ export function useBudgets() {
   // ============================================================================
 
   async function downloadPDF(id: string, locale: string = 'es'): Promise<void> {
-    // Use the proper API base URL from config
+    await downloadPDFAt(`/api/v1/budget/budgets/${id}/pdf?locale=${locale}`, `presupuesto_${id}.pdf`)
+  }
+
+  async function downloadSignedPDF(id: string, locale: string = 'es'): Promise<void> {
+    await downloadPDFAt(
+      `/api/v1/budget/budgets/${id}/pdf/signed?locale=${locale}`,
+      `presupuesto_${id}_firmado.pdf`
+    )
+  }
+
+  async function downloadPDFAt(path: string, fallbackName: string): Promise<void> {
     const baseUrl = config.public.apiBaseUrl
     const token = auth.accessToken.value
 
-    const response = await fetch(
-      `${baseUrl}/api/v1/budget/budgets/${id}/pdf?locale=${locale}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    )
+    const response = await fetch(`${baseUrl}${path}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
 
     if (!response.ok) {
       throw new Error('Failed to download PDF')
@@ -349,10 +368,9 @@ export function useBudgets() {
     const link = document.createElement('a')
     link.href = url
 
-    // Extract filename from Content-Disposition header or generate one
     const contentDisposition = response.headers.get('Content-Disposition')
     const filenameMatch = contentDisposition?.match(/filename="?(.+)"?/)
-    link.download = filenameMatch?.[1] || `presupuesto_${id}.pdf`
+    link.download = filenameMatch?.[1] || fallbackName
 
     document.body.appendChild(link)
     link.click()
@@ -363,6 +381,25 @@ export function useBudgets() {
   function getPDFPreviewUrl(id: string, locale: string = 'es'): string {
     const baseUrl = config.public.apiBaseUrl
     return `${baseUrl}/api/v1/budget/budgets/${id}/pdf/preview?locale=${locale}`
+  }
+
+  // ============================================================================
+  // Signature
+  // ============================================================================
+
+  async function fetchSignature(id: string): Promise<BudgetSignatureMeta | null> {
+    try {
+      const response = await api.get<ApiResponse<BudgetSignatureMeta>>(
+        `/api/v1/budget/budgets/${id}/signature`
+      )
+      return response.data
+    } catch (e: unknown) {
+      const status = (e as { statusCode?: number; status?: number })?.statusCode
+        ?? (e as { statusCode?: number; status?: number })?.status
+      if (status === 404) return null
+      console.error('Failed to fetch budget signature:', e)
+      return null
+    }
   }
 
   // ============================================================================
@@ -440,7 +477,11 @@ export function useBudgets() {
 
     // PDF
     downloadPDF,
+    downloadSignedPDF,
     getPDFPreviewUrl,
+
+    // Signature
+    fetchSignature,
 
     // Helpers
     getStatusColor,

@@ -4,6 +4,47 @@
 
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 
+### Added (signed PDF, 2026-04-28)
+
+- Signed-PDF generation: ``BudgetPDFService.generate_pdf`` now
+  accepts an optional ``BudgetSignature``. When provided, the PDF
+  embeds the captured PNG plus an audit footer (signed_by,
+  signed_at, signature_method, document_hash).
+- ``BudgetWorkflowService.accept_budget`` renders the signed PDF
+  immediately after creating the signature and persists the SHA-
+  256 of those bytes on ``BudgetSignature.document_hash`` —
+  tamper detection for any future re-render.
+- Staff endpoints:
+  - ``GET /api/v1/budget/budgets/{id}/pdf/signed`` — 404 when no
+    signature exists, otherwise the signed PDF (``Cache-Control:
+    private, no-store``).
+  - ``GET /api/v1/budget/budgets/{id}/signature`` — signature
+    metadata (no raw PNG payload) via the new
+    ``SignatureMetaResponse`` schema.
+- Public endpoint:
+  - ``GET /api/v1/budget/public/budgets/{token}/pdf/signed`` —
+    cookie-protected (same per-token JWT cookie as the rest of
+    the public flow), 404 when not yet accepted, rate-limited to
+    10/minute per token, audit row appended to
+    ``BudgetAccessLog`` with ``method_attempted=
+    "download_signed_pdf"`` and ``success=True`` (so it never
+    contributes to the lockout counter).
+- Frontend:
+  - Staff: new ``BudgetSignatureCard.vue`` mounted on the budget
+    detail page when ``status ∈ {accepted, completed}``. Shows
+    signed_by / signed_at / method / relationship / hash and a
+    "Download signed PDF" button. Backed by
+    ``useBudgets().fetchSignature`` + ``downloadSignedPDF``.
+  - Public: download button on the ``already_accepted`` state of
+    ``/p/budget/<token>``. On 401 (cookie expired) the page
+    shows the verify form again and retries the download once
+    the patient re-verifies.
+- i18n: ``budget.signature.{signedAt, methodLabel,
+  relationshipLabel, documentHash, hashHint, downloadSignedPdf,
+  downloadError, notSigned, method.{drawn,clickAccept,external}}``
+  and ``budget.public.download.{signedPdf, notSigned, error,
+  reauthIntro}`` in ES + EN.
+
 ### Removed (2026-04-29)
 
 - ``BudgetWorkflowService.complete_budget`` + ``POST /budgets/{id}/complete``

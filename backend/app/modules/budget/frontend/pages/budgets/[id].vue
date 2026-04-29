@@ -2,6 +2,7 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { BudgetItem, InvoiceListItem, PaginatedResponse, SignatureCreate } from '~~/app/types'
 import PublicBudgetLinkCard from '../../components/budget/PublicBudgetLinkCard.vue'
+import BudgetSignatureCard from '../../components/budget/BudgetSignatureCard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -91,6 +92,7 @@ const isAddItemModalOpen = ref(false)
 const isSignatureModalOpen = ref(false)
 const isSendModalOpen = ref(false)
 const isShareLinkModalOpen = ref(false)
+const isSignatureViewModalOpen = ref(false)
 const signatureAction = ref<'accept' | 'reject'>('accept')
 
 // Send form
@@ -436,6 +438,17 @@ function getItemName(item: BudgetItem): string {
               {{ t('budget.publicLink.action') }}
             </UButton>
 
+            <UButton
+              v-if="['accepted', 'completed'].includes(currentBudget.status)"
+              color="primary"
+              variant="soft"
+              icon="i-lucide-pen-tool"
+              size="sm"
+              @click="isSignatureViewModalOpen = true"
+            >
+              {{ t('budget.signature.viewAction') }}
+            </UButton>
+
             <template v-if="canAccept(currentBudget) && can('budget.write')">
               <UButton
                 color="error"
@@ -771,6 +784,7 @@ function getItemName(item: BudgetItem): string {
               </div>
             </div>
           </UCard>
+
         </div>
       </div>
     </template>
@@ -941,6 +955,20 @@ function getItemName(item: BudgetItem): string {
             </div>
           </template>
         </UCard>
+      </template>
+    </UModal>
+
+    <!-- View signature modal -->
+    <UModal v-model:open="isSignatureViewModalOpen">
+      <template #content>
+        <div class="p-1">
+          <BudgetSignatureCard
+            v-if="currentBudget && ['accepted', 'completed'].includes(currentBudget.status)"
+            :budget-id="currentBudget.id"
+            :budget-status="currentBudget.status"
+            :locale="locale"
+          />
+        </div>
       </template>
     </UModal>
 

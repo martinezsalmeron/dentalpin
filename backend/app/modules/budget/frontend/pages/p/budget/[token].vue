@@ -34,7 +34,40 @@ const {
   verify,
   accept,
   reject,
+  downloadSignedPdf,
 } = usePublicBudget(token.value)
+
+const downloadingPdf = ref(false)
+const reauthForDownload = ref(false)
+const downloadError = ref<string | null>(null)
+
+async function onDownloadSigned() {
+  downloadingPdf.value = true
+  downloadError.value = null
+  try {
+    const result = await downloadSignedPdf()
+    if (result === 'ok') return
+    if (result === 'verification_required') {
+      reauthForDownload.value = true
+      return
+    }
+    if (result === 'not_signed') {
+      downloadError.value = t('budget.public.download.notSigned')
+      return
+    }
+    downloadError.value = t('budget.public.download.error')
+  } finally {
+    downloadingPdf.value = false
+  }
+}
+
+async function onReauthVerify(payload: { method: string; value: string }) {
+  const ok = await verify(payload.method as never, payload.value)
+  if (ok) {
+    reauthForDownload.value = false
+    await onDownloadSigned()
+  }
+}
 
 async function applyClinicLanguage() {
   const lang = meta.value?.clinic_language
@@ -273,6 +306,35 @@ const greeting = computed(() => {
               : t('budget.public.already_rejected')
             }}
           </h1>
+
+          <div v-if="meta.decided_status === 'accepted' && !reauthForDownload" class="w-full max-w-xs pt-2">
+            <UButton
+              color="primary"
+              size="lg"
+              block
+              icon="i-lucide-download"
+              :loading="downloadingPdf"
+              @click="onDownloadSigned"
+            >
+              {{ t('budget.public.download.signedPdf') }}
+            </UButton>
+            <p v-if="downloadError" class="text-xs text-red-600 mt-2">
+              {{ downloadError }}
+            </p>
+          </div>
+
+          <div v-if="reauthForDownload" class="w-full pt-4">
+            <p class="text-sm text-[var(--ui-text-muted)] mb-3">
+              {{ t('budget.public.download.reauthIntro') }}
+            </p>
+            <BudgetVerifyForm
+              :method="meta.method"
+              :verifying="verifying"
+              :error="lastError"
+              @submit="onReauthVerify"
+            />
+          </div>
+
           <div v-if="meta.clinic_phone" class="pt-2">
             <UButton
               color="primary"

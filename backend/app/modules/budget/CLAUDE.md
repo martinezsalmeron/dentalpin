@@ -9,6 +9,9 @@ Routes mounted at `/api/v1/budget/`. Authenticated subset:
 - CRUD + version + signature workflow (legacy).
 - `POST /budgets/{id}/{renegotiate,accept-in-clinic,resend,
   send-reminder,set-public-code,unlock-public}` (workflow rework).
+- `GET  /budgets/{id}/pdf` — unsigned PDF.
+- `GET  /budgets/{id}/pdf/signed` — signed PDF (404 if not signed).
+- `GET  /budgets/{id}/signature` — signature metadata (no raw PNG).
 
 Public subset (no staff auth, 2-factor verification — ADR 0006) under
 `/api/v1/public/budgets/{token}/`:
@@ -18,6 +21,9 @@ Public subset (no staff auth, 2-factor verification — ADR 0006) under
 - `GET    /`                 (cookie-protected; idempotent viewed_at)
 - `POST   /accept`           (cookie-protected)
 - `POST   /reject`           (cookie-protected)
+- `GET    /pdf/signed`       (cookie-protected; 404 until accepted;
+                              10/min per token; audit via
+                              `BudgetAccessLog`)
 
 ## Dependencies
 
@@ -71,6 +77,16 @@ Public subset (no staff auth, 2-factor verification — ADR 0006) under
   budget cannot unlock another.
 - **`BUDGET_PUBLIC_SECRET_KEY`** signs the public session cookies and
   is independent from the global `SECRET_KEY`. Falls back in dev only.
+- **Signed PDF tamper-evidence.** On accept, the workflow renders
+  the signed PDF and stores its SHA-256 on
+  ``BudgetSignature.document_hash``. The same hash is shown to
+  staff and is what binds the signature to that exact PDF. Don't
+  bypass this on new acceptance paths.
+- **Public signed-PDF download** uses the same per-token cookie as
+  the rest of the public flow — never expose the signed PDF on a
+  cookie-less route. Audit rows go to ``BudgetAccessLog`` with
+  ``success=True`` so they don't contribute to the lockout
+  counter.
 - ``budget.completed`` no longer exists. The transition
   ``accepted → completed`` and the manual "Mark completed" button
   were removed in 2026-04: ``completed`` was a bookkeeping flag

@@ -1622,7 +1622,21 @@
     },
     "signature": {
       "title": "Digital signature",
+      "viewAction": "View signature",
       "signedBy": "Signed by",
+      "signedAt": "Signed on",
+      "methodLabel": "Method",
+      "relationshipLabel": "Relationship",
+      "documentHash": "Document hash (SHA-256)",
+      "hashHint": "Hash {short} — binds the signature to this exact PDF. Any change would invalidate it.",
+      "downloadSignedPdf": "Download signed PDF",
+      "downloadError": "Could not download the signed PDF.",
+      "notSigned": "No signature has been captured for this quote yet.",
+      "method": {
+        "drawn": "Hand-drawn signature",
+        "clickAccept": "Click-to-accept",
+        "external": "External provider"
+      },
       "email": "Email",
       "relationship": "Relationship to patient",
       "patient": "Patient",
@@ -1778,6 +1792,12 @@
       "locked": "Access locked after too many attempts. Please call the clinic.",
       "already_accepted": "You already accepted this quote. The clinic will contact you to schedule your first appointment.",
       "already_rejected": "You rejected this quote. If you change your mind, please call the clinic.",
+      "download": {
+        "signedPdf": "Download signed PDF",
+        "notSigned": "This quote has no signature attached yet.",
+        "error": "Could not download the PDF. Please try again.",
+        "reauthIntro": "For security, please verify your identity again to download the signed PDF."
+      },
       "verify": {
         "title": "Verify your identity",
         "intro": "To protect your information, confirm one detail before viewing your quote.",
