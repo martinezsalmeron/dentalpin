@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Appointment, Professional } from '~~/app/types'
+import type { BlockedSegment } from '../../composables/useBlockedSegments'
 
 interface Cabinet {
   name: string
@@ -58,6 +59,13 @@ const SLOT_MINUTES = 15
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES
 
 const { compute: computeCalendarBounds } = useCalendarBounds()
+const { compute: computeBlockedSegments } = useBlockedSegments({
+  startHour,
+  endHour,
+  slotMinutes: SLOT_MINUTES
+})
+
+const blockedSegments = ref<BlockedSegment[]>([])
 
 async function refreshBounds() {
   const weekEnd = new Date(props.currentWeekStart)
@@ -68,6 +76,14 @@ async function refreshBounds() {
   })
   startHour.value = bounds.startHour
   endHour.value = bounds.endHour
+
+  // Clinic-level blocked overlay (no professional filter — week view shows
+  // all appointments globally). Recomputed after bounds because slot indexes
+  // depend on startHour/endHour.
+  blockedSegments.value = await computeBlockedSegments({
+    start: props.currentWeekStart,
+    end: weekEnd
+  })
 }
 
 watch(() => props.currentWeekStart, () => {
@@ -741,6 +757,21 @@ const allAppointmentsWithDayIndex = computed(() => {
                 :key="`appointments-${day.toISOString()}`"
                 class="relative border-r border-subtle last:border-r-0"
               >
+                <!-- Blocked availability overlay (schedules module).
+                     Per-day clinic_closed ranges — paints late-start
+                     mornings, early-close evenings, midday gaps, and
+                     fully-closed days. -->
+                <div
+                  v-for="(seg, segIdx) in blockedSegments.filter(s => s.dateKey === formatLocalDate(day))"
+                  :key="`blocked-${day.toISOString()}-${segIdx}`"
+                  class="absolute inset-x-0 pointer-events-none z-10 schedules-blocked"
+                  :title="seg.reason || 'Clínica cerrada'"
+                  :style="{
+                    top: `${seg.startSlot * getSlotHeight()}px`,
+                    height: `${(seg.endSlot - seg.startSlot) * getSlotHeight()}px`
+                  }"
+                />
+
                 <!-- Ghost block during drag-to-create -->
                 <div
                   v-if="createDragState && createDragState.dayIndex === dayIndex"
@@ -825,3 +856,15 @@ const allAppointmentsWithDayIndex = computed(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.schedules-blocked {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(148, 163, 184, 0.18),
+    rgba(148, 163, 184, 0.18) 6px,
+    rgba(148, 163, 184, 0.32) 6px,
+    rgba(148, 163, 184, 0.32) 12px
+  );
+}
+</style>
