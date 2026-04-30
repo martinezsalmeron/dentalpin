@@ -18,10 +18,7 @@ class _Item:
 
 
 def _sort(items: list[_Item]) -> list[str]:
-    return [
-        i.name
-        for i in topological_sort(items, key=lambda i: i.name, deps_of=lambda i: i.deps)
-    ]
+    return [i.name for i in topological_sort(items, key=lambda i: i.name, deps_of=lambda i: i.deps)]
 
 
 def test_dag_returns_dependencies_before_dependents():

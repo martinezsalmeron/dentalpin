@@ -54,9 +54,7 @@ def topological_sort(
             return
         if name not in by_key:
             origin = path[-1] if path else "root"
-            raise MissingDependencyError(
-                f"Missing dependency: '{name}' required by '{origin}'"
-            )
+            raise MissingDependencyError(f"Missing dependency: '{name}' required by '{origin}'")
         in_stack.add(name)
         for dep in deps_of(by_key[name]):
             visit(dep, [*path, name])

@@ -140,9 +140,7 @@ class PendingProcessor:
             records,
             key=lambda r: r.name,
             deps_of=lambda r: (
-                d
-                for d in ((r.manifest_snapshot or {}).get("depends", []) or [])
-                if d in by_name
+                d for d in ((r.manifest_snapshot or {}).get("depends", []) or []) if d in by_name
             ),
         )
 

@@ -1,7 +1,17 @@
 """Role-permission mappings for RBAC.
 
-MVP: Hardcoded mappings with wildcard support.
-Future: Load from database per-clinic.
+This file is the source of truth ONLY for **core** permissions
+(admin.users.*, admin.clinic.*, agents.*). Module-namespaced grants
+live in each module's ``manifest.role_permissions`` and are merged in
+by :func:`get_role_permissions` at lookup time.
+
+Adding a new module never requires editing this file: declare the
+per-role grants in the module's manifest and they flow through
+automatically. When a module is uninstalled (and removed from the
+in-memory registry), its grants disappear from the merged set.
+
+Future direction: replace the hardcoded core map with a DB-driven
+table so clinics can define custom roles per tenant.
 """
 
 from typing import Final
@@ -28,121 +38,46 @@ CORE_PERMISSIONS: Final[list[str]] = [
     "agents.manage",
 ]
 
-# Role -> permissions mapping
-# Supports wildcards: "*" = all, "module.*" = all module permissions
-#
-# Fase B renamed the patient + appointment namespaces:
-#  - ``clinical.patients.*``     → ``patients.*``
-#  - ``clinical.appointments.*`` → ``agenda.appointments.*``
+# Role -> core-permission grants. Module-namespaced perms are NOT here;
+# they live in each module's ``manifest.role_permissions`` and are
+# merged in by ``get_role_permissions``.
 ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
-    "admin": [
-        "*",  # Admin gets everything, including future modules
-    ],
-    "dentist": [
-        "patients.*",  # Full patient identity access
-        "patients_clinical.*",  # Medical history + emergency contacts
-        "patient_timeline.read",
-        "agenda.*",  # Appointments + cabinets (read/write)
-        "odontogram.*",
-        "treatment_plan.*",
-        "clinical_notes.*",
-        "catalog.read",
-        "budget.*",
-        "billing.*",
-        "media.*",
-        "notifications.preferences.*",
-        "notifications.send",
-        "reports.billing.read",
-        "reports.scheduling.read",
-        "agents.view",
-        "agents.supervise",
-    ],
-    "hygienist": [
-        "patients.read",
-        "patients_clinical.medical.read",
-        "patients_clinical.emergency.read",
-        "patient_timeline.read",
-        "agenda.appointments.*",
-        "agenda.cabinets.read",
-        "odontogram.read",
-        "odontogram.write",
-        "treatment_plan.plans.read",
-        "clinical_notes.notes.read",
-        "clinical_notes.notes.write",
-        "catalog.read",
-        "budget.read",
-        "billing.read",
-        "media.documents.read",
-        "reports.scheduling.read",
-    ],
-    "assistant": [
-        "patients.*",
-        "patients_clinical.medical.read",
-        "patients_clinical.emergency.read",
-        "patients_clinical.emergency.write",
-        "patient_timeline.read",
-        "agenda.appointments.*",
-        "agenda.cabinets.read",
-        "odontogram.read",
-        "treatment_plan.plans.read",
-        "treatment_plan.plans.write",
-        "clinical_notes.notes.read",
-        "clinical_notes.notes.write",
-        "catalog.read",
-        "budget.read",
-        "budget.write",
-        "billing.read",
-        "billing.write",
-        "media.*",
-        "notifications.preferences.*",
-        "notifications.send",
-        "reports.scheduling.read",
-    ],
-    "receptionist": [
-        "patients.read",
-        "patients.write",
-        "patients_clinical.emergency.read",
-        "patients_clinical.emergency.write",
-        "patient_timeline.read",
-        "agenda.appointments.*",
-        "agenda.cabinets.read",
-        "catalog.read",
-        "budget.read",
-        "budget.write",
-        "billing.read",
-        "billing.write",
-        "media.*",
-        "notifications.preferences.*",
-        "notifications.send",
-        "reports.billing.read",
-        "reports.scheduling.read",
-        # Receptionists need administrative + diagnosis-followup notes for
-        # the patient summary feed (e.g. "called complaining of tooth pain").
-        "clinical_notes.notes.read",
-        "clinical_notes.notes.write",
-        # No odontogram access for receptionists
-    ],
+    "admin": ["*"],  # wildcard — matches every namespace, present and future
+    "dentist": ["agents.view", "agents.supervise"],
+    "hygienist": [],
+    "assistant": [],
+    "receptionist": [],
 }
+
+
+# Memoized merge of core grants + manifest grants. Cleared whenever the
+# in-memory module registry mutates (boot-time module register, future
+# install/uninstall hooks).
+_role_perms_cache: dict[str, list[str]] = {}
+
+
+def invalidate_role_permissions_cache() -> None:
+    """Drop the cached per-role permission lists. Called by the registry
+    when modules are added or removed."""
+    _role_perms_cache.clear()
 
 
 def get_role_permissions(role: str) -> list[str]:
     """Return the full list of granted permissions for ``role``.
 
-    Merges two sources:
+    Merges:
 
-    1. The hardcoded core defaults in :data:`ROLE_PERMISSIONS` (core
-       permissions + legacy in-tree modules that were never designed
-       to be uninstalled).
-    2. ``manifest.role_permissions`` from every discovered module.
-       Entries are prefixed with ``{module_name}.`` — so a manifest
-       declaring ``{"dentist": ["clinic_hours.read"]}`` contributes
-       ``"<module>.clinic_hours.read"`` to the dentist role.
-
-    This lets installable/uninstallable modules declare their RBAC
-    entirely inside their own package. When such a module is
-    uninstalled and the registry no longer discovers it, those
-    permissions simply vanish — no edit to this file required.
+    1. The core grants in :data:`ROLE_PERMISSIONS` (admin wildcard,
+       core-perm assignments).
+    2. ``manifest.role_permissions`` from every module currently in the
+       in-memory registry. Entries are prefixed with ``{module_name}.``
+       — so a manifest declaring ``{"dentist": ["clinic_hours.read"]}``
+       contributes ``"<module>.clinic_hours.read"`` to the dentist role.
     """
+    cached = _role_perms_cache.get(role)
+    if cached is not None:
+        return list(cached)
+
     base = list(ROLE_PERMISSIONS.get(role, []))
     seen = set(base)
 
@@ -162,6 +97,8 @@ def get_role_permissions(role: str) -> list[str]:
             if qualified not in seen:
                 seen.add(qualified)
                 base.append(qualified)
+
+    _role_perms_cache[role] = list(base)
     return base
 
 
