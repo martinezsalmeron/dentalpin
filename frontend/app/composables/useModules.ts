@@ -7,17 +7,29 @@
  * and re-translated client-side via i18n. ``ensureLoaded`` is
  * idempotent so guards / layouts can call it without coordinating.
  *
- * If the fetch fails (offline, auth missing, network hiccup) the
- * static :mod:`utils/moduleRegistry` is used as a fallback so the UI
- * never shows a blank sidebar for authenticated users.
+ * If the fetch fails the sidebar shows only the host shell entries
+ * (dashboard + settings); module-owned items are gated on the backend
+ * response.
  */
 
 import type { ActiveModule, ApiResponse, NavigationItem } from '~/types'
-import {
-  HOST_NAV,
-  getModules as getStaticModules,
-  getNavigationItems as getStaticNav
-} from '~/utils/moduleRegistry'
+
+// Host shell nav: dashboard + settings belong to the host app, not to
+// any module. Always rendered, even when the modules endpoint fails.
+const HOST_NAV: NavigationItem[] = [
+  {
+    label: 'nav.dashboard',
+    icon: 'i-lucide-home',
+    to: '/',
+    order: 0
+  },
+  {
+    label: 'nav.settings',
+    icon: 'i-lucide-settings',
+    to: '/settings',
+    order: 900
+  }
+]
 
 export function useModules() {
   const { t } = useI18n()
@@ -48,24 +60,21 @@ export function useModules() {
       lastLoadedAt.value = Date.now()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load modules'
-      console.warn('useModules: falling back to static registry —', error.value)
-      active.value = null // keep the cached fallback transparent
+      console.warn('useModules: backend fetch failed —', error.value)
+      active.value = null
     } finally {
       loading.value = false
     }
   }
 
-  // All modules — either from backend response or the static fallback.
   const modules = computed(() => {
-    if (active.value) {
-      return active.value.map(m => ({
-        name: m.name,
-        label: m.name,
-        icon: '',
-        navigation: m.navigation
-      }))
-    }
-    return getStaticModules()
+    if (!active.value) return []
+    return active.value.map(m => ({
+      name: m.name,
+      label: m.name,
+      icon: '',
+      navigation: m.navigation
+    }))
   })
 
   const navigationItems = computed<NavigationItem[]>(() => {
@@ -76,13 +85,9 @@ export function useModules() {
 
     const moduleNav = active.value
       ? active.value.flatMap(m => m.navigation)
-      : getStaticNav()
+      : []
 
-    // Host-owned entries (dashboard + settings) aren't published by any
-    // module; merge them on top of the backend-driven list.
-    const raw = active.value ? [...HOST_NAV, ...moduleNav] : moduleNav
-
-    return raw
+    return [...HOST_NAV, ...moduleNav]
       .filter(item => !item.permission || can(item.permission))
       .slice()
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))

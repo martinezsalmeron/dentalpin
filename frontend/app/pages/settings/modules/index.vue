@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ModuleInfo } from '~/types'
-import { PERMISSIONS } from '~/config/permissions'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -9,8 +8,8 @@ const modulesNav = useModules()
 
 const admin = useModuleAdmin()
 
-const canRead = computed(() => can(PERMISSIONS.admin.clinicRead))
-const canWrite = computed(() => can(PERMISSIONS.admin.clinicWrite))
+const canRead = computed(() => can('admin.clinic.read'))
+const canWrite = computed(() => can('admin.clinic.write'))
 
 // Modal state.
 type ConfirmVariant = 'install' | 'uninstall' | 'upgrade' | 'apply'
