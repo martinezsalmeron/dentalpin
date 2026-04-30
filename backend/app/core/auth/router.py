@@ -18,7 +18,7 @@ from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
 from .dependencies import ClinicContext, get_clinic_context, get_current_user, require_permission
-from .models import ClinicMembership, User
+from .models import Clinic, ClinicMembership, User
 from .permissions import CORE_PERMISSIONS, ROLES, expand_permissions, get_role_permissions
 from .schemas import (
     AuthResponse,
@@ -600,16 +600,10 @@ async def update_clinic_metadata(
     # Re-query with cabinets eagerly loaded so ClinicMetadataResponse
     # serialization doesn't trigger an async lazy load. The response
     # always returns the full metadata shape including cabinets.
-    from app.modules.agenda.models import Cabinet as _Cabinet
-    from app.core.auth.models import Clinic as _ClinicModel
-
     result = await db.execute(
-        select(_ClinicModel)
-        .where(_ClinicModel.id == clinic.id)
-        .options(selectinload(_ClinicModel.cabinets))
+        select(Clinic).where(Clinic.id == clinic.id).options(selectinload(Clinic.cabinets))
     )
     clinic = result.scalar_one()
-    _ = _Cabinet  # keep the import live for forward refs
 
     return ApiResponse(data=ClinicMetadataResponse.model_validate(clinic))
 
