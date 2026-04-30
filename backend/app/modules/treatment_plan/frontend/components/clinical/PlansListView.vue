@@ -29,18 +29,18 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// Group plans by status for display order
-const activePlans = computed(() =>
-  props.plans.filter(p => p.status === 'active')
-)
+// Group plans by status for display order. Covers every status the
+// state machine emits (draft → pending → active → completed, plus
+// closed); anything else falls into ``otherPlans`` so a future status
+// is never silently dropped from the list.
+const draftPlans = computed(() => props.plans.filter(p => p.status === 'draft'))
+const pendingPlans = computed(() => props.plans.filter(p => p.status === 'pending'))
+const activePlans = computed(() => props.plans.filter(p => p.status === 'active'))
+const completedPlans = computed(() => props.plans.filter(p => p.status === 'completed'))
+const closedPlans = computed(() => props.plans.filter(p => p.status === 'closed'))
 
-const draftPlans = computed(() =>
-  props.plans.filter(p => p.status === 'draft')
-)
-
-const completedPlans = computed(() =>
-  props.plans.filter(p => p.status === 'completed')
-)
+const KNOWN_STATUSES = new Set(['draft', 'pending', 'active', 'completed', 'closed'])
+const otherPlans = computed(() => props.plans.filter(p => !KNOWN_STATUSES.has(p.status)))
 
 const hasPlans = computed(() => props.plans.length > 0)
 </script>
@@ -122,6 +122,31 @@ const hasPlans = computed(() => props.plans.length > 0)
         </div>
       </div>
 
+      <!-- Pending plans (confirmed, waiting for budget acceptance) -->
+      <div
+        v-if="pendingPlans.length > 0"
+        class="space-y-[var(--density-gap,0.75rem)]"
+      >
+        <h4 class="text-caption text-muted uppercase tracking-wide flex items-center gap-2">
+          <UIcon
+            name="i-lucide-clock"
+            class="w-4 h-4 text-info-accent"
+          />
+          {{ t('clinical.plans.pending') }}
+        </h4>
+        <div class="grid gap-[var(--density-gap,0.75rem)]">
+          <TreatmentPlanMiniCard
+            v-for="plan in pendingPlans"
+            :key="plan.id"
+            :plan="plan"
+            @view="emit('view-plan', plan.id)"
+            @activate="emit('activate-plan', plan)"
+            @generate-budget="emit('generate-budget', plan)"
+            @schedule="emit('schedule', plan)"
+          />
+        </div>
+      </div>
+
       <!-- Draft plans -->
       <div
         v-if="draftPlans.length > 0"
@@ -146,6 +171,29 @@ const hasPlans = computed(() => props.plans.length > 0)
         </div>
       </div>
 
+      <!-- Other (unknown / future) statuses — never silently drop a plan -->
+      <div
+        v-if="otherPlans.length > 0"
+        class="space-y-[var(--density-gap,0.75rem)]"
+      >
+        <h4 class="text-caption text-muted uppercase tracking-wide flex items-center gap-2">
+          <UIcon
+            name="i-lucide-circle-help"
+            class="w-4 h-4 text-muted"
+          />
+          {{ t('clinical.plans.other') }}
+        </h4>
+        <div class="grid gap-[var(--density-gap,0.75rem)]">
+          <TreatmentPlanMiniCard
+            v-for="plan in otherPlans"
+            :key="plan.id"
+            :plan="plan"
+            @view="emit('view-plan', plan.id)"
+            @schedule="emit('schedule', plan)"
+          />
+        </div>
+      </div>
+
       <!-- Completed plans (collapsible) -->
       <UAccordion
         v-if="completedPlans.length > 0"
@@ -163,6 +211,28 @@ const hasPlans = computed(() => props.plans.length > 0)
               :plan="plan"
               @view="emit('view-plan', plan.id)"
               @generate-budget="emit('generate-budget', plan)"
+              @schedule="emit('schedule', plan)"
+            />
+          </div>
+        </template>
+      </UAccordion>
+
+      <!-- Closed plans (collapsible) -->
+      <UAccordion
+        v-if="closedPlans.length > 0"
+        :items="[{
+          label: `${t('clinical.plans.closed')} (${closedPlans.length})`,
+          slot: 'closed'
+        }]"
+        class="mt-4"
+      >
+        <template #closed>
+          <div class="grid gap-[var(--density-gap,0.75rem)] pt-2">
+            <TreatmentPlanMiniCard
+              v-for="plan in closedPlans"
+              :key="plan.id"
+              :plan="plan"
+              @view="emit('view-plan', plan.id)"
               @schedule="emit('schedule', plan)"
             />
           </div>

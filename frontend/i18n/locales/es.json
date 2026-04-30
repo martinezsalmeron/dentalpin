@@ -612,6 +612,8 @@
       "active": "Planes Activos",
       "drafts": "Borradores",
       "completed": "Completados",
+      "closed": "Cerrados",
+      "other": "Otros",
       "noItems": "Sin tratamientos en el plan",
       "markComplete": "Marcar como completado",
       "removeItem": "Eliminar del plan",

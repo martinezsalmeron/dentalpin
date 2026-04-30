@@ -591,6 +591,8 @@
       "active": "Active Plans",
       "drafts": "Drafts",
       "completed": "Completed",
+      "closed": "Closed",
+      "other": "Other",
       "noItems": "No treatments in the plan",
       "markComplete": "Mark as completed",
       "removeItem": "Remove from plan",
