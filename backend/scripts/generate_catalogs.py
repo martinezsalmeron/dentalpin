@@ -375,6 +375,23 @@ def main(argv: list[str] | None = None) -> int:
                     f"Run `python backend/scripts/generate_catalogs.py` and commit.",
                     file=sys.stderr,
                 )
+
+        # Fail if any ``event_bus.publish`` callsite uses a string literal
+        # that is not in ``EventType``. The catalog already lists them;
+        # this turns the listing into an actionable CI gate so the enum
+        # stays the source of truth as third-party modules accrue events.
+        feral = sorted(set(publishers) - {value for _, value in _all_event_types()})
+        if feral:
+            for event in feral:
+                sites = publishers[event]
+                first = sites[0]
+                print(
+                    f"::error file={first[1]},line={first[2]}::"
+                    f"Feral event '{event}' — add to EventType or remove publish",
+                    file=sys.stderr,
+                )
+            return 1
+
         return 1 if drift else 0
 
     DOCS_ROOT.mkdir(parents=True, exist_ok=True)

@@ -550,7 +550,7 @@ class TreatmentPlanService:
         await db.flush()
 
         event_bus.publish(
-            "treatment_plan.items_reordered",
+            EventType.TREATMENT_PLAN_ITEMS_REORDERED,
             {
                 "clinic_id": str(clinic_id),
                 "plan_id": str(plan_id),

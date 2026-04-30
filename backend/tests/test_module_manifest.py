@@ -15,7 +15,10 @@ def test_manifest_defaults() -> None:
     assert m.category == ModuleCategory.OFFICIAL
     assert m.installable is True
     assert m.auto_install is True
-    assert m.removable is True
+    # ``removable`` defaults to False — modules opt in explicitly so the
+    # branch-isolation invariant (enforced by ``manifest_validator``)
+    # only kicks in when intended.
+    assert m.removable is False
     assert m.depends == ()
     assert m.role_permissions == {}
 

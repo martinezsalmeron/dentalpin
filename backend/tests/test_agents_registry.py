@@ -212,7 +212,7 @@ def test_unregister_module_drops_tools():
 
 @pytest.mark.asyncio
 async def test_every_existing_module_returns_a_list_of_tools():
-    """The abstract contract: every module MUST implement get_tools()."""
+    """Every module's get_tools() must return a list (default is empty)."""
     from app.core.plugins.registry import module_registry
 
     modules = module_registry.list_modules()

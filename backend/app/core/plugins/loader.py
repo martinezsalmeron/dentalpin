@@ -14,8 +14,9 @@ Discovery happens in two stages:
    that an entry point already provided, so entry points win when both
    are present.
 
-The public entry points for the rest of the app remain
-:func:`load_modules` and the :class:`ModuleLoader` wrapper.
+The public entry point for the rest of the app is :func:`load_modules`,
+which discovers, resolves dependencies, and mounts everything in one
+call.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from app.config import settings
 
 from .base import BaseModule
 from .registry import module_registry
+from .topology import topological_sort
 
 logger = logging.getLogger(__name__)
 
@@ -39,43 +41,11 @@ ENTRY_POINT_GROUP = "dentalpin.modules"
 
 
 def _resolve_load_order(modules: list[BaseModule]) -> list[BaseModule]:
-    """Resolve module load order using topological sort.
-
-    Raises ValueError if circular dependencies are detected.
-    """
-    module_map = {m.name: m for m in modules}
-    visited: set[str] = set()
-    in_stack: set[str] = set()
-    order: list[BaseModule] = []
-
-    def visit(name: str, path: list[str]) -> None:
-        if name in in_stack:
-            cycle = " -> ".join(path + [name])
-            raise ValueError(f"Circular dependency detected: {cycle}")
-
-        if name in visited:
-            return
-
-        if name not in module_map:
-            raise ValueError(
-                f"Missing dependency: '{name}' required by '{path[-1] if path else 'root'}'"
-            )
-
-        in_stack.add(name)
-        module = module_map[name]
-
-        for dep in module.dependencies:
-            visit(dep, path + [name])
-
-        in_stack.remove(name)
-        visited.add(name)
-        order.append(module)
-
-    for module in modules:
-        if module.name not in visited:
-            visit(module.name, [])
-
-    return order
+    return topological_sort(
+        modules,
+        key=lambda m: m.name,
+        deps_of=lambda m: m.dependencies,
+    )
 
 
 def _instantiate_module_class(cls: type) -> BaseModule | None:
@@ -206,34 +176,3 @@ def load_modules(app: FastAPI) -> None:
 
     _mount_modules(app, ordered)
     logger.info("Loaded %d modules: %s", len(ordered), [m.name for m in ordered])
-
-
-class ModuleLoader:
-    """Class wrapper for module loading functionality.
-
-    Keeps backward compatibility with the previous API used by
-    ``app.main.lifespan``.
-    """
-
-    def __init__(self) -> None:
-        self._modules: list[BaseModule] = []
-
-    def discover_modules(self) -> None:
-        self._modules = discover_modules()
-
-    def load_modules(self, app: FastAPI) -> None:
-        if not self._modules:
-            self.discover_modules()
-
-        if not self._modules:
-            logger.warning("No modules to load")
-            return
-
-        try:
-            ordered = _resolve_load_order(self._modules)
-        except ValueError as exc:
-            logger.error("Failed to resolve module dependencies: %s", exc)
-            raise
-
-        _mount_modules(app, ordered)
-        logger.info("Loaded %d modules: %s", len(ordered), [m.name for m in ordered])

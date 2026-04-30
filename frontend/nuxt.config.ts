@@ -37,6 +37,14 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n'
   ],
 
+  // Default to light mode; users can opt into dark via the toggle. Both
+  // ``preference`` and ``fallback`` are set so SSR + first-paint render
+  // light without a flash even before client hydration reads OS prefs.
+  colorMode: {
+    preference: 'light',
+    fallback: 'light'
+  },
+
   components: [
     {
       path: '~/components',

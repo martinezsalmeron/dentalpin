@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 from app.core.auth.permissions import ROLES
 
+from .alembic_paths import module_branch_is_isolated
 from .manifest import ManifestError
 
 if TYPE_CHECKING:
@@ -152,6 +153,24 @@ def validate_module(
                         message=f"depends on unknown module '{dep}'",
                     )
                 )
+
+    # ``removable=True`` requires an isolated Alembic branch — otherwise
+    # uninstall would cascade into other modules' migrations (Bug #2,
+    # issue #56). The check used to live in ``ModuleService.reconcile_with_db``
+    # and silently force the flag off; surfacing it here makes the
+    # invariant a CI gate instead.
+    if manifest.removable and not module_branch_is_isolated(module):
+        issues.append(
+            ValidationIssue(
+                module_name=name,
+                code="REMOVABLE_BRANCH_NOT_ISOLATED",
+                message=(
+                    "removable=True requires a self-contained Alembic branch; "
+                    "this module either has no per-module migrations dir or "
+                    "another module's revisions descend from it."
+                ),
+            )
+        )
 
     return issues
 

@@ -23,6 +23,11 @@ class ModuleRegistry:
         if module.name in self._modules:
             raise ValueError(f"Module '{module.name}' is already registered")
         self._modules[module.name] = module
+        # Drop the role-permission cache so the merge picks up the
+        # newly-registered module's manifest grants on next lookup.
+        from app.core.auth.permissions import invalidate_role_permissions_cache
+
+        invalidate_role_permissions_cache()
         logger.info(f"Registered module: {module.name} v{module.version}")
 
     def get(self, name: str) -> "BaseModule | None":

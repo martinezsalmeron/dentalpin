@@ -64,6 +64,3 @@ class ClinicalNotesModule(BaseModule):
 
     def get_event_handlers(self) -> dict[str, Any]:
         return {}
-
-    def get_tools(self) -> list:
-        return []

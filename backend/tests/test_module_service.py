@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import logging
-
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.plugins.alembic_paths import module_branch_is_isolated
 from app.core.plugins.db_models import ModuleRecord
 from app.core.plugins.loader import discover_modules
-from app.core.plugins.service import (
-    ModuleService,
-    _module_is_branch_isolated,
-)
+from app.core.plugins.service import ModuleService
 from app.core.plugins.state import ModuleState
 
 
@@ -154,47 +150,29 @@ def _module(name: str):
 
 def test_branch_isolated_helper_accepts_schedules() -> None:
     """schedules owns sch_0001 with no foreign descendants → isolated."""
-    assert _module_is_branch_isolated(_module("schedules")) is True
+    assert module_branch_is_isolated(_module("schedules")) is True
 
 
 def test_branch_isolated_helper_rejects_non_tip_module() -> None:
     """patient_timeline's pt_0001 has billing/notifications above it on
     the main linear chain, so the branch is not isolated."""
-    assert _module_is_branch_isolated(_module("patient_timeline")) is False
+    assert module_branch_is_isolated(_module("patient_timeline")) is False
 
 
-@pytest.mark.asyncio
-async def test_reconcile_forces_removable_false_for_non_isolated_module(
-    db_session: AsyncSession,
+def test_validator_rejects_removable_true_on_non_isolated_branch(
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A manifest declaring removable=True on a branch with foreign
-    descendants must land in the DB as removable=False, with a warning."""
-    from app.core.plugins import service as service_module
+    """The branch-isolation invariant for ``removable=True`` is enforced
+    by ``manifest_validator`` — the silent reconcile-time override was
+    moved here so CI rejects the manifest before merge."""
+    from app.core.plugins.manifest_validator import validate_module
 
-    # Patch patient_timeline's manifest to claim removable=True; the
-    # module ships removable=False post-audit.
     pt = _module("patient_timeline")
-    original = pt.manifest
-    patched = {**original, "removable": True}
+    patched = {**pt.manifest, "removable": True}
     monkeypatch.setattr(type(pt), "manifest", patched)
 
-    svc = ModuleService(db_session)
-    with caplog.at_level(logging.WARNING, logger=service_module.logger.name):
-        await svc.reconcile_with_db()
-
-    record = (
-        await db_session.execute(
-            select(ModuleRecord).where(ModuleRecord.name == "patient_timeline")
-        )
-    ).scalar_one()
-
-    assert record.removable is False
-    assert any(
-        "patient_timeline" in rec.message and "removable=False" in rec.message
-        for rec in caplog.records
-    )
+    issues = validate_module(pt)
+    assert any(i.code == "REMOVABLE_BRANCH_NOT_ISOLATED" for i in issues), issues
 
 
 @pytest.mark.asyncio
