@@ -4,7 +4,7 @@
 
 **Estado:** Plan técnico — sin cambios de comportamiento ni backend.
 
-**Inspiración:** `DESIGN.md` (Notion) + Linear, Height. Adaptado críticamente para uso clínico de jornada completa.
+**Inspiración:** `design-system.md` (Notion) + Linear, Height. Adaptado críticamente para uso clínico de jornada completa.
 
 ---
 
@@ -19,15 +19,15 @@
 - **Modo oscuro:** funciona vía `UColorModeButton` y clase `.dark`, pero las superficies son `bg-gray-900` / `bg-gray-950` planas — sin jerarquía de elevación.
 - **Densidad:** sólo una. Listas de tratamientos, calendario y odontograma comparten la misma escala que el resto.
 
-### 1.2 Crítica al uso directo de DESIGN.md
+### 1.2 Crítica al uso directo de design-system.md
 
-`DESIGN.md` describe un sistema diseñado para una **landing pública** y para **lectura larga de documentos**. Aplicarlo tal cual a un software clínico tiene tres riesgos serios:
+`design-system.md` describe un sistema diseñado para una **landing pública** y para **lectura larga de documentos**. Aplicarlo tal cual a un software clínico tiene tres riesgos serios:
 
 1. **Tamaños tipográficos hero (40–64 px)** no encajan en una vista densa de odontograma o agenda. Sirven sólo para encabezados de página y cards de KPI.
 2. **Cuerpo a 16 px** es generoso para lectura prosa, pero infla en exceso tablas, listas de tratamientos y filas de calendario. Recomendación: cuerpo principal **14 px** (15 px en formularios y prosa larga), reservar 16 px para descripciones y ayudas.
 3. **`NotionInter` es propietaria.** No se puede empaquetar. Usaremos **Inter Variable** (open-source y prácticamente idéntica) cargada localmente para evitar FOUT y dependencias CDN.
 4. **Alertas pastelizadas, no apagadas.** Alertas médicas (alergias, contraindicaciones, ASA III/IV, anticoagulación), conflictos de horario y errores de cobro se renderizan con **fondo pastel + texto/icono en color pleno + rail de acento lateral**. Esto evita la agresividad de los rojos/naranjas saturados a pantalla completa, pero conserva la identidad semántica y el contraste WCAG AA. La saturación plena se reserva para iconos, rails, bordes finos y botones destructivos — nunca para llenados grandes.
-5. **Modo oscuro real.** `DESIGN.md` apenas lo trata. En clínica, el dark mode se usa al final del día y en gabinetes con luz tenue — debe ser un sistema de primera clase, con superficies cálidas (no azul frío) para reducir fatiga visual.
+5. **Modo oscuro real.** `design-system.md` apenas lo trata. En clínica, el dark mode se usa al final del día y en gabinetes con luz tenue — debe ser un sistema de primera clase, con superficies cálidas (no azul frío) para reducir fatiga visual.
 6. **Pure white `#ffffff`** como canvas tras 8 h de uso es duro. Adoptaremos un *off-white* cálido (`#FBFAF8`) como fondo base — alineado con el principio de *warm neutrals* de Notion sin la dureza del blanco puro.
 
 ### 1.3 Principios derivados (orden de prioridad)
@@ -177,7 +177,7 @@ ui: { colors: { primary: 'sky', neutral: 'slate' } }
 **Cambios:**
 
 1. **Mantener `primary: 'sky'`** pero override de las variantes que usamos vía CSS variables (sin tocar el color base, sólo cómo se compone con superficies).
-2. **Cambiar `neutral: 'slate'` → `neutral: 'stone'`** (Tailwind stone es la familia warm gray que casa con DESIGN.md). Este es el cambio de mayor impacto visual: arregla el azul frío del chrome.
+2. **Cambiar `neutral: 'slate'` → `neutral: 'stone'`** (Tailwind stone es la familia warm gray que casa con design-system.md). Este es el cambio de mayor impacto visual: arregla el azul frío del chrome.
 3. Definir variantes de componentes globales en `app.config.ts` para `UButton`, `UCard`, `UInput`, `UModal`, `UBadge`, `USelect`, `UTable` — para no tener que tocar cada uso.
 
 Ejemplo de override (esqueleto, se itera en fase 2):
@@ -334,7 +334,7 @@ Las variables CSS del odontograma ya existen en `main.css`. Re-armonizarlas con 
 
 - **Sin sombras visibles.** En oscuro, la elevación se comunica por **color de superficie más claro**, no por sombra. `--shadow-*` se sobrescribe a `none` dentro de `.dark`.
 - **Bordes ligeramente más visibles** que en claro (alpha 0.10 vs 0.06) porque el contraste superficie/superficie es más sutil.
-- **Texto evita el blanco puro.** `rgba(255, 250, 240, 0.92)` con tinte cálido — equivalente al "near-black" de DESIGN.md, en espejo.
+- **Texto evita el blanco puro.** `rgba(255, 250, 240, 0.92)` con tinte cálido — equivalente al "near-black" de design-system.md, en espejo.
 - **Saturación de color primario** se sube ligeramente (`sky-400` en lugar de `sky-500`) — los azules pierden vivacidad sobre fondos oscuros y necesitan compensación.
 - **Iconografía clínica** (alergias, contraindicaciones) mantiene contraste 4.5:1 mínimo en ambos modos. Si un color falla, se ajusta el del icono, no se baja la importancia visual.
 

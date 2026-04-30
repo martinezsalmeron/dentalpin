@@ -7,7 +7,7 @@ may this context invoke this tool right now? The answer is one of
 Enforcement is intentionally simple in Phase 1 — per-process,
 in-memory counters keyed by session. A per-clinic configuration UI
 and a distributed store (for multi-worker deployments) are tracked
-as Phase 2 work in ``TODOS.md``.
+as Phase 2 work in ``docs/technical/todos.md``.
 """
 
 from __future__ import annotations

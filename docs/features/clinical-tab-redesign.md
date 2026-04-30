@@ -472,7 +472,7 @@ FASE 3: EJECUCIÓN (en cita posterior)
 | **CTA en Diagnóstico** | Contextual según planes borrador | Si hay borrador: "Continuar Plan", si no: "Crear Plan" |
 | **Tratamientos sin plan** | No permitir | Consistencia de datos. Todo tratamiento pertenece a un plan |
 | **Múltiples planes activos** | Sí | Clínicas con especialistas pueden tener planes paralelos |
-| **Tratamientos multi-diente** | Fase posterior | Puentes, prótesis removibles → añadir a TODOS.md |
+| **Tratamientos multi-diente** | Fase posterior | Puentes, prótesis removibles → añadir a docs/technical/todos.md |
 | **Citas desde tratamiento** | No | Citas se crean desde el plan completo, no por tratamiento individual |
 
 ---

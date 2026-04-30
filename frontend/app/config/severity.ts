@@ -1,7 +1,7 @@
 /**
  * Single source of truth for status/severity → semantic role mapping.
  *
- * A "role" is one of the DentalPin semantic colours (DESIGN.md §2.4):
+ * A "role" is one of the DentalPin semantic colours (docs/technical/design-system.md §2.4):
  *   'primary' | 'success' | 'info' | 'warning' | 'danger' | 'neutral'
  *
  * These are mapped to Nuxt UI colour names via `roleToUiColor`.

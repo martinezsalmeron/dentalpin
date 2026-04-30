@@ -50,7 +50,7 @@ DentalPin follows a layered architecture:
 | Document | Purpose |
 |----------|---------|
 | [CLAUDE.md](CLAUDE.md) | Comprehensive technical documentation |
-| [TODOS.md](TODOS.md) | Roadmap and feature backlog |
+| [docs/technical/todos.md](docs/technical/todos.md) | Roadmap and feature backlog |
 | [docs/technical/creating-modules.md](docs/technical/creating-modules.md) | Module development guide |
 
 ---
@@ -459,7 +459,7 @@ How did you test these changes?
 
 ## Good First Issues
 
-Looking for something to work on? Check the [Good First Issues section in TODOS.md](TODOS.md#7-good-first-issues).
+Looking for something to work on? Check the [Good First Issues section in docs/technical/todos.md](docs/technical/todos.md#7-good-first-issues).
 
 ### Easy Contributions
 

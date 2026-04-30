@@ -100,6 +100,17 @@ export function useAuth() {
         accessToken.value = response.access_token
         refreshToken.value = response.refresh_token
         user.value = response.user
+
+        // /auth/refresh returns user but not the expanded permissions list,
+        // so pull /me with the new token. Without this, callers that wake
+        // up from an expired access token end up with empty permissions
+        // and the sidebar/home strip every permission-gated entry.
+        const me = await $fetch<ApiResponse<MeResponse>>('/api/v1/auth/me', {
+          baseURL: apiBaseUrl.value,
+          headers: { Authorization: `Bearer ${response.access_token}` }
+        })
+        user.value = me.data.user
+        permissions.value = me.data.permissions
         return true
       } catch {
         await logout()

@@ -15,7 +15,7 @@ The MVP is "Agenda + Pacientes" with full modular architecture:
 - Infrastructure: docker-compose, README, seed data
 
 **Explicitly NOT in MVP:**
-- Odontogram (deferred to TODOS.md)
+- Odontogram (deferred to docs/technical/todos.md)
 - Budgets/Invoices (deferred)
 - Verifactu integration (schema fields only)
 - RBAC beyond admin role
@@ -1016,15 +1016,15 @@ Items deferred with rationale:
 
 | Item | Rationale | Captured In |
 |------|-----------|-------------|
-| Odontogram SVG | Complex (~500 LOC), not needed for basic agenda | TODOS.md |
-| Budgets | Requires treatment catalog, PDF generation | TODOS.md |
-| Invoices | Requires budgets, Verifactu integration | TODOS.md |
-| Multi-cabinet calendar | Single column is sufficient for MVP | TODOS.md |
-| Calendar drag-and-drop | Click-to-edit is sufficient | TODOS.md |
-| RBAC beyond admin | All MVP users are admin | TODOS.md |
-| Multi-clinic | Single seeded clinic for MVP | TODOS.md |
-| Medical history fields | Simplified patient model for MVP | TODOS.md |
-| Verifactu integration | Schema fields present, integration later | TODOS.md |
+| Odontogram SVG | Complex (~500 LOC), not needed for basic agenda | docs/technical/todos.md |
+| Budgets | Requires treatment catalog, PDF generation | docs/technical/todos.md |
+| Invoices | Requires budgets, Verifactu integration | docs/technical/todos.md |
+| Multi-cabinet calendar | Single column is sufficient for MVP | docs/technical/todos.md |
+| Calendar drag-and-drop | Click-to-edit is sufficient | docs/technical/todos.md |
+| RBAC beyond admin | All MVP users are admin | docs/technical/todos.md |
+| Multi-clinic | Single seeded clinic for MVP | docs/technical/todos.md |
+| Medical history fields | Simplified patient model for MVP | docs/technical/todos.md |
+| Verifactu integration | Schema fields present, integration later | docs/technical/todos.md |
 
 ---
 

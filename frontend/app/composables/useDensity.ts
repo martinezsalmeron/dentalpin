@@ -4,7 +4,7 @@
  * Persists in localStorage under 'ui:density'. Applies as class on <html>.
  * Forced to 'comfortable' on viewports < 1024 px to keep tap targets ≥ 44 px.
  *
- * DESIGN.md §5
+ * docs/technical/design-system.md §5
  */
 export type Density = 'comfortable' | 'compact'
 
