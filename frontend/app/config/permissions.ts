@@ -100,7 +100,6 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/settings/modules': PERMISSIONS.admin.clinicRead,
   '/settings/notifications': PERMISSIONS.notifications.settingsRead,
   '/treatment-plans': PERMISSIONS.treatmentPlans.read,
-  '/treatment-plans/pipeline': PERMISSIONS.treatmentPlans.read,
   '/budgets': PERMISSIONS.budget.read,
   '/settings/budgets': PERMISSIONS.admin.clinicRead,
   '/invoices': PERMISSIONS.billing.read,

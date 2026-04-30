@@ -6,6 +6,15 @@
 - Documented one string-literal event (`treatment_plan.items_reordered`)
   that is not yet in the `EventType` enum.
 
+### Changed (frontend, 2026-04-30)
+
+- Unified `Planes de tratamiento` and `Bandeja de planes` into a single
+  page at `/treatment-plans` with six tabs (5 pipeline workflow tabs +
+  `Listado`). The dedicated `/treatment-plans/pipeline` route and the
+  `nav.pipeline` sidebar entry are removed; pipeline content is now
+  reachable as the default tab on the merged page. Tab body extracted to
+  reusable `PipelineTabPanel` and `PlansListPanel` components.
+
 ### Removed (2026-04-29)
 
 - Legacy unlock flow (`POST /treatment-plans/{id}/unlock`,

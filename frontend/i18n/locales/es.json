@@ -17,7 +17,6 @@
     "patients": "Pacientes",
     "appointments": "Agenda",
     "treatmentPlans": "Planes de tratamiento",
-    "pipeline": "Bandeja de planes",
     "budgets": "Presupuestos",
     "invoices": "Facturas",
     "reports": "Informes",
@@ -1519,7 +1518,8 @@
       "esperando_paciente": "Esperando paciente",
       "sin_cita": "Sin cita",
       "sin_proxima_cita": "Sin próxima cita",
-      "cerrados": "Cerrados"
+      "cerrados": "Cerrados",
+      "listado": "Listado"
     },
     "row": {
       "patient": "Paciente",

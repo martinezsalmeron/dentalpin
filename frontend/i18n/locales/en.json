@@ -17,7 +17,6 @@
     "patients": "Patients",
     "appointments": "Schedule",
     "treatmentPlans": "Treatment Plans",
-    "pipeline": "Plans pipeline",
     "budgets": "Quotes",
     "invoices": "Invoices",
     "reports": "Reports",
@@ -1497,7 +1496,8 @@
       "esperando_paciente": "Awaiting patient",
       "sin_cita": "No appointment",
       "sin_proxima_cita": "No next appointment",
-      "cerrados": "Closed"
+      "cerrados": "Closed",
+      "listado": "List"
     },
     "row": {
       "patient": "Patient",

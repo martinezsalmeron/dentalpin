@@ -74,13 +74,6 @@ class TreatmentPlanModule(BaseModule):
                     "permission": "treatment_plan.plans.read",
                     "order": 30,
                 },
-                {
-                    "label": "nav.pipeline",
-                    "icon": "i-lucide-inbox",
-                    "to": "/treatment-plans/pipeline",
-                    "permission": "treatment_plan.plans.read",
-                    "order": 31,
-                },
             ],
         },
     }
