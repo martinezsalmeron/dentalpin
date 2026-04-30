@@ -30,6 +30,7 @@ from .external_id import ExternalIdHelper
 from .operation_log import OperationLog
 from .registry import module_registry
 from .state import ModuleState
+from .topology import topological_sort
 from .yaml_loader import load_module_data_files
 
 if TYPE_CHECKING:
@@ -132,22 +133,18 @@ class PendingProcessor:
     def _order_pending(self, records: list[ModuleRecord]) -> list[ModuleRecord]:
         """Topological order so dependencies install first, removes last."""
         by_name = {r.name: r for r in records}
-        visited: set[str] = set()
-        order: list[ModuleRecord] = []
-
-        def visit(name: str) -> None:
-            if name in visited or name not in by_name:
-                return
-            visited.add(name)
-            rec = by_name[name]
-            for dep in (rec.manifest_snapshot or {}).get("depends", []) or []:
-                if dep in by_name:
-                    visit(dep)
-            order.append(rec)
-
-        for rec in records:
-            visit(rec.name)
-        return order
+        # Filter unknown deps: a pending record may depend on already-
+        # installed modules outside this batch — those don't need
+        # ordering here.
+        return topological_sort(
+            records,
+            key=lambda r: r.name,
+            deps_of=lambda r: (
+                d
+                for d in ((r.manifest_snapshot or {}).get("depends", []) or [])
+                if d in by_name
+            ),
+        )
 
     # --- Dispatch -------------------------------------------------------
 

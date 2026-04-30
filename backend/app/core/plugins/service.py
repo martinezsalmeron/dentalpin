@@ -26,6 +26,7 @@ from .manifest import Manifest, ManifestError
 from .operation_log import LogEntry, log_entry_from_row
 from .registry import module_registry
 from .state import ModuleCategory, ModuleState
+from .topology import MissingDependencyError, topological_sort
 
 logger = logging.getLogger(__name__)
 
@@ -562,22 +563,31 @@ class ModuleService:
 
     def _dependency_chain(self, name: str) -> list[str]:
         """Return module + every transitive dep in topo order (deps first)."""
-        chain: list[str] = []
-        visited: set[str] = set()
-
-        def visit(current: str) -> None:
-            if current in visited:
-                return
-            visited.add(current)
-            module = module_registry.get(current)
+        # Walk the transitive closure first so topological_sort sees the
+        # full set of items it needs to order.
+        closure: dict[str, BaseModule] = {}
+        stack = [name]
+        while stack:
+            current_name = stack.pop()
+            if current_name in closure:
+                continue
+            module = module_registry.get(current_name)
             if module is None:
-                raise ModuleOperationError(f"Missing dependency '{current}' (required by '{name}')")
-            for dep in module.dependencies:
-                visit(dep)
-            chain.append(current)
+                raise ModuleOperationError(
+                    f"Missing dependency '{current_name}' (required by '{name}')"
+                )
+            closure[current_name] = module
+            stack.extend(module.dependencies)
 
-        visit(name)
-        return chain
+        try:
+            ordered = topological_sort(
+                closure.values(),
+                key=lambda m: m.name,
+                deps_of=lambda m: m.dependencies,
+            )
+        except MissingDependencyError as exc:
+            raise ModuleOperationError(str(exc)) from exc
+        return [m.name for m in ordered]
 
     # --- Helpers --------------------------------------------------------
 

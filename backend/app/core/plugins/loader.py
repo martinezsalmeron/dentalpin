@@ -33,6 +33,7 @@ from app.config import settings
 
 from .base import BaseModule
 from .registry import module_registry
+from .topology import topological_sort
 
 logger = logging.getLogger(__name__)
 
@@ -40,43 +41,11 @@ ENTRY_POINT_GROUP = "dentalpin.modules"
 
 
 def _resolve_load_order(modules: list[BaseModule]) -> list[BaseModule]:
-    """Resolve module load order using topological sort.
-
-    Raises ValueError if circular dependencies are detected.
-    """
-    module_map = {m.name: m for m in modules}
-    visited: set[str] = set()
-    in_stack: set[str] = set()
-    order: list[BaseModule] = []
-
-    def visit(name: str, path: list[str]) -> None:
-        if name in in_stack:
-            cycle = " -> ".join(path + [name])
-            raise ValueError(f"Circular dependency detected: {cycle}")
-
-        if name in visited:
-            return
-
-        if name not in module_map:
-            raise ValueError(
-                f"Missing dependency: '{name}' required by '{path[-1] if path else 'root'}'"
-            )
-
-        in_stack.add(name)
-        module = module_map[name]
-
-        for dep in module.dependencies:
-            visit(dep, path + [name])
-
-        in_stack.remove(name)
-        visited.add(name)
-        order.append(module)
-
-    for module in modules:
-        if module.name not in visited:
-            visit(module.name, [])
-
-    return order
+    return topological_sort(
+        modules,
+        key=lambda m: m.name,
+        deps_of=lambda m: m.dependencies,
+    )
 
 
 def _instantiate_module_class(cls: type) -> BaseModule | None:
