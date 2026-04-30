@@ -89,9 +89,6 @@ class VerifactuModule(BaseModule):
             "invoice.paid": on_invoice_paid,
         }
 
-    def get_tools(self) -> list:
-        return []
-
     async def install(self, ctx) -> None:
         from sqlalchemy import select
 

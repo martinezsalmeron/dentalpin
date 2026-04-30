@@ -43,7 +43,6 @@ class Manifest:
     data_files: tuple[str, ...] = ()
     role_permissions: dict[str, tuple[str, ...]] = field(default_factory=dict)
     frontend: dict[str, Any] = field(default_factory=dict)
-    raw: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Manifest:
@@ -82,7 +81,6 @@ class Manifest:
             data_files=tuple(data.get("data_files") or ()),
             role_permissions=role_permissions,
             frontend=dict(data.get("frontend") or {}),
-            raw=dict(data),
         )
 
     def to_snapshot(self) -> dict[str, Any]:

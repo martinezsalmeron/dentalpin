@@ -83,6 +83,3 @@ class NotificationsModule(BaseModule):
             "budget.accepted": NotificationHandlers.on_budget_accepted,
             "invoice.sent": NotificationHandlers.on_invoice_sent,
         }
-
-    def get_tools(self) -> list:
-        return []

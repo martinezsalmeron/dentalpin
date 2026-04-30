@@ -72,6 +72,3 @@ class BillingModule(BaseModule):
         # path. Re-add a subscription here when invoices need to react
         # to budget lifecycle events again.
         return {}
-
-    def get_tools(self) -> list:
-        return []

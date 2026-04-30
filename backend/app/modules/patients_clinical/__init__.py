@@ -72,6 +72,3 @@ class PatientsClinicalModule(BaseModule):
             "emergency.read",
             "emergency.write",
         ]
-
-    def get_tools(self) -> list:
-        return []

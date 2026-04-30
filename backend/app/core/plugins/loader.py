@@ -14,8 +14,9 @@ Discovery happens in two stages:
    that an entry point already provided, so entry points win when both
    are present.
 
-The public entry points for the rest of the app remain
-:func:`load_modules` and the :class:`ModuleLoader` wrapper.
+The public entry point for the rest of the app is :func:`load_modules`,
+which discovers, resolves dependencies, and mounts everything in one
+call.
 """
 
 from __future__ import annotations
@@ -206,34 +207,3 @@ def load_modules(app: FastAPI) -> None:
 
     _mount_modules(app, ordered)
     logger.info("Loaded %d modules: %s", len(ordered), [m.name for m in ordered])
-
-
-class ModuleLoader:
-    """Class wrapper for module loading functionality.
-
-    Keeps backward compatibility with the previous API used by
-    ``app.main.lifespan``.
-    """
-
-    def __init__(self) -> None:
-        self._modules: list[BaseModule] = []
-
-    def discover_modules(self) -> None:
-        self._modules = discover_modules()
-
-    def load_modules(self, app: FastAPI) -> None:
-        if not self._modules:
-            self.discover_modules()
-
-        if not self._modules:
-            logger.warning("No modules to load")
-            return
-
-        try:
-            ordered = _resolve_load_order(self._modules)
-        except ValueError as exc:
-            logger.error("Failed to resolve module dependencies: %s", exc)
-            raise
-
-        _mount_modules(app, ordered)
-        logger.info("Loaded %d modules: %s", len(ordered), [m.name for m in ordered])

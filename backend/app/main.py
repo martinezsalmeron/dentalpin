@@ -14,7 +14,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.config import settings
 from app.core.auth.router import limiter
 from app.core.auth.router import router as auth_router
-from app.core.plugins.loader import ModuleLoader
+from app.core.plugins.loader import load_modules
 from app.core.plugins.processor import PendingProcessor
 from app.core.plugins.service import ModuleService
 from app.core.scheduler import init_scheduler, shutdown_scheduler
@@ -28,9 +28,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler for startup and shutdown."""
     # Startup
-    loader = ModuleLoader()
-    loader.discover_modules()
-    loader.load_modules(app)
+    load_modules(app)
 
     # Sync in-memory registry into core_module (best-effort).
     try:

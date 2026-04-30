@@ -103,6 +103,3 @@ class PatientTimelineModule(BaseModule):
                 events.on_item_completed_without_note
             ),
         }
-
-    def get_tools(self) -> list:
-        return []
