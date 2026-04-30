@@ -65,7 +65,12 @@ export function useAuth() {
     refreshToken.value = null
     user.value = null
     permissions.value = []
-    await router.push('/login')
+    // SSR: skip router.push — calling it from middleware can crash the
+    // response. The global auth middleware redirects to /login once it
+    // sees isAuthenticated === false.
+    if (import.meta.client) {
+      await router.push('/login')
+    }
   }
 
   // Dedupe concurrent refreshes. Without this, a page that fires N
@@ -144,13 +149,24 @@ export function useAuth() {
     }
   }
 
-  // Initialize user if token exists (works on both server and client)
+  // Initialize user if token exists (works on both server and client).
+  // Must never throw: the global auth middleware awaits this on SSR, and
+  // an unhandled rejection there crashes the response so the user sees
+  // neither the page nor a redirect to /login. On any failure, clear
+  // auth state so the middleware can route to /login.
   async function init(): Promise<void> {
-    if (accessToken.value && !user.value) {
-      await fetchUser()
-    } else if (!accessToken.value && refreshToken.value) {
-      // Access cookie gone but refresh still valid — recover session.
-      await refresh()
+    try {
+      if (accessToken.value && !user.value) {
+        await fetchUser()
+      } else if (!accessToken.value && refreshToken.value) {
+        // Access cookie gone but refresh still valid — recover session.
+        await refresh()
+      }
+    } catch {
+      accessToken.value = null
+      refreshToken.value = null
+      user.value = null
+      permissions.value = []
     }
   }
 
