@@ -170,7 +170,7 @@ watch(
         :linked="entry.linked"
         :attachments="entry.attachments"
         :can-edit="canEditEntry(entry)"
-        :highlight="ctx?.selectedTooth === entry.tooth_number"
+        :highlight="ctx?.selectedTooth != null && ctx.selectedTooth === entry.tooth_number"
         @edit="startEdit(entry)"
         @delete="handleDelete(entry)"
       />

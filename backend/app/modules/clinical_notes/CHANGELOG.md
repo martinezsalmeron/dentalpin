@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- `DiagnosisNotesSidebar` no longer highlights every note without a
+  tooth on load. The previous `selectedTooth === tooth_number` check
+  matched `null === null` when no tooth was selected, painting a blue
+  `ring-2 ring-primary` around all administrative / non-tooth-bound
+  diagnosis notes until a tooth was clicked.
+
 ### Added
 
 - Demo seed (`seed.py::seed_clinical_notes_demo`) wired into
