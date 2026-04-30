@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PatientExtended, Appointment, BudgetListItem, TreatmentPlan, PaginatedResponse, ApiResponse } from '~~/app/types'
+import type { PatientExtended, Appointment, TreatmentPlan, PaginatedResponse, ApiResponse } from '~~/app/types'
 import { PERMISSIONS } from '~~/app/config/permissions'
 
 const { t } = useI18n()
@@ -91,20 +91,6 @@ const lastVisit = computed(() => {
   return completed[0] || null
 })
 
-// Fetch patient budgets
-const { data: budgetsData, status: budgetsStatus } = await useAsyncData(
-  `patient:${patientId}:budgets`,
-  async () => {
-    try {
-      return await api.get<PaginatedResponse<BudgetListItem>>(
-        `/api/v1/budget/budgets?patient_id=${patientId}`
-      )
-    } catch {
-      return { data: [], total: 0, page: 1, page_size: 20 }
-    }
-  }
-)
-
 // Fetch patient treatment plans (for sidebar widget)
 const { data: plansData, status: plansStatus } = await useAsyncData(
   `patient:${patientId}:plans`,
@@ -127,8 +113,6 @@ const activePlan = computed(() => {
   const plans = plansData.value?.data || []
   return plans.find(p => p.status === 'active') || null
 })
-
-const budgets = computed(() => budgetsData.value?.data || [])
 
 // Medical history composable
 const { medicalHistory, isSaving: isSavingMedical, saveMedicalHistory } = useMedicalHistory(patientIdRef)
@@ -436,11 +420,7 @@ const isMinor = computed(() => {
           <!-- Administration tab content (Budgets + Billing) -->
           <template #administration>
             <div class="mt-4">
-              <AdministrationTab
-                :patient-id="patientId"
-                :budgets="budgets"
-                :budgets-loading="budgetsStatus === 'pending'"
-              />
+              <AdministrationTab :patient-id="patientId" />
             </div>
           </template>
 

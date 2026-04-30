@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Patient detail → Administración → Presupuestos: paginated (page_size=20).
+  `AdministrationTab` now owns its own paginated fetch via the shared
+  `PaginationBar`; the parent `[id].vue` no longer prefetches budgets.
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 - Issue #60: patient detail page lands on a new **Summary** tab by
   default (replaces Info as default; Info stays accessible via tab

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Patient detail → Clínica → Planes: `PlansMode` paginates plans at
+  page_size=20. `PlansListView` now exposes `page` / `total-pages`
+  props and renders the shared `PaginationBar` below the grouped lists.
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 - Documented one string-literal event (`treatment_plan.items_reordered`)
   that is not yet in the `EventType` enum.

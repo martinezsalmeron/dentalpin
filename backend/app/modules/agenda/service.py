@@ -157,6 +157,8 @@ class AppointmentService:
         status: str | None = None,
         page: int = 1,
         page_size: int = 100,
+        *,
+        patient_id: UUID | None = None,
     ) -> tuple[list[Appointment], int]:
         """List appointments with filters."""
         page_size = min(max(page_size, 1), 500)
@@ -190,6 +192,8 @@ class AppointmentService:
             query = query.where(Appointment.cabinet == cabinet)
         if professional_id:
             query = query.where(Appointment.professional_id == professional_id)
+        if patient_id:
+            query = query.where(Appointment.patient_id == patient_id)
         if status:
             query = query.where(Appointment.status == status)
 

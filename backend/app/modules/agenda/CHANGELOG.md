@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `GET /api/v1/agenda/appointments` now accepts a `patient_id` filter.
+  Previously the patient-detail Citas tab passed `patient_id` but the
+  endpoint silently ignored it and returned the whole clinic's
+  appointments. `AppointmentService.list_appointments` gained a
+  keyword-only `patient_id` argument.
+- Patient detail → Clínica → Citas: `AppointmentsMode` paginates with
+  the shared `PaginationBar` at page_size=20, dropping the hard-coded
+  page_size=100 single-page dump.
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 - Mobile agenda: surface free slots for quick emergency booking (#61).
   - New composable `useFreeSlots` computes busy/free/blocked timeline

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- `DiagnosisNotesSidebar` now uses cursor pagination (`limit=20`,
+  `before` timestamp) with a "Cargar más" button, mirroring
+  `RecentNotesFeed`. Previously fetched a hard-coded `limit=30` once
+  and stopped.
+
 ### Fixed
 
 - `DiagnosisNotesSidebar` no longer highlights every note without a

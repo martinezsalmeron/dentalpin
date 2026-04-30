@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `PatientBillingSummary` (patient detail → Administración → Facturación)
+  now paginates invoices at page_size=20 with the shared `PaginationBar`,
+  replacing the previous hard-coded `page_size: 100` single-page dump.
 - **Generic compliance summary in invoice list** — `InvoiceListResponse`
   now exposes `compliance_data` (the same JSONB the model already
   carries). Compliance modules (Verifactu et al.) read it via slots

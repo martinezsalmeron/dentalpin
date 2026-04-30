@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PatientBillingSummary, InvoiceListItem, Payment } from '~~/app/types'
+import type { PatientBillingSummary, InvoiceListItem, PaginatedResponse, Payment } from '~~/app/types'
 import { PERMISSIONS } from '~~/app/config/permissions'
 
 const props = defineProps<{
@@ -8,30 +8,54 @@ const props = defineProps<{
 
 const { t, locale } = useI18n()
 const { can } = usePermissions()
-const { fetchPatientSummary, fetchInvoices, fetchPayments, getPaymentMethodLabel } = useInvoices()
+const api = useApi()
+const { fetchPatientSummary, fetchPayments, getPaymentMethodLabel } = useInvoices()
 
 // State
 const summary = ref<PatientBillingSummary | null>(null)
 const invoices = ref<InvoiceListItem[]>([])
+const invoicesTotal = ref(0)
+const currentPage = ref(1)
+const pageSize = 20
+const totalPages = computed(() => Math.ceil(invoicesTotal.value / pageSize))
 const isLoading = ref(true)
 const expandedInvoices = ref<Set<string>>(new Set())
 const invoicePayments = ref<Map<string, Payment[]>>(new Map())
 const loadingPayments = ref<Set<string>>(new Set())
 
+async function loadInvoices() {
+  const params = new URLSearchParams({
+    patient_id: props.patientId,
+    page: String(currentPage.value),
+    page_size: String(pageSize)
+  })
+  try {
+    const response = await api.get<PaginatedResponse<InvoiceListItem>>(
+      `/api/v1/billing/invoices?${params.toString()}`
+    )
+    invoices.value = response.data
+    invoicesTotal.value = response.total
+  } catch {
+    invoices.value = []
+    invoicesTotal.value = 0
+  }
+}
+
 // Fetch data
 async function loadData() {
   isLoading.value = true
   try {
-    const [summaryData, invoicesData] = await Promise.all([
+    const [summaryData] = await Promise.all([
       fetchPatientSummary(props.patientId),
-      fetchInvoices({ patient_id: props.patientId, page_size: 100 })
+      loadInvoices()
     ])
     summary.value = summaryData
-    invoices.value = invoicesData
   } finally {
     isLoading.value = false
   }
 }
+
+watch(currentPage, loadInvoices)
 
 // Toggle invoice expansion and load payments
 async function toggleInvoice(invoiceId: string) {
@@ -84,7 +108,10 @@ function getInvoiceStatusColor(status: string): BadgeColor {
 onMounted(loadData)
 
 // Watch for patient changes
-watch(() => props.patientId, loadData)
+watch(() => props.patientId, () => {
+  currentPage.value = 1
+  loadData()
+})
 </script>
 
 <template>
@@ -203,7 +230,7 @@ watch(() => props.patientId, loadData)
 
         <!-- Empty state -->
         <div
-          v-if="invoices.length === 0"
+          v-if="invoicesTotal === 0"
           class="text-center py-12 bg-surface-muted/30 rounded-lg"
         >
           <UIcon
@@ -373,6 +400,13 @@ watch(() => props.patientId, loadData)
             </tbody>
           </table>
         </div>
+
+        <PaginationBar
+          v-model:page="currentPage"
+          :total-pages="totalPages"
+          :total="invoicesTotal"
+          :page-size="pageSize"
+        />
       </div>
     </template>
   </div>

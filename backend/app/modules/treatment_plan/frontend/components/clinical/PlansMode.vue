@@ -31,8 +31,9 @@ const router = useRouter()
 
 const {
   plans,
+  total,
   loading,
-  fetchPatientPlans,
+  fetchPlans,
   fetchPlan,
   updatePlanStatus,
   generateBudget
@@ -46,6 +47,21 @@ const {
 const view = ref<'list' | 'detail'>('list')
 const selectedPlan = ref<TreatmentPlanDetail | null>(null)
 const showCreateModal = ref(false)
+
+// Pagination
+const currentPage = ref(1)
+const pageSize = 20
+const totalPages = computed(() => Math.ceil(total.value / pageSize))
+
+async function loadPatientPlans() {
+  await fetchPlans({
+    patient_id: props.patientId,
+    page: currentPage.value,
+    page_size: pageSize
+  })
+}
+
+watch(currentPage, loadPatientPlans)
 
 // Emit view changes to parent
 watch(view, (newView) => {
@@ -68,7 +84,7 @@ async function handleActivatePlan(plan: TreatmentPlan) {
   const updated = await updatePlanStatus(plan.id, { status: 'active' })
   if (updated) {
     emit('plan-activated', updated)
-    fetchPatientPlans(props.patientId)
+    loadPatientPlans()
   }
 }
 
@@ -115,15 +131,20 @@ async function handlePlanCancelled() {
   // the updated status and can pick another plan.
   selectedPlan.value = null
   view.value = 'list'
-  await fetchPatientPlans(props.patientId)
+  await loadPatientPlans()
 }
+
+watch(() => props.patientId, () => {
+  currentPage.value = 1
+  loadPatientPlans()
+})
 
 // ============================================================================
 // Lifecycle
 // ============================================================================
 
 onMounted(async () => {
-  await fetchPatientPlans(props.patientId)
+  await loadPatientPlans()
 
   // If initialPlanId provided, open that plan directly
   if (props.initialPlanId) {
@@ -144,9 +165,13 @@ watch(() => props.initialPlanId, (newId) => {
     <!-- List View -->
     <PlansListView
       v-if="view === 'list'"
+      v-model:page="currentPage"
       :plans="plans"
       :patient-id="patientId"
       :loading="loading"
+      :total="total"
+      :total-pages="totalPages"
+      :page-size="pageSize"
       @view-plan="openPlanDetail"
       @create-plan="showCreateModal = true"
       @activate-plan="handleActivatePlan"

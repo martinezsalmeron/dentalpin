@@ -13,21 +13,41 @@ const { t, locale } = useI18n()
 const api = useApi()
 const router = useRouter()
 
-// Fetch appointments
-const { data: appointmentsData, status } = await useAsyncData(
-  `clinical-appointments:${props.patientId}`,
-  async () => {
-    try {
-      return await api.get<PaginatedResponse<Appointment>>(
-        `/api/v1/agenda/appointments?patient_id=${props.patientId}`
-      )
-    } catch {
-      return { data: [], total: 0, page: 1, page_size: 20 }
-    }
-  }
-)
+const appointments = ref<Appointment[]>([])
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = 20
+const totalPages = computed(() => Math.ceil(total.value / pageSize))
+const isLoading = ref(false)
 
-const appointments = computed(() => appointmentsData.value?.data || [])
+async function loadAppointments() {
+  isLoading.value = true
+  try {
+    const params = new URLSearchParams({
+      patient_id: props.patientId,
+      page: String(currentPage.value),
+      page_size: String(pageSize)
+    })
+    const response = await api.get<PaginatedResponse<Appointment>>(
+      `/api/v1/agenda/appointments?${params.toString()}`
+    )
+    appointments.value = response.data
+    total.value = response.total
+  } catch {
+    appointments.value = []
+    total.value = 0
+  } finally {
+    isLoading.value = false
+  }
+}
+
+watch(currentPage, loadAppointments)
+watch(() => props.patientId, () => {
+  currentPage.value = 1
+  loadAppointments()
+})
+
+onMounted(loadAppointments)
 
 // Format date time
 function formatDateTime(dateStr: string): string {
@@ -80,12 +100,12 @@ function goToAppointment(appointment: Appointment) {
         />
         {{ t('patientDetail.tabs.appointments') }}
         <UBadge
-          v-if="appointments.length > 0"
+          v-if="total > 0"
           color="neutral"
           size="xs"
           variant="subtle"
         >
-          {{ appointments.length }}
+          {{ total }}
         </UBadge>
       </h3>
       <UButton
@@ -100,7 +120,7 @@ function goToAppointment(appointment: Appointment) {
 
     <!-- Loading -->
     <div
-      v-if="status === 'pending'"
+      v-if="isLoading"
       class="space-y-3"
     >
       <USkeleton
@@ -112,7 +132,7 @@ function goToAppointment(appointment: Appointment) {
 
     <!-- Empty state -->
     <UCard
-      v-else-if="appointments.length === 0"
+      v-else-if="total === 0"
       class="text-center py-8"
     >
       <UIcon
@@ -155,6 +175,13 @@ function goToAppointment(appointment: Appointment) {
           </UBadge>
         </li>
       </ul>
+
+      <PaginationBar
+        v-model:page="currentPage"
+        :total-pages="totalPages"
+        :total="total"
+        :page-size="pageSize"
+      />
     </UCard>
   </div>
 </template>

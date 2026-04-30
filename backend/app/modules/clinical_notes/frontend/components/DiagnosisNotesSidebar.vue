@@ -29,8 +29,11 @@ const {
 } = useClinicalNotes()
 const { user } = useAuth()
 
+const PAGE_SIZE = 20
 const entries = ref<RecentNoteEntry[]>([])
 const loading = ref(false)
+const loadingMore = ref(false)
+const hasMore = ref(false)
 const composerOpen = ref(true)
 const editingId = ref<string | null>(null)
 const composerBody = ref('')
@@ -47,11 +50,30 @@ async function refresh() {
   try {
     // List shows every note type with its color code; only the composer
     // is diagnosis-only.
-    entries.value = await listRecentForPatient(props.ctx.patientId, {
-      limit: 30
+    const fetched = await listRecentForPatient(props.ctx.patientId, {
+      limit: PAGE_SIZE
     })
+    entries.value = fetched
+    hasMore.value = fetched.length === PAGE_SIZE
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMore() {
+  if (!props.ctx?.patientId || !canRead.value) return
+  if (entries.value.length === 0) return
+  loadingMore.value = true
+  try {
+    const before = entries.value[entries.value.length - 1]?.created_at
+    const fetched = await listRecentForPatient(props.ctx.patientId, {
+      limit: PAGE_SIZE,
+      before
+    })
+    entries.value.push(...fetched)
+    hasMore.value = fetched.length === PAGE_SIZE
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -174,6 +196,20 @@ watch(
         @edit="startEdit(entry)"
         @delete="handleDelete(entry)"
       />
+
+      <div
+        v-if="hasMore && !loading"
+        class="flex justify-center pt-2"
+      >
+        <UButton
+          variant="ghost"
+          size="sm"
+          :loading="loadingMore"
+          @click="loadMore"
+        >
+          {{ t('clinicalNotes.feed.loadMore') }}
+        </UButton>
+      </div>
     </div>
   </aside>
 </template>

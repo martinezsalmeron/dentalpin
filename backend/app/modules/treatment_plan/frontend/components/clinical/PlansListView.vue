@@ -12,6 +12,10 @@ const props = defineProps<{
   plans: TreatmentPlan[]
   patientId: string
   loading?: boolean
+  page?: number
+  totalPages?: number
+  total?: number
+  pageSize?: number
 }>()
 
 const emit = defineEmits<{
@@ -20,6 +24,7 @@ const emit = defineEmits<{
   'activate-plan': [plan: TreatmentPlan]
   'generate-budget': [plan: TreatmentPlan]
   'schedule': [plan: TreatmentPlan]
+  'update:page': [value: number]
 }>()
 
 const { t } = useI18n()
@@ -163,6 +168,15 @@ const hasPlans = computed(() => props.plans.length > 0)
           </div>
         </template>
       </UAccordion>
+
+      <PaginationBar
+        v-if="totalPages && totalPages > 1 && page"
+        :page="page"
+        :total-pages="totalPages"
+        :total="total"
+        :page-size="pageSize"
+        @update:page="(v) => emit('update:page', v)"
+      />
     </template>
   </div>
 </template>

@@ -60,6 +60,7 @@ async def list_appointments(
     end_date: datetime | None = None,
     cabinet: str | None = None,
     professional_id: UUID | None = None,
+    patient_id: UUID | None = None,
     appointment_status: str | None = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=100, ge=1, le=500),
@@ -75,6 +76,7 @@ async def list_appointments(
         appointment_status,
         page,
         page_size,
+        patient_id=patient_id,
     )
     return PaginatedApiResponse(
         data=[AppointmentResponse.model_validate(a) for a in appointments],

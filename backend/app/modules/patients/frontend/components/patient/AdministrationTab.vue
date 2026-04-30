@@ -8,23 +8,60 @@
  */
 
 import type { AdministrationMode } from './AdministrationModeToggle.vue'
-import type { BudgetListItem } from '~~/app/types'
+import type { BudgetListItem, PaginatedResponse } from '~~/app/types'
 import { PERMISSIONS } from '~~/app/config/permissions'
 
 interface Props {
   patientId: string
-  budgets: BudgetListItem[]
-  budgetsLoading?: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const { t, locale } = useI18n()
 const { can } = usePermissions()
+const api = useApi()
 const router = useRouter()
 const route = useRoute()
 
 // Current mode (default to budgets)
 const currentMode = ref<AdministrationMode>('budgets')
+
+// Budgets list (paginated)
+const budgets = ref<BudgetListItem[]>([])
+const budgetsTotal = ref(0)
+const budgetsLoading = ref(false)
+const budgetsPage = ref(1)
+const budgetsPageSize = 20
+const budgetsTotalPages = computed(() => Math.ceil(budgetsTotal.value / budgetsPageSize))
+
+async function loadBudgets() {
+  if (!can(PERMISSIONS.budget.read)) return
+  budgetsLoading.value = true
+  try {
+    const params = new URLSearchParams({
+      patient_id: props.patientId,
+      page: String(budgetsPage.value),
+      page_size: String(budgetsPageSize)
+    })
+    const response = await api.get<PaginatedResponse<BudgetListItem>>(
+      `/api/v1/budget/budgets?${params.toString()}`
+    )
+    budgets.value = response.data
+    budgetsTotal.value = response.total
+  } catch {
+    budgets.value = []
+    budgetsTotal.value = 0
+  } finally {
+    budgetsLoading.value = false
+  }
+}
+
+watch(budgetsPage, loadBudgets)
+watch(() => props.patientId, () => {
+  budgetsPage.value = 1
+  loadBudgets()
+})
+
+onMounted(loadBudgets)
 
 // Sync mode with URL query param
 watch(currentMode, (mode) => {
@@ -70,12 +107,12 @@ const { format: formatCurrency } = useCurrency()
       >
         <span class="truncate">{{ t('patientDetail.tabs.budgets') }}</span>
         <UBadge
-          v-if="budgets.length > 0"
+          v-if="budgetsTotal > 0"
           color="neutral"
           size="xs"
           variant="subtle"
         >
-          {{ budgets.length }}
+          {{ budgetsTotal }}
         </UBadge>
         <template
           v-if="can(PERMISSIONS.budget.write)"
@@ -179,6 +216,13 @@ const { format: formatCurrency } = useCurrency()
             </NuxtLink>
           </li>
         </ul>
+
+        <PaginationBar
+          v-model:page="budgetsPage"
+          :total-pages="budgetsTotalPages"
+          :total="budgetsTotal"
+          :page-size="budgetsPageSize"
+        />
 
         <!-- View all link -->
         <div class="pt-3 border-t border-default mt-3">
