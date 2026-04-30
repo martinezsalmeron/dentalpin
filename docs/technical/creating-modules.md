@@ -62,7 +62,7 @@ See `docs/technical/core-api.md` for the full schema. Key fields:
 | `category` | yes | `official` or `community`. |
 | `min_core_version` | recommended | Reject install if core is older. |
 | `depends` | yes (list) | Module names that must install first. |
-| `installable` / `auto_install` / `removable` | yes | Policy flags. |
+| `installable` / `auto_install` / `removable` | yes | Policy flags. `removable` defaults to `False`; opt in only when the module ships an isolated Alembic branch (the validator enforces this). |
 | `data_files` | optional | Seed YAML paths (relative). |
 | `role_permissions` | recommended | Declarative RBAC (see §7). |
 | `frontend.layer_path` | optional | Nuxt Layer folder (community UI). |
@@ -749,9 +749,16 @@ Declare which permissions each existing role should obtain on install:
 ```
 
 `*` = every permission in this module. Sub-wildcards like `movements.*`
-are allowed. Today this metadata is informational; when the RBAC
-table moves to the database (post-v2), the registry will apply it at
-install time.
+are allowed.
+
+This `role_permissions` block is the **single source of truth** for the
+module's per-role grants. ``app.core.auth.permissions.ROLE_PERMISSIONS``
+holds only core grants (`admin.*`, `agents.*`); module-namespaced
+entries are no longer maintained there. Adding a new module never
+requires editing `core/auth/permissions.py` — the registry merges
+manifests in at lookup time, and uninstalling a module drops its grants
+automatically. Future direction: replace the hardcoded core map with a
+DB-driven custom-roles-per-clinic store.
 
 ### Using permissions in code
 
@@ -1018,14 +1025,10 @@ class MyModule(BaseModule):
         return []
 ```
 
-`get_tools()` is **mandatory** on every `BaseModule` subclass. Return
-`[]` until your module has at least one action worth exposing — but
-you MUST implement the method. The loader refuses to start if any
-module omits it.
-
-Why mandatory and not opt-in: the contract must be the default so a
-future agent can trust that *any* discovered module either exposes a
-valid (possibly empty) tool list or fails fast at boot.
+`get_tools()` is **optional** — `BaseModule` provides a default that
+returns `[]`. Override it once your module has at least one action
+worth exposing; until then leave the method off entirely so the class
+stays tight.
 
 ### When to expose a tool
 
@@ -1180,7 +1183,8 @@ Rules:
 
 ### Contract checklist for agent-ready modules
 
-- [ ] `get_tools()` is implemented (even if empty)
+- [ ] `get_tools()` is overridden once the module has tools to expose
+      (the default returns `[]`)
 - [ ] Every write operation the UI exposes is also exposed as a Tool
 - [ ] Every tool declares at least one permission string that matches
       an existing RBAC entry
