@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Appointment, Professional } from '~~/app/types'
+import type { BlockedSegment } from '../../composables/useBlockedSegments'
 
 interface ProfessionalWithColor extends Professional {
   color: string
@@ -50,59 +51,24 @@ const SLOT_MINUTES = 15
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES
 
 const { compute: computeCalendarBounds } = useCalendarBounds()
-const { fetch: fetchAvailability } = useScheduleAvailability()
+const { compute: computeBlockedSegments } = useBlockedSegments({
+  startHour,
+  endHour,
+  slotMinutes: SLOT_MINUTES
+})
 
-interface BlockedSegment {
-  professionalId: string
-  startSlot: number
-  endSlot: number
-  state: 'clinic_closed' | 'professional_off'
-  reason: string | null
-}
 const blockedSegments = ref<BlockedSegment[]>([])
 
 async function refreshAvailability() {
-  const dateStr = formatLocalDate(props.currentDate)
   const bounds = await computeCalendarBounds({ start: props.currentDate, end: props.currentDate })
   startHour.value = bounds.startHour
   endHour.value = bounds.endHour
 
-  // Per-professional blocked overlay (only daily view uses this).
-  const segments: BlockedSegment[] = []
-  for (const prof of props.professionals) {
-    const payload = await fetchAvailability({
-      start: dateStr,
-      end: dateStr,
-      professional_id: prof.id
-    })
-    if (!payload) continue
-    for (const range of payload.ranges) {
-      if (range.state === 'open') continue
-      const startDate = new Date(range.start)
-      const endDate = new Date(range.end)
-      if (startDate.toDateString() !== props.currentDate.toDateString()
-        && endDate.toDateString() !== props.currentDate.toDateString()) continue
-      const startSlot = Math.max(0, timeToSlotIndex(startDate))
-      const endSlot = Math.min(
-        (endHour.value - startHour.value) * SLOTS_PER_HOUR,
-        timeToSlotIndex(endDate)
-      )
-      if (endSlot <= startSlot) continue
-      segments.push({
-        professionalId: prof.id,
-        startSlot,
-        endSlot,
-        state: range.state,
-        reason: range.reason
-      })
-    }
-  }
-  blockedSegments.value = segments
-}
-
-function timeToSlotIndex(d: Date): number {
-  const mins = d.getHours() * 60 + d.getMinutes()
-  return (mins - startHour.value * 60) / SLOT_MINUTES
+  blockedSegments.value = await computeBlockedSegments({
+    start: props.currentDate,
+    end: props.currentDate,
+    professionals: props.professionals
+  })
 }
 
 watch(

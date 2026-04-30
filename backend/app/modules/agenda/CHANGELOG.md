@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Week view (`AppointmentCalendar`) now paints `clinic_closed` ranges per
+  day as a hatched overlay, matching the daily view. Late-start mornings,
+  early-close evenings, midday gaps and fully-closed days are all
+  visually blocked instead of looking bookable. Slot math extracted into
+  the new `useBlockedSegments` composable; daily view refactored to use
+  it, dropping inline duplication.
 - `GET /api/v1/agenda/appointments` now accepts a `patient_id` filter.
   Previously the patient-detail Citas tab passed `patient_id` but the
   endpoint silently ignored it and returned the whole clinic's
