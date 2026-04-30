@@ -39,7 +39,7 @@ class Manifest:
     depends: tuple[str, ...] = ()
     installable: bool = True
     auto_install: bool = True
-    removable: bool = True
+    removable: bool = False
     data_files: tuple[str, ...] = ()
     role_permissions: dict[str, tuple[str, ...]] = field(default_factory=dict)
     frontend: dict[str, Any] = field(default_factory=dict)
@@ -77,7 +77,7 @@ class Manifest:
             depends=tuple(data.get("depends") or ()),
             installable=bool(data.get("installable", True)),
             auto_install=bool(data.get("auto_install", True)),
-            removable=bool(data.get("removable", True)),
+            removable=bool(data.get("removable", False)),
             data_files=tuple(data.get("data_files") or ()),
             role_permissions=role_permissions,
             frontend=dict(data.get("frontend") or {}),

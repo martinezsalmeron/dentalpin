@@ -497,12 +497,12 @@ safe only when your module is on its own branch:
   on its way there.
 - `alembic upgrade <module>@head` — re-applies only your migrations.
 
-Reconcile at boot checks that the module's branch is self-contained.
-If a module declares `removable=True` but its branch has foreign
-descendants (another module's revision chains off one of yours), the
-core forces `removable=False` and logs a warning. This is a safety
-net, not a workaround — fix the offending `down_revision` so your
-branch stays isolated.
+The manifest validator enforces that a module declaring `removable=True`
+ships a self-contained Alembic branch. If another module's revision
+chains off one of yours, validation fails with code
+`REMOVABLE_BRANCH_NOT_ISOLATED` and CI rejects the merge. Fix the
+offending `down_revision` so your branch stays isolated, or drop
+`removable=True`.
 
 ### `data/*.yaml`
 
