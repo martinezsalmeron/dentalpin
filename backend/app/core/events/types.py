@@ -110,6 +110,7 @@ class EventType:
     # patient_full_name, items[{id, catalog_item_id, tooth, surfaces,
     # quantity, estimated_price}], total_estimated, confirmed_at,
     # confirmed_by_user_id.
+    TREATMENT_PLAN_ITEMS_REORDERED = "treatment_plan.items_reordered"
     TREATMENT_PLAN_CONFIRMED = "treatment_plan.confirmed"
     # Plan transitioned to terminal ``closed`` state. Payload:
     # (plan_id, clinic_id, patient_id, closure_reason, closure_note,
