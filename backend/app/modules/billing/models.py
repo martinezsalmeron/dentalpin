@@ -130,7 +130,6 @@ class Invoice(Base, TimestampMixin):
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
     total_paid: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
     balance_due: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
-    currency: Mapped[str] = mapped_column(String(3), default="EUR")
 
     # Notes
     internal_notes: Mapped[str | None] = mapped_column(Text, default=None)

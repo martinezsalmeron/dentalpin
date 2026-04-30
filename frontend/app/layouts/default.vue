@@ -355,7 +355,10 @@ function isActive(to: string): boolean {
           their banners via `useModuleSlots`; the layout knows nothing
           about them.
         -->
-        <ModuleSlot name="app.banners" :ctx="{}" />
+        <ModuleSlot
+          name="app.banners"
+          :ctx="{}"
+        />
         <slot />
       </main>
     </div>

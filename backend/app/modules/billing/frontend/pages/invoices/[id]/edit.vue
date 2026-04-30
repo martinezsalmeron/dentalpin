@@ -591,7 +591,6 @@ function goBack() {
     <InvoiceItemModal
       v-model:open="isItemModalOpen"
       :invoice-id="invoiceId"
-      :currency="currentInvoice?.currency"
       :edit-item="editingItem"
       @saved="handleItemSaved"
     />

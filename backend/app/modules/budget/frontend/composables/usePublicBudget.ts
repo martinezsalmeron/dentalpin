@@ -26,10 +26,10 @@ export interface PublicMeta {
   clinic_email: string | null
   clinic_address_line: string | null
   clinic_language: string | null
+  clinic_currency: string | null
   patient_first_name: string | null
   budget_number: string | null
   budget_total: string | null
-  budget_currency: string | null
   valid_until: string | null
 }
 
@@ -58,7 +58,6 @@ export interface PublicBudget {
   total_discount: number
   total_tax: number
   total: number
-  currency: string
   patient_notes: string | null
   items: PublicBudgetItem[]
 }

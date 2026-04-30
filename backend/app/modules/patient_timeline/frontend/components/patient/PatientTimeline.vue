@@ -126,14 +126,12 @@ interface MetaChip {
   label: string
 }
 
-const currencyFormatter = computed(() =>
-  new Intl.NumberFormat(localeCode.value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
-)
+const { format: formatCurrencyAmount } = useCurrency()
 
 function formatMoney(value: unknown): string | null {
   const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
   if (!isFinite(n)) return null
-  return currencyFormatter.value.format(n)
+  return formatCurrencyAmount(n)
 }
 
 function getEventMeta(entry: TimelineEntry): MetaChip[] {

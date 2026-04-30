@@ -9,7 +9,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.core.auth.models import Clinic, User
+from app.core.auth.models import User
 from app.modules.billing.models import Invoice, InvoiceItem, InvoiceSeries, Payment
 from app.modules.budget.models import Budget
 from app.modules.catalog.models import VatType
@@ -27,7 +27,6 @@ class BillingReportService:
         """Get billing summary for a specific patient.
 
         Returns:
-            - currency: Clinic currency
             - total_budgeted: Sum of all budgets
             - work_in_progress: Sum of accepted budgets
             - work_completed: Sum of completed budgets
@@ -36,11 +35,6 @@ class BillingReportService:
             - balance_pending: total_invoiced - total_paid
         """
         from sqlalchemy import case
-
-        # Get clinic currency
-        clinic_result = await db.execute(select(Clinic).where(Clinic.id == clinic_id))
-        clinic = clinic_result.scalar_one()
-        currency = clinic.settings.get("currency", "EUR") if clinic.settings else "EUR"
 
         # Budget aggregation
         budget_result = await db.execute(
@@ -82,7 +76,6 @@ class BillingReportService:
 
         return {
             "patient_id": patient_id,
-            "currency": currency,
             "total_budgeted": budget_totals.total_budgeted,
             "work_in_progress": budget_totals.work_in_progress,
             "work_completed": budget_totals.work_completed,

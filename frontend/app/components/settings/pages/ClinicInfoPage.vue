@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { ClinicAddress, ClinicUpdate } from '~/types'
+import { SUPPORTED_CURRENCIES } from '~/constants/currencies'
 
 const { t } = useI18n()
 const clinic = useClinic()
-const { isAdmin } = usePermissions()
+const { can } = usePermissions()
+const canEdit = computed(() => can('admin.clinic.write'))
 
 const COUNTRY_CODES = [
   'AD', 'AE', 'AF', 'AG', 'AL', 'AM', 'AO', 'AR', 'AT', 'AU', 'AZ',
@@ -63,6 +65,20 @@ function translateCountry(value: string | undefined | null): string {
   return value
 }
 
+const currencyOptions = computed(() => {
+  let displayNames: Intl.DisplayNames | null = null
+  try {
+    displayNames = new Intl.DisplayNames([currentLocale.value], { type: 'currency' })
+  } catch {
+    displayNames = null
+  }
+  const collator = new Intl.Collator(currentLocale.value, { sensitivity: 'base' })
+  return SUPPORTED_CURRENCIES.map(code => ({
+    value: code,
+    label: displayNames?.of(code) ? `${code} — ${displayNames.of(code)}` : code
+  })).sort((a, b) => collator.compare(a.label, b.label))
+})
+
 const timezoneOptions = [
   { label: 'Europe/Madrid', value: 'Europe/Madrid' },
   { label: 'Europe/London', value: 'Europe/London' },
@@ -93,7 +109,8 @@ const form = ref({
   country: '',
   phone: '',
   email: '',
-  timezone: 'Europe/Madrid'
+  timezone: 'Europe/Madrid',
+  currency: 'EUR'
 })
 
 function loadForm() {
@@ -108,7 +125,8 @@ function loadForm() {
     country: c?.address?.country || '',
     phone: c?.phone || '',
     email: c?.email || '',
-    timezone: c?.timezone || 'Europe/Madrid'
+    timezone: c?.timezone || 'Europe/Madrid',
+    currency: c?.currency || 'EUR'
   }
 }
 
@@ -136,7 +154,8 @@ async function save() {
     address,
     phone: form.value.phone || undefined,
     email: form.value.email || undefined,
-    timezone: form.value.timezone || undefined
+    timezone: form.value.timezone || undefined,
+    currency: form.value.currency || undefined
   }
   const result = await clinic.updateClinic(updateData)
   isSaving.value = false
@@ -160,7 +179,7 @@ function formatAddress(address?: Record<string, string>): string {
     :title="t('settings.clinicInfo')"
   >
     <template
-      v-if="isAdmin && !editing"
+      v-if="canEdit && !editing"
       #actions
     >
       <UButton
@@ -217,6 +236,10 @@ function formatAddress(address?: Record<string, string>): string {
       <DataField
         :label="t('settings.timezone')"
         :value="clinic.currentClinic.value.timezone"
+      />
+      <DataField
+        :label="t('settings.currency')"
+        :value="clinic.currentClinic.value.currency"
       />
     </div>
 
@@ -285,17 +308,30 @@ function formatAddress(address?: Record<string, string>): string {
         </UFormField>
       </div>
 
-      <UFormField
-        :label="t('settings.timezone')"
-        :help="t('settings.timezoneHelp')"
-      >
-        <USelect
-          v-model="form.timezone"
-          :items="timezoneOptions"
-          value-key="value"
-          label-key="label"
-        />
-      </UFormField>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <UFormField
+          :label="t('settings.timezone')"
+          :help="t('settings.timezoneHelp')"
+        >
+          <USelect
+            v-model="form.timezone"
+            :items="timezoneOptions"
+            value-key="value"
+            label-key="label"
+          />
+        </UFormField>
+        <UFormField
+          :label="t('settings.currency')"
+          :help="t('settings.currencyHelp')"
+        >
+          <USelect
+            v-model="form.currency"
+            :items="currencyOptions"
+            value-key="value"
+            label-key="label"
+          />
+        </UFormField>
+      </div>
 
       <div class="flex justify-end gap-2 pt-2">
         <UButton

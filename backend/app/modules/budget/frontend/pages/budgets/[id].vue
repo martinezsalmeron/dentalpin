@@ -324,12 +324,7 @@ async function handleDownloadPDF() {
 }
 
 // Format helpers
-function formatCurrency(amount: number, currency: string = 'EUR'): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency
-  }).format(amount)
-}
+const { format: formatMoney } = useCurrency()
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(locale.value)
@@ -538,7 +533,7 @@ function getItemName(item: BudgetItem): string {
                 <p class="font-medium">
                   {{ currentBudget.global_discount_type === 'percentage'
                     ? `${currentBudget.global_discount_value}%`
-                    : formatCurrency(currentBudget.global_discount_value, currentBudget.currency) }}
+                    : formatMoney(currentBudget.global_discount_value) }}
                 </p>
               </div>
               <div v-if="currentBudget.patient_notes">
@@ -671,12 +666,12 @@ function getItemName(item: BudgetItem): string {
                     </span>
                   </div>
                   <div class="text-caption text-subtle mt-1">
-                    {{ item.quantity }} x {{ formatCurrency(item.unit_price, currentBudget.currency) }}
+                    {{ item.quantity }} x {{ formatMoney(item.unit_price) }}
                     <span
                       v-if="item.line_discount > 0"
                       class="text-success-accent"
                     >
-                      -{{ formatCurrency(item.line_discount, currentBudget.currency) }}
+                      -{{ formatMoney(item.line_discount) }}
                     </span>
                   </div>
                   <p
@@ -688,7 +683,7 @@ function getItemName(item: BudgetItem): string {
                 </div>
                 <div class="text-right">
                   <p class="font-semibold">
-                    {{ formatCurrency(item.line_total, currentBudget.currency) }}
+                    {{ formatMoney(item.line_total) }}
                   </p>
                 </div>
                 <UButton
@@ -717,25 +712,25 @@ function getItemName(item: BudgetItem): string {
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-subtle">{{ t('budget.subtotal') }}</span>
-                <span>{{ formatCurrency(currentBudget.subtotal, currentBudget.currency) }}</span>
+                <span>{{ formatMoney(currentBudget.subtotal) }}</span>
               </div>
               <div
                 v-if="currentBudget.total_discount > 0"
                 class="flex justify-between text-success-accent"
               >
                 <span>{{ t('budget.totalDiscount') }}</span>
-                <span>-{{ formatCurrency(currentBudget.total_discount, currentBudget.currency) }}</span>
+                <span>-{{ formatMoney(currentBudget.total_discount) }}</span>
               </div>
               <div
                 v-if="currentBudget.total_tax > 0"
                 class="flex justify-between"
               >
                 <span class="text-subtle">{{ t('budget.totalTax') }}</span>
-                <span>{{ formatCurrency(currentBudget.total_tax, currentBudget.currency) }}</span>
+                <span>{{ formatMoney(currentBudget.total_tax) }}</span>
               </div>
               <div class="border-t pt-3 flex justify-between font-bold text-lg">
                 <span>{{ t('budget.total') }}</span>
-                <span>{{ formatCurrency(currentBudget.total, currentBudget.currency) }}</span>
+                <span>{{ formatMoney(currentBudget.total) }}</span>
               </div>
             </div>
           </UCard>
@@ -793,7 +788,6 @@ function getItemName(item: BudgetItem): string {
     <BudgetItemModal
       v-model:open="isAddItemModalOpen"
       :budget-id="budgetId"
-      :currency="currentBudget?.currency"
       @added="handleItemAdded"
     />
 

@@ -3,7 +3,6 @@ import type { InvoiceItem, InvoiceItemCreate, TreatmentCatalogItem, VatType } fr
 
 const props = defineProps<{
   invoiceId: string
-  currency?: string
   editItem?: InvoiceItem // If provided, modal is in edit mode
 }>()
 
@@ -273,7 +272,6 @@ watch(open, async (isOpen) => {
             >
               <TreatmentVisualSelector
                 :model-value="selectedItem"
-                :currency="currency"
                 :in-modal="true"
                 @update:model-value="handleItemSelect"
               />
@@ -376,7 +374,7 @@ watch(open, async (isOpen) => {
             >
               <span class="text-muted">{{ t('budget.items.lineTotal') }}</span>
               <span class="text-h1 tnum text-default">
-                {{ formatPrice(previewTotal, currency || 'EUR') }}
+                {{ formatPrice(previewTotal) }}
               </span>
             </div>
           </form>

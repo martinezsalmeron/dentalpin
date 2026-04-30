@@ -619,7 +619,6 @@ class InvoiceWorkflowService:
             billing_tax_id=original_invoice.billing_tax_id,
             billing_address=original_invoice.billing_address,
             billing_email=original_invoice.billing_email,
-            currency=original_invoice.currency,
             internal_notes=f"Nota de crédito por: {reason}",
             public_notes=f"Rectificación de factura {original_invoice.invoice_number}",
             created_by=created_by,

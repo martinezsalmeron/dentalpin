@@ -1,11 +1,7 @@
 <script setup lang="ts">
 interface Props {
   /** Amount in major units (e.g. euros). Accepts null/undefined → renders placeholder */
-  value: number | null | undefined
-  /** ISO 4217 code */
-  currency?: string
-  /** BCP 47 locale */
-  locale?: string
+  value: number | string | null | undefined
   /** Render negative values in `--color-danger-text` */
   signed?: boolean
   /** Bold weight (e.g. for total rows) */
@@ -15,26 +11,20 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  currency: 'EUR',
-  locale: 'es-ES',
   signed: false,
   strong: false,
   placeholder: '—'
 })
 
-const formatted = computed(() => {
-  if (props.value === null || props.value === undefined || Number.isNaN(props.value)) {
-    return props.placeholder
-  }
-  return new Intl.NumberFormat(props.locale, {
-    style: 'currency',
-    currency: props.currency
-  }).format(props.value)
-})
+const { format } = useCurrency()
 
-const isNegative = computed(() =>
-  props.signed && typeof props.value === 'number' && props.value < 0
-)
+const formatted = computed(() => format(props.value) || props.placeholder)
+
+const isNegative = computed(() => {
+  if (!props.signed) return false
+  const n = typeof props.value === 'string' ? Number(props.value) : props.value
+  return typeof n === 'number' && !Number.isNaN(n) && n < 0
+})
 </script>
 
 <template>

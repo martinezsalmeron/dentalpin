@@ -236,7 +236,6 @@ async def test_create_catalog_item(
             "names": {"es": "Tratamiento de Prueba", "en": "Test Treatment"},
             "descriptions": {"es": "Descripción", "en": "Description"},
             "default_price": 100.00,
-            "currency": "EUR",
             "vat_type_id": catalog_clinic_setup["vat_exempt_id"],
             "treatment_scope": "tooth",
             "is_diagnostic": False,

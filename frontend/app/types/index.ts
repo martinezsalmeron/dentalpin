@@ -55,6 +55,7 @@ export interface ClinicUpdate {
   phone?: string
   email?: string
   timezone?: string
+  currency?: string
 }
 
 export interface Clinic {
@@ -66,9 +67,9 @@ export interface Clinic {
   phone?: string
   email?: string
   timezone: string
+  currency: string
   settings: {
     slot_duration_min?: number
-    currency?: string
   }
   cabinets: Cabinet[]
   created_at: string
@@ -546,7 +547,6 @@ export interface TreatmentCatalogItemBrief {
   internal_code: string
   names: Record<string, string>
   default_price?: string | null
-  currency: string
 }
 
 /** Treatment = one clinical act. Bridges, splints and multiple-veneers/crowns are
@@ -565,7 +565,6 @@ export interface Treatment {
   performed_by?: string | null
   performed_by_name?: string | null
   price_snapshot?: string | null
-  currency_snapshot?: string | null
   duration_snapshot?: number | null
   vat_rate_snapshot?: string | null
   budget_item_id?: string | null
@@ -640,7 +639,6 @@ export interface ToothTreatmentView {
   performed_by_name?: string | null
   notes?: string | null
   price_snapshot?: string | null
-  currency_snapshot?: string | null
   catalog_item_id?: string | null
   catalog_item?: TreatmentCatalogItemBrief | null
   source_module: string
@@ -761,7 +759,6 @@ export interface TreatmentCatalogItem {
   // Pricing
   default_price?: number
   cost_price?: number
-  currency: string
   pricing_strategy?: PricingStrategy
   pricing_config?: Record<string, number> | null
   surface_prices?: Record<string, number> | null
@@ -797,7 +794,6 @@ export interface TreatmentCatalogItemCreate {
   // Pricing
   default_price?: number
   cost_price?: number
-  currency?: string
   pricing_strategy?: PricingStrategy
   pricing_config?: Record<string, number> | null
   surface_prices?: Record<string, number> | null
@@ -823,7 +819,6 @@ export interface TreatmentCatalogItemUpdate {
   descriptions?: Record<string, string>
   default_price?: number
   cost_price?: number
-  currency?: string
   pricing_strategy?: PricingStrategy
   pricing_config?: Record<string, number> | null
   surface_prices?: Record<string, number> | null
@@ -853,7 +848,6 @@ export interface OdontogramTreatment {
   internal_code: string
   names: Record<string, string>
   default_price?: string | null
-  currency?: string
   treatment_scope: 'tooth' | 'multi_tooth' | 'global_mouth' | 'global_arch'
   requires_surfaces: boolean
   is_diagnostic: boolean
@@ -1039,7 +1033,6 @@ export interface Budget {
   total_discount: number
   total_tax: number
   total: number
-  currency: string
   // Notes
   internal_notes?: string
   patient_notes?: string
@@ -1072,7 +1065,6 @@ export interface BudgetListItem {
   valid_from: string
   valid_until?: string
   total: number
-  currency: string
   created_at: string
   patient?: PatientBrief
   creator?: UserBrief
@@ -1505,7 +1497,6 @@ export interface Invoice {
   total: number
   total_paid: number
   balance_due: number
-  currency: string
   // Notes
   internal_notes?: string
   public_notes?: string
@@ -1541,7 +1532,6 @@ export interface InvoiceListItem {
   total: number
   total_paid: number
   balance_due: number
-  currency: string
   created_at: string
   // Generic compliance summary keyed by ISO country (e.g.
   // {"ES": {state, severity, error_message, ...}}). Owned by the
@@ -1675,7 +1665,6 @@ export interface NumberingGap {
 
 export interface PatientBillingSummary {
   patient_id: string
-  currency: string
   // Budget metrics
   total_budgeted: number
   work_in_progress: number
@@ -1921,7 +1910,6 @@ export interface TreatmentBrief {
   catalog_item_id?: string | null
   catalog_item?: TreatmentCatalogItemBrief | null
   price_snapshot?: string | null
-  currency_snapshot?: string | null
   teeth: Array<{
     tooth_number: number
     role?: 'pillar' | 'pontic' | null

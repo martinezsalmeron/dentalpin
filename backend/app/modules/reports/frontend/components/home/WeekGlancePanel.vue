@@ -46,9 +46,7 @@ async function load() {
 onMounted(load)
 onActivated(load)
 
-function formatMoney(n: number): string {
-  return n.toLocaleString(locale.value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
-}
+const { format: formatMoney } = useCurrency()
 
 function delta(cur: number, prev: number): { pct: number | null, dir: 'up' | 'down' | 'flat' } {
   if (!prev) return { pct: null, dir: 'flat' }

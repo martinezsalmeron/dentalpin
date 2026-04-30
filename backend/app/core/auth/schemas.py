@@ -82,6 +82,7 @@ class ClinicMetadataUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=20)
     email: EmailStr | None = None
     timezone: str | None = Field(default=None, max_length=64)
+    currency: str | None = Field(default=None, pattern="^[A-Z]{3}$")
 
     @field_validator("timezone")
     @classmethod
@@ -128,6 +129,7 @@ class ClinicMetadataResponse(BaseModel):
     phone: str | None
     email: str | None
     timezone: str
+    currency: str
     settings: dict
     cabinets: list[_ClinicCabinetBrief]
 

@@ -92,7 +92,6 @@ class PatientBillingSummary(BaseModel):
     """Patient billing summary (budgets + invoices)."""
 
     patient_id: UUID
-    currency: str
 
     # Budget metrics
     total_budgeted: Decimal

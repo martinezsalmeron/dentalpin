@@ -397,12 +397,13 @@ export function useCatalog() {
     return item.names[loc] || item.names.es || item.names.en || item.internal_code
   }
 
-  function formatPrice(price: number | undefined, currency = 'EUR'): string {
+  // Clinic-wide currency from useCurrency. The legacy second arg
+  // (currency override) is ignored — kept in the signature so existing
+  // callers compile without churn.
+  const { format } = useCurrency()
+  function formatPrice(price: number | undefined | null, _currency?: string): string {
     if (price === undefined || price === null) return '-'
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency
-    }).format(price)
+    return format(price)
   }
 
   return {

@@ -651,7 +651,6 @@ class BudgetService:
             assigned_professional_id=source_budget.assigned_professional_id,
             global_discount_type=source_budget.global_discount_type,
             global_discount_value=source_budget.global_discount_value,
-            currency=source_budget.currency,
             internal_notes=source_budget.internal_notes,
             patient_notes=source_budget.patient_notes,
         )

@@ -4,7 +4,6 @@ import type { TreatmentCatalogItem, ApiResponse } from '~/types'
 const props = defineProps<{
   modelValue?: TreatmentCatalogItem | null
   placeholder?: string
-  currency?: string
   inModal?: boolean
 }>()
 
@@ -104,7 +103,7 @@ function getCategoryName(item: TreatmentCatalogItem): string {
         </div>
         <div class="flex items-center gap-2">
           <span class="text-h1 text-default text-primary-accent">
-            {{ formatPrice(selectedItem.default_price, currency || 'EUR') }}
+            {{ formatPrice(selectedItem.default_price) }}
           </span>
           <UButton
             variant="ghost"
@@ -139,7 +138,7 @@ function getCategoryName(item: TreatmentCatalogItem): string {
           <div class="flex items-center justify-between">
             <span class="text-caption text-subtle">{{ item.internal_code }}</span>
             <span class="text-sm font-semibold text-primary-accent">
-              {{ formatPrice(item.default_price, currency || 'EUR') }}
+              {{ formatPrice(item.default_price) }}
             </span>
           </div>
           <UBadge

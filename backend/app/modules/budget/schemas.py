@@ -371,7 +371,6 @@ class BudgetResponse(BaseModel):
     total_discount: Decimal
     total_tax: Decimal
     total: Decimal
-    currency: str
 
     # Notes
     internal_notes: str | None
@@ -420,7 +419,6 @@ class BudgetListResponse(BaseModel):
     valid_from: date
     valid_until: date | None
     total: Decimal
-    currency: str
     created_at: datetime
 
     # Related (brief)

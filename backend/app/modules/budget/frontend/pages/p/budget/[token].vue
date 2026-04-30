@@ -189,15 +189,13 @@ async function onRejectSubmit() {
 
 // ----- formatting helpers ---------------------------------------------
 
-function formatMoney(amount: number | string | null | undefined, currency = 'EUR'): string {
+function formatMoney(amount: number | string | null | undefined, currency: string | null | undefined): string {
   const n = typeof amount === 'string' ? Number(amount) : (amount ?? 0)
+  const cur = currency || 'EUR'
   try {
-    return new Intl.NumberFormat(locale.value, {
-      style: 'currency',
-      currency,
-    }).format(n)
+    return new Intl.NumberFormat(locale.value, { style: 'currency', currency: cur }).format(n)
   } catch {
-    return `${n.toFixed(2)} €`
+    return `${n.toFixed(2)} ${cur}`
   }
 }
 
@@ -428,9 +426,9 @@ const greeting = computed(() => {
               </div>
               <div class="treatments-money">
                 <p class="treatments-qty">
-                  {{ item.quantity }} × {{ formatMoney(item.unit_price, budget.currency) }}
+                  {{ item.quantity }} × {{ formatMoney(item.unit_price, meta?.clinic_currency) }}
                 </p>
-                <p class="treatments-total">{{ formatMoney(item.line_total, budget.currency) }}</p>
+                <p class="treatments-total">{{ formatMoney(item.line_total, meta?.clinic_currency) }}</p>
               </div>
             </li>
           </ul>
@@ -441,19 +439,19 @@ const greeting = computed(() => {
           <dl class="totals">
             <div class="totals-row">
               <dt>{{ t('budget.public.subtotal') }}</dt>
-              <dd>{{ formatMoney(budget.subtotal, budget.currency) }}</dd>
+              <dd>{{ formatMoney(budget.subtotal, meta?.clinic_currency) }}</dd>
             </div>
             <div v-if="Number(budget.total_discount) > 0" class="totals-row totals-row-discount">
               <dt>{{ t('budget.public.discount') }}</dt>
-              <dd>−{{ formatMoney(budget.total_discount, budget.currency) }}</dd>
+              <dd>−{{ formatMoney(budget.total_discount, meta?.clinic_currency) }}</dd>
             </div>
             <div class="totals-row">
               <dt>{{ t('budget.public.tax') }}</dt>
-              <dd>{{ formatMoney(budget.total_tax, budget.currency) }}</dd>
+              <dd>{{ formatMoney(budget.total_tax, meta?.clinic_currency) }}</dd>
             </div>
             <div class="totals-row totals-grand">
               <dt>{{ t('budget.public.total') }}</dt>
-              <dd>{{ formatMoney(budget.total, budget.currency) }}</dd>
+              <dd>{{ formatMoney(budget.total, meta?.clinic_currency) }}</dd>
             </div>
           </dl>
         </UCard>

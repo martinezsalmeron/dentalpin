@@ -66,7 +66,6 @@ class TreatmentBrief(BaseModel):
     catalog_item_id: UUID | None = None
     catalog_item: CatalogItemBrief | None = None
     price_snapshot: Decimal | None = None
-    currency_snapshot: str | None = None
     teeth: list[TreatmentToothBrief] = Field(default_factory=list)
 
 

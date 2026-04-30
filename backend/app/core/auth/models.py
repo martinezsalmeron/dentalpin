@@ -32,6 +32,9 @@ class Clinic(Base, TimestampMixin):
     timezone: Mapped[str] = mapped_column(
         String(64), nullable=False, server_default="Europe/Madrid"
     )
+    # ISO 4217 currency code. Single source of truth for any module
+    # that renders money — budgets, invoices, catalog, reports.
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="EUR")
     settings: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     # Relationships

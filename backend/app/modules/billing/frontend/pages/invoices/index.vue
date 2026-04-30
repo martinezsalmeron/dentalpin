@@ -275,14 +275,13 @@ function isOverdue(invoice: InvoiceListItem): boolean {
             <div class="text-right">
               <Money
                 :value="invoice.total"
-                :currency="invoice.currency"
                 strong
               />
               <div
                 v-if="invoice.balance_due > 0 && invoice.status !== 'draft'"
                 class="text-caption text-warning tnum"
               >
-                {{ t('invoice.balance') }}: {{ formatCurrency(invoice.balance_due, invoice.currency) }}
+                {{ t('invoice.balance') }}: {{ formatCurrency(invoice.balance_due) }}
               </div>
             </div>
           </template>

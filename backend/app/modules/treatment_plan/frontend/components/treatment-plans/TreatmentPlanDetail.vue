@@ -14,7 +14,8 @@ const emit = defineEmits<{
   'item-remove': [itemId: string]
 }>()
 
-const { t, d, n } = useI18n()
+const { t, d } = useI18n()
+const { format: formatMoney } = useCurrency()
 
 // Collapsible state for completed items
 const showCompleted = ref(false)
@@ -190,7 +191,7 @@ function getBudgetStatusColor(status: string): string {
           {{ t(`budget.status.${plan.budget.status}`) }}
         </UBadge>
         <span class="text-sm font-semibold text-default">
-          {{ n(plan.budget.total, 'currency') }}
+          {{ formatMoney(plan.budget.total) }}
         </span>
         <UIcon
           name="i-lucide-external-link"
@@ -308,7 +309,7 @@ function getBudgetStatusColor(status: string): string {
                 v-if="getItemPrice(item)"
                 class="text-sm font-medium text-muted"
               >
-                {{ n(getItemPrice(item)!, 'currency') }}
+                {{ formatMoney(getItemPrice(item)) }}
               </span>
               <UButton
                 color="success"
@@ -384,7 +385,7 @@ function getBudgetStatusColor(status: string): string {
               v-if="getItemPrice(item)"
               class="text-sm text-muted flex-shrink-0"
             >
-              {{ n(getItemPrice(item)!, 'currency') }}
+              {{ formatMoney(getItemPrice(item)) }}
             </span>
           </div>
         </div>

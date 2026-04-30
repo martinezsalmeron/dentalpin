@@ -15,13 +15,7 @@ onActivated(() => {
 
 const topFive = computed(() => overdue.value.slice(0, 5))
 
-function formatMoney(n: number | string): string {
-  return Number(n).toLocaleString(locale.value, {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 2
-  })
-}
+const { format: formatMoney } = useCurrency()
 </script>
 
 <template>

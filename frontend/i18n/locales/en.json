@@ -927,6 +927,8 @@
     "phone": "Phone",
     "timezone": "Timezone",
     "timezoneHelp": "All schedules and appointments are interpreted in this timezone.",
+    "currency": "Currency",
+    "currencyHelp": "Clinic-wide currency used in quotes, invoices and the catalog.",
     "editClinicInfo": "Edit information",
     "clinicUpdated": "Clinic information updated",
     "clinicUpdateError": "Error updating information",

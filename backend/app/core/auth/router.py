@@ -18,7 +18,7 @@ from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
 from .dependencies import ClinicContext, get_clinic_context, get_current_user, require_permission
-from .models import ClinicMembership, User
+from .models import Clinic, ClinicMembership, User
 from .permissions import CORE_PERMISSIONS, ROLES, expand_permissions, get_role_permissions
 from .schemas import (
     AuthResponse,
@@ -593,9 +593,17 @@ async def update_clinic_metadata(
         clinic.address = {**existing_address, **new_address}
     if data.timezone is not None:
         clinic.timezone = data.timezone
+    if data.currency is not None:
+        clinic.currency = data.currency
 
     await db.commit()
-    await db.refresh(clinic)
+    # Re-query with cabinets eagerly loaded so ClinicMetadataResponse
+    # serialization doesn't trigger an async lazy load. The response
+    # always returns the full metadata shape including cabinets.
+    result = await db.execute(
+        select(Clinic).where(Clinic.id == clinic.id).options(selectinload(Clinic.cabinets))
+    )
+    clinic = result.scalar_one()
 
     return ApiResponse(data=ClinicMetadataResponse.model_validate(clinic))
 

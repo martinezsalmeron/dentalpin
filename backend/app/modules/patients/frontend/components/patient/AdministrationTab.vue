@@ -53,13 +53,8 @@ function formatDate(dateStr: string): string {
   })
 }
 
-// Format currency
-function formatCurrency(amount: number, currency: string = 'EUR'): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency
-  }).format(amount)
-}
+// Format currency — clinic-wide via useCurrency.
+const { format: formatCurrency } = useCurrency()
 </script>
 
 <template>
@@ -174,7 +169,7 @@ function formatCurrency(amount: number, currency: string = 'EUR'): string {
               </div>
               <div class="flex items-center gap-4">
                 <span class="font-semibold text-default">
-                  {{ formatCurrency(budget.total, budget.currency) }}
+                  {{ formatCurrency(budget.total) }}
                 </span>
                 <UIcon
                   name="i-lucide-chevron-right"
