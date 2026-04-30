@@ -296,7 +296,6 @@ watch(() => props.open, async (isOpen) => {
           status: 'planned',
           catalog_item_id: t.catalog_item_id,
           price_snapshot: t.default_price ? String(t.default_price) : null,
-          currency_snapshot: 'EUR',
           teeth: t.tooth_number
             ? [{
                 tooth_number: t.tooth_number,
@@ -310,8 +309,7 @@ watch(() => props.open, async (isOpen) => {
               id: t.catalog_item_id,
               internal_code: t.internal_code,
               names: t.names,
-              default_price: t.default_price != null ? String(t.default_price) : null,
-              currency: 'EUR'
+              default_price: t.default_price != null ? String(t.default_price) : null
             }
           : undefined,
         media: []

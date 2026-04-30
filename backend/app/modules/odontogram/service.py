@@ -42,7 +42,6 @@ def build_treatment_response(treatment: Treatment) -> dict:
             "internal_code": treatment.catalog_item.internal_code,
             "names": treatment.catalog_item.names,
             "default_price": treatment.catalog_item.default_price,
-            "currency": treatment.catalog_item.currency,
         }
 
     return {
@@ -68,7 +67,6 @@ def build_treatment_response(treatment: Treatment) -> dict:
         "performed_by": treatment.performed_by,
         "performed_by_name": performer_name,
         "price_snapshot": treatment.price_snapshot,
-        "currency_snapshot": treatment.currency_snapshot,
         "duration_snapshot": treatment.duration_snapshot,
         "vat_rate_snapshot": treatment.vat_rate_snapshot,
         "budget_item_id": treatment.budget_item_id,
@@ -673,7 +671,6 @@ class TreatmentService:
 
         # 4. Compute snapshots.
         price_snapshot = None
-        currency_snapshot = None
         duration_snapshot = None
         vat_rate_snapshot = None
         if catalog_item is not None:
@@ -681,7 +678,6 @@ class TreatmentService:
                 PricingTooth(role=t["role"], surfaces=t["surfaces"]) for t in teeth_inputs
             ]
             price_snapshot = compute_price_snapshot(catalog_item, pricing_teeth)
-            currency_snapshot = catalog_item.currency
             duration_snapshot = compute_duration_snapshot(catalog_item, len(teeth_inputs))
             if catalog_item.vat_type_rel is not None:
                 vat_rate_snapshot = catalog_item.vat_type_rel.rate
@@ -700,7 +696,6 @@ class TreatmentService:
             performed_at=now if is_performed else None,
             performed_by=user_id if is_performed else None,
             price_snapshot=price_snapshot,
-            currency_snapshot=currency_snapshot,
             duration_snapshot=duration_snapshot,
             vat_rate_snapshot=vat_rate_snapshot,
             budget_item_id=budget_item_id,

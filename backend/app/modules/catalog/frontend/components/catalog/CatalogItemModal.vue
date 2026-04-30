@@ -72,7 +72,6 @@ watch(
         descriptions: newItem.descriptions ? { ...newItem.descriptions } : undefined,
         default_price: newItem.default_price,
         cost_price: newItem.cost_price,
-        currency: newItem.currency,
         pricing_strategy: newItem.pricing_strategy || 'flat',
         pricing_config: newItem.pricing_config ?? null,
         surface_prices: newItem.surface_prices ? { ...newItem.surface_prices } : null,
@@ -101,7 +100,6 @@ watch(
         names: { [locale.value]: '' },
         default_price: 0,
         cost_price: 0,
-        currency: 'EUR',
         pricing_strategy: 'flat',
         pricing_config: null,
         surface_prices: null,
@@ -326,7 +324,7 @@ function handleClose() {
               <h4 class="font-medium text-default dark:text-white mb-4">
                 {{ t('catalog.pricing') }}
               </h4>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <UFormField :label="t('catalog.defaultPrice')">
                   <UInput
                     v-model.number="formData.default_price"
@@ -342,14 +340,6 @@ function handleClose() {
                     type="number"
                     step="0.01"
                     min="0"
-                  />
-                </UFormField>
-
-                <UFormField :label="t('catalog.currency')">
-                  <UInput
-                    v-model="formData.currency"
-                    maxlength="3"
-                    placeholder="EUR"
                   />
                 </UFormField>
               </div>

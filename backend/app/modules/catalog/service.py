@@ -612,7 +612,6 @@ class OdontogramCatalogService:
                         "internal_code": item.internal_code,
                         "names": item.names,
                         "default_price": float(item.default_price) if item.default_price else None,
-                        "currency": item.currency or "EUR",
                         "treatment_scope": item.treatment_scope,
                         "requires_surfaces": item.requires_surfaces,
                         "is_diagnostic": item.is_diagnostic,

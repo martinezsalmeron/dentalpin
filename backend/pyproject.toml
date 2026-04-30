@@ -29,6 +29,9 @@ dependencies = [
     # which Python base image the backend runs on (Alpine ships with
     # no system tzdata by default).
     "tzdata>=2024.1",
+    # Locale-aware currency formatting (PDFs, emails). Stdlib has no
+    # equivalent of Intl.NumberFormat; babel is the de facto standard.
+    "babel>=2.14",
     # Verifactu (AEAT) module dependencies. httpx for mTLS submissions,
     # lxml for SOAP response parsing, qrcode for the per-invoice QR.
     "httpx>=0.26.0",

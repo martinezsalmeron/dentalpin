@@ -143,7 +143,6 @@ class TreatmentCatalogItem(Base, TimestampMixin):
     # Pricing (MVP: single default price)
     default_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     cost_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # For margin calculation
-    currency: Mapped[str] = mapped_column(String(3), default="EUR")  # ISO 4217
 
     # Scheduling
     default_duration_minutes: Mapped[int | None] = mapped_column(Integer)

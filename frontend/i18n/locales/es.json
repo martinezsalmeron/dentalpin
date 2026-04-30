@@ -948,6 +948,8 @@
     "phone": "Teléfono",
     "timezone": "Zona horaria",
     "timezoneHelp": "Todos los horarios y citas se interpretan en esta zona.",
+    "currency": "Moneda",
+    "currencyHelp": "Moneda de la clínica para presupuestos, facturas y catálogo.",
     "editClinicInfo": "Editar información",
     "clinicUpdated": "Información de la clínica actualizada",
     "clinicUpdateError": "Error al actualizar la información",

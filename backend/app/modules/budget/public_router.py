@@ -134,10 +134,10 @@ class PublicBudgetMeta(BaseModel):
     clinic_email: str | None = None
     clinic_address_line: str | None = None
     clinic_language: str | None = None
+    clinic_currency: str | None = None
     patient_first_name: str | None = None
     budget_number: str | None = None
     budget_total: str | None = None
-    budget_currency: str | None = None
     valid_until: str | None = None
 
 
@@ -188,13 +188,16 @@ async def get_public_budget_meta(
 
     clinic_row = (
         await db.execute(
-            _text("SELECT name, phone, email, address, settings FROM clinics WHERE id = :id"),
+            _text(
+                "SELECT name, phone, email, address, settings, currency FROM clinics WHERE id = :id"
+            ),
             {"id": budget.clinic_id},
         )
     ).first()
     clinic_name = clinic_row.name if clinic_row else None
     clinic_phone = clinic_row.phone if clinic_row else None
     clinic_email = clinic_row.email if clinic_row else None
+    clinic_currency = clinic_row.currency if clinic_row else None
     clinic_address_line: str | None = None
     clinic_language: str | None = None
     if clinic_row and clinic_row.address:
@@ -229,10 +232,10 @@ async def get_public_budget_meta(
             clinic_email=clinic_email,
             clinic_address_line=clinic_address_line,
             clinic_language=clinic_language,
+            clinic_currency=clinic_currency,
             patient_first_name=patient_first_name,
             budget_number=budget.budget_number,
             budget_total=str(budget.total) if budget.total is not None else None,
-            budget_currency=budget.currency,
             valid_until=budget.valid_until.isoformat() if budget.valid_until else None,
         )
     )

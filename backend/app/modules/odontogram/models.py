@@ -115,7 +115,6 @@ class Treatment(Base, TimestampMixin):
 
     # Pricing snapshots (frozen at creation; decouples history from catalog edits).
     price_snapshot: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
-    currency_snapshot: Mapped[str | None] = mapped_column(String(3))
     duration_snapshot: Mapped[int | None] = mapped_column(Integer)
     vat_rate_snapshot: Mapped[float | None] = mapped_column(Numeric(5, 2))
 

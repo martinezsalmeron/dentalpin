@@ -52,13 +52,8 @@ async function toggleInvoice(invoiceId: string) {
   }
 }
 
-// Format currency
-function formatCurrency(amount: number, currency: string = 'EUR'): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency
-  }).format(amount)
-}
+// Format currency — clinic-wide, no per-invoice override.
+const { format: formatCurrency } = useCurrency()
 
 // Format date
 function formatDate(dateStr: string | undefined): string {
@@ -121,7 +116,7 @@ watch(() => props.patientId, loadData)
             {{ t('patientBilling.totalBudgeted') }}
           </p>
           <p class="text-display text-default text-default mt-1">
-            {{ formatCurrency(summary.total_budgeted, summary.currency) }}
+            {{ formatCurrency(summary.total_budgeted) }}
           </p>
         </div>
 
@@ -130,7 +125,7 @@ watch(() => props.patientId, loadData)
             {{ t('patientBilling.workInProgress') }}
           </p>
           <p class="text-display tnum mt-1">
-            {{ formatCurrency(summary.work_in_progress, summary.currency) }}
+            {{ formatCurrency(summary.work_in_progress) }}
           </p>
         </div>
 
@@ -139,7 +134,7 @@ watch(() => props.patientId, loadData)
             {{ t('patientBilling.workCompleted') }}
           </p>
           <p class="text-display tnum mt-1">
-            {{ formatCurrency(summary.work_completed, summary.currency) }}
+            {{ formatCurrency(summary.work_completed) }}
           </p>
         </div>
 
@@ -149,7 +144,7 @@ watch(() => props.patientId, loadData)
             {{ t('patientBilling.totalInvoiced') }}
           </p>
           <p class="text-display tnum text-default mt-1">
-            {{ formatCurrency(summary.total_invoiced, summary.currency) }}
+            {{ formatCurrency(summary.total_invoiced) }}
           </p>
         </div>
 
@@ -158,7 +153,7 @@ watch(() => props.patientId, loadData)
             {{ t('patientBilling.totalPaid') }}
           </p>
           <p class="text-display tnum mt-1">
-            {{ formatCurrency(summary.total_paid, summary.currency) }}
+            {{ formatCurrency(summary.total_paid) }}
           </p>
         </div>
 
@@ -184,7 +179,7 @@ watch(() => props.patientId, loadData)
               summary.balance_pending > 0 ? '' : 'text-default'
             ]"
           >
-            {{ formatCurrency(summary.balance_pending, summary.currency) }}
+            {{ formatCurrency(summary.balance_pending) }}
           </p>
         </div>
       </div>
@@ -290,13 +285,13 @@ watch(() => props.patientId, loadData)
                     </UBadge>
                   </td>
                   <td class="px-3 py-3 text-right font-medium text-default">
-                    {{ formatCurrency(invoice.total, invoice.currency) }}
+                    {{ formatCurrency(invoice.total) }}
                   </td>
                   <td class="px-3 py-3 text-right">
                     <span
                       :class="invoice.balance_due > 0 ? 'text-warning font-medium' : 'text-muted'"
                     >
-                      {{ formatCurrency(invoice.balance_due, invoice.currency) }}
+                      {{ formatCurrency(invoice.balance_due) }}
                     </span>
                   </td>
                   <td class="px-3 py-3 text-right">
@@ -360,7 +355,7 @@ watch(() => props.patientId, loadData)
                           class="font-medium"
                           :class="payment.is_voided ? 'line-through text-subtle' : 'text-default'"
                         >
-                          {{ formatCurrency(payment.amount, invoice.currency) }}
+                          {{ formatCurrency(payment.amount) }}
                         </span>
                         <UBadge
                           v-if="payment.is_voided"

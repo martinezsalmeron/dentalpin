@@ -201,7 +201,6 @@ export function useInvoices() {
       total: response.data.total,
       total_paid: response.data.total_paid,
       balance_due: response.data.balance_due,
-      currency: response.data.currency,
       created_at: response.data.created_at,
       patient: response.data.patient,
       creator: response.data.creator
@@ -227,7 +226,6 @@ export function useInvoices() {
       total: response.data.total,
       total_paid: response.data.total_paid,
       balance_due: response.data.balance_due,
-      currency: response.data.currency,
       created_at: response.data.created_at,
       patient: response.data.patient,
       creator: response.data.creator
@@ -389,7 +387,6 @@ export function useInvoices() {
       total: response.data.total,
       total_paid: response.data.total_paid,
       balance_due: response.data.balance_due,
-      currency: response.data.currency,
       created_at: response.data.created_at,
       patient: response.data.patient,
       creator: response.data.creator
@@ -596,12 +593,7 @@ export function useInvoices() {
     return ['issued', 'partial', 'paid'].includes(invoice.status)
   }
 
-  function formatCurrency(amount: number, currency: string = 'EUR'): string {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency
-    }).format(amount)
-  }
+  const { format: formatCurrency } = useCurrency()
 
   // Internal helper to update status in local state
   function updateInvoiceStatus(id: string, status: InvoiceStatus): void {

@@ -3,7 +3,6 @@ import type { InvoiceItemCreate, TreatmentCatalogItem, VatType } from '~~/app/ty
 
 const props = defineProps<{
   open: boolean
-  currency?: string
 }>()
 
 const emit = defineEmits<{
@@ -197,7 +196,6 @@ watch(() => props.open, async (isOpen) => {
             >
               <TreatmentVisualSelector
                 :model-value="selectedItem"
-                :currency="currency"
                 :in-modal="true"
                 @update:model-value="handleItemSelect"
               />
@@ -300,7 +298,7 @@ watch(() => props.open, async (isOpen) => {
             >
               <span class="text-muted">{{ t('budget.items.lineTotal') }}</span>
               <span class="text-h1 tnum text-default">
-                {{ formatPrice(previewTotal, currency || 'EUR') }}
+                {{ formatPrice(previewTotal) }}
               </span>
             </div>
           </form>

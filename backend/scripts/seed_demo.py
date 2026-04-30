@@ -155,6 +155,8 @@ async def seed_clinic(db: AsyncSession) -> Clinic:
         address=clinic_data["address"],
         phone=clinic_data["phone"],
         email=clinic_data["email"],
+        timezone=clinic_data["timezone"],
+        currency=clinic_data["currency"],
         settings=clinic_data["settings"],
     )
     db.add(clinic)

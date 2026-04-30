@@ -123,13 +123,8 @@ const totals = computed(() => {
   }
 })
 
-// Format currency
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(amount)
-}
+// Format currency — clinic-wide.
+const { format: formatCurrency } = useCurrency()
 
 // Submit
 async function handleSubmit() {
@@ -491,7 +486,6 @@ function goBack() {
     <!-- Add Item Modal -->
     <NewInvoiceItemModal
       v-model:open="isItemModalOpen"
-      currency="EUR"
       @added="handleItemAdded"
     />
   </div>

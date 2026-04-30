@@ -186,7 +186,6 @@ class CatalogItemBrief(BaseModel):
     internal_code: str
     names: dict[str, str]
     default_price: Decimal | None = None
-    currency: str = "EUR"
 
 
 class TreatmentToothResponse(BaseModel):
@@ -221,7 +220,6 @@ class TreatmentResponse(BaseModel):
     performed_by_name: str | None = None
 
     price_snapshot: Decimal | None = None
-    currency_snapshot: str | None = None
     duration_snapshot: int | None = None
     vat_rate_snapshot: Decimal | None = None
 

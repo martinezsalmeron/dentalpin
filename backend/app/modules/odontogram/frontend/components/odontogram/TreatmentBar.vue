@@ -172,8 +172,7 @@ interface TreatmentBarItem {
 }
 
 function formatSurfaceRangeLabel(
-  surfacePrices: Record<string, number> | null | undefined,
-  currency: string | undefined
+  surfacePrices: Record<string, number> | null | undefined
 ): string | null {
   if (!surfacePrices) return null
   const values = Object.values(surfacePrices)
@@ -182,9 +181,10 @@ function formatSurfaceRangeLabel(
   if (values.length === 0) return null
   const min = Math.min(...values)
   const max = Math.max(...values)
-  const cur = currency === 'EUR' ? '€' : (currency || '')
+  // Pricing-tier hint is purely numeric — full localized formatting
+  // happens in <Money> elsewhere. We just want a compact range label.
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2))
-  return min === max ? `${fmt(min)}${cur}` : `${fmt(min)}–${fmt(max)}${cur}`
+  return min === max ? fmt(min) : `${fmt(min)}–${fmt(max)}`
 }
 
 // One button per catalog item (no dedupe by type — Metal-cerámica vs Zirconio bridges
@@ -238,7 +238,7 @@ const currentTreatments = computed<TreatmentBarItem[]>(() => {
         const label = isRealCatalogItem
           ? (c.names[locale.value] || c.names.es || c.names.en || oType)
           : t(`odontogram.treatments.types.${oType}`, oType)
-        const rangeLabel = formatSurfaceRangeLabel(c.surface_prices, c.currency)
+        const rangeLabel = formatSurfaceRangeLabel(c.surface_prices)
         const tooltip = rangeLabel
           ? `${label}  •  ${t('odontogram.surfacePricingHint', { range: rangeLabel })}`
           : label

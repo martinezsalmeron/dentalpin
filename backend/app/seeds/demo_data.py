@@ -91,10 +91,10 @@ def get_clinic_data() -> dict:
         },
         "phone": t({"es": "+34 912 345 678", "en": "+1 (212) 555-0100"}),
         "email": "info@demo.clinic",
+        "currency": t({"es": "EUR", "en": "USD"}),
+        "timezone": t({"es": "Europe/Madrid", "en": "America/New_York"}),
         "settings": {
             "slot_duration_min": 30,
-            "currency": t({"es": "EUR", "en": "USD"}),
-            "timezone": t({"es": "Europe/Madrid", "en": "America/New_York"}),
             "working_hours": {
                 "monday": {"morning": ["09:00", "14:00"], "afternoon": ["16:00", "20:00"]},
                 "tuesday": {"morning": ["09:00", "14:00"], "afternoon": ["16:00", "20:00"]},
@@ -1240,7 +1240,6 @@ def generate_odontogram_data() -> dict:
                     "performed_at": performed_at,
                     "performed_by": USER_DENTIST_ID if status == "performed" else None,
                     "price_snapshot": None,
-                    "currency_snapshot": None,
                     "duration_snapshot": None,
                     "vat_rate_snapshot": None,
                     "budget_item_id": None,
@@ -1961,7 +1960,6 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
                     "performed_at": performed_at,
                     "performed_by": USER_DENTIST_ID if is_completed else None,
                     "price_snapshot": catalog_item.get("default_price"),
-                    "currency_snapshot": "EUR",
                     "duration_snapshot": None,
                     "vat_rate_snapshot": None,
                     "budget_item_id": None,
@@ -2149,7 +2147,6 @@ def generate_budgets_data(catalog_items_map: dict[str, dict], plans_result: dict
                 "total_discount": total_discount,
                 "total_tax": total_tax,
                 "total": total,
-                "currency": t({"es": "EUR", "en": "USD"}),
                 "internal_notes": t(budget_scenario["notes"])
                 if budget_scenario.get("notes")
                 else None,
@@ -2555,7 +2552,6 @@ def generate_invoices_data(catalog_items_map: dict[str, dict], budgets_result: d
                 "total": total,
                 "total_paid": total_paid,
                 "balance_due": total - total_paid,
-                "currency": t({"es": "EUR", "en": "USD"}),
                 "internal_notes": t(invoice_scenario["notes"])
                 if invoice_scenario.get("notes")
                 else None,

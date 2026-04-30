@@ -397,7 +397,7 @@ const categoryOptions = computed(() => [
                     </UBadge>
                   </td>
                   <td class="py-2.5 px-4 text-right font-medium">
-                    {{ catalog.formatPrice(item.default_price, item.currency) }}
+                    {{ catalog.formatPrice(item.default_price) }}
                   </td>
                   <td class="hidden sm:table-cell py-2.5 px-4 text-center">
                     <UBadge
@@ -552,7 +552,7 @@ const categoryOptions = computed(() => [
                 {{ getCategoryName(item.category_id) }}
               </td>
               <td class="py-3 px-4 text-right font-medium">
-                {{ catalog.formatPrice(item.default_price, item.currency) }}
+                {{ catalog.formatPrice(item.default_price) }}
               </td>
               <td class="hidden sm:table-cell py-3 px-4 text-center">
                 <UBadge

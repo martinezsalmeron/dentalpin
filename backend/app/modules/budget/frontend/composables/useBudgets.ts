@@ -140,7 +140,6 @@ export function useBudgets() {
       valid_from: response.data.valid_from,
       valid_until: response.data.valid_until,
       total: response.data.total,
-      currency: response.data.currency,
       created_at: response.data.created_at,
       patient: response.data.patient,
       creator: response.data.creator
@@ -298,7 +297,6 @@ export function useBudgets() {
       valid_from: response.data.valid_from,
       valid_until: response.data.valid_until,
       total: response.data.total,
-      currency: response.data.currency,
       created_at: response.data.created_at,
       patient: response.data.patient,
       creator: response.data.creator

@@ -4,7 +4,6 @@ import type { BudgetItemCreate, TreatmentCatalogItem } from '~~/app/types'
 const props = defineProps<{
   open: boolean
   budgetId: string
-  currency?: string
 }>()
 
 const emit = defineEmits<{
@@ -161,7 +160,6 @@ watch(() => props.open, (isOpen) => {
           >
             <TreatmentVisualSelector
               :model-value="selectedItem"
-              :currency="currency"
               :in-modal="true"
               @update:model-value="handleItemSelect"
             />
@@ -251,7 +249,7 @@ watch(() => props.open, (isOpen) => {
           >
             <span class="text-muted">{{ t('budget.items.lineTotal') }}</span>
             <span class="text-h1 tnum text-default">
-              {{ formatPrice(previewTotal, currency || 'EUR') }}
+              {{ formatPrice(previewTotal) }}
             </span>
           </div>
         </form>

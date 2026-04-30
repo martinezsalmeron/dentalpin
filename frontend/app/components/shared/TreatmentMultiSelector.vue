@@ -4,7 +4,6 @@ import type { TreatmentCatalogItem, ApiResponse } from '~/types'
 const props = defineProps<{
   modelValue?: TreatmentCatalogItem[]
   placeholder?: string
-  currency?: string
 }>()
 
 const emit = defineEmits<{
@@ -145,7 +144,7 @@ const totalDuration = computed(() => {
             {{ item.default_duration_minutes }} min
           </span>
           <span class="text-sm font-semibold text-primary-accent">
-            {{ formatPrice(item.default_price, currency || 'EUR') }}
+            {{ formatPrice(item.default_price) }}
           </span>
           <UButton
             variant="ghost"
@@ -218,7 +217,7 @@ const totalDuration = computed(() => {
             <div class="flex items-center justify-between">
               <span class="text-caption text-subtle">{{ item.internal_code }}</span>
               <span class="text-sm font-semibold text-primary-accent">
-                {{ formatPrice(item.default_price, currency || 'EUR') }}
+                {{ formatPrice(item.default_price) }}
               </span>
             </div>
             <UBadge

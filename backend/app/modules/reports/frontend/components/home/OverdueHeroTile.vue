@@ -21,9 +21,7 @@ const surfaceClass = computed(() =>
   total.value === 0 ? 'bg-surface ring-1 ring-[var(--color-border)] shadow-[var(--shadow-sm)]' : 'alert-surface-danger'
 )
 
-function formatMoney(n: number): string {
-  return n.toLocaleString(locale.value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
-}
+const { format: formatMoney } = useCurrency()
 </script>
 
 <template>

@@ -28,7 +28,6 @@ export function viewForTooth(treatment: Treatment, toothNumber: number): ToothTr
     performed_by_name: treatment.performed_by_name,
     notes: treatment.notes,
     price_snapshot: treatment.price_snapshot,
-    currency_snapshot: treatment.currency_snapshot,
     catalog_item_id: treatment.catalog_item_id,
     catalog_item: treatment.catalog_item,
     source_module: treatment.source_module,

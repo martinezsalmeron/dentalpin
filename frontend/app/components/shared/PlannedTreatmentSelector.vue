@@ -5,7 +5,6 @@ const props = defineProps<{
   modelValue?: PlannedTreatmentItem[]
   patientId?: string
   placeholder?: string
-  currency?: string
 }>()
 
 const emit = defineEmits<{
@@ -225,7 +224,7 @@ const hasPendingTreatments = computed(() => {
               v-if="getItemPrice(item)"
               class="text-sm font-semibold text-primary-accent"
             >
-              {{ formatPrice(getItemPrice(item), currency || 'EUR') }}
+              {{ formatPrice(getItemPrice(item)) }}
             </span>
             <UButton
               variant="ghost"
@@ -321,7 +320,7 @@ const hasPendingTreatments = computed(() => {
                 v-if="getItemPrice(item)"
                 class="text-sm font-semibold text-primary-accent whitespace-nowrap"
               >
-                {{ formatPrice(getItemPrice(item), currency || 'EUR') }}
+                {{ formatPrice(getItemPrice(item)) }}
               </span>
             </div>
           </button>

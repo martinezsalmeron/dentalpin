@@ -808,7 +808,6 @@ class BudgetWorkflowService:
             assigned_professional_id=budget.assigned_professional_id,
             global_discount_type=budget.global_discount_type,
             global_discount_value=budget.global_discount_value,
-            currency=budget.currency,
             plan_number_snapshot=budget.plan_number_snapshot,
             plan_status_snapshot=budget.plan_status_snapshot,
         )

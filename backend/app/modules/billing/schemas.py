@@ -471,7 +471,6 @@ class InvoiceResponse(BaseModel):
     total: Decimal
     total_paid: Decimal
     balance_due: Decimal
-    currency: str
 
     # Notes
     internal_notes: str | None
@@ -523,7 +522,6 @@ class InvoiceListResponse(BaseModel):
     total: Decimal
     total_paid: Decimal
     balance_due: Decimal
-    currency: str
     created_at: datetime
 
     # Generic compliance summary — shape is country-keyed
@@ -610,7 +608,6 @@ class PatientBillingSummary(BaseModel):
     """Schema for patient billing summary in profile."""
 
     patient_id: UUID
-    currency: str
 
     # Budget metrics
     total_budgeted: Decimal

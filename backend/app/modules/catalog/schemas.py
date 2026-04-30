@@ -159,7 +159,6 @@ class CatalogItemCreate(BaseModel):
     # Pricing
     default_price: Decimal | None = Field(default=None, ge=0)
     cost_price: Decimal | None = Field(default=None, ge=0)
-    currency: str = Field(default="EUR", max_length=3)
 
     # Scheduling
     default_duration_minutes: int | None = Field(default=None, ge=0, le=480)  # Max 8 hours
@@ -198,7 +197,6 @@ class CatalogItemUpdate(BaseModel):
     # Pricing
     default_price: Decimal | None = Field(default=None, ge=0)
     cost_price: Decimal | None = Field(default=None, ge=0)
-    currency: str | None = Field(default=None, max_length=3)
 
     # Scheduling
     default_duration_minutes: int | None = Field(default=None, ge=0, le=480)
@@ -240,7 +238,6 @@ class CatalogItemResponse(BaseModel):
     # Pricing
     default_price: Decimal | None
     cost_price: Decimal | None
-    currency: str
 
     # Scheduling
     default_duration_minutes: int | None
@@ -314,7 +311,6 @@ class OdontogramTreatmentResponse(BaseModel):
     internal_code: str
     names: dict[str, str]
     default_price: Decimal | None
-    currency: str = "EUR"
     treatment_scope: str
     requires_surfaces: bool
     is_diagnostic: bool

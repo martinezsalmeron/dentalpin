@@ -6,10 +6,14 @@ from decimal import Decimal
 from io import BytesIO
 from typing import TYPE_CHECKING
 
+from app.core.utils.currency import format_currency as _fmt_currency
+
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic
 
 from .models import Invoice
+
+_LOCALE_BY_LANG = {"es": "es_ES", "en": "en_US"}
 
 
 class InvoicePDFService:
@@ -89,9 +93,11 @@ class InvoicePDFService:
         # Determine if this is a credit note
         is_credit_note = invoice.credit_note_for_id is not None
 
-        # Format currency
+        # Format currency from clinic.currency, locale derived from language.
+        money_locale = _LOCALE_BY_LANG.get(locale, "es_ES")
+
         def format_currency(amount: Decimal) -> str:
-            return f"{amount:,.2f} {invoice.currency}"
+            return _fmt_currency(amount, clinic.currency, locale=money_locale)
 
         # Build items table rows
         items_html = ""

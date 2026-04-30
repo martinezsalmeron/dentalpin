@@ -36,10 +36,8 @@ function getStatusColor(status: TreatmentPlanStatus) {
   return statusColors[status] || 'neutral'
 }
 
-// Format currency
-function formatCurrency(amount: number, currency = 'EUR') {
-  return new Intl.NumberFormat(locale.value, { style: 'currency', currency }).format(amount)
-}
+// Format currency — clinic-wide via useCurrency.
+const { format: formatCurrency } = useCurrency()
 </script>
 
 <template>

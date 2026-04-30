@@ -170,14 +170,8 @@ function getItemPrice(item: PlannedTreatmentItem): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-// Format currency
-function formatCurrency(amount: number | undefined): string {
-  if (amount === undefined) return ''
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(amount)
-}
+// Format currency — clinic-wide via useCurrency.
+const { format: formatCurrency } = useCurrency()
 </script>
 
 <template>

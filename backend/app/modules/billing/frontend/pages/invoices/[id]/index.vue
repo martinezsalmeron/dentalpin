@@ -667,16 +667,16 @@ function goToCreditNoteFor() {
                   </div>
                   <div class="text-right">
                     <p class="text-caption text-subtle">
-                      {{ item.quantity }} x {{ formatCurrency(item.unit_price, currentInvoice.currency) }}
+                      {{ item.quantity }} x {{ formatCurrency(item.unit_price) }}
                     </p>
                     <p
                       v-if="item.line_discount > 0"
                       class="text-sm text-success-accent"
                     >
-                      -{{ formatCurrency(item.line_discount, currentInvoice.currency) }}
+                      -{{ formatCurrency(item.line_discount) }}
                     </p>
                     <p class="font-semibold text-default">
-                      {{ formatCurrency(item.line_total, currentInvoice.currency) }}
+                      {{ formatCurrency(item.line_total) }}
                     </p>
                     <p class="text-xs text-subtle">
                       {{ t('invoice.vat') }} {{ item.vat_rate }}%
@@ -704,7 +704,7 @@ function goToCreditNoteFor() {
               >
                 <div>
                   <p class="font-medium text-default">
-                    {{ formatCurrency(payment.amount, currentInvoice.currency) }}
+                    {{ formatCurrency(payment.amount) }}
                   </p>
                   <p class="text-caption text-subtle">
                     {{ getPaymentMethodLabel(payment.payment_method) }} - {{ formatDate(payment.payment_date) }}
@@ -749,23 +749,23 @@ function goToCreditNoteFor() {
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-subtle">{{ t('invoice.subtotal') }}</span>
-                <span class="font-medium">{{ formatCurrency(currentInvoice.subtotal, currentInvoice.currency) }}</span>
+                <span class="font-medium">{{ formatCurrency(currentInvoice.subtotal) }}</span>
               </div>
               <div
                 v-if="currentInvoice.total_discount > 0"
                 class="flex justify-between text-success-accent"
               >
                 <span>{{ t('invoice.discount') }}</span>
-                <span>-{{ formatCurrency(currentInvoice.total_discount, currentInvoice.currency) }}</span>
+                <span>-{{ formatCurrency(currentInvoice.total_discount) }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-subtle">{{ t('invoice.tax') }}</span>
-                <span class="font-medium">{{ formatCurrency(currentInvoice.total_tax, currentInvoice.currency) }}</span>
+                <span class="font-medium">{{ formatCurrency(currentInvoice.total_tax) }}</span>
               </div>
               <div class="flex justify-between pt-3 border-t border-default">
                 <span class="font-semibold text-default">{{ t('invoice.total') }}</span>
                 <span class="font-bold text-lg text-default">
-                  {{ formatCurrency(currentInvoice.total, currentInvoice.currency) }}
+                  {{ formatCurrency(currentInvoice.total) }}
                 </span>
               </div>
               <div
@@ -774,7 +774,7 @@ function goToCreditNoteFor() {
               >
                 <span class="text-subtle">{{ t('invoice.paid') }}</span>
                 <span class="font-medium text-success-accent">
-                  {{ formatCurrency(currentInvoice.total_paid, currentInvoice.currency) }}
+                  {{ formatCurrency(currentInvoice.total_paid) }}
                 </span>
               </div>
               <div
@@ -783,7 +783,7 @@ function goToCreditNoteFor() {
               >
                 <span class="font-semibold text-warning-accent">{{ t('invoice.balanceDue') }}</span>
                 <span class="font-bold text-warning-accent">
-                  {{ formatCurrency(currentInvoice.balance_due, currentInvoice.currency) }}
+                  {{ formatCurrency(currentInvoice.balance_due) }}
                 </span>
               </div>
             </div>

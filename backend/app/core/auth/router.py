@@ -593,9 +593,23 @@ async def update_clinic_metadata(
         clinic.address = {**existing_address, **new_address}
     if data.timezone is not None:
         clinic.timezone = data.timezone
+    if data.currency is not None:
+        clinic.currency = data.currency
 
     await db.commit()
-    await db.refresh(clinic)
+    # Re-query with cabinets eagerly loaded so ClinicMetadataResponse
+    # serialization doesn't trigger an async lazy load. The response
+    # always returns the full metadata shape including cabinets.
+    from app.modules.agenda.models import Cabinet as _Cabinet
+    from app.core.auth.models import Clinic as _ClinicModel
+
+    result = await db.execute(
+        select(_ClinicModel)
+        .where(_ClinicModel.id == clinic.id)
+        .options(selectinload(_ClinicModel.cabinets))
+    )
+    clinic = result.scalar_one()
+    _ = _Cabinet  # keep the import live for forward refs
 
     return ApiResponse(data=ClinicMetadataResponse.model_validate(clinic))
 

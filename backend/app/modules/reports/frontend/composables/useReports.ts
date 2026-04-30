@@ -461,12 +461,11 @@ export function useReports() {
   // Helpers
   // ============================================================================
 
+  // Currency follows clinic.currency; locale follows the user's UI.
+  const { format } = useCurrency()
   function formatCurrency(value: string | number): string {
     const num = typeof value === 'string' ? parseFloat(value) : value
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(num)
+    return format(num)
   }
 
   function getBudgetStatusLabel(status: string): string {

@@ -74,7 +74,6 @@ async def budget_clinic_setup(
         names={"es": "Tratamiento Test", "en": "Test Treatment"},
         descriptions={"es": "Descripción", "en": "Description"},
         default_price=100.00,
-        currency="EUR",
         vat_type_id=vat_type.id,
         treatment_scope="whole_tooth",
         is_diagnostic=False,

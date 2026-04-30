@@ -203,7 +203,6 @@ function getPatientName(budget: BudgetListItem): string {
             </span>
             <Money
               :value="budget.total"
-              :currency="budget.currency"
               strong
             />
           </template>

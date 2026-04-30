@@ -81,9 +81,6 @@ class Budget(Base, TimestampMixin):
     total_tax: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))  # Total VAT
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))  # Final amount
 
-    # Currency
-    currency: Mapped[str] = mapped_column(String(3), default="EUR")
-
     # Notes
     internal_notes: Mapped[str | None] = mapped_column(Text, default=None)
     patient_notes: Mapped[str | None] = mapped_column(Text, default=None)
