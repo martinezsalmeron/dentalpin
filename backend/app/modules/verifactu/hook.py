@@ -277,9 +277,7 @@ async def _compose_payload(
         fecha_hora_huso_gen_registro=fecha_hora_huso,
     )
 
-    id_factura_anterior = await _resolve_id_factura_anterior(
-        db, settings, nif_emisor, is_first
-    )
+    id_factura_anterior = await _resolve_id_factura_anterior(db, settings, nif_emisor, is_first)
 
     destinatario = None
     if invoice.billing_tax_id:
@@ -388,9 +386,7 @@ async def regenerate_record(
     # manually — same XML still good. Only when AEAT actually pushed
     # back on the data do we re-render.
     code = record.aeat_codigo_error or 0
-    is_business_transient = record.state == "failed_transient" and (
-        code == -2 or code >= 1000
-    )
+    is_business_transient = record.state == "failed_transient" and (code == -2 or code >= 1000)
     if record.state not in ("rejected", "failed_validation") and not is_business_transient:
         raise ValueError(
             f"regenerate_record solo aplica a registros rechazados, no a state={record.state!r}"
@@ -447,9 +443,7 @@ async def regenerate_record(
         rechazo_previo=True,
     )
 
-    is_chain_head = (
-        settings.last_record_id == record.id and settings.last_huella == record.huella
-    )
+    is_chain_head = settings.last_record_id == record.id and settings.last_huella == record.huella
 
     record.xml_payload = composed.xml
     record.huella = composed.huella
@@ -590,9 +584,7 @@ class VerifactuHook(BillingComplianceHook):
             except AttributeError:
                 pass
 
-    async def can_edit_billing_party(
-        self, invoice, db: AsyncSession
-    ) -> tuple[bool, str | None]:
+    async def can_edit_billing_party(self, invoice, db: AsyncSession) -> tuple[bool, str | None]:
         """Allow editing only when the latest record is rejected.
 
         AEAT never registered the original data in that case, so
@@ -614,9 +606,7 @@ class VerifactuHook(BillingComplianceHook):
                 "La factura aún no tiene registro Verifactu asociado.",
             )
         code = record.aeat_codigo_error or 0
-        is_business_transient = record.state == "failed_transient" and (
-            code == -2 or code >= 1000
-        )
+        is_business_transient = record.state == "failed_transient" and (code == -2 or code >= 1000)
         if record.state in ("rejected", "failed_validation") or is_business_transient:
             return True, None
         return (
@@ -626,9 +616,7 @@ class VerifactuHook(BillingComplianceHook):
             "aceptada por la AEAT, emite una factura rectificativa.",
         )
 
-    async def regenerate_after_party_change(
-        self, invoice, db: AsyncSession
-    ) -> dict[str, Any]:
+    async def regenerate_after_party_change(self, invoice, db: AsyncSession) -> dict[str, Any]:
         """Re-render the latest fiscal record after a billing-party edit."""
 
         rec_q = await db.execute(
@@ -641,9 +629,7 @@ class VerifactuHook(BillingComplianceHook):
         if record is None:
             return {}
         code = record.aeat_codigo_error or 0
-        is_business_transient = record.state == "failed_transient" and (
-            code == -2 or code >= 1000
-        )
+        is_business_transient = record.state == "failed_transient" and (code == -2 or code >= 1000)
         if record.state not in ("rejected", "failed_validation") and not is_business_transient:
             return {}
         await regenerate_record(db, record)

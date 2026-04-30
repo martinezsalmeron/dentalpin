@@ -68,7 +68,7 @@ ADRs) for the full story.
 
 | Term | Definition |
 |---|---|
-| Module | A self-contained feature under `backend/app/modules/<name>/` plus its co-located frontend layer. See `docs/creating-modules.md`. |
+| Module | A self-contained feature under `backend/app/modules/<name>/` plus its co-located frontend layer. See `docs/technical/creating-modules.md`. |
 | Manifest | The `manifest` dict on a `BaseModule` subclass. Identity, dependencies, permissions, install policy. Schema in `backend/app/core/plugins/manifest.py`. |
 | Entry point | `pyproject.toml` registration under `[project.entry-points."dentalpin.modules"]` so the loader can discover the module. |
 | `depends` | Manifest field. List of modules this one needs at load time. Cross-module FKs and direct imports are only allowed against modules listed here. |

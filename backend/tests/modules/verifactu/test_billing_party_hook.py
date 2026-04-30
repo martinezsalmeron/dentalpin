@@ -34,11 +34,7 @@ async def _setup(db: AsyncSession) -> tuple[Clinic, User, Patient, Invoice, Veri
         is_active=True,
     )
     db.add(user)
-    db.add(
-        ClinicMembership(
-            id=uuid4(), user_id=user.id, clinic_id=clinic.id, role="admin"
-        )
-    )
+    db.add(ClinicMembership(id=uuid4(), user_id=user.id, clinic_id=clinic.id, role="admin"))
     patient = Patient(id=uuid4(), clinic_id=clinic.id, first_name="P", last_name="X")
     db.add(patient)
     db.add(
@@ -90,7 +86,7 @@ async def _setup(db: AsyncSession) -> tuple[Clinic, User, Patient, Invoice, Veri
         )
     )
     await db.flush()
-    await db.refresh(invoice)
+    await db.refresh(invoice, attribute_names=["items"])
 
     hook = VerifactuHook()
     payload = await hook.on_invoice_issued(invoice, db)

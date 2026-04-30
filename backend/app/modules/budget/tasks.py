@@ -38,7 +38,9 @@ async def expire_budgets() -> None:
                 await BudgetWorkflowService.check_expired_budgets(db, clinic_id)
                 await db.commit()
             except Exception as exc:
-                logger.error("expire_budgets failed for clinic %s: %s", clinic_id, exc, exc_info=True)
+                logger.error(
+                    "expire_budgets failed for clinic %s: %s", clinic_id, exc, exc_info=True
+                )
                 await db.rollback()
 
 
@@ -64,7 +66,6 @@ async def send_budget_reminders() -> None:
         async with async_session_maker() as db:
             try:
                 seven_ago = today - timedelta(days=7)
-                fourteen_ago = today - timedelta(days=14)
                 # Fetch sent budgets created up to 14 days ago without a
                 # reminder in the last 5 days. We cap the rolling
                 # cooldown at 5 days so neither the 7d nor the 14d
@@ -75,19 +76,23 @@ async def send_budget_reminders() -> None:
                     tzinfo=UTC,
                 )
                 rows = (
-                    await db.execute(
-                        select(Budget).where(
-                            Budget.clinic_id == clinic_id,
-                            Budget.status == "sent",
-                            Budget.deleted_at.is_(None),
-                            Budget.valid_from <= seven_ago,
-                            (
-                                Budget.last_reminder_sent_at.is_(None)
-                                | (Budget.last_reminder_sent_at <= cutoff_no_reminder)
-                            ),
+                    (
+                        await db.execute(
+                            select(Budget).where(
+                                Budget.clinic_id == clinic_id,
+                                Budget.status == "sent",
+                                Budget.deleted_at.is_(None),
+                                Budget.valid_from <= seven_ago,
+                                (
+                                    Budget.last_reminder_sent_at.is_(None)
+                                    | (Budget.last_reminder_sent_at <= cutoff_no_reminder)
+                                ),
+                            )
                         )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
 
                 for budget in rows:
                     days_since_send = (today - budget.valid_from).days
@@ -97,9 +102,7 @@ async def send_budget_reminders() -> None:
                         milestone = 7
                     else:
                         continue
-                    await BudgetWorkflowService.send_reminder(
-                        db, budget, milestone_days=milestone
-                    )
+                    await BudgetWorkflowService.send_reminder(db, budget, milestone_days=milestone)
                 await db.commit()
             except Exception as exc:
                 logger.error(
@@ -120,10 +123,7 @@ async def purge_budget_access_logs() -> None:
     async with async_session_maker() as db:
         try:
             result = await db.execute(
-                text(
-                    "DELETE FROM budget_access_logs "
-                    "WHERE attempted_at < :cutoff"
-                ),
+                text("DELETE FROM budget_access_logs WHERE attempted_at < :cutoff"),
                 {"cutoff": cutoff},
             )
             await db.commit()

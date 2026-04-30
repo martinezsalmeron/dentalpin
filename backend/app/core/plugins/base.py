@@ -106,7 +106,7 @@ class BaseModule(ABC):
         Every new write-capable module MUST eventually expose its
         mutating service methods here so AI agents can invoke them
         through the audited chokepoint rather than calling service
-        functions directly. See ``docs/creating-modules.md`` for the
+        functions directly. See ``docs/technical/creating-modules.md`` for the
         full contract.
         """
 

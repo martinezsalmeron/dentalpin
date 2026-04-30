@@ -788,7 +788,6 @@ class TreatmentPlanService:
 
         return plan
 
-
     @staticmethod
     async def request_budget_sync(
         db: AsyncSession,
@@ -807,9 +806,7 @@ class TreatmentPlanService:
 
         plan_items = await db.execute(
             select(PlannedTreatmentItem)
-            .options(
-                selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth)
-            )
+            .options(selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth))
             .where(
                 PlannedTreatmentItem.treatment_plan_id == plan_id,
                 PlannedTreatmentItem.clinic_id == clinic_id,
@@ -899,10 +896,7 @@ class TreatmentPlanService:
             )
             order_by = "appt.last_past_at DESC NULLS LAST"
         elif tab == "cerrados":
-            tab_where = (
-                "p.status = 'closed' "
-                "AND p.closed_at >= (NOW() - INTERVAL '90 days')"
-            )
+            tab_where = "p.status = 'closed' AND p.closed_at >= (NOW() - INTERVAL '90 days')"
             order_by = "p.closed_at DESC"
         else:
             raise ValueError(f"Unknown pipeline tab '{tab}'")
@@ -914,9 +908,7 @@ class TreatmentPlanService:
             params["doctor_id"] = doctor_id
         if search:
             extra_where += (
-                " AND (p.plan_number ILIKE :q "
-                "OR pat.first_name ILIKE :q "
-                "OR pat.last_name ILIKE :q)"
+                " AND (p.plan_number ILIKE :q OR pat.first_name ILIKE :q OR pat.last_name ILIKE :q)"
             )
             params["q"] = f"%{search}%"
 
@@ -1028,12 +1020,8 @@ class TreatmentPlanService:
         now = datetime.now(UTC)
         out: list[dict] = []
         for r in rows_result.mappings().all():
-            anchor = (
-                r["confirmed_at"] or r["closed_at"] or r["updated_at"]
-            )
-            days_in_status = (
-                (now - anchor).days if anchor is not None else 0
-            )
+            anchor = r["confirmed_at"] or r["closed_at"] or r["updated_at"]
+            days_in_status = (now - anchor).days if anchor is not None else 0
             patient_brief = {
                 "id": r["patient_id"],
                 "first_name": r["first_name"],
@@ -1045,9 +1033,7 @@ class TreatmentPlanService:
                 budget_brief = {
                     "id": r["budget_id"],
                     "status": r["budget_status"],
-                    "total": float(r["budget_total"])
-                    if r["budget_total"] is not None
-                    else None,
+                    "total": float(r["budget_total"]) if r["budget_total"] is not None else None,
                     "valid_until": r["valid_until"],
                     "last_reminder_sent_at": r["last_reminder_sent_at"],
                     "viewed_at": r["viewed_at"],
@@ -1093,9 +1079,7 @@ class TreatmentPlanService:
             primary_tooth = treatment.teeth[0].tooth_number if treatment.teeth else None
             primary_surfaces = treatment.teeth[0].surfaces if treatment.teeth else None
             unit_price = (
-                str(treatment.price_snapshot)
-                if treatment.price_snapshot is not None
-                else None
+                str(treatment.price_snapshot) if treatment.price_snapshot is not None else None
             )
             if unit_price is not None:
                 try:
@@ -1107,9 +1091,7 @@ class TreatmentPlanService:
                     "item_id": str(item.id),
                     "treatment_id": str(treatment.id),
                     "catalog_item_id": (
-                        str(treatment.catalog_item_id)
-                        if treatment.catalog_item_id
-                        else None
+                        str(treatment.catalog_item_id) if treatment.catalog_item_id else None
                     ),
                     "tooth_number": primary_tooth,
                     "surfaces": primary_surfaces,
@@ -1280,9 +1262,7 @@ class TreatmentPlanService:
         plan.closed_at = datetime.now(UTC)
 
         # Drop the plan's hold on its planned Treatments.
-        await TreatmentPlanService._cleanup_orphan_planned_treatments(
-            db, clinic_id, plan, user_id
-        )
+        await TreatmentPlanService._cleanup_orphan_planned_treatments(db, clinic_id, plan, user_id)
         await db.flush()
 
         event_bus.publish(

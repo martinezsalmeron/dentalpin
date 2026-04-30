@@ -16,9 +16,9 @@ from app.modules.verifactu.services.nif_validator import (
         "12345678Z",  # canonical DNI from AEAT examples
         "00000000T",
         "X1234567L",  # NIE
-        "Y0000000X",
+        "Y0000000Z",
         "B98765431",  # CIF empresa S.L. (digit control)
-        "A28000000",  # frequent valid CIF used as prod-test placeholder
+        "A58818501",  # CIF empresa S.A. (digit control)
     ],
 )
 def test_is_valid_spanish_nif_valid(value: str) -> None:

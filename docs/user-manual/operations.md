@@ -6,7 +6,7 @@ operator runs — not the Python internals.
 
 > **Audience**: ops-aware user with shell access to the host running
 > `docker compose up`. For contributor-facing docs see
-> `docs/creating-modules.md`.
+> `docs/technical/creating-modules.md`.
 
 ---
 

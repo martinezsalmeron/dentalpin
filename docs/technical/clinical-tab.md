@@ -1,6 +1,6 @@
 # Plan Técnico: Rediseño Tab Clínico
 
-**Documento de diseño:** [clinical-tab-redesign.md](./clinical-tab-redesign.md)
+**Documento de diseño:** [clinical-tab-redesign.md](../features/clinical-tab-redesign.md)
 
 ---
 

@@ -35,9 +35,7 @@ async def auto_close_expired_plans() -> None:
     today = date.today()
     async with async_session_maker() as db:
         clinic_rows = (
-            await db.execute(
-                text("SELECT id, settings FROM clinics WHERE deleted_at IS NULL")
-            )
+            await db.execute(text("SELECT id, settings FROM clinics WHERE deleted_at IS NULL"))
         ).all()
 
     from .service import TreatmentPlanService  # avoid circular at import-time
@@ -45,9 +43,7 @@ async def auto_close_expired_plans() -> None:
     for clinic_row in clinic_rows:
         settings_json = clinic_row.settings or {}
         threshold_days = int(
-            settings_json.get(
-                "plan_auto_close_days_after_expiry", DEFAULT_PLAN_AUTO_CLOSE_DAYS
-            )
+            settings_json.get("plan_auto_close_days_after_expiry", DEFAULT_PLAN_AUTO_CLOSE_DAYS)
         )
         cutoff = today - timedelta(days=threshold_days)
         clinic_id: UUID = clinic_row.id
@@ -84,9 +80,7 @@ async def auto_close_expired_plans() -> None:
                             plan.id,
                             plan.created_by,
                             closure_reason="expired",
-                            closure_note=(
-                                f"Auto-closed {threshold_days}d after budget expiry"
-                            ),
+                            closure_note=(f"Auto-closed {threshold_days}d after budget expiry"),
                         )
                     except ValueError as exc:
                         logger.info(

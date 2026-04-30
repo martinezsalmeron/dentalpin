@@ -123,5 +123,5 @@ Playwright E2E smoke suite (B.8). `main` is stable against the
   then and exists purely to hold the infrastructure in place.
 - Docs (`docs/diagrams/*`, `CLAUDE.md` examples) still reference the
   old `/api/v1/clinical/*` paths in a handful of illustrative spots;
-  the primary `docs/creating-modules.md` and `docs/core-api.md` are
+  the primary `docs/technical/creating-modules.md` and `docs/technical/core-api.md` are
   up to date.

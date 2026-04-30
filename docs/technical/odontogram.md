@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-04-17
 **Estado:** Propuesta técnica (v3 — verificada contra código real)
-**Documento relacionado:** [treatment-addition-ux.md](./treatment-addition-ux.md)
+**Documento relacionado:** [treatment-addition (UX brief)](../features/treatment-addition.md)
 
 ---
 

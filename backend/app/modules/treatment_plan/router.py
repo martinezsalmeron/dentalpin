@@ -16,8 +16,6 @@ from .schemas import (
     ContactLogRequest,
     GenerateBudgetResponse,
     LinkBudgetRequest,
-    PipelineBudgetBrief,
-    PipelineNextAppointment,
     PipelineRow,
     PlannedTreatmentItemCreate,
     PlannedTreatmentItemResponse,
@@ -322,9 +320,7 @@ async def reactivate_treatment_plan(
 ) -> ApiResponse[TreatmentPlanResponse]:
     """Revive a closed plan back to ``draft`` for a fresh cycle."""
     try:
-        plan = await TreatmentPlanService.reactivate(
-            db, ctx.clinic_id, plan_id, ctx.user_id
-        )
+        plan = await TreatmentPlanService.reactivate(db, ctx.clinic_id, plan_id, ctx.user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return ApiResponse(data=TreatmentPlanResponse.model_validate(plan))
@@ -357,9 +353,7 @@ async def log_plan_contact(
     line = f"[{timestamp}] {data.channel} by {ctx.user_id}"
     if data.note:
         line += f" — {data.note.strip()}"
-    plan.internal_notes = (
-        f"{plan.internal_notes}\n{line}".strip() if plan.internal_notes else line
-    )
+    plan.internal_notes = f"{plan.internal_notes}\n{line}".strip() if plan.internal_notes else line
     await db.flush()
 
 

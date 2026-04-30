@@ -29,7 +29,7 @@ DentalPin is built as independent modules under `backend/app/modules/<name>/` wi
 - Each module owns its Alembic branch (`branch_labels = ("<name>",)`). Never thread one module's revisions through another's chain — uninstall safety depends on it (issue #56).
 - Permissions are namespaced: a module returns `resource.action` from `get_permissions()`; the registry prefixes with the module name.
 
-**Before adding a feature, read `docs/creating-modules.md`** — it is the source of truth for module structure, lifecycle, manifest, slots, events, tools/agents, and migrations.
+**Before adding a feature, read `docs/technical/creating-modules.md`** — it is the source of truth for module structure, lifecycle, manifest, slots, events, tools/agents, and migrations.
 
 **Engineering posture:**
 - Think deeply before coding. Avoid over-engineering. Build only what the task needs.
@@ -47,6 +47,7 @@ DentalPin is built as independent modules under `backend/app/modules/<name>/` wi
 | New permission | Return from `get_permissions()` (no module prefix). List in `manifest.role_permissions`. Add to `frontend/app/config/permissions.ts` if user-facing. |
 | Architectural decision | Copy `docs/adr/TEMPLATE.md` → `docs/adr/NNNN-title.md`. |
 | New domain term (ES↔EN) | Append to `docs/glossary.md`. |
+| New documentation file | Pick the folder by type from the **Documentation policy** table below. Never drop new files at `docs/` root. |
 | Touched any module | Update its `backend/app/modules/<name>/CHANGELOG.md` under `## Unreleased`. |
 | Cross-module FK or import | Target module MUST be in `manifest.depends`. CI rejects otherwise. |
 
@@ -59,6 +60,29 @@ Reference material:
 - Module catalog: `docs/modules-catalog.md` (auto-generated)
 - Event catalog: `docs/events-catalog.md` (auto-generated)
 - Reference modules to copy from: `patients` (simple), `schedules` (removable), `treatment_plan` (heavy deps), `verifactu` (compliance)
+
+---
+
+## Documentation policy
+
+`/docs` is organized by **type** of doc. Pick the folder from the table; never drop new files at `docs/` root. CI (`scripts/check_docs_layout.py`) enforces this.
+
+| Doc type | Folder |
+|----------|--------|
+| End-user / admin how-to (Spanish, screenshots) | `docs/user-manual/` |
+| Product feature spec / UX brief (*what* + *why*) | `docs/features/` |
+| Cross-cutting tech reference, tech plans, module-author guide | `docs/technical/` |
+| Module-specific deep-dive | `docs/modules/<name>.md` |
+| Architectural decision (rule + rationale) | `docs/adr/NNNN-title.md` |
+| Agent / dev checklist | `docs/checklists/` |
+| Diagram source (Mermaid / PlantUML) | `docs/diagrams/` |
+| Image asset (PNG / SVG) | `docs/screenshots/` |
+| Operational runbook / end-to-end workflow | `docs/workflows/` |
+| Auto-generated catalog | `docs/` root, suffix `-catalog.md` |
+
+**Only these files live at `docs/` root:** `README.md` (taxonomy index), `glossary.md`, `events-catalog.md`, `modules-catalog.md`. Anything else fails CI.
+
+Decision tree + folder descriptions: [`docs/README.md`](./docs/README.md).
 
 ---
 
@@ -231,7 +255,7 @@ class MyModel(Base):
 - Soft delete via `status` (never hard-delete patient data).
 - Index `clinic_id` on every multi-tenant table.
 
-Migrations live in `backend/app/modules/<name>/migrations/versions/` on a per-module branch. See `docs/creating-modules.md` §3 (`migrations/`) for the branching rules and the `--branch-label` invocation.
+Migrations live in `backend/app/modules/<name>/migrations/versions/` on a per-module branch. See `docs/technical/creating-modules.md` §3 (`migrations/`) for the branching rules and the `--branch-label` invocation.
 
 ```bash
 docker-compose exec backend alembic upgrade heads     # plural — multiple branches
@@ -257,7 +281,7 @@ Status codes: `200` GET/PUT, `201` POST, `204` DELETE, `400` bad request, `401` 
 
 ## Module quick reference
 
-Full guide: `docs/creating-modules.md`. Skeleton:
+Full guide: `docs/technical/creating-modules.md`. Skeleton:
 
 ```python
 class MyModule(BaseModule):
@@ -308,7 +332,7 @@ async def test_create_patient(client: AsyncClient, auth_headers: dict):
     assert response.status_code == 201
 ```
 
-For modules with `removable=True`, also cover the round-trip uninstall (see `docs/creating-modules.md` §9).
+For modules with `removable=True`, also cover the round-trip uninstall (see `docs/technical/creating-modules.md` §9).
 
 ---
 

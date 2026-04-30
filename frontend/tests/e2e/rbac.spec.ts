@@ -13,7 +13,7 @@ import { test, expect } from './_fixtures'
 const LABELS = {
   patients: /patients|pacientes/i,
   schedule: /schedule|agenda|citas|appointments/i,
-  plans: /plans|planes|treatment/i,
+  plans: /^(treatment plans|planes de tratamiento)$/i,
   quotes: /quotes|budgets|presupuestos/i,
   invoices: /invoices|facturas/i,
   reports: /reports|informes/i

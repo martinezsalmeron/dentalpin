@@ -48,11 +48,10 @@ DEFAULT_BUDGET_VALIDITY_DAYS = 30
 # Default plan auto-close window after the budget has expired.
 DEFAULT_PLAN_AUTO_CLOSE_DAYS = 30
 
+
 def _hash_password(plaintext: str) -> str:
     """Hash a manual-code with bcrypt. Returns the encoded hash string."""
-    return bcrypt.hashpw(
-        plaintext.encode("utf-8"), bcrypt.gensalt()
-    ).decode("utf-8")
+    return bcrypt.hashpw(plaintext.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def _verify_password(plaintext: str, hashed: str) -> bool:
@@ -72,9 +71,7 @@ def _hash_ip(raw_ip: str | None) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-async def _resolve_clinic_settings(
-    db: AsyncSession, clinic_id: UUID
-) -> dict:
+async def _resolve_clinic_settings(db: AsyncSession, clinic_id: UUID) -> dict:
     """Read ``clinic.settings`` JSONB for budget-related toggles.
 
     Implemented with raw SQL to avoid importing the auth.Clinic model
@@ -288,9 +285,7 @@ class BudgetWorkflowService:
                         locale=locale,
                         signature=signature,
                     )
-                    signature.document_hash = BudgetPDFService.generate_pdf_hash(
-                        pdf_bytes
-                    )
+                    signature.document_hash = BudgetPDFService.generate_pdf_hash(pdf_bytes)
                     await db.flush()
         except Exception as exc:
             logger.warning(
@@ -422,7 +417,6 @@ class BudgetWorkflowService:
 
         return budget
 
-
     @staticmethod
     async def check_expired_budgets(
         db: AsyncSession,
@@ -474,11 +468,7 @@ class BudgetWorkflowService:
         # Publish events for subscribers (treatment_plan, patient_timeline).
         for budget in expired_budgets:
             plan_id = await BudgetWorkflowService._lookup_plan_id(db, budget.id)
-            days_overdue = (
-                (today - budget.valid_until).days
-                if budget.valid_until
-                else None
-            )
+            days_overdue = (today - budget.valid_until).days if budget.valid_until else None
             event_bus.publish(
                 EventType.BUDGET_EXPIRED,
                 {
@@ -487,9 +477,7 @@ class BudgetWorkflowService:
                     "patient_id": str(budget.patient_id),
                     "budget_number": budget.budget_number,
                     "plan_id": str(plan_id) if plan_id else None,
-                    "valid_until": budget.valid_until.isoformat()
-                    if budget.valid_until
-                    else None,
+                    "valid_until": budget.valid_until.isoformat() if budget.valid_until else None,
                     "days_overdue": days_overdue,
                     "occurred_at": datetime.now(UTC).isoformat(),
                 },
@@ -535,9 +523,7 @@ class BudgetWorkflowService:
         the reverse direction is correctly the bus.
         """
         if not BudgetWorkflowService.can_transition(budget.status, "cancelled"):
-            raise BudgetWorkflowError(
-                f"Cannot renegotiate budget in status '{budget.status}'"
-            )
+            raise BudgetWorkflowError(f"Cannot renegotiate budget in status '{budget.status}'")
 
         previous_status = budget.status
         budget.status = "cancelled"
@@ -669,8 +655,10 @@ class BudgetWorkflowService:
         4. Otherwise → ``manual_code`` (caller must call
            ``set_public_code`` before sending the budget).
         """
-        settings = clinic_settings if clinic_settings is not None else (
-            await _resolve_clinic_settings(db, clinic_id)
+        settings = (
+            clinic_settings
+            if clinic_settings is not None
+            else (await _resolve_clinic_settings(db, clinic_id))
         )
         if settings.get("budget_public_auth_disabled"):
             return "none"
@@ -731,9 +719,7 @@ class BudgetWorkflowService:
         if recent_fail_count >= PUBLIC_AUTH_FAIL_LIMIT_WINDOW:
             return False, "rate_limited"
 
-        ok = await BudgetWorkflowService._compare_method_value(
-            db, budget, method, value
-        )
+        ok = await BudgetWorkflowService._compare_method_value(db, budget, method, value)
 
         # Log the attempt regardless of outcome.
         db.add(
@@ -791,9 +777,7 @@ class BudgetWorkflowService:
         if method == "dob":
             if patient.date_of_birth is None:
                 return False
-            return secrets.compare_digest(
-                patient.date_of_birth.isoformat(), value.strip()
-            )
+            return secrets.compare_digest(patient.date_of_birth.isoformat(), value.strip())
         return False
 
     @staticmethod
@@ -829,10 +813,8 @@ class BudgetWorkflowService:
             plan_status_snapshot=budget.plan_status_snapshot,
         )
         # Resolve public auth method against current patient record.
-        new_budget.public_auth_method = (
-            await BudgetWorkflowService.resolve_public_auth_method(
-                db, budget.clinic_id, budget.patient_id
-            )
+        new_budget.public_auth_method = await BudgetWorkflowService.resolve_public_auth_method(
+            db, budget.clinic_id, budget.patient_id
         )
         db.add(new_budget)
         await db.flush()

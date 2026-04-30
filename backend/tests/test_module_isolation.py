@@ -29,8 +29,6 @@ import importlib
 import re
 from pathlib import Path
 
-import pytest
-
 import app.modules as _modules_pkg  # noqa: E402  (must come before path constants)
 
 # Locate the modules directory regardless of whether tests run from the
@@ -78,11 +76,8 @@ def _strip_type_checking_blocks(source: str) -> str:
     for node in ast.walk(tree):
         if isinstance(node, ast.If):
             test = node.test
-            is_type_checking = (
-                isinstance(test, ast.Name) and test.id == "TYPE_CHECKING"
-            ) or (
-                isinstance(test, ast.Attribute)
-                and test.attr == "TYPE_CHECKING"
+            is_type_checking = (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (
+                isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
             )
             if is_type_checking:
                 end = node.end_lineno or node.lineno
@@ -98,9 +93,7 @@ def _strip_type_checking_blocks(source: str) -> str:
 
 def _list_modules() -> list[str]:
     return sorted(
-        p.name
-        for p in MODULES_ROOT.iterdir()
-        if p.is_dir() and (p / "__init__.py").exists()
+        p.name for p in MODULES_ROOT.iterdir() if p.is_dir() and (p / "__init__.py").exists()
     )
 
 
@@ -161,20 +154,13 @@ def test_no_new_cross_module_imports() -> None:
     messages: list[str] = []
     if new_violations:
         messages.append(
-            "New cross-module imports detected (must be in manifest.depends "
-            "or removed):"
+            "New cross-module imports detected (must be in manifest.depends or removed):"
         )
         for module_name, path, target in sorted(new_violations):
-            messages.append(
-                f"  - {module_name}/{path} imports app.modules.{target}"
-            )
+            messages.append(f"  - {module_name}/{path} imports app.modules.{target}")
     if resolved_violations:
-        messages.append(
-            "Pre-existing violations cleared. Remove from KNOWN_VIOLATIONS:"
-        )
+        messages.append("Pre-existing violations cleared. Remove from KNOWN_VIOLATIONS:")
         for module_name, path, target in sorted(resolved_violations):
-            messages.append(
-                f"  - {module_name}/{path} imports app.modules.{target}"
-            )
+            messages.append(f"  - {module_name}/{path} imports app.modules.{target}")
 
     assert not messages, "\n".join(messages)

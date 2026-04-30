@@ -882,7 +882,7 @@ Login: admin@demo.clinic / demo1234
 
 **docs/getting-started.md:** Step-by-step setup
 **docs/architecture.md:** Plugin system, data flow
-**docs/creating-modules.md:** How to add a new module
+**docs/technical/creating-modules.md:** How to add a new module
 
 ### 7.3 Project Files
 

@@ -18,13 +18,17 @@ Why we record decisions here:
 - Date: the date status changed (ISO `YYYY-MM-DD`).
 - Cite source files (`path:line`) and tests so the rule is verifiable.
 
-## ADR vs `docs/design/`
+## ADR vs `features/` / `technical/`
 
 - `docs/adr/` — historical decisions that shape today's code. Read to
   understand why a rule exists.
-- `docs/design/` — forward-looking design briefs and technical plans.
-  Read while a feature is being shaped. Some may graduate to an ADR
-  once the decision is locked in.
+- `docs/features/` — forward-looking product / UX briefs. *What* and
+  *why* of a feature being shaped.
+- `docs/technical/` — implementation plans and cross-cutting tech
+  reference. *How* a feature is being built.
+
+A design brief or tech plan may graduate to an ADR once the decision
+is locked in and worth defending against future drift.
 
 ## When to write a new ADR
 

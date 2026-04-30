@@ -2,7 +2,6 @@
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, desc, func, or_, select
@@ -614,9 +613,7 @@ class InvoiceService:
             from sqlalchemy import bindparam, text
 
             jsonpath = (
-                "$.* ? ("
-                + " || ".join([f'@.severity == "{s}"' for s in compliance_severity])
-                + ")"
+                "$.* ? (" + " || ".join([f'@.severity == "{s}"' for s in compliance_severity]) + ")"
             )
             # Whitelist guarantees only [a-z] values, so the inline
             # interpolation above is safe — but assert defensively.
@@ -990,6 +987,7 @@ class InvoiceService:
         await db.flush()
 
         return invoice
+
 
 class PaymentService:
     """Service for payment operations."""
