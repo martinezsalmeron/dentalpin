@@ -31,6 +31,7 @@ class PatientCreate(BaseModel):
     email: EmailStr | None = None
     date_of_birth: date | None = None
     notes: str | None = None
+    do_not_contact: bool = False
     billing_name: str | None = Field(default=None, max_length=200)
     billing_tax_id: str | None = Field(default=None, max_length=50)
     billing_address: BillingAddress | None = None
@@ -45,6 +46,7 @@ class PatientUpdate(BaseModel):
     date_of_birth: date | None = None
     notes: str | None = None
     status: str | None = None
+    do_not_contact: bool | None = None
     billing_name: str | None = Field(default=None, max_length=200)
     billing_tax_id: str | None = Field(default=None, max_length=50)
     billing_address: BillingAddress | None = None
@@ -61,6 +63,7 @@ class PatientResponse(BaseModel):
     date_of_birth: date | None
     notes: str | None
     status: str
+    do_not_contact: bool
     billing_name: str | None
     billing_tax_id: str | None
     billing_address: dict | None

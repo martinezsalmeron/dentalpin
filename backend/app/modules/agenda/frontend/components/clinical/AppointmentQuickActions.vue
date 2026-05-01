@@ -22,6 +22,11 @@ const isBusy = ref(false)
 const pendingDescriptor = ref<TransitionDescriptor | null>(null)
 const pendingNote = ref('')
 
+// Post-completion follow-up modal is hosted once at the agenda page
+// level (`CompletionFollowupHost.vue`) so it stays consistent across
+// the dropdown path and the kanban drag-drop path.
+const completionFollowup = useCompletionFollowup()
+
 const transitions = computed(() => nextTransitions(props.appointment.status))
 const hasActions = computed(() => transitions.value.length > 0)
 
@@ -49,6 +54,9 @@ async function runTransition(tr: TransitionDescriptor, note?: string) {
   try {
     await transition(props.appointment.id, tr.to, note?.trim() || undefined)
     emit('transitioned', props.appointment, tr.to)
+    if (tr.to === 'completed') {
+      completionFollowup.trigger(props.appointment)
+    }
   } catch (err) {
     toast.add({ title: t('appointments.transitionFailed'), color: 'error' })
     emit('failed', err)
@@ -121,4 +129,7 @@ const confirmMessage = computed(() => {
       </div>
     </template>
   </UModal>
+
+  <!-- Post-completion modal lives once in `CompletionFollowupHost`
+       at the page level, not here. -->
 </template>

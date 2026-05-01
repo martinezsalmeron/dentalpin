@@ -52,6 +52,7 @@ const demographicsForm = reactive({
   email: '',
   date_of_birth: '',
   notes: '',
+  do_not_contact: false as boolean,
   gender: undefined as string | undefined,
   national_id: '',
   national_id_type: undefined as string | undefined,
@@ -117,6 +118,7 @@ function initializeForm() {
     demographicsForm.email = props.patient.email || ''
     demographicsForm.date_of_birth = props.patient.date_of_birth || ''
     demographicsForm.notes = props.patient.notes || ''
+    demographicsForm.do_not_contact = props.patient.do_not_contact ?? false
     demographicsForm.gender = props.patient.gender
     demographicsForm.national_id = props.patient.national_id || ''
     demographicsForm.national_id_type = props.patient.national_id_type
@@ -162,6 +164,7 @@ async function handleSave() {
         email: demographicsForm.email || null,
         date_of_birth: demographicsForm.date_of_birth || null,
         notes: demographicsForm.notes || null,
+        do_not_contact: demographicsForm.do_not_contact,
         gender: demographicsForm.gender || null,
         national_id: demographicsForm.national_id || null,
         national_id_type: demographicsForm.national_id_type || null,
@@ -264,7 +267,7 @@ const canSave = computed(() => {
         <!-- Demographics Form -->
         <div
           v-if="section === 'demographics'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UFormField
@@ -336,12 +339,18 @@ const canSave = computed(() => {
               :rows="3"
             />
           </UFormField>
+          <UFormField
+            :label="t('patients.doNotContact.label')"
+            :hint="t('patients.doNotContact.hint')"
+          >
+            <USwitch v-model="demographicsForm.do_not_contact" />
+          </UFormField>
         </div>
 
         <!-- Emergency Contact Form -->
         <div
           v-else-if="section === 'emergency'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <EmergencyContactForm v-model="emergencyForm" />
         </div>
@@ -349,7 +358,7 @@ const canSave = computed(() => {
         <!-- Legal Guardian Form -->
         <div
           v-else-if="section === 'guardian'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <LegalGuardianForm v-model="guardianForm" />
         </div>
@@ -357,7 +366,7 @@ const canSave = computed(() => {
         <!-- Billing Form -->
         <div
           v-else-if="section === 'billing'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UFormField :label="t('patients.billingName')">
@@ -408,7 +417,7 @@ const canSave = computed(() => {
         <!-- Medical History Form -->
         <div
           v-else-if="section === 'medical'"
-          class="max-h-[60vh] overflow-y-auto"
+          class="max-h-[65vh] overflow-y-auto pr-1"
         >
           <MedicalHistoryForm
             v-if="medicalHistory"

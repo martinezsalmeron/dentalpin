@@ -16,6 +16,7 @@
     "dashboard": "Home",
     "patients": "Patients",
     "appointments": "Schedule",
+    "recalls": "Recalls",
     "treatmentPlans": "Treatment Plans",
     "budgets": "Quotes",
     "invoices": "Invoices",
@@ -101,6 +102,11 @@
     "status": {
       "active": "Active",
       "archived": "Archived"
+    },
+    "doNotContact": {
+      "label": "Do not contact",
+      "hint": "Patient will be excluded from the call list and automated outreach",
+      "badge": "Do not contact"
     },
     "gender": {
       "label": "Gender",
@@ -693,6 +699,12 @@
     "confirmNoShowMessage": "Mark this patient as no show? The change will be logged.",
     "noteLabel": "Note (optional)",
     "transitionFailed": "Could not change appointment status",
+    "when": "When",
+    "whereWho": "Cabinet and professional",
+    "notesPlaceholder": "Internal details for the team",
+    "followup": {
+      "title": "Post-appointment actions"
+    },
     "created": "Appointment created",
     "saved": "Appointment saved",
     "updated": "Appointment updated",

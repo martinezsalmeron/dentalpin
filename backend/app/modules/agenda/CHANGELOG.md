@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Slot uniqueness now ignores terminal statuses.** Migration
+  `ag_0004` rebuilds the partial unique index
+  `idx_appointment_slot` with
+  `WHERE status NOT IN ('cancelled', 'completed', 'no_show')`.
+  Previously the index excluded only `cancelled`, so a finished
+  visit kept reserving its `(clinic, cabinet, professional,
+  start_time)` slot and a fresh checked-in appointment couldn't
+  be assigned to that cabinet. Slot competition now only applies
+  among truly active statuses.
+- New frontend slot mount **`appointment.completed.followup`** in
+  `AppointmentQuickActions.vue` (issue #62). After a successful
+  transition to `completed`, agenda renders a follow-up modal whose
+  body is filled by any sibling module registered into the slot
+  (e.g. `recalls` "Schedule a recall?" prompt). Modal stays hidden
+  when no module has registered into the slot — no behaviour change
+  for clinics that don't install recalls.
+
 - Week view (`AppointmentCalendar`) now paints `clinic_closed` ranges per
   day as a hatched overlay, matching the daily view. Late-start mornings,
   early-close evenings, midday gaps and fully-closed days are all

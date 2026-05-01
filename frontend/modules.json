@@ -10,6 +10,7 @@
     "/module_layers/notifications/frontend",
     "/module_layers/patient_timeline/frontend",
     "/module_layers/patients_clinical/frontend",
+    "/module_layers/recalls/frontend",
     "/module_layers/reports/frontend",
     "/module_layers/schedules/frontend",
     "/module_layers/treatment_plan/frontend",
@@ -55,6 +56,10 @@
     {
       "name": "patients_clinical",
       "path": "/module_layers/patients_clinical/frontend"
+    },
+    {
+      "name": "recalls",
+      "path": "/module_layers/recalls/frontend"
     },
     {
       "name": "reports",

@@ -90,6 +90,11 @@ from app.modules.patients_clinical.models import (  # noqa: F401
     SurgicalHistory,
     SystemicDisease,
 )
+from app.modules.recalls.models import (  # noqa: F401
+    Recall,
+    RecallContactAttempt,
+    RecallSettings,
+)
 from app.modules.schedules.models import (  # noqa: F401
     ClinicOverride,
     ClinicWeeklySchedule,

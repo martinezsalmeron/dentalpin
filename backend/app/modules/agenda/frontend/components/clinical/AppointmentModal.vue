@@ -563,19 +563,28 @@ function closeModal() {
     <template #content>
       <UCard
         :ui="{
-          root: isMobile ? 'h-full flex flex-col' : '',
+          root: isMobile ? 'h-full flex flex-col' : 'sm:max-w-2xl',
           body: isMobile ? 'flex-1 min-h-0 overflow-hidden p-0' : ''
         }"
       >
         <template #header>
-          <div class="flex items-center justify-between">
-            <h2 class="text-h1 text-default text-default">
-              {{ modalTitle }}
-            </h2>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h2 class="text-h1 text-default truncate">
+                {{ modalTitle }}
+              </h2>
+              <p
+                v-if="selectedPatient"
+                class="text-caption text-subtle truncate mt-0.5"
+              >
+                {{ selectedPatient.first_name }} {{ selectedPatient.last_name }}
+              </p>
+            </div>
             <UButton
               variant="ghost"
               color="neutral"
               icon="i-lucide-x"
+              size="sm"
               :aria-label="t('common.close', 'Cerrar')"
               @click="closeModal"
             />
@@ -584,72 +593,103 @@ function closeModal() {
 
         <div
           :class="isMobile
-            ? 'h-full overflow-y-auto px-4 py-3'
-            : 'max-h-[60vh] overflow-y-auto pr-1'"
+            ? 'h-full overflow-y-auto px-4 py-4'
+            : 'max-h-[65vh] overflow-y-auto pr-1'"
         >
           <form
-            class="space-y-4"
+            class="space-y-6"
             @submit.prevent="handleSave"
           >
-            <!-- Patient search -->
-            <UFormField
-              :label="t('appointments.selectPatient')"
-              required
-            >
+            <!-- Section 1: Paciente -->
+            <section class="space-y-3">
+              <div class="flex items-center gap-2 text-caption uppercase tracking-wide text-subtle">
+                <UIcon
+                  name="i-lucide-user"
+                  class="w-3.5 h-3.5"
+                />
+                {{ t('appointments.selectPatient') }}
+              </div>
               <PatientVisualSelector
                 v-model="selectedPatient"
                 in-modal
               />
-            </UFormField>
+              <div v-if="selectedPatient">
+                <p class="text-caption text-subtle mb-1.5">
+                  {{ t('appointments.treatments') }}
+                </p>
+                <PlannedTreatmentSelector
+                  v-model="selectedTreatments"
+                  :patient-id="selectedPatient?.id"
+                />
+              </div>
+            </section>
 
-            <!-- Treatments from treatment plan -->
-            <UFormField :label="t('appointments.treatments')">
-              <PlannedTreatmentSelector
-                v-model="selectedTreatments"
-                :patient-id="selectedPatient?.id"
-              />
-            </UFormField>
-
-            <!-- Date and Time -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <UFormField
-                :label="t('appointments.date')"
-                required
-              >
-                <UInput
-                  v-model="formData.date"
-                  type="date"
-                  :size="isMobile ? 'lg' : 'md'"
+            <!-- Section 2: Cuándo (date + time + duration chips) -->
+            <section class="space-y-3">
+              <div class="flex items-center gap-2 text-caption uppercase tracking-wide text-subtle">
+                <UIcon
+                  name="i-lucide-calendar-clock"
+                  class="w-3.5 h-3.5"
+                />
+                {{ t('appointments.when', 'Cuándo') }}
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <UFormField
+                  :label="t('appointments.date')"
                   required
-                />
-              </UFormField>
-
-              <UFormField
-                :label="t('appointments.startTime')"
-                required
-              >
-                <UInput
-                  v-model="formData.startTime"
-                  type="time"
-                  :size="isMobile ? 'lg' : 'md'"
+                >
+                  <UInput
+                    v-model="formData.date"
+                    type="date"
+                    :size="isMobile ? 'lg' : 'md'"
+                    icon="i-lucide-calendar"
+                    required
+                  />
+                </UFormField>
+                <UFormField
+                  :label="t('appointments.startTime')"
                   required
-                />
-              </UFormField>
-            </div>
+                >
+                  <UInput
+                    v-model="formData.startTime"
+                    type="time"
+                    :size="isMobile ? 'lg' : 'md'"
+                    icon="i-lucide-clock"
+                    required
+                  />
+                </UFormField>
+              </div>
+              <div>
+                <p class="text-caption text-subtle mb-1.5">
+                  {{ t('appointments.duration') }}
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="d in durationOptions"
+                    :key="d.value"
+                    type="button"
+                    class="px-3 py-1.5 rounded-token-md text-sm font-medium transition-colors border"
+                    :class="formData.duration === d.value
+                      ? 'border-primary bg-primary/10 text-primary-accent'
+                      : 'border-default bg-default text-default hover:bg-elevated'"
+                    :aria-pressed="formData.duration === d.value"
+                    @click="formData.duration = d.value"
+                  >
+                    {{ d.label }}
+                  </button>
+                </div>
+              </div>
+            </section>
 
-            <!-- Duration and Cabinet -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <UFormField :label="t('appointments.duration')">
-                <USelect
-                  v-model="formData.duration"
-                  :items="durationOptions"
-                  value-key="value"
-                  label-key="label"
-                  :size="isMobile ? 'lg' : 'md'"
-                  :placeholder="t('appointments.selectDuration')"
+            <!-- Section 3: Dónde + quién (cabinet + professional) -->
+            <section class="space-y-3">
+              <div class="flex items-center gap-2 text-caption uppercase tracking-wide text-subtle">
+                <UIcon
+                  name="i-lucide-map-pin"
+                  class="w-3.5 h-3.5"
                 />
-              </UFormField>
-
+                {{ t('appointments.whereWho', 'Gabinete y profesional') }}
+              </div>
               <UFormField :label="t('appointments.cabinet')">
                 <USelect
                   v-model="formData.cabinet"
@@ -658,43 +698,70 @@ function closeModal() {
                   label-key="label"
                   :size="isMobile ? 'lg' : 'md'"
                   :placeholder="t('appointments.cabinet')"
+                  icon="i-lucide-door-open"
                 />
               </UFormField>
-            </div>
 
-            <!-- Professional -->
-            <UFormField
-              :label="t('appointments.professional')"
-              required
-            >
-              <USelect
-                v-model="selectedProfessionalId"
-                :items="professionalOptions"
-                value-key="value"
-                label-key="label"
-                :size="isMobile ? 'lg' : 'md'"
-                :placeholder="t('appointments.selectProfessional')"
-              />
-            </UFormField>
+              <UFormField
+                :label="t('appointments.professional')"
+                required
+              >
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="p in professionalOptions"
+                    :key="p.value"
+                    type="button"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-token-md text-sm font-medium transition-colors border"
+                    :class="selectedProfessionalId === p.value
+                      ? 'border-primary bg-primary/10 text-primary-accent'
+                      : 'border-default bg-default text-default hover:bg-elevated'"
+                    :aria-pressed="selectedProfessionalId === p.value"
+                    @click="selectedProfessionalId = p.value"
+                  >
+                    <span
+                      class="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                      :style="{ background: p.color }"
+                      aria-hidden="true"
+                    />
+                    {{ p.label }}
+                  </button>
+                </div>
+              </UFormField>
+            </section>
 
-            <!-- Notes -->
-            <UFormField :label="t('appointments.notes')">
-              <UTextarea
-                v-model="formData.notes"
-                :placeholder="t('appointments.notes')"
-                :rows="3"
-              />
-            </UFormField>
+            <!-- Section 4: Notas (collapsed by default) -->
+            <details class="group">
+              <summary class="flex items-center gap-2 text-caption uppercase tracking-wide text-subtle cursor-pointer hover:text-default select-none">
+                <UIcon
+                  name="i-lucide-chevron-right"
+                  class="w-3.5 h-3.5 transition-transform group-open:rotate-90"
+                />
+                <UIcon
+                  name="i-lucide-sticky-note"
+                  class="w-3.5 h-3.5"
+                />
+                {{ t('appointments.notes') }}
+              </summary>
+              <div class="mt-2">
+                <UTextarea
+                  v-model="formData.notes"
+                  :placeholder="t('appointments.notesPlaceholder', 'Detalles internos para el equipo')"
+                  :rows="3"
+                  class="w-full"
+                />
+              </div>
+            </details>
           </form>
         </div>
 
         <template #footer>
-          <div class="flex justify-between">
-            <div class="flex items-center gap-2">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center gap-2 flex-wrap">
               <UButton
                 v-if="isEditMode && appointment?.status !== 'cancelled'"
                 variant="outline"
                 color="error"
+                icon="i-lucide-x"
                 :loading="isSubmitting"
                 @click="handleCancel"
               >
@@ -728,38 +795,43 @@ function closeModal() {
                 </template>
               </UDropdownMenu>
             </div>
-            <div class="flex items-center gap-3">
-              <!-- Checkbox for sending confirmation when creating -->
-              <div
+            <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <!-- Send-confirmation checkbox surfaces inline on desktop,
+                   stacks above on mobile so the primary action stays at
+                   the thumb. -->
+              <label
                 v-if="!isEditMode && patientHasEmail"
-                class="flex items-center gap-2"
+                class="flex items-center gap-2 text-sm text-muted cursor-pointer"
               >
                 <UCheckbox
                   v-model="sendConfirmationEmail"
                   :disabled="autoSendEnabled"
                 />
-                <span class="text-sm text-muted">
+                <span>
                   {{ t('appointments.sendConfirmationEmail') }}
                   <span
                     v-if="autoSendEnabled"
                     class="text-xs"
                   >({{ t('appointments.automatic') }})</span>
                 </span>
+              </label>
+              <div class="flex flex-col-reverse sm:flex-row gap-2">
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  @click="closeModal"
+                >
+                  {{ t('common.cancel') }}
+                </UButton>
+                <UButton
+                  icon="i-lucide-calendar-plus"
+                  :loading="isSubmitting"
+                  :disabled="!canSave"
+                  @click="handleSave"
+                >
+                  {{ t('common.save') }}
+                </UButton>
               </div>
-              <UButton
-                variant="outline"
-                color="neutral"
-                @click="closeModal"
-              >
-                {{ t('common.cancel') }}
-              </UButton>
-              <UButton
-                :loading="isSubmitting"
-                :disabled="!canSave"
-                @click="handleSave"
-              >
-                {{ t('common.save') }}
-              </UButton>
             </div>
           </div>
         </template>

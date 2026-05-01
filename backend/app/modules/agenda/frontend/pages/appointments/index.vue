@@ -757,5 +757,10 @@ watch(isMobile, async (mobile) => {
       @saved="handleSaved"
       @cancelled="handleCancelled"
     />
+
+    <!-- Renders the post-completion follow-up modal once for the
+         whole agenda page. Triggered by `useCompletionFollowup()`
+         from QuickActions and Kanban after a `completed` transition. -->
+    <CompletionFollowupHost />
   </div>
 </template>

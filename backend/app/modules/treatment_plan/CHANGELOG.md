@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Enrich `treatment_plan.treatment_completed` event payload with a
+  `treatment_category_key` snapshot (issue #62, recalls). Allows
+  sibling modules to map completed treatments to follow-up policies
+  without importing catalog or treatment_plan models. Loaded via
+  the existing `_treatment_loader` selectinload chain (now also
+  pulls `catalog_item.category`); event-handler paths use a small
+  helper query when the relationships aren't already loaded.
+
 - Patient detail → Clínica → Planes: `PlansMode` paginates plans at
   page_size=20. `PlansListView` now exposes `page` / `total-pages`
   props and renders the shared `PaginationBar` below the grouped lists.

@@ -1,0 +1,128 @@
+{
+  "recalls": {
+    "title": "Recordatorios",
+    "callList": "Lista de llamadas",
+    "noRecallsThisMonth": "No hay recordatorios pendientes este mes",
+    "filters": {
+      "month": "Mes",
+      "reason": "Motivo",
+      "professional": "Profesional",
+      "status": "Estado",
+      "priority": "Prioridad",
+      "overdue": "Mostrar atrasados",
+      "any": "Todos",
+      "thisMonth": "Mes actual"
+    },
+    "counters": {
+      "due_this_week": "Vencen esta semana",
+      "due_this_month": "Vencen este mes",
+      "overdue": "Atrasados",
+      "scheduled_this_month": "Citados este mes",
+      "completed_this_month": "Completados este mes",
+      "conversion_rate": "Conversión"
+    },
+    "setRecall": "Programar recordatorio",
+    "setRecallShort": "Recordatorio",
+    "history": "Historial de recordatorios",
+    "viewAll": "Ver todos",
+    "pillNext": "Próximo recordatorio: {month} · {reason}",
+    "pillNone": "Sin recordatorio activo",
+    "reasons": {
+      "hygiene": "Higiene",
+      "checkup": "Revisión",
+      "ortho_review": "Revisión ortodoncia",
+      "implant_review": "Revisión implante",
+      "post_op": "Postoperatorio",
+      "treatment_followup": "Seguimiento de tratamiento",
+      "other": "Otro"
+    },
+    "priority": {
+      "low": "Baja",
+      "normal": "Normal",
+      "high": "Alta"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "contacted_no_answer": "No contesta",
+      "contacted_scheduled": "Citado",
+      "contacted_declined": "Rechazado",
+      "done": "Completado",
+      "cancelled": "Cancelado",
+      "needs_review": "Revisar"
+    },
+    "actions": {
+      "call": "Llamar",
+      "logAttempt": "Registrar intento",
+      "noAnswer": "No contesta",
+      "book": "Agendar cita",
+      "snooze": "Posponer",
+      "cancel": "Cancelar",
+      "markDone": "Marcar como hecho",
+      "exportCsv": "Exportar CSV",
+      "save": "Guardar"
+    },
+    "closeoutPrompt": {
+      "title": "¿Programar un recordatorio?",
+      "subtitle": "El paciente acaba de finalizar la cita — ¿cuándo deberíamos llamarle?",
+      "skip": "Ahora no"
+    },
+    "modal": {
+      "title": "Programar recordatorio",
+      "subtitle": "Marca al paciente para una llamada futura",
+      "patient": "Paciente",
+      "reason": "Motivo",
+      "when": "Cuándo",
+      "month": "Mes objetivo",
+      "targetMonth": "Mes objetivo",
+      "preciseDate": "Elegir día concreto",
+      "priority": "Prioridad",
+      "assigned": "Profesional asignado",
+      "note": "Nota interna",
+      "notePlaceholder": "Detalle opcional (p. ej. 'Revisar empaste 47')",
+      "optional": "opcional",
+      "duplicateGuard": "Ya existe un recordatorio pendiente para este paciente con este motivo. Se actualizará."
+    },
+    "doNotContact": {
+      "cannotSchedule": "Este paciente está marcado como «No contactar». No se pueden programar recordatorios. Cambia la preferencia en sus datos demográficos si quieres reactivar el contacto."
+    },
+    "activeRecallHint": "Recordatorio activo · pulsa para gestionarlo",
+    "logAttempt": {
+      "channel": "Canal",
+      "outcome": "Resultado",
+      "note": "Nota",
+      "submit": "Registrar intento"
+    },
+    "channel": {
+      "phone": "Teléfono",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "email": "Email"
+    },
+    "outcome": {
+      "no_answer": "No contesta",
+      "voicemail": "Buzón de voz",
+      "scheduled": "Cita agendada",
+      "declined": "Rechaza",
+      "wrong_number": "Número incorrecto"
+    },
+    "snoozePrompt": "Posponer ¿cuántos meses?",
+    "settings": {
+      "title": "Recordatorios",
+      "description": "Intervalos por motivo y mapeo de tratamientos",
+      "intervals": "Intervalos por defecto (meses)",
+      "categoryMap": "Tratamiento → motivo",
+      "autoSuggest": "Sugerir recordatorio al completar un tratamiento",
+      "autoLink": "Vincular cita al recordatorio existente al agendar",
+      "saved": "Configuración guardada"
+    },
+    "dashboard": {
+      "title": "Recordatorios"
+    },
+    "suggestion": {
+      "title": "Recordatorio sugerido",
+      "body": "Tras este tratamiento sugerimos un recordatorio en {month} ({reason}).",
+      "create": "Crear recordatorio",
+      "dismiss": "Descartar"
+    }
+  }
+}

@@ -16,6 +16,14 @@ surface (appointments CRUD, transitions, cabinet assignments, kanban).
 
 `agenda.appointments.{read,write}`, `agenda.cabinets.{read,write}`.
 
+## Frontend slots exposed
+
+- `appointment.completed.followup` — rendered by `AppointmentQuickActions.vue`
+  after a successful transition to `completed`. Sibling modules
+  (e.g. `recalls`) register components that prompt the receptionist
+  for a follow-up action. Modal stays hidden when no registrations
+  exist. Slot ctx: `{ appointment }`.
+
 ## Events emitted
 
 - `appointment.scheduled` — new appointment

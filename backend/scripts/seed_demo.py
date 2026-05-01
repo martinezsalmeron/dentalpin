@@ -58,6 +58,7 @@ from app.seeds.demo_data import (
     CLINIC_ID,
     USER_DENTIST_ID,
     USER_HYGIENIST_ID,
+    USER_RECEPTIONIST_ID,
     generate_appointments_data,
     generate_budgets_data,
     generate_invoice_series_data,
@@ -664,6 +665,27 @@ async def main(lang: str = "en") -> None:
                     f"  Visits: {stats['visit']} | "
                     f"Treatments: {stats['treatment']} | "
                     f"Financial: {stats['financial']}"
+                )
+
+            if await _module_is_installed(db, "recalls"):
+                print("\n[opt] Creating recalls demo (module installed)...")
+                from app.modules.recalls.seed import seed_recalls_demo
+
+                stats = await seed_recalls_demo(
+                    db,
+                    clinic_id=CLINIC_ID,
+                    dentist_id=USER_DENTIST_ID,
+                    hygienist_id=USER_HYGIENIST_ID,
+                    receptionist_id=USER_RECEPTIONIST_ID,
+                )
+                print(
+                    f"  Total: {stats['total']} | "
+                    f"Pending: {stats['pending']} | "
+                    f"No answer: {stats['contacted_no_answer']} | "
+                    f"Scheduled: {stats['contacted_scheduled']} | "
+                    f"Done: {stats['done']} | "
+                    f"Needs review: {stats['needs_review']} | "
+                    f"Attempts logged: {stats['attempts']}"
                 )
 
             await db.commit()

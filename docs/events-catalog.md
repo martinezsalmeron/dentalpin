@@ -12,13 +12,13 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 |-------|----------|------------|-------------|
 | `agenda.visit_note_updated` | `EventType.AGENDA_VISIT_NOTE_UPDATED` | — | `patient_timeline` |
 | `appointment.cabinet_changed` | `EventType.APPOINTMENT_CABINET_CHANGED` | — | — |
-| `appointment.cancelled` | `EventType.APPOINTMENT_CANCELLED` | — | `notifications`, `patient_timeline`, `schedules` |
+| `appointment.cancelled` | `EventType.APPOINTMENT_CANCELLED` | — | `notifications`, `patient_timeline`, `recalls`, `schedules` |
 | `appointment.checked_in` | `EventType.APPOINTMENT_CHECKED_IN` | — | `patient_timeline` |
-| `appointment.completed` | `EventType.APPOINTMENT_COMPLETED` | — | `patient_timeline`, `treatment_plan` |
+| `appointment.completed` | `EventType.APPOINTMENT_COMPLETED` | — | `patient_timeline`, `recalls`, `treatment_plan` |
 | `appointment.confirmed` | `EventType.APPOINTMENT_CONFIRMED` | — | `patient_timeline` |
 | `appointment.in_treatment` | `EventType.APPOINTMENT_IN_TREATMENT` | — | `patient_timeline` |
 | `appointment.no_show` | `EventType.APPOINTMENT_NO_SHOW` | — | `patient_timeline` |
-| `appointment.scheduled` | `EventType.APPOINTMENT_SCHEDULED` | — | `notifications`, `patient_timeline`, `schedules` |
+| `appointment.scheduled` | `EventType.APPOINTMENT_SCHEDULED` | — | `notifications`, `patient_timeline`, `recalls`, `schedules` |
 | `appointment.status_changed` | `EventType.APPOINTMENT_STATUS_CHANGED` | — | — |
 | `appointment.updated` | `EventType.APPOINTMENT_UPDATED` | — | `schedules` |
 | `budget.accepted` | `EventType.BUDGET_ACCEPTED` | — | `notifications`, `patient_timeline`, `treatment_plan` |
@@ -53,12 +53,17 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `odontogram.treatment.deleted` | `EventType.ODONTOGRAM_TREATMENT_DELETED` | — | — |
 | `odontogram.treatment.performed` | `EventType.ODONTOGRAM_TREATMENT_PERFORMED` | — | `budget`, `patient_timeline`, `treatment_plan` |
 | `odontogram.treatment.status_changed` | `EventType.ODONTOGRAM_TREATMENT_STATUS_CHANGED` | — | — |
-| `patient.archived` | `EventType.PATIENT_ARCHIVED` | — | `media` |
+| `patient.archived` | `EventType.PATIENT_ARCHIVED` | — | `media`, `recalls` |
 | `patient.created` | `EventType.PATIENT_CREATED` | — | `notifications` |
 | `patient.medical_updated` | `EventType.PATIENT_MEDICAL_UPDATED` | — | `patient_timeline` |
 | `patient.updated` | `EventType.PATIENT_UPDATED` | — | — |
 | `payment.recorded` | `EventType.PAYMENT_RECORDED` | — | — |
 | `payment.voided` | `EventType.PAYMENT_VOIDED` | — | — |
+| `recall.cancelled` | `EventType.RECALL_CANCELLED` | — | — |
+| `recall.completed` | `EventType.RECALL_COMPLETED` | — | — |
+| `recall.created` | `EventType.RECALL_CREATED` | — | — |
+| `recall.due` | `EventType.RECALL_DUE` | — | — |
+| `recall.snoozed` | `EventType.RECALL_SNOOZED` | — | — |
 | `treatment.completed` | `EventType.TREATMENT_COMPLETED` | — | — |
 | `treatment_plan.budget_sync_requested` | `EventType.TREATMENT_PLAN_BUDGET_SYNC_REQUESTED` | — | `budget` |
 | `treatment_plan.closed` | `EventType.TREATMENT_PLAN_CLOSED` | — | `patient_timeline` |
@@ -69,7 +74,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `treatment_plan.reactivated` | `EventType.TREATMENT_PLAN_REACTIVATED` | — | `patient_timeline` |
 | `treatment_plan.status_changed` | `EventType.TREATMENT_PLAN_STATUS_CHANGED` | — | — |
 | `treatment_plan.treatment_added` | `EventType.TREATMENT_PLAN_TREATMENT_ADDED` | — | `budget` |
-| `treatment_plan.treatment_completed` | `EventType.TREATMENT_PLAN_TREATMENT_COMPLETED` | — | `patient_timeline` |
+| `treatment_plan.treatment_completed` | `EventType.TREATMENT_PLAN_TREATMENT_COMPLETED` | — | `patient_timeline`, `recalls` |
 | `treatment_plan.treatment_removed` | `EventType.TREATMENT_PLAN_TREATMENT_REMOVED` | — | `budget` |
 | `verifactu.record.rejected` | `EventType.VERIFACTU_RECORD_REJECTED` | — | — |
 
@@ -95,6 +100,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Subscribers:**
   - `notifications`
   - `patient_timeline`
+  - `recalls`
   - `schedules`
 
 ### `appointment.checked_in`
@@ -110,6 +116,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Publishers:** _none in tree — declared but unused_
 - **Subscribers:**
   - `patient_timeline`
+  - `recalls`
   - `treatment_plan`
 
 ### `appointment.confirmed`
@@ -140,6 +147,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Subscribers:**
   - `notifications`
   - `patient_timeline`
+  - `recalls`
   - `schedules`
 
 ### `appointment.status_changed`
@@ -379,6 +387,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Publishers:** _none in tree — declared but unused_
 - **Subscribers:**
   - `media`
+  - `recalls`
 
 ### `patient.created`
 
@@ -409,6 +418,36 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 ### `payment.voided`
 
 - **Constant:** `EventType.PAYMENT_VOIDED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `recall.cancelled`
+
+- **Constant:** `EventType.RECALL_CANCELLED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `recall.completed`
+
+- **Constant:** `EventType.RECALL_COMPLETED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `recall.created`
+
+- **Constant:** `EventType.RECALL_CREATED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `recall.due`
+
+- **Constant:** `EventType.RECALL_DUE`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `recall.snoozed`
+
+- **Constant:** `EventType.RECALL_SNOOZED`
 - **Publishers:** _none in tree — declared but unused_
 - **Subscribers:** —
 
@@ -485,6 +524,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Publishers:** _none in tree — declared but unused_
 - **Subscribers:**
   - `patient_timeline`
+  - `recalls`
 
 ### `treatment_plan.treatment_removed`
 

@@ -52,6 +52,15 @@ None.
   This includes future agent tools.
 - **No cross-module FKs into patients without `depends: ["patients"]`**
   in the consuming module's manifest.
+- **`do_not_contact` flag** — operational opt-out used by recalls and
+  any future outreach module. Sibling modules MUST filter
+  `Patient.do_not_contact == False` in addition to the
+  `Patient.status != "archived"` filter when building call/outreach
+  lists.
+- **Slot `patient.summary.actions`** — extension point exposed on
+  `PatientSummaryHero` for sibling modules to contribute action
+  buttons (e.g. recalls "Set recall"). Stable contract — sibling
+  modules depend on it via the slot registry, not via imports.
 
 ## Related ADRs
 

@@ -21,6 +21,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 32 | yes |
 | `patients` | 0.1.0 | official | — | auto | no | 2 | 0 | 0 | yes |
 | `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 0 | 0 | yes |
+| `recalls` | 0.1.0 | official | patients, agenda | auto | yes | 3 | 0 | 5 | yes |
 | `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
 | `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 0 | 5 | yes |
@@ -262,6 +263,28 @@ Normalized medical history, allergies, medications, emergency contacts.
   - `patients_clinical.medical.write`
 - **Events emitted:** —
 - **Events consumed:** —
+
+### `recalls` — v0.1.0
+
+Patient recalls: schedule call-backs, work the monthly call list, log attempts, auto-link booked appointments.
+
+- **Author:** DentalPin Core Team
+- **License:** BSL-1.1
+- **Category:** official
+- **Install policy:** installable=True · auto_install=True · removable=True
+- **Depends:** `patients`, `agenda`
+- **Frontend layer:** `frontend`
+- **Permissions:**
+  - `recalls.recalls.delete`
+  - `recalls.recalls.read`
+  - `recalls.recalls.write`
+- **Events emitted:** —
+- **Events consumed:**
+  - `appointment.cancelled`
+  - `appointment.completed`
+  - `appointment.scheduled`
+  - `patient.archived`
+  - `treatment_plan.treatment_completed`
 
 ### `reports` — v0.1.0
 
