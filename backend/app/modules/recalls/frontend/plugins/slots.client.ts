@@ -49,14 +49,8 @@ export default defineNuxtPlugin(() => {
     order: 30
   })
 
-  // Settings — reason intervals + category map editor.
-  registerSlot('settings.sections', {
-    id: 'recalls.settings.section',
-    component: defineAsyncComponent(() => import('../components/RecallSettingsPanel.vue')),
-    permission: 'recalls.write',
-    labelKey: 'recalls.settings.title',
-    descriptionKey: 'recalls.settings.description',
-    category: 'clinical',
-    order: 40
-  })
+  // Settings page is registered via the host settings registry —
+  // see `./settings.client.ts`. No `settings.sections` entry here so
+  // the panel only renders on its own page (avoids the inline-card
+  // duplication on `/settings/clinical`).
 })
