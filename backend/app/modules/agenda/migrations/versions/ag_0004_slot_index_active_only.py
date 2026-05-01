@@ -42,9 +42,7 @@ def upgrade() -> None:
         "appointments",
         ["clinic_id", "cabinet_id", "professional_id", "start_time"],
         unique=True,
-        postgresql_where=sa.text(
-            "status NOT IN ('cancelled', 'completed', 'no_show')"
-        ),
+        postgresql_where=sa.text("status NOT IN ('cancelled', 'completed', 'no_show')"),
     )
 
 

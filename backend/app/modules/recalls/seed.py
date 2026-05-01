@@ -149,9 +149,7 @@ async def seed_recalls_demo(
     await RecallSettingsService.get_or_create(db, clinic_id)
 
     patients_res = await db.execute(
-        select(Patient)
-        .where(Patient.clinic_id == clinic_id)
-        .order_by(Patient.created_at)
+        select(Patient).where(Patient.clinic_id == clinic_id).order_by(Patient.created_at)
     )
     patient_list = list(patients_res.scalars().all())
 
@@ -191,12 +189,17 @@ async def seed_recalls_demo(
         if scenario["status"] == "done":
             completed_at = now - timedelta(days=5 + (i % 10))
 
-        professional_id = dentist_id if scenario["reason"] in (
-            "post_op",
-            "implant_review",
-            "ortho_review",
-            "treatment_followup",
-        ) else hygienist_id
+        professional_id = (
+            dentist_id
+            if scenario["reason"]
+            in (
+                "post_op",
+                "implant_review",
+                "ortho_review",
+                "treatment_followup",
+            )
+            else hygienist_id
+        )
 
         recall = Recall(
             clinic_id=clinic_id,
@@ -211,9 +214,7 @@ async def seed_recalls_demo(
             assigned_professional_id=professional_id,
             contact_attempt_count=scenario["attempts"],
             last_contact_attempt_at=(
-                now - timedelta(days=2 + (i % 5))
-                if scenario["attempts"] > 0
-                else None
+                now - timedelta(days=2 + (i % 5)) if scenario["attempts"] > 0 else None
             ),
             completed_at=completed_at,
             created_at=created_at,

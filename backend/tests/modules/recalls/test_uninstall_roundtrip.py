@@ -75,8 +75,7 @@ def test_recalls_uninstall_roundtrip_is_branch_scoped() -> None:
         f"recalls tables survived downgrade: {RECALLS_TABLES & after_down}"
     )
     assert baseline_other <= after_down, (
-        "downgrade leaked into other modules; missing: "
-        f"{baseline_other - after_down}"
+        f"downgrade leaked into other modules; missing: {baseline_other - after_down}"
     )
 
     _alembic("upgrade", "recalls@head")
