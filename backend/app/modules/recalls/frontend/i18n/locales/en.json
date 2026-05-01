@@ -68,13 +68,18 @@
     },
     "modal": {
       "title": "Set recall",
+      "subtitle": "Flag the patient for a future call-back",
       "patient": "Patient",
       "reason": "Reason",
+      "when": "When",
       "month": "Target month",
-      "preciseDate": "Specific day (optional)",
+      "targetMonth": "Target month",
+      "preciseDate": "Pick a specific day",
       "priority": "Priority",
       "assigned": "Assigned professional",
       "note": "Internal note",
+      "notePlaceholder": "Optional detail (e.g. 'Review filling on 47')",
+      "optional": "optional",
       "duplicateGuard": "A pending recall already exists for this patient and reason. It will be updated."
     },
     "logAttempt": {

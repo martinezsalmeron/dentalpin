@@ -68,13 +68,18 @@
     },
     "modal": {
       "title": "Programar recordatorio",
+      "subtitle": "Marca al paciente para una llamada futura",
       "patient": "Paciente",
       "reason": "Motivo",
+      "when": "Cuándo",
       "month": "Mes objetivo",
-      "preciseDate": "Día concreto (opcional)",
+      "targetMonth": "Mes objetivo",
+      "preciseDate": "Elegir día concreto",
       "priority": "Prioridad",
       "assigned": "Profesional asignado",
       "note": "Nota interna",
+      "notePlaceholder": "Detalle opcional (p. ej. 'Revisar empaste 47')",
+      "optional": "opcional",
       "duplicateGuard": "Ya existe un recordatorio pendiente para este paciente con este motivo. Se actualizará."
     },
     "logAttempt": {
