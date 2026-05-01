@@ -16,6 +16,7 @@
     "dashboard": "Home",
     "patients": "Patients",
     "appointments": "Schedule",
+    "recalls": "Recalls",
     "treatmentPlans": "Treatment Plans",
     "budgets": "Quotes",
     "invoices": "Invoices",

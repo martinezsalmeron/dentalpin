@@ -49,7 +49,18 @@ class RecallsModule(BaseModule):
             "assistant": ["recalls.read", "recalls.write"],
             "receptionist": ["recalls.read", "recalls.write"],
         },
-        "frontend": {"layer_path": "frontend"},
+        "frontend": {
+            "layer_path": "frontend",
+            "navigation": [
+                {
+                    "label": "nav.recalls",
+                    "icon": "i-lucide-bell",
+                    "to": "/recalls",
+                    "permission": "recalls.read",
+                    "order": 25,
+                },
+            ],
+        },
     }
 
     def get_models(self) -> list:

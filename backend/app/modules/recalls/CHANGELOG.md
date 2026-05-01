@@ -27,3 +27,7 @@
   + hygienist + assistant get read+write; admin gets `*`.
 - `installable=True`, `auto_install=True`, `removable=True`.
   Round-trip uninstall test verifies all three tables drop cleanly.
+- Sidebar entry registered via `manifest.frontend.navigation`
+  (`/recalls`, icon `i-lucide-bell`, gated by `recalls.read`,
+  `order: 25` — between `Agenda` and `Planes de tratamiento`).
+  Host i18n adds `nav.recalls` for ES/EN.
