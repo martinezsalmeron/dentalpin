@@ -82,6 +82,9 @@
       "optional": "optional",
       "duplicateGuard": "A pending recall already exists for this patient and reason. It will be updated."
     },
+    "doNotContact": {
+      "cannotSchedule": "This patient is flagged \"Do not contact\". Recalls cannot be scheduled. Update the demographics preference to re-enable contact."
+    },
     "logAttempt": {
       "channel": "Channel",
       "outcome": "Outcome",

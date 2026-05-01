@@ -82,6 +82,9 @@
       "optional": "opcional",
       "duplicateGuard": "Ya existe un recordatorio pendiente para este paciente con este motivo. Se actualizará."
     },
+    "doNotContact": {
+      "cannotSchedule": "Este paciente está marcado como «No contactar». No se pueden programar recordatorios. Cambia la preferencia en sus datos demográficos si quieres reactivar el contacto."
+    },
     "logAttempt": {
       "channel": "Canal",
       "outcome": "Resultado",
