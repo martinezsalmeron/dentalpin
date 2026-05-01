@@ -44,10 +44,10 @@ class RecallsModule(BaseModule):
         "removable": True,
         "role_permissions": {
             "admin": ["*"],
-            "dentist": ["recalls.read", "recalls.write"],
-            "hygienist": ["recalls.read", "recalls.write"],
-            "assistant": ["recalls.read", "recalls.write"],
-            "receptionist": ["recalls.read", "recalls.write"],
+            "dentist": ["read", "write"],
+            "hygienist": ["read", "write"],
+            "assistant": ["read", "write"],
+            "receptionist": ["read", "write"],
         },
         "frontend": {
             "layer_path": "frontend",
@@ -70,7 +70,9 @@ class RecallsModule(BaseModule):
         return router
 
     def get_permissions(self) -> list[str]:
-        return ["recalls.read", "recalls.write", "recalls.delete"]
+        # Registry namespaces with module name → final perms are
+        # ``recalls.read`` / ``recalls.write`` / ``recalls.delete``.
+        return ["read", "write", "delete"]
 
     def get_event_handlers(self) -> dict:
         return {
