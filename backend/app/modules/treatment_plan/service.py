@@ -32,9 +32,7 @@ def _treatment_loader() -> selectinload:
 
     return selectinload(PlannedTreatmentItem.treatment).options(
         selectinload(Treatment.teeth),
-        selectinload(Treatment.catalog_item).selectinload(
-            TreatmentCatalogItem.category
-        ),
+        selectinload(Treatment.catalog_item).selectinload(TreatmentCatalogItem.category),
     )
 
 

@@ -18,9 +18,7 @@ from .models import PlannedTreatmentItem
 logger = logging.getLogger(__name__)
 
 
-async def _resolve_treatment_category_key(
-    db: AsyncSession, treatment_id: UUID
-) -> str | None:
+async def _resolve_treatment_category_key(db: AsyncSession, treatment_id: UUID) -> str | None:
     """Look up the catalog category key for a Treatment.
 
     Used to enrich ``treatment_plan.treatment_completed`` payloads so
@@ -85,9 +83,7 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
                         item.status = "completed"
                         item.completed_without_appointment = False
 
-                        category_key = await _resolve_treatment_category_key(
-                            db, item.treatment_id
-                        )
+                        category_key = await _resolve_treatment_category_key(db, item.treatment_id)
                         event_bus.publish(
                             "treatment_plan.treatment_completed",
                             {
@@ -227,9 +223,7 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                 item.status = "completed"
                 item.completed_without_appointment = True
 
-                category_key = await _resolve_treatment_category_key(
-                    db, item.treatment_id
-                )
+                category_key = await _resolve_treatment_category_key(db, item.treatment_id)
                 event_bus.publish(
                     "treatment_plan.treatment_completed",
                     {

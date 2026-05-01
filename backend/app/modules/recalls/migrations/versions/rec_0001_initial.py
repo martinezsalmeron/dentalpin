@@ -43,9 +43,7 @@ def upgrade() -> None:
         sa.Column("contact_attempt_count", sa.Integer(), nullable=False),
         sa.Column("linked_appointment_id", sa.UUID(), nullable=True),
         sa.Column("linked_treatment_id", sa.UUID(), nullable=True),
-        sa.Column(
-            "linked_treatment_category_key", sa.String(length=80), nullable=True
-        ),
+        sa.Column("linked_treatment_category_key", sa.String(length=80), nullable=True),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
@@ -53,9 +51,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["patient_id"], ["patients.id"]),
         sa.ForeignKeyConstraint(["recommended_by"], ["users.id"]),
         sa.ForeignKeyConstraint(["assigned_professional_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(
-            ["linked_appointment_id"], ["appointments.id"]
-        ),
+        sa.ForeignKeyConstraint(["linked_appointment_id"], ["appointments.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_recalls_clinic_id"), "recalls", ["clinic_id"])
@@ -88,9 +84,7 @@ def upgrade() -> None:
         sa.Column("channel", sa.String(length=20), nullable=False),
         sa.Column("outcome", sa.String(length=30), nullable=False),
         sa.Column("note", sa.Text(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["recall_id"], ["recalls.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["recall_id"], ["recalls.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["clinic_id"], ["clinics.id"]),
         sa.ForeignKeyConstraint(["attempted_by"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
@@ -119,12 +113,8 @@ def upgrade() -> None:
             postgresql.JSONB(astext_type=sa.Text()),
             nullable=False,
         ),
-        sa.Column(
-            "auto_suggest_on_treatment_completed", sa.Boolean(), nullable=False
-        ),
-        sa.Column(
-            "auto_link_on_appointment_scheduled", sa.Boolean(), nullable=False
-        ),
+        sa.Column("auto_suggest_on_treatment_completed", sa.Boolean(), nullable=False),
+        sa.Column("auto_link_on_appointment_scheduled", sa.Boolean(), nullable=False),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),

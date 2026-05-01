@@ -97,23 +97,15 @@ class Recall(Base, TimestampMixin):
     reason: Mapped[str] = mapped_column(String(40), nullable=False)
     reason_note: Mapped[str | None] = mapped_column(Text)
     priority: Mapped[str] = mapped_column(String(10), nullable=False, default="normal")
-    status: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="pending", index=True
-    )
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending", index=True)
 
-    recommended_by: Mapped[UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id")
-    )
+    recommended_by: Mapped[UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     assigned_professional_id: Mapped[UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id")
     )
 
-    last_contact_attempt_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
-    contact_attempt_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
+    last_contact_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    contact_attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     linked_appointment_id: Mapped[UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("appointments.id")
@@ -192,9 +184,7 @@ class RecallSettings(Base):
         UUID(as_uuid=True), ForeignKey("clinics.id"), primary_key=True
     )
     reason_intervals: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    category_to_reason: Mapped[dict] = mapped_column(
-        JSONB, nullable=False, default=dict
-    )
+    category_to_reason: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     auto_suggest_on_treatment_completed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True
     )
