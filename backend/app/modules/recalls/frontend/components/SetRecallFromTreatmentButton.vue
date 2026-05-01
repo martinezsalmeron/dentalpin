@@ -1,31 +1,29 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { RecallReason } from '../composables/useRecalls'
 
-// Slot entry into `odontogram.condition.actions`. Ctx shape varies
-// across hosts (treatment-plan rows, odontogram diagnosis list); we
-// only read what's needed here and tolerate missing fields.
-interface Props {
-  patient?: { id: string }
-  patientId?: string
-  treatment?: {
-    id?: string
-    catalog_item?: { category?: { key?: string } } | null
+// Slot entry into `odontogram.condition.actions`. Host ctx (per
+// `clinical_notes.TreatmentNoteButton`) is
+// ``{ treatmentId, toothNumber?, status? }`` — patient_id isn't in
+// the ctx, so we fetch it lazily on click via the treatment API.
+const props = defineProps<{
+  ctx: {
+    treatmentId?: string
+    toothNumber?: number | null
+    status?: string
   }
-}
-const props = defineProps<Props>()
+}>()
 
 const { t } = useI18n()
-const open = ref(false)
+const api = useApi()
 
-const patientId = computed(() => props.patient?.id ?? props.patientId ?? null)
-const treatmentId = computed(() => props.treatment?.id ?? null)
-const treatmentCategoryKey = computed(
-  () => props.treatment?.catalog_item?.category?.key ?? null
-)
+const open = ref(false)
+const patientId = ref<string | null>(null)
+const treatmentCategoryKey = ref<string | null>(null)
+
+const treatmentId = computed(() => props.ctx?.treatmentId ?? null)
 
 const reason = computed<RecallReason>(() => {
-  // Keep in sync with backend `DEFAULT_CATEGORY_TO_REASON`.
   switch (treatmentCategoryKey.value) {
     case 'preventivo': return 'hygiene'
     case 'ortodoncia': return 'ortho_review'
@@ -35,14 +33,27 @@ const reason = computed<RecallReason>(() => {
   }
 })
 
-function onClick() {
-  if (!patientId.value) return
-  open.value = true
+async function onClick() {
+  if (!treatmentId.value) return
+  // Resolve patient + category key from the treatment row before
+  // opening the modal. Done lazily so the slot button itself stays
+  // cheap on the diagnosis sidebar.
+  try {
+    const res = await api.get<{
+      data: { patient_id: string, catalog_item?: { category?: { key?: string } } | null }
+    }>(`/api/v1/odontogram/treatments/${treatmentId.value}`)
+    patientId.value = res.data.patient_id
+    treatmentCategoryKey.value = res.data.catalog_item?.category?.key ?? null
+    open.value = true
+  } catch {
+    // Endpoint may not exist on every host; fail silent rather than
+    // leaving an obviously broken button.
+  }
 }
 </script>
 
 <template>
-  <div v-if="patientId">
+  <div v-if="treatmentId">
     <UButton
       icon="i-lucide-bell-plus"
       size="xs"
@@ -52,6 +63,7 @@ function onClick() {
       @click="onClick"
     />
     <SetRecallModal
+      v-if="patientId"
       v-model:open="open"
       :patient-id="patientId"
       :initial-reason="reason"

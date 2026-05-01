@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-// Slot entry rendered into `patient.summary.actions`. Receives a
-// `patient` ctx prop set by `<ModuleSlot>` in `PatientSummaryHero`.
-interface Props {
-  patient: { id: string }
-}
-defineProps<Props>()
+// Slot entry into `patient.summary.actions`. `<ModuleSlot>` passes
+// the slot ctx as a single `ctx` prop; we destructure the patient
+// from it here.
+const props = defineProps<{
+  ctx: { patient: { id: string } }
+}>()
 
 const { t } = useI18n()
 const open = ref(false)
 </script>
 
 <template>
-  <div>
+  <div v-if="props.ctx?.patient?.id">
     <UButton
       color="primary"
       variant="soft"
@@ -27,7 +27,7 @@ const open = ref(false)
 
     <SetRecallModal
       v-model:open="open"
-      :patient-id="patient.id"
+      :patient-id="props.ctx.patient.id"
     />
   </div>
 </template>

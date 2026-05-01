@@ -2,10 +2,11 @@
 import { computed, ref, onMounted } from 'vue'
 import type { Recall } from '../composables/useRecalls'
 
-interface Props {
-  patient: { id: string }
-}
-const props = defineProps<Props>()
+// Slot entry into `patient.summary.feed`. `<ModuleSlot>` passes the
+// slot ctx as a single `ctx` prop.
+const props = defineProps<{
+  ctx: { patient: { id: string } }
+}>()
 
 const { t, locale } = useI18n()
 const recallsApi = useRecalls()
@@ -14,9 +15,14 @@ const recalls = ref<Recall[]>([])
 const isLoading = ref(false)
 
 async function load() {
+  const patientId = props.ctx?.patient?.id
+  if (!patientId) {
+    recalls.value = []
+    return
+  }
   isLoading.value = true
   try {
-    const res = await recallsApi.listForPatient(props.patient.id)
+    const res = await recallsApi.listForPatient(patientId)
     recalls.value = res.data
   } catch {
     recalls.value = []
@@ -112,7 +118,7 @@ function statusColour(status: Recall['status']): 'success' | 'info' | 'warning' 
     </ul>
     <div class="pt-2">
       <NuxtLink
-        :to="`/recalls?patient_id=${patient.id}`"
+        :to="`/recalls?patient_id=${props.ctx.patient.id}`"
         class="text-primary-accent hover:underline text-caption"
       >
         {{ t('recalls.viewAll') }} →
