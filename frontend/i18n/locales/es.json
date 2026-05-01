@@ -720,6 +720,9 @@
     "confirmNoShowMessage": "¿Marcar al paciente como no asistido? Se registrará en el historial.",
     "noteLabel": "Nota (opcional)",
     "transitionFailed": "No se pudo cambiar el estado de la cita",
+    "when": "Cuándo",
+    "whereWho": "Gabinete y profesional",
+    "notesPlaceholder": "Detalles internos para el equipo",
     "followup": {
       "title": "Acciones tras finalizar la cita"
     },

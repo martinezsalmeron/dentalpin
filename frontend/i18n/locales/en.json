@@ -699,6 +699,9 @@
     "confirmNoShowMessage": "Mark this patient as no show? The change will be logged.",
     "noteLabel": "Note (optional)",
     "transitionFailed": "Could not change appointment status",
+    "when": "When",
+    "whereWho": "Cabinet and professional",
+    "notesPlaceholder": "Internal details for the team",
     "followup": {
       "title": "Post-appointment actions"
     },
