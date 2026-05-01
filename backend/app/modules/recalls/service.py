@@ -430,10 +430,13 @@ class RecallService:
     ) -> Recall | None:
         """Called from ``on_appointment_scheduled``.
 
-        Picks the most due *active* recall for the patient whose
-        ``due_month`` is at or before the appointment month, links it
-        and transitions to ``contacted_scheduled``. Returns the linked
-        recall or None when no candidate exists.
+        Conservative auto-link policy: link the appointment only when
+        the patient has *exactly one* active recall whose ``due_month``
+        is at or before the appointment month. Bails out when there are
+        zero or two-plus candidates so the system never silently
+        attaches the appointment to the wrong recall — reception keeps
+        the explicit "Agendar cita" path from a recall row when the
+        patient has more than one active recall.
         """
         appointment_month = _normalize_due_month(appointment_date)
         result = await db.execute(
@@ -445,12 +448,15 @@ class RecallService:
                 Recall.due_month <= appointment_month,
                 Recall.linked_appointment_id.is_(None),
             )
-            .order_by(Recall.due_month.asc(), Recall.created_at.asc())
-            .limit(1)
+            # Two is enough to know we have to bail; no need to fetch more.
+            .limit(2)
         )
-        recall = result.scalar_one_or_none()
-        if not recall:
+        candidates = list(result.scalars().all())
+        if len(candidates) != 1:
+            # Zero candidates: nothing to do.
+            # Two-plus: ambiguous — let reception link manually.
             return None
+        recall = candidates[0]
         recall.linked_appointment_id = appointment_id
         recall.status = "contacted_scheduled"
         await db.flush()

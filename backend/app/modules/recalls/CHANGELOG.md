@@ -25,6 +25,11 @@
   - `settings.sections` — reason-interval + category-map editor
 - Permissions: `recalls.{read,write,delete}`. Receptionist + dentist
   + hygienist + assistant get read+write; admin gets `*`.
+- Auto-link policy on `appointment.scheduled` is **conservative**:
+  fires only when the patient has exactly one matching active recall.
+  Two-plus candidates → no-op, reception links manually from the
+  call-list row. Avoids silent wrong-association across multiple
+  reasons (no reliable signal in agenda's free-text `treatment_type`).
 - `installable=True`, `auto_install=True`, `removable=True`.
   Round-trip uninstall test verifies all three tables drop cleanly.
 - Sidebar entry registered via `manifest.frontend.navigation`

@@ -105,9 +105,14 @@ monthly call list. Mobile-first layout via `useBreakpoint`.
   `Patient.status="archived"` AND `Patient.do_not_contact=True`.
   Affected recalls go to the `needs_review` bucket (separate filter,
   not deleted).
-- **Auto-link is best-effort.** Reason match is not gated on agenda's
-  free-text `treatment_type`. Match policy: same patient + due_month
-  ≤ appointment month + status active.
+- **Auto-link is conservative — no-op when ambiguous.** Match policy:
+  same patient + due_month ≤ appointment month + status active +
+  no existing link. Reason match is not gated on agenda's free-text
+  `treatment_type`. When the patient has **two or more** active
+  recalls that match, the auto-link bails out and waits for an
+  explicit link via the "Agendar cita" row action (which passes
+  `recall_id`) or `POST /recalls/{id}/link-appointment`. Better one
+  miss than one wrong link — recall history is patient-trust-critical.
 
 ## Related ADRs
 
