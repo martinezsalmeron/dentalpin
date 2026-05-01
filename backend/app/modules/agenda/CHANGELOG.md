@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Slot uniqueness now ignores terminal statuses.** Migration
+  `ag_0004` rebuilds the partial unique index
+  `idx_appointment_slot` with
+  `WHERE status NOT IN ('cancelled', 'completed', 'no_show')`.
+  Previously the index excluded only `cancelled`, so a finished
+  visit kept reserving its `(clinic, cabinet, professional,
+  start_time)` slot and a fresh checked-in appointment couldn't
+  be assigned to that cabinet. Slot competition now only applies
+  among truly active statuses.
 - New frontend slot mount **`appointment.completed.followup`** in
   `AppointmentQuickActions.vue` (issue #62). After a successful
   transition to `completed`, agenda renders a follow-up modal whose

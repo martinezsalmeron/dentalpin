@@ -64,6 +64,8 @@ async function runTransition(tr: TransitionDescriptor, note?: string) {
     emit('transitioned', props.appointment, tr.to)
     if (tr.to === 'completed') {
       followupAppointment.value = { ...props.appointment, status: 'completed' }
+      // eslint-disable-next-line no-console
+      console.debug('[appointment.completed.followup] entries=', followupEntries.value.length, followupEntries.value.map(e => e.id))
       followupOpen.value = followupEntries.value.length > 0
     }
   } catch (err) {
