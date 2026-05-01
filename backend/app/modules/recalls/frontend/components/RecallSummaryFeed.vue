@@ -1,41 +1,29 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import type { Recall } from '../composables/useRecalls'
 
 // Slot entry into `patient.summary.feed`. `<ModuleSlot>` passes the
-// slot ctx as a single `ctx` prop.
+// slot ctx as a single `ctx` prop. Reads from the shared
+// per-patient state so we don't double-fetch the recall list with
+// `SetRecallButton`.
 const props = defineProps<{
   ctx: { patient: { id: string } }
 }>()
 
 const { t, locale } = useI18n()
-const recallsApi = useRecalls()
 
-const recalls = ref<Recall[]>([])
-const isLoading = ref(false)
-
-async function load() {
-  const patientId = props.ctx?.patient?.id
-  if (!patientId) {
-    recalls.value = []
-    return
-  }
-  isLoading.value = true
-  try {
-    const res = await recallsApi.listForPatient(patientId)
-    recalls.value = res.data
-  } catch {
-    recalls.value = []
-  } finally {
-    isLoading.value = false
-  }
-}
-
-onMounted(load)
-
-const nextRecall = computed(() =>
-  recalls.value.find(r => ['pending', 'contacted_no_answer', 'contacted_scheduled'].includes(r.status))
+const patientRecalls = computed(() =>
+  props.ctx?.patient?.id ? usePatientRecalls(props.ctx.patient.id) : null
 )
+
+const recalls = computed<Recall[]>(() => patientRecalls.value?.recalls.value ?? [])
+const isLoading = computed(() => patientRecalls.value?.isLoading.value ?? false)
+
+onMounted(() => {
+  patientRecalls.value?.ensureLoaded()
+})
+
+const nextRecall = computed(() => patientRecalls.value?.nextActiveRecall.value ?? null)
 
 const recentHistory = computed(() => recalls.value.slice(0, 5))
 

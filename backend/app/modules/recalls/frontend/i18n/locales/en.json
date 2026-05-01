@@ -85,6 +85,7 @@
     "doNotContact": {
       "cannotSchedule": "This patient is flagged \"Do not contact\". Recalls cannot be scheduled. Update the demographics preference to re-enable contact."
     },
+    "activeRecallHint": "Active recall · tap to manage",
     "logAttempt": {
       "channel": "Channel",
       "outcome": "Outcome",

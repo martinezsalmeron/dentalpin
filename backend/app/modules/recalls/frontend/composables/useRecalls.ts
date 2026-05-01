@@ -273,3 +273,73 @@ export function useRecallActions(recall: Ref<Recall | null>) {
     )
   }
 }
+
+// --- Per-patient shared state ----------------------------------------------
+
+/**
+ * Shared per-patient recall list. Both `SetRecallButton` (action +
+ * inline next-recall card on the patient hero) and
+ * `RecallSummaryFeed` (recent-history card on the summary feed)
+ * read from the same `useState` slot so the patient page only fires
+ * one ``GET /api/v1/recalls/patients/:id`` per visit.
+ *
+ * Pure host plumbing — no cross-module imports beyond the host's
+ * `useState`. ``manifest.depends`` stays at ``["patients", "agenda"]``.
+ */
+export function usePatientRecalls(patientId: string) {
+  const stateKey = `recalls:patient:${patientId}`
+  const recalls = useState<Recall[]>(stateKey, () => [])
+  const isLoading = useState<boolean>(`${stateKey}:loading`, () => false)
+  const loaded = useState<boolean>(`${stateKey}:loaded`, () => false)
+  const api = useRecalls()
+
+  async function refresh() {
+    if (!patientId) {
+      recalls.value = []
+      return
+    }
+    isLoading.value = true
+    try {
+      const res = await api.listForPatient(patientId)
+      recalls.value = res.data
+      loaded.value = true
+    } catch {
+      recalls.value = []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /** Idempotent — only fetches the first time per (page, patient). */
+  async function ensureLoaded() {
+    if (loaded.value || isLoading.value) return
+    await refresh()
+  }
+
+  const activeRecalls = computed(() =>
+    recalls.value.filter(r =>
+      ['pending', 'contacted_no_answer', 'contacted_scheduled'].includes(r.status)
+    )
+  )
+
+  // Most-due active recall (smallest due_month wins; tiebreaker on
+  // creation order) — what the patient hero pins under the CTA.
+  const nextActiveRecall = computed(() => {
+    const active = [...activeRecalls.value]
+    active.sort((a, b) => {
+      if (a.due_month !== b.due_month) return a.due_month < b.due_month ? -1 : 1
+      return a.created_at < b.created_at ? -1 : 1
+    })
+    return active[0] ?? null
+  })
+
+  return {
+    recalls,
+    isLoading,
+    loaded,
+    refresh,
+    ensureLoaded,
+    activeRecalls,
+    nextActiveRecall
+  }
+}

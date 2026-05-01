@@ -85,6 +85,7 @@
     "doNotContact": {
       "cannotSchedule": "Este paciente está marcado como «No contactar». No se pueden programar recordatorios. Cambia la preferencia en sus datos demográficos si quieres reactivar el contacto."
     },
+    "activeRecallHint": "Recordatorio activo · pulsa para gestionarlo",
     "logAttempt": {
       "channel": "Canal",
       "outcome": "Resultado",
