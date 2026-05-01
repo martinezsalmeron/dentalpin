@@ -267,7 +267,7 @@ const canSave = computed(() => {
         <!-- Demographics Form -->
         <div
           v-if="section === 'demographics'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UFormField
@@ -350,7 +350,7 @@ const canSave = computed(() => {
         <!-- Emergency Contact Form -->
         <div
           v-else-if="section === 'emergency'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <EmergencyContactForm v-model="emergencyForm" />
         </div>
@@ -358,7 +358,7 @@ const canSave = computed(() => {
         <!-- Legal Guardian Form -->
         <div
           v-else-if="section === 'guardian'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <LegalGuardianForm v-model="guardianForm" />
         </div>
@@ -366,7 +366,7 @@ const canSave = computed(() => {
         <!-- Billing Form -->
         <div
           v-else-if="section === 'billing'"
-          class="space-y-4"
+          class="space-y-4 max-h-[65vh] overflow-y-auto pr-1"
         >
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UFormField :label="t('patients.billingName')">
@@ -417,7 +417,7 @@ const canSave = computed(() => {
         <!-- Medical History Form -->
         <div
           v-else-if="section === 'medical'"
-          class="max-h-[60vh] overflow-y-auto"
+          class="max-h-[65vh] overflow-y-auto pr-1"
         >
           <MedicalHistoryForm
             v-if="medicalHistory"
