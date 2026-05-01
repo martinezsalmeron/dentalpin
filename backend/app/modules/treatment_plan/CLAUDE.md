@@ -65,7 +65,7 @@ the `clinical_notes` module since issue #60.
 | `treatment_plan.reactivated` | closed → draft | Subscriber: `patient_timeline`. |
 | `treatment_plan.treatment_added` | item added | snapshot payload (catalog_item_id, tooth, surfaces, unit_price, budget_id). Subscriber: `budget`. |
 | `treatment_plan.treatment_removed` | item removed | payload includes `budget_id`. Subscriber: `budget`. |
-| `treatment_plan.treatment_completed` | item marked done | consumed by `patient_timeline` |
+| `treatment_plan.treatment_completed` | item marked done | consumed by `patient_timeline`, `recalls`. Payload includes `treatment_category_key` (snapshot, may be null) so subscribers can map a completed treatment to a follow-up policy without importing catalog or treatment_plan models (issue #62). |
 | `treatment_plan.budget_sync_requested` | manual resync | snapshot payload includes full `items[]`. Subscriber: `budget`. |
 | `treatment_plan.item_completed_without_note` | completion check | consumed by `patient_timeline` |
 

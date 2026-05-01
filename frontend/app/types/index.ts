@@ -146,6 +146,7 @@ export interface Patient {
   date_of_birth?: string
   notes?: string
   status: 'active' | 'archived'
+  do_not_contact: boolean
   // Billing fields
   billing_name?: string
   billing_tax_id?: string
@@ -163,6 +164,7 @@ export interface PatientCreate {
   email?: string
   date_of_birth?: string
   notes?: string
+  do_not_contact?: boolean
   // Billing fields
   billing_name?: string
   billing_tax_id?: string
@@ -172,6 +174,7 @@ export interface PatientCreate {
 
 export interface PatientUpdate extends Partial<PatientCreate> {
   status?: 'active' | 'archived'
+  do_not_contact?: boolean
 }
 
 // Appointment treatment brief (from planned treatment item)

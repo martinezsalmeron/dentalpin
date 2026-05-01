@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 from app.database import async_session_maker
@@ -15,6 +16,32 @@ from app.database import async_session_maker
 from .models import PlannedTreatmentItem
 
 logger = logging.getLogger(__name__)
+
+
+async def _resolve_treatment_category_key(
+    db: AsyncSession, treatment_id: UUID
+) -> str | None:
+    """Look up the catalog category key for a Treatment.
+
+    Used to enrich ``treatment_plan.treatment_completed`` payloads so
+    sibling modules (e.g. ``recalls``) can map the completed treatment
+    to a recall reason without importing catalog or treatment_plan
+    models. ``odontogram`` and ``catalog`` are in this module's
+    ``depends``, so the read is permitted.
+    """
+    from app.modules.catalog.models import TreatmentCatalogItem, TreatmentCategory
+    from app.modules.odontogram.models import Treatment
+
+    result = await db.execute(
+        select(TreatmentCategory.key)
+        .join(
+            TreatmentCatalogItem,
+            TreatmentCatalogItem.category_id == TreatmentCategory.id,
+        )
+        .join(Treatment, Treatment.catalog_item_id == TreatmentCatalogItem.id)
+        .where(Treatment.id == treatment_id)
+    )
+    return result.scalar_one_or_none()
 
 
 async def on_appointment_completed(data: dict[str, Any]) -> None:
@@ -58,6 +85,9 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
                         item.status = "completed"
                         item.completed_without_appointment = False
 
+                        category_key = await _resolve_treatment_category_key(
+                            db, item.treatment_id
+                        )
                         event_bus.publish(
                             "treatment_plan.treatment_completed",
                             {
@@ -67,6 +97,7 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
                                 "clinic_id": clinic_id,
                                 "patient_id": data.get("patient_id"),
                                 "triggered_by": "appointment_completed",
+                                "treatment_category_key": category_key,
                             },
                         )
 
@@ -196,6 +227,9 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                 item.status = "completed"
                 item.completed_without_appointment = True
 
+                category_key = await _resolve_treatment_category_key(
+                    db, item.treatment_id
+                )
                 event_bus.publish(
                     "treatment_plan.treatment_completed",
                     {
@@ -205,6 +239,7 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                         "clinic_id": clinic_id,
                         "patient_id": data.get("patient_id"),
                         "triggered_by": "odontogram_performed",
+                        "treatment_category_key": category_key,
                     },
                 )
 

@@ -39,6 +39,17 @@ ADRs) for the full story.
 | Clinic hours | Horario de clínica | Open/closed slots defined in the schedules module. |
 | Professional hours | Horario del profesional | Optional per-professional availability override. |
 
+## Recalls
+
+| EN (code) | ES (UI) | Definition |
+|---|---|---|
+| Recall | Recordatorio | A scheduled call-back for a patient who left without booking the next visit. Owned by the `recalls` module. |
+| Call list | Lista de llamadas | The monthly worked list at `/recalls`. Front desk works it row by row. |
+| Recall reason | Motivo de recordatorio | Why the patient is being recalled (`hygiene`, `checkup`, `ortho_review`, `implant_review`, `post_op`, `treatment_followup`, `other`). |
+| Snooze | Posponer | Bump a recall's `due_month` forward N months without losing its history. |
+| Contact attempt | Intento de contacto | One row in `recall_contact_attempts`: channel + outcome + note. Logged every time the front desk reaches out. |
+| Needs review | Revisar | Bucket for recalls whose patient was archived or marked `do_not_contact` after the recall existed — surfaced in a separate filter, not deleted. |
+
 ## Billing
 
 | EN (code) | ES (UI) | Definition |

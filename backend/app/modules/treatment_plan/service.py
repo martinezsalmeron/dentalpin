@@ -21,10 +21,20 @@ logger = logging.getLogger(__name__)
 
 
 def _treatment_loader() -> selectinload:
-    """Eager-load the Treatment (with teeth + catalog_item)."""
+    """Eager-load the Treatment (with teeth + catalog_item + its category).
+
+    The ``category`` chain is loaded so consumers of the
+    ``treatment_plan.treatment_completed`` event get the
+    ``treatment_category_key`` snapshot without a follow-up query
+    (issue #62, recalls).
+    """
+    from app.modules.catalog.models import TreatmentCatalogItem
+
     return selectinload(PlannedTreatmentItem.treatment).options(
         selectinload(Treatment.teeth),
-        selectinload(Treatment.catalog_item),
+        selectinload(Treatment.catalog_item).selectinload(
+            TreatmentCatalogItem.category
+        ),
     )
 
 
@@ -684,11 +694,14 @@ class TreatmentPlanService:
 
         item_name: str | None = None
         patient_id_str: str | None = None
+        treatment_category_key: str | None = None
         if item.treatment:
             patient_id_str = str(item.treatment.patient_id)
             if item.treatment.catalog_item:
                 names = item.treatment.catalog_item.names or {}
                 item_name = names.get("es") or names.get("en")
+                if item.treatment.catalog_item.category:
+                    treatment_category_key = item.treatment.catalog_item.category.key
 
         event_bus.publish(
             "treatment_plan.treatment_completed",
@@ -701,6 +714,7 @@ class TreatmentPlanService:
                 "completed_by": str(user_id),
                 "item_name": item_name,
                 "occurred_at": item.completed_at.isoformat() if item.completed_at else None,
+                "treatment_category_key": treatment_category_key,
             },
         )
 

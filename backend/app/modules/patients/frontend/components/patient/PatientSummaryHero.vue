@@ -176,6 +176,12 @@ const hasCriticalAlerts = computed(() =>
       </div>
     </UCard>
 
+    <!-- Action slot for sibling modules (e.g. recalls "Set recall"). -->
+    <ModuleSlot
+      name="patient.summary.actions"
+      :ctx="{ patient }"
+    />
+
     <!-- Clinical alerts banner -->
     <div
       v-if="alerts.length > 0"

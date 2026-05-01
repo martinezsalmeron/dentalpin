@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- New frontend slot mount **`appointment.completed.followup`** in
+  `AppointmentQuickActions.vue` (issue #62). After a successful
+  transition to `completed`, agenda renders a follow-up modal whose
+  body is filled by any sibling module registered into the slot
+  (e.g. `recalls` "Schedule a recall?" prompt). Modal stays hidden
+  when no module has registered into the slot — no behaviour change
+  for clinics that don't install recalls.
+
 - Week view (`AppointmentCalendar`) now paints `clinic_closed` ranges per
   day as a hatched overlay, matching the daily view. Late-start mornings,
   early-close evenings, midday gaps and fully-closed days are all

@@ -102,6 +102,11 @@
       "active": "Activo",
       "archived": "Archivado"
     },
+    "doNotContact": {
+      "label": "No contactar",
+      "hint": "El paciente no aparecerá en la lista de llamadas ni en envíos automatizados",
+      "badge": "No contactar"
+    },
     "gender": {
       "label": "Género",
       "select": "Seleccionar género",
@@ -714,6 +719,9 @@
     "confirmNoShowMessage": "¿Marcar al paciente como no asistido? Se registrará en el historial.",
     "noteLabel": "Nota (opcional)",
     "transitionFailed": "No se pudo cambiar el estado de la cita",
+    "followup": {
+      "title": "Acciones tras finalizar la cita"
+    },
     "created": "Cita creada",
     "saved": "Cita guardada",
     "updated": "Cita actualizada",

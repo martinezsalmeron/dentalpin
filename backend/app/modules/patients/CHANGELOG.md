@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`do_not_contact: bool` flag** added to the patient model
+  (issue #62, recalls). Operational opt-out — patients with this flag
+  set are excluded from the recalls call list and any future
+  outreach automation. Defaults to `false`. Editable from the
+  Demographics edit modal. Migration: `pat_0002`.
+- New slot mount `patient.summary.actions` rendered on
+  `PatientSummaryHero` so sibling modules (e.g. `recalls`) can
+  contribute action buttons to the patient summary without modifying
+  the patients module UI.
+
 - Patient detail → Administración → Presupuestos: paginated (page_size=20).
   `AdministrationTab` now owns its own paginated fetch via the shared
   `PaginationBar`; the parent `[id].vue` no longer prefetches budgets.

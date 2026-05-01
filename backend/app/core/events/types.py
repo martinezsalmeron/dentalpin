@@ -138,3 +138,13 @@ class EventType:
 
     # Verifactu compliance events
     VERIFACTU_RECORD_REJECTED = "verifactu.record.rejected"
+
+    # Recalls events (recalls module — patient call-back workflow, issue #62)
+    # Foundation for a future outreach module that will subscribe to react
+    # with WhatsApp/SMS/email automation. Recalls itself never sends.
+    RECALL_CREATED = "recall.created"
+    # Reserved for a future cron tick at month start. Not published in V1.
+    RECALL_DUE = "recall.due"
+    RECALL_COMPLETED = "recall.completed"
+    RECALL_SNOOZED = "recall.snoozed"
+    RECALL_CANCELLED = "recall.cancelled"

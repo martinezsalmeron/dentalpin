@@ -22,6 +22,19 @@ const isBusy = ref(false)
 const pendingDescriptor = ref<TransitionDescriptor | null>(null)
 const pendingNote = ref('')
 
+// Post-completion follow-up slot. After a successful transition to
+// "completed", any sibling module registered into the
+// `appointment.completed.followup` slot (e.g. `recalls` "Schedule a
+// recall?" prompt, issue #62) renders inside this modal.
+const followupOpen = ref(false)
+const followupAppointment = ref<Appointment | null>(null)
+const { resolve } = useModuleSlots()
+const followupEntries = computed(() =>
+  followupAppointment.value
+    ? resolve('appointment.completed.followup', { appointment: followupAppointment.value })
+    : []
+)
+
 const transitions = computed(() => nextTransitions(props.appointment.status))
 const hasActions = computed(() => transitions.value.length > 0)
 
@@ -49,12 +62,21 @@ async function runTransition(tr: TransitionDescriptor, note?: string) {
   try {
     await transition(props.appointment.id, tr.to, note?.trim() || undefined)
     emit('transitioned', props.appointment, tr.to)
+    if (tr.to === 'completed') {
+      followupAppointment.value = { ...props.appointment, status: 'completed' }
+      followupOpen.value = followupEntries.value.length > 0
+    }
   } catch (err) {
     toast.add({ title: t('appointments.transitionFailed'), color: 'error' })
     emit('failed', err)
   } finally {
     isBusy.value = false
   }
+}
+
+function closeFollowup() {
+  followupOpen.value = false
+  followupAppointment.value = null
 }
 
 function confirmPending() {
@@ -117,6 +139,33 @@ const confirmMessage = computed(() => {
         </UButton>
         <UButton color="error" :loading="isBusy" @click="confirmPending">
           {{ pendingDescriptor ? t(pendingDescriptor.labelKey) : '' }}
+        </UButton>
+      </div>
+    </template>
+  </UModal>
+
+  <!-- Post-completion follow-up slot. Renders nothing when no module
+       has registered into `appointment.completed.followup`. -->
+  <UModal
+    :open="followupOpen"
+    :title="t('appointments.followup.title')"
+    @update:open="(v: boolean) => { if (!v) closeFollowup() }"
+  >
+    <template #body>
+      <div class="space-y-3 p-4">
+        <component
+          :is="entry.component"
+          v-for="entry in followupEntries"
+          :key="entry.id"
+          :appointment="followupAppointment"
+          @done="closeFollowup"
+        />
+      </div>
+    </template>
+    <template #footer>
+      <div class="flex justify-end gap-2 p-2">
+        <UButton color="neutral" variant="ghost" @click="closeFollowup">
+          {{ t('actions.close') }}
         </UButton>
       </div>
     </template>
