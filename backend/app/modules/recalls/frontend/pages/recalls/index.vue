@@ -118,13 +118,41 @@ function onChanged(updated: Recall) {
 }
 
 const conversionPct = computed(() => stats.value ? Math.round(stats.value.conversion_rate * 100) : 0)
-const csvUrl = computed(() => recallsApi.exportCsvUrl({
-  month: month.value || undefined,
-  reason: reason.value || undefined,
-  status: status.value || undefined,
-  priority: priority.value || undefined,
-  overdue: overdue.value || undefined
-}))
+
+const auth = useAuth()
+const config = useRuntimeConfig()
+const isExporting = ref(false)
+
+async function downloadCsv() {
+  if (isExporting.value) return
+  isExporting.value = true
+  try {
+    const url = config.public.apiBaseUrl + recallsApi.exportCsvUrl({
+      month: month.value || undefined,
+      reason: reason.value || undefined,
+      status: status.value || undefined,
+      priority: priority.value || undefined,
+      overdue: overdue.value || undefined
+    })
+    const res = await fetch(url, {
+      headers: auth.accessToken.value
+        ? { Authorization: `Bearer ${auth.accessToken.value}` }
+        : {}
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = 'recalls.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  } finally {
+    isExporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -134,10 +162,11 @@ const csvUrl = computed(() => recallsApi.exportCsvUrl({
         {{ t('recalls.callList') }}
       </h1>
       <UButton
-        :href="csvUrl"
         icon="i-lucide-download"
         size="sm"
         variant="soft"
+        :loading="isExporting"
+        @click="downloadCsv"
       >
         {{ t('recalls.actions.exportCsv') }}
       </UButton>
