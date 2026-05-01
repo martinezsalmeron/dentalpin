@@ -20,9 +20,13 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "rec_0001"
-down_revision: str | None = None
+# Chain off the foundational core revision that creates ``clinics`` +
+# ``users``. The cross-branch FKs to ``patients`` and ``appointments``
+# are declared via ``depends_on`` so those tables exist regardless of
+# branch ordering when starting from a clean DB.
+down_revision: str | None = "0001"
 branch_labels: str | Sequence[str] | None = ("recalls",)
-depends_on: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = ("pat_0001", "ag_0001")
 
 
 def upgrade() -> None:
