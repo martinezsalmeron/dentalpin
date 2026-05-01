@@ -81,6 +81,11 @@ from app.modules.odontogram.models import (  # noqa: F401
 )
 from app.modules.patient_timeline.models import PatientTimeline  # noqa: F401
 from app.modules.patients.models import Patient  # noqa: F401
+from app.modules.recalls.models import (  # noqa: F401
+    Recall,
+    RecallContactAttempt,
+    RecallSettings,
+)
 from app.modules.patients_clinical.models import (  # noqa: F401
     Allergy,
     EmergencyContact,
