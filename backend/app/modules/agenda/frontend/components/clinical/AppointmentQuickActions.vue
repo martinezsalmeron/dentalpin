@@ -22,18 +22,10 @@ const isBusy = ref(false)
 const pendingDescriptor = ref<TransitionDescriptor | null>(null)
 const pendingNote = ref('')
 
-// Post-completion follow-up slot. After a successful transition to
-// "completed", any sibling module registered into the
-// `appointment.completed.followup` slot (e.g. `recalls` "Schedule a
-// recall?" prompt, issue #62) renders inside this modal.
-const followupOpen = ref(false)
-const followupAppointment = ref<Appointment | null>(null)
-const { resolve } = useModuleSlots()
-const followupEntries = computed(() =>
-  followupAppointment.value
-    ? resolve('appointment.completed.followup', { appointment: followupAppointment.value })
-    : []
-)
+// Post-completion follow-up modal is hosted once at the agenda page
+// level (`CompletionFollowupHost.vue`) so it stays consistent across
+// the dropdown path and the kanban drag-drop path.
+const completionFollowup = useCompletionFollowup()
 
 const transitions = computed(() => nextTransitions(props.appointment.status))
 const hasActions = computed(() => transitions.value.length > 0)
@@ -63,10 +55,7 @@ async function runTransition(tr: TransitionDescriptor, note?: string) {
     await transition(props.appointment.id, tr.to, note?.trim() || undefined)
     emit('transitioned', props.appointment, tr.to)
     if (tr.to === 'completed') {
-      followupAppointment.value = { ...props.appointment, status: 'completed' }
-      // eslint-disable-next-line no-console
-      console.debug('[appointment.completed.followup] entries=', followupEntries.value.length, followupEntries.value.map(e => e.id))
-      followupOpen.value = followupEntries.value.length > 0
+      completionFollowup.trigger(props.appointment)
     }
   } catch (err) {
     toast.add({ title: t('appointments.transitionFailed'), color: 'error' })
@@ -74,11 +63,6 @@ async function runTransition(tr: TransitionDescriptor, note?: string) {
   } finally {
     isBusy.value = false
   }
-}
-
-function closeFollowup() {
-  followupOpen.value = false
-  followupAppointment.value = null
 }
 
 function confirmPending() {
@@ -146,30 +130,6 @@ const confirmMessage = computed(() => {
     </template>
   </UModal>
 
-  <!-- Post-completion follow-up slot. Renders nothing when no module
-       has registered into `appointment.completed.followup`. -->
-  <UModal
-    :open="followupOpen"
-    :title="t('appointments.followup.title')"
-    @update:open="(v: boolean) => { if (!v) closeFollowup() }"
-  >
-    <template #body>
-      <div class="space-y-3 p-4">
-        <component
-          :is="entry.component"
-          v-for="entry in followupEntries"
-          :key="entry.id"
-          :appointment="followupAppointment"
-          @done="closeFollowup"
-        />
-      </div>
-    </template>
-    <template #footer>
-      <div class="flex justify-end gap-2 p-2">
-        <UButton color="neutral" variant="ghost" @click="closeFollowup">
-          {{ t('actions.close') }}
-        </UButton>
-      </div>
-    </template>
-  </UModal>
+  <!-- Post-completion modal lives once in `CompletionFollowupHost`
+       at the page level, not here. -->
 </template>

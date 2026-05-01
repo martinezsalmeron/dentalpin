@@ -31,6 +31,7 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const toast = useToast()
 const { fetchAppointments, transition, assignCabinet } = useAppointments()
+const completionFollowup = useCompletionFollowup()
 const { canTransition, statusColour, statusLabel } = useAppointmentStatus()
 // Manual 30-second tick — @vueuse/core is not a dependency in this repo.
 const now = ref(new Date())
@@ -293,6 +294,9 @@ async function onDrop(col: ColumnDef, e: DragEvent, cabinetName?: string) {
       if (cabId) await safeAssign(aptId, cabId)
     }
     await transition(aptId, target)
+    if (target === 'completed') {
+      completionFollowup.trigger(apt)
+    }
   } catch {
     toast.add({ title: t('appointments.transitionFailed'), color: 'error' })
   }
