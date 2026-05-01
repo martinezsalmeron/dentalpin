@@ -10,7 +10,8 @@
       "status": "Status",
       "priority": "Priority",
       "overdue": "Show overdue",
-      "any": "Any"
+      "any": "Any",
+      "thisMonth": "This month"
     },
     "counters": {
       "due_this_week": "Due this week",

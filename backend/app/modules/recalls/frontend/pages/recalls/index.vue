@@ -219,10 +219,7 @@ async function downloadCsv() {
 
     <section class="grid grid-cols-2 sm:grid-cols-5 gap-2">
       <UFormField :label="t('recalls.filters.month')">
-        <UInput
-          v-model="month"
-          type="month"
-        />
+        <MonthPickerDropdown v-model="month" />
       </UFormField>
       <UFormField :label="t('recalls.filters.reason')">
         <USelectMenu

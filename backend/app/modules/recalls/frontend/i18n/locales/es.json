@@ -10,7 +10,8 @@
       "status": "Estado",
       "priority": "Prioridad",
       "overdue": "Mostrar atrasados",
-      "any": "Todos"
+      "any": "Todos",
+      "thisMonth": "Mes actual"
     },
     "counters": {
       "due_this_week": "Vencen esta semana",
