@@ -13,7 +13,8 @@
     "/module_layers/reports/frontend",
     "/module_layers/schedules/frontend",
     "/module_layers/treatment_plan/frontend",
-    "/module_layers/clinical_notes/frontend"
+    "/module_layers/clinical_notes/frontend",
+    "/module_layers/recalls/frontend"
   ],
   "modules": [
     {
@@ -71,6 +72,10 @@
     {
       "name": "clinical_notes",
       "path": "/module_layers/clinical_notes/frontend"
+    },
+    {
+      "name": "recalls",
+      "path": "/module_layers/recalls/frontend"
     }
   ],
   "version": 1

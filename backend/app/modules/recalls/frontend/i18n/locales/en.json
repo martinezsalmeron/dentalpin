@@ -1,0 +1,118 @@
+{
+  "recalls": {
+    "title": "Recalls",
+    "callList": "Call list",
+    "noRecallsThisMonth": "No pending recalls this month",
+    "filters": {
+      "month": "Month",
+      "reason": "Reason",
+      "professional": "Professional",
+      "status": "Status",
+      "priority": "Priority",
+      "overdue": "Show overdue",
+      "any": "Any"
+    },
+    "counters": {
+      "due_this_week": "Due this week",
+      "due_this_month": "Due this month",
+      "overdue": "Overdue",
+      "scheduled_this_month": "Scheduled this month",
+      "completed_this_month": "Completed this month",
+      "conversion_rate": "Conversion"
+    },
+    "setRecall": "Set recall",
+    "setRecallShort": "Recall",
+    "history": "Recall history",
+    "viewAll": "View all",
+    "pillNext": "Next recall: {month} · {reason}",
+    "pillNone": "No active recall",
+    "reasons": {
+      "hygiene": "Hygiene",
+      "checkup": "Check-up",
+      "ortho_review": "Ortho review",
+      "implant_review": "Implant review",
+      "post_op": "Post-op",
+      "treatment_followup": "Treatment follow-up",
+      "other": "Other"
+    },
+    "priority": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High"
+    },
+    "status": {
+      "pending": "Pending",
+      "contacted_no_answer": "No answer",
+      "contacted_scheduled": "Scheduled",
+      "contacted_declined": "Declined",
+      "done": "Done",
+      "cancelled": "Cancelled",
+      "needs_review": "Needs review"
+    },
+    "actions": {
+      "call": "Call",
+      "logAttempt": "Log attempt",
+      "noAnswer": "No answer",
+      "book": "Book appointment",
+      "snooze": "Snooze",
+      "cancel": "Cancel",
+      "markDone": "Mark done",
+      "exportCsv": "Export CSV",
+      "save": "Save"
+    },
+    "closeoutPrompt": {
+      "title": "Schedule a recall?",
+      "subtitle": "The patient just finished — when should we call them back?",
+      "skip": "Not now"
+    },
+    "modal": {
+      "title": "Set recall",
+      "patient": "Patient",
+      "reason": "Reason",
+      "month": "Target month",
+      "preciseDate": "Specific day (optional)",
+      "priority": "Priority",
+      "assigned": "Assigned professional",
+      "note": "Internal note",
+      "duplicateGuard": "A pending recall already exists for this patient and reason. It will be updated."
+    },
+    "logAttempt": {
+      "channel": "Channel",
+      "outcome": "Outcome",
+      "note": "Note",
+      "submit": "Log attempt"
+    },
+    "channel": {
+      "phone": "Phone",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "email": "Email"
+    },
+    "outcome": {
+      "no_answer": "No answer",
+      "voicemail": "Voicemail",
+      "scheduled": "Appointment scheduled",
+      "declined": "Declined",
+      "wrong_number": "Wrong number"
+    },
+    "snoozePrompt": "Snooze for how many months?",
+    "settings": {
+      "title": "Recalls",
+      "description": "Default intervals + treatment-category mapping",
+      "intervals": "Default intervals (months)",
+      "categoryMap": "Treatment → reason",
+      "autoSuggest": "Suggest a recall when a treatment is completed",
+      "autoLink": "Link a scheduled appointment to a pending recall",
+      "saved": "Settings saved"
+    },
+    "dashboard": {
+      "title": "Recalls"
+    },
+    "suggestion": {
+      "title": "Suggested recall",
+      "body": "After this treatment we suggest a recall in {month} ({reason}).",
+      "create": "Create recall",
+      "dismiss": "Dismiss"
+    }
+  }
+}
