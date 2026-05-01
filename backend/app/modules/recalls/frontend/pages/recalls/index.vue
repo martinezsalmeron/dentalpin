@@ -14,11 +14,18 @@ if (!can('recalls.read')) {
   await navigateTo('/')
 }
 
+// Sentinel for "Any" — Reka UI's SelectItem rejects empty-string
+// values (reserves them for the placeholder state). We round-trip
+// this token through the dropdown and normalise to undefined on the
+// API call. Same pattern used by `AppointmentModal` for unassigned
+// cabinets (#51).
+const ANY = '__any__'
+
 // Filters from query string.
 const month = ref<string>(String(route.query.month ?? defaultMonthIso()))
-const reason = ref<RecallReason | ''>((route.query.reason as RecallReason) ?? '')
-const status = ref<RecallStatus | ''>((route.query.status as RecallStatus) ?? 'pending')
-const priority = ref<RecallPriority | ''>((route.query.priority as RecallPriority) ?? '')
+const reason = ref<RecallReason | typeof ANY>((route.query.reason as RecallReason) ?? ANY)
+const status = ref<RecallStatus | typeof ANY>((route.query.status as RecallStatus) ?? 'pending')
+const priority = ref<RecallPriority | typeof ANY>((route.query.priority as RecallPriority) ?? ANY)
 const overdue = ref<boolean>(route.query.overdue === 'true')
 const patientId = ref<string | undefined>((route.query.patient_id as string) || undefined)
 
@@ -43,7 +50,7 @@ function defaultMonthIso(): string {
 }
 
 const reasonOptions = computed(() => [
-  { value: '', label: t('recalls.filters.any') },
+  { value: ANY, label: t('recalls.filters.any') },
   ...(['hygiene', 'checkup', 'ortho_review', 'implant_review', 'post_op', 'treatment_followup', 'other'] as RecallReason[]).map(r => ({
     value: r,
     label: t(`recalls.reasons.${r}`)
@@ -51,7 +58,7 @@ const reasonOptions = computed(() => [
 ])
 
 const statusOptions = computed(() => [
-  { value: '', label: t('recalls.filters.any') },
+  { value: ANY, label: t('recalls.filters.any') },
   ...(['pending', 'contacted_no_answer', 'contacted_scheduled', 'contacted_declined', 'done', 'cancelled', 'needs_review'] as RecallStatus[]).map(s => ({
     value: s,
     label: t(`recalls.status.${s}`)
@@ -59,7 +66,7 @@ const statusOptions = computed(() => [
 ])
 
 const priorityOptions = computed(() => [
-  { value: '', label: t('recalls.filters.any') },
+  { value: ANY, label: t('recalls.filters.any') },
   ...(['low', 'normal', 'high'] as RecallPriority[]).map(p => ({
     value: p,
     label: t(`recalls.priority.${p}`)
@@ -71,9 +78,9 @@ async function load() {
   try {
     const filters: Record<string, unknown> = {
       month: month.value || undefined,
-      reason: reason.value || undefined,
-      status: status.value || undefined,
-      priority: priority.value || undefined,
+      reason: reason.value === ANY ? undefined : reason.value || undefined,
+      status: status.value === ANY ? undefined : status.value || undefined,
+      priority: priority.value === ANY ? undefined : priority.value || undefined,
       overdue: overdue.value || undefined,
       patient_id: patientId.value,
       page: page.value,
@@ -98,9 +105,9 @@ watch([month, reason, status, priority, overdue, patientId], () => {
   router.replace({
     query: {
       ...(month.value ? { month: month.value } : {}),
-      ...(reason.value ? { reason: reason.value } : {}),
-      ...(status.value ? { status: status.value } : {}),
-      ...(priority.value ? { priority: priority.value } : {}),
+      ...(reason.value && reason.value !== ANY ? { reason: reason.value } : {}),
+      ...(status.value && status.value !== ANY ? { status: status.value } : {}),
+      ...(priority.value && priority.value !== ANY ? { priority: priority.value } : {}),
       ...(overdue.value ? { overdue: 'true' } : {}),
       ...(patientId.value ? { patient_id: patientId.value } : {})
     }
@@ -129,9 +136,9 @@ async function downloadCsv() {
   try {
     const url = config.public.apiBaseUrl + recallsApi.exportCsvUrl({
       month: month.value || undefined,
-      reason: reason.value || undefined,
-      status: status.value || undefined,
-      priority: priority.value || undefined,
+      reason: reason.value === ANY ? undefined : reason.value || undefined,
+      status: status.value === ANY ? undefined : status.value || undefined,
+      priority: priority.value === ANY ? undefined : priority.value || undefined,
       overdue: overdue.value || undefined
     })
     const res = await fetch(url, {
