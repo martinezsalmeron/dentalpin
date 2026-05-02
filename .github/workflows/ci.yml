@@ -135,6 +135,19 @@ jobs:
         run: |
           python scripts/generate_catalogs.py --check
 
+      - name: Check docs coverage (warning-only)
+        # ADR 0009 / issue #75. Surfaces modules whose technical/user-manual
+        # docs are missing or whose screen frontmatter is broken. Stays
+        # warning-only until the per-module backfill (fase 6) lands.
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://dental:testpass@localhost:5432/stub
+          SECRET_KEY: ci-stub
+          ENVIRONMENT: test
+          TESTING: "true"
+        run: |
+          python scripts/check_docs_coverage.py
+
   docs-layout:
     # Enforces the docs/ taxonomy from root CLAUDE.md "Documentation policy".
     # Fails if a new markdown file is dropped at docs/ root, an unknown
@@ -151,6 +164,30 @@ jobs:
 
       - name: Check docs layout
         run: python scripts/check_docs_layout.py
+
+  docs-portal-build:
+    # Smoke test: the VitePress documentation portal (ADR 0009) builds
+    # cleanly. Runs on every PR — fast (under a minute) and surfaces
+    # broken markdown / sidebar config before deploy.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install portal dependencies
+        working-directory: docs/portal
+        run: npm install --no-audit --no-fund
+
+      - name: Build portal
+        working-directory: docs/portal
+        run: npm run build
+
+      - name: Verify dist/ output
+        run: test -f docs/portal/.vitepress/dist/index.html
 
   frontend-lint:
     runs-on: ubuntu-latest

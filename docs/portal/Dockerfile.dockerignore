@@ -1,0 +1,45 @@
+# BuildKit-aware ignore file for `docs/portal/Dockerfile`.
+# Overrides the repo-root `.dockerignore` (which excludes `docs/`) because
+# the portal build *needs* the docs tree.
+#
+# Keep the context tight: only `docs/` is needed.
+
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.venv
+**/node_modules
+**/.nuxt
+**/.output
+**/dist
+**/build
+**/.vitepress/dist
+**/.vitepress/cache
+
+# Editor / agent state.
+.claude/
+.vscode/
+.idea/
+
+# Stuff the portal does not need from the rest of the repo.
+backend/
+frontend/
+mobile/
+infra/
+e2e/
+bin/
+scripts/
+*.md
+!docs/**/*.md
+
+# Keep CI definitions out of the image.
+.github/
+
+# Allow the docs/ tree explicitly (the only thing we actually need).
+!docs/

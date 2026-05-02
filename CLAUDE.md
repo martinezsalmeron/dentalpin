@@ -42,14 +42,20 @@ DentalPin is built as independent modules under `backend/app/modules/<name>/` wi
 
 | Trigger | Required actions |
 |---------|------------------|
-| New module | Create `backend/app/modules/<name>/CLAUDE.md` + `CHANGELOG.md`. Run `python backend/scripts/generate_catalogs.py`. Follow `docs/checklists/new-module.md`. |
-| New event published or consumed | Add to `EventType` in `backend/app/core/events/types.py`. Re-run `generate_catalogs.py`. Document publisher payload in module CLAUDE.md. |
-| New permission | Return from `get_permissions()` (no module prefix). List in `manifest.role_permissions`. Add to `frontend/app/config/permissions.ts` if user-facing. |
+| New module | Create `backend/app/modules/<name>/CLAUDE.md` + `CHANGELOG.md`. Create `docs/technical/<name>/{overview,events,permissions}.md`. If the module has Nuxt pages, also `docs/user-manual/{en,es}/<name>/{index.md, screens/<slug>.md}` per page. Run `python backend/scripts/generate_catalogs.py`. Follow `docs/checklists/new-module.md`. |
+| New screen (page under `<module>/frontend/pages/**`) | Create both `docs/user-manual/en/<module>/screens/<slug>.md` and `docs/user-manual/es/<module>/screens/<slug>.md` with the [frontmatter contract](./docs/technical/documentation-portal.md#2-frontmatter-contract-the-part-claude-relies-on). Screenshots into `docs/screenshots/<module>/`. |
+| New endpoint | Document under the gating permission's row in `docs/technical/<module>/permissions.md`. Bump `last_verified_commit` on every screen MD whose `related_endpoints` covers it. |
+| New event published or consumed | Add to `EventType` in `backend/app/core/events/types.py`. Add row to `docs/technical/<module>/events.md`. Re-run `generate_catalogs.py`. Document publisher payload in module CLAUDE.md. |
+| New permission | Return from `get_permissions()` (no module prefix). List in `manifest.role_permissions`. Add row to `docs/technical/<module>/permissions.md`. Add to `frontend/app/config/permissions.ts` if user-facing. |
+| Touched a screen's behaviour or visuals | Update the matching screen MD in **both** `docs/user-manual/{en,es}/<module>/screens/`. Refresh screenshots if visuals changed. Bump `last_verified_commit` in each locale. |
 | Architectural decision | Copy `docs/adr/TEMPLATE.md` → `docs/adr/NNNN-title.md`. |
 | New domain term (ES↔EN) | Append to `docs/glossary.md`. |
 | New documentation file | Pick the folder by type from the **Documentation policy** table below. Never drop new files at `docs/` root. |
 | Touched any module | Update its `backend/app/modules/<name>/CHANGELOG.md` under `## Unreleased`. |
 | Cross-module FK or import | Target module MUST be in `manifest.depends`. CI rejects otherwise. |
+
+Full docs-update recipe: [`docs/checklists/updating-docs.md`](./docs/checklists/updating-docs.md).
+Architecture + rationale: [`docs/technical/documentation-portal.md`](./docs/technical/documentation-portal.md) ([ADR 0009](./docs/adr/0009-documentation-portal.md)).
 
 Reference material:
 

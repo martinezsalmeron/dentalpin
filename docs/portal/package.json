@@ -1,0 +1,15 @@
+{
+  "name": "dentalpin-docs-portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VitePress portal for the DentalPin documentation under /docs.",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  }
+}

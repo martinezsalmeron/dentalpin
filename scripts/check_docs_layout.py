@@ -48,6 +48,10 @@ FOLDERS_ALLOWED: frozenset[str] = frozenset(
         "diagrams",
         "screenshots",
         "workflows",
+        # VitePress portal that renders the rest of /docs (ADR 0009).
+        # It owns the build pipeline only — no documentation content lives
+        # here. See docs/portal/README.md.
+        "portal",
     }
 )
 
