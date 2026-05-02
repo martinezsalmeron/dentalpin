@@ -62,14 +62,16 @@ const editTypeOptions = computed(() => [
   { label: t('documents.types.other'), value: 'other' }
 ])
 
-// Load documents
+// Load documents — restrict to non-photo kinds; the photo gallery owns
+// `media_kind=photo|xray`.
 async function loadDocuments() {
   const typeFilter = selectedType.value === 'all' ? undefined : selectedType.value as DocumentType
   await fetchDocuments(
     props.patientId,
     typeFilter,
     page.value,
-    pageSize
+    pageSize,
+    'document'
   )
 }
 
@@ -232,19 +234,42 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize))
     </div>
 
     <!-- Upload Modal -->
-    <UModal v-model:open="showUploadModal">
+    <UModal
+      v-model:open="showUploadModal"
+      :ui="{ content: 'sm:max-w-2xl' }"
+    >
       <template #content>
-        <UCard>
-          <template #header>
-            <h3 class="font-semibold">
-              {{ t('documents.upload', 'Upload Document') }}
-            </h3>
-          </template>
-          <DocumentUpload
-            :patient-id="patientId"
-            @uploaded="handleUploaded"
-          />
-        </UCard>
+        <div class="bg-default rounded-lg overflow-hidden">
+          <header class="flex items-center gap-3 border-b border-default px-5 py-4">
+            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <UIcon
+                name="i-lucide-file-up"
+                class="h-5 w-5"
+              />
+            </div>
+            <div class="flex-1">
+              <h3 class="text-base font-semibold leading-tight">
+                {{ t('documents.upload', 'Subir documento') }}
+              </h3>
+              <p class="text-xs text-muted">
+                {{ t('documents.uploadHelp', 'Clasifica el archivo para que aparezca en su categoría.') }}
+              </p>
+            </div>
+            <UButton
+              variant="ghost"
+              color="neutral"
+              icon="i-lucide-x"
+              size="sm"
+              @click="showUploadModal = false"
+            />
+          </header>
+          <div class="px-5 py-4">
+            <DocumentUpload
+              :patient-id="patientId"
+              @uploaded="handleUploaded"
+            />
+          </div>
+        </div>
       </template>
     </UModal>
 

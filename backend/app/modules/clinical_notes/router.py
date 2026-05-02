@@ -1,6 +1,11 @@
 """Clinical notes module API endpoints.
 
 All routes are mounted at ``/api/v1/clinical_notes/`` by the plugin loader.
+
+Attachment CRUD lives in the ``media`` module since issue #55 — clients
+should call ``/api/v1/media/attachments`` directly. We keep one
+read-only convenience endpoint (``GET /attachments``) to honor existing
+frontend code paths during the transition; create/delete moved away.
 """
 
 from datetime import datetime
@@ -14,14 +19,13 @@ from app.core.auth.dependencies import ClinicContext, get_clinic_context, requir
 from app.core.schemas import ApiResponse
 from app.database import get_db
 
+from .models import ClinicalNote
 from .schemas import (
-    ATTACHMENT_OWNER_PATTERN,
     NOTE_OWNER_PATTERN,
     ClinicalNoteCreate,
     ClinicalNoteEntry,
     ClinicalNoteResponse,
     ClinicalNoteUpdate,
-    NoteAttachmentCreate,
     NoteAttachmentResponse,
     NoteTemplateResponse,
     PlanNotesGroup,
@@ -29,9 +33,10 @@ from .schemas import (
 )
 from .service import (
     AttachmentPatientMismatchError,
-    NoteAttachmentService,
     NoteOwnerError,
     NoteService,
+    list_attachments_for_note,
+    list_attachments_for_owner,
     list_grouped_for_patient,
     list_merged_for_plan,
     list_recent_for_patient,
@@ -40,9 +45,53 @@ from .service import (
 
 router = APIRouter()
 
+ATTACHMENT_OWNER_PATTERN = "^(patient|treatment|plan|clinical_note)$"
+
 
 def _is_admin_role(ctx: ClinicContext) -> bool:
     return ctx.role == "admin"
+
+
+_THUMBNAILABLE = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "image/gif",
+}
+
+
+def _decorate_attachment(att) -> NoteAttachmentResponse:
+    """Project a MediaAttachment + its loaded document into a response.
+
+    URL templates mirror media's own decorator. They live as plain
+    strings here so we don't import a private helper from media — the
+    only contract we depend on is the public download endpoint shape.
+    """
+    response = NoteAttachmentResponse.model_validate(att)
+    doc = att.document
+    if doc is not None:
+        response.title = doc.title
+        response.mime_type = doc.mime_type
+        response.media_kind = doc.media_kind
+        base = f"/api/v1/media/documents/{doc.id}/download"
+        response.full_url = base
+        if doc.mime_type in _THUMBNAILABLE and doc.media_kind in ("photo", "xray"):
+            response.thumb_url = f"{base}?variant=thumb"
+            response.medium_url = f"{base}?variant=medium"
+    return response
+
+
+async def _decorate_note(
+    db: AsyncSession, clinic_id: UUID, note: ClinicalNote
+) -> ClinicalNoteResponse:
+    """Build a ClinicalNoteResponse with attachments fetched from media."""
+    response = ClinicalNoteResponse.model_validate(note)
+    attachments = await list_attachments_for_note(db, clinic_id, note.id)
+    response.attachments = [_decorate_attachment(a) for a in attachments]
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -63,13 +112,12 @@ async def list_notes(
 ) -> ApiResponse[list[ClinicalNoteResponse]]:
     """List clinical notes for a single owner (patient / treatment / plan)."""
     try:
-        # Stable 404 instead of a silently-empty list when the owner does
-        # not exist in this clinic — also catches cross-clinic leak attempts.
         await resolve_owner_patient(db, ctx.clinic_id, owner_type, owner_id)
         notes = await NoteService.list_for_owner(db, ctx.clinic_id, owner_type, owner_id)
     except NoteOwnerError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    return ApiResponse(data=[ClinicalNoteResponse.model_validate(n) for n in notes])
+    decorated = [await _decorate_note(db, ctx.clinic_id, n) for n in notes]
+    return ApiResponse(data=decorated)
 
 
 @router.post(
@@ -100,7 +148,7 @@ async def create_note(
         raise HTTPException(status_code=404, detail=str(e)) from e
     except AttachmentPatientMismatchError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return ApiResponse(data=ClinicalNoteResponse.model_validate(note))
+    return ApiResponse(data=await _decorate_note(db, ctx.clinic_id, note))
 
 
 @router.patch(
@@ -128,8 +176,7 @@ async def update_note(
         raise HTTPException(status_code=403, detail=str(e)) from e
     if note is None:
         raise HTTPException(status_code=404, detail="Note not found")
-    note = await NoteService.get(db, ctx.clinic_id, note_id)
-    return ApiResponse(data=ClinicalNoteResponse.model_validate(note))
+    return ApiResponse(data=await _decorate_note(db, ctx.clinic_id, note))
 
 
 @router.delete(
@@ -158,7 +205,8 @@ async def delete_note(
 
 
 # ---------------------------------------------------------------------------
-# Attachments
+# Attachments — read-only convenience that proxies media. New code should
+# call /api/v1/media/attachments directly.
 # ---------------------------------------------------------------------------
 
 
@@ -173,59 +221,12 @@ async def list_attachments(
     owner_type: str = Query(..., pattern=ATTACHMENT_OWNER_PATTERN),
     owner_id: UUID = Query(...),
 ) -> ApiResponse[list[NoteAttachmentResponse]]:
-    """List attachments for an owner — superset includes appointment_treatment."""
+    """Proxy of media's attachment list — kept for transitional callers."""
     try:
-        rows = await NoteAttachmentService.list_for_owner(db, ctx.clinic_id, owner_type, owner_id)
+        rows = await list_attachments_for_owner(db, ctx.clinic_id, owner_type, owner_id)
     except NoteOwnerError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return ApiResponse(data=[NoteAttachmentResponse.model_validate(r) for r in rows])
-
-
-@router.post(
-    "/attachments",
-    response_model=ApiResponse[NoteAttachmentResponse],
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_attachment(
-    data: NoteAttachmentCreate,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical_notes.notes.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[NoteAttachmentResponse]:
-    """Link an already-uploaded Document to an owner."""
-    try:
-        row = await NoteAttachmentService.link(
-            db,
-            clinic_id=ctx.clinic_id,
-            document_id=data.document_id,
-            owner_type=data.owner_type,
-            owner_id=data.owner_id,
-            note_id=data.note_id,
-            display_order=data.display_order,
-        )
-    except NoteOwnerError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except AttachmentPatientMismatchError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    return ApiResponse(data=NoteAttachmentResponse.model_validate(row))
-
-
-@router.delete(
-    "/attachments/{attachment_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-async def delete_attachment(
-    attachment_id: UUID,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical_notes.notes.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
-    """Unlink an attachment (does not delete the underlying Document)."""
-    ok = await NoteAttachmentService.unlink(
-        db, clinic_id=ctx.clinic_id, attachment_id=attachment_id
-    )
-    if not ok:
-        raise HTTPException(status_code=404, detail="Attachment not found")
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +268,8 @@ async def list_patient_recent_notes(
         )
     except NoteOwnerError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+    for e in entries:
+        e["attachments"] = [_decorate_attachment(a) for a in e["attachments"]]
     return ApiResponse(data=[RecentNoteEntry.model_validate(e) for e in entries])
 
 
@@ -282,6 +285,12 @@ async def list_patient_clinical_notes_by_plan(
 ) -> ApiResponse[list[PlanNotesGroup]]:
     """Clinical notes grouped by plan → treatment for one patient."""
     groups = await list_grouped_for_patient(db, ctx.clinic_id, patient_id)
+    for g in groups:
+        for entry in g.get("plan_notes", []):
+            entry["attachments"] = [_decorate_attachment(a) for a in entry["attachments"]]
+        for tg in g.get("treatments", []):
+            for entry in tg.get("notes", []):
+                entry["attachments"] = [_decorate_attachment(a) for a in entry["attachments"]]
     return ApiResponse(data=[PlanNotesGroup.model_validate(g) for g in groups])
 
 
@@ -297,6 +306,8 @@ async def list_plan_merged_clinical_notes(
 ) -> ApiResponse[list[ClinicalNoteEntry]]:
     """Merged clinical-notes feed for a plan (plan + treatment + visit)."""
     entries = await list_merged_for_plan(db, ctx.clinic_id, plan_id)
+    for e in entries:
+        e["attachments"] = [_decorate_attachment(a) for a in e["attachments"]]
     return ApiResponse(data=[ClinicalNoteEntry.model_validate(e) for e in entries])
 
 

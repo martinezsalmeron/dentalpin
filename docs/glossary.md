@@ -29,6 +29,26 @@ ADRs) for the full story.
 | Assistant | Asistente | Operative role; full patient + appointment access, no clinical writes. |
 | Receptionist | Recepcionista | Front-desk role; patients + appointments. |
 
+## Imaging (issue #55)
+
+| EN (code) | ES (UI) | Definition |
+|---|---|---|
+| Document | Documento | Any patient file in the `media` module — PDFs, photos, X-rays. |
+| Media kind | Tipo de medio | Top-level Document classification (`photo` / `xray` / `document` / `scan` / `video`). Drives the gallery vs document-list UI. |
+| Media category | Categoría | Photo / X-ray bucket — `intraoral`, `extraoral`, `xray`, `clinical`, `other`. |
+| Media subtype | Subtipo | Leaf taxonomy node — `frontal`, `panoramic`, `before`, etc. See `media/photo_taxonomy.py`. |
+| Intraoral | Intraoral | Photos taken inside the mouth — frontal / lateral / occlusal / palatal / lingual. |
+| Extraoral | Extraoral | Photos of the face — profile, smile, three-quarter, frontal_face, rest. |
+| Occlusal | Oclusal | Bite-surface intraoral view (`occlusal_upper` / `occlusal_lower`). |
+| Panoramic | Panorámica | Panoramic dental X-ray. |
+| Periapical | Periapical | Per-tooth X-ray covering the root and surrounding bone. |
+| Bitewing | Bitewing / Aleta de mordida | Inter-proximal X-ray showing crowns + alveolar crests. |
+| Cephalometric | Cefalométrica | Lateral or postero-anterior skull X-ray (`cephalometric_lateral` / `cephalometric_pa`). |
+| CBCT | CBCT / TC de haz cónico | Cone-beam computed tomography. |
+| Before / After | Antes / Después | Paired clinical photos linked via `paired_document_id`. |
+| Attachment | Adjunto | A `MediaAttachment` row linking a Document to an arbitrary owner (`patient`, `treatment`, `plan`, `plan_item`, `appointment_treatment`, `clinical_note`). |
+| Owner registry | Registro de dueños | The `media.attachment_registry` global. Each consumer module registers its own `owner_type` strings + a resolver. See ADR 0007. |
+
 ## Scheduling
 
 | EN (code) | ES (UI) | Definition |

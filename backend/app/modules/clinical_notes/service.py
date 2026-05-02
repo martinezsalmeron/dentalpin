@@ -1,9 +1,19 @@
-"""Clinical notes + polymorphic attachments service layer.
+"""Clinical notes service layer.
 
-CRUD + queries for ``clinical_notes`` and ``clinical_note_attachments``. Owner
-existence is validated up-front against the relevant module model (patients,
-odontogram, treatment_plan) — the manifest declares those as ``depends`` so
-this is a sanctioned cross-module read.
+CRUD + queries for ``clinical_notes``. Owner existence is validated
+up-front against the relevant module model (patients, odontogram,
+treatment_plan) — the manifest declares those as ``depends`` so this is
+a sanctioned cross-module read.
+
+Document attachments are delegated to the ``media`` module (see issue
+#55). When a note is created with ``attachment_document_ids`` we link
+each document twice via ``media.AttachmentService``:
+
+1. To the note's own owner (e.g. ``owner_type='plan'``) so the document
+   surfaces in the plan's gallery.
+2. To the note itself (``owner_type='clinical_note'``,
+   ``owner_id=note.id``) so the note's renderer can list its
+   attachments.
 """
 
 from __future__ import annotations
@@ -20,14 +30,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.events import event_bus
 from app.core.events.types import EventType
-from app.modules.media.models import Document
+from app.modules.media.models import Document, MediaAttachment
+from app.modules.media.service import AttachmentService
 from app.modules.odontogram.models import Treatment
 from app.modules.patients.models import Patient
 from app.modules.treatment_plan.models import PlannedTreatmentItem, TreatmentPlan
 
 from .models import (
-    ATTACHMENT_OWNER_APPOINTMENT_TREATMENT,
-    ATTACHMENT_OWNER_TYPES,
     NOTE_OWNER_PATIENT,
     NOTE_OWNER_PLAN,
     NOTE_OWNER_TREATMENT,
@@ -37,7 +46,6 @@ from .models import (
     NOTE_TYPE_TREATMENT,
     NOTE_TYPE_TREATMENT_PLAN,
     ClinicalNote,
-    ClinicalNoteAttachment,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,6 +53,9 @@ logger = logging.getLogger(__name__)
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _WHITESPACE_RE = re.compile(r"\s+")
 _EXCERPT_MAX = 200
+
+# Owner types accepted by the read-only ``/attachments`` proxy endpoint.
+_VALID_ATTACHMENT_OWNER_TYPES = (*NOTE_OWNER_TYPES, "clinical_note")
 
 
 def body_excerpt(body: str) -> str:
@@ -71,7 +82,7 @@ _NOTE_TYPE_TO_EVENT = {
 
 
 # ---------------------------------------------------------------------------
-# Owner resolution
+# Owner resolution (used by routes; the media registry has its own copies)
 # ---------------------------------------------------------------------------
 
 
@@ -91,7 +102,6 @@ async def _resolve_patient_owner(db: AsyncSession, clinic_id: UUID, patient_id: 
 async def _resolve_treatment_owner(
     db: AsyncSession, clinic_id: UUID, treatment_id: UUID
 ) -> tuple[UUID, UUID]:
-    """Return (treatment_id, patient_id) when the treatment is live."""
     result = await db.execute(
         select(Treatment.id, Treatment.patient_id).where(
             Treatment.id == treatment_id,
@@ -108,7 +118,6 @@ async def _resolve_treatment_owner(
 async def _resolve_plan_owner(
     db: AsyncSession, clinic_id: UUID, plan_id: UUID
 ) -> tuple[UUID, UUID]:
-    """Return (plan_id, patient_id) when the plan is live."""
     result = await db.execute(
         select(TreatmentPlan.id, TreatmentPlan.patient_id).where(
             TreatmentPlan.id == plan_id,
@@ -120,32 +129,6 @@ async def _resolve_plan_owner(
     if row is None:
         raise NoteOwnerError(f"treatment_plan {plan_id} not found")
     return row[0], row[1]
-
-
-async def _resolve_appointment_treatment_patient(
-    db: AsyncSession, clinic_id: UUID, appointment_treatment_id: UUID
-) -> UUID:
-    # Deferred import: agenda is not in our manifest depends on purpose —
-    # we only need to read its appointment for attachment validation. The
-    # alternative is to expose an HTTP endpoint; keep the read here, behind
-    # a function so the dependency is explicit.
-    from app.modules.agenda.models import Appointment, AppointmentTreatment
-
-    result = await db.execute(
-        select(Appointment.patient_id)
-        .join(
-            AppointmentTreatment,
-            AppointmentTreatment.appointment_id == Appointment.id,
-        )
-        .where(
-            AppointmentTreatment.id == appointment_treatment_id,
-            Appointment.clinic_id == clinic_id,
-        )
-    )
-    row = result.first()
-    if row is None:
-        raise NoteOwnerError(f"appointment_treatment {appointment_treatment_id} not found")
-    return row[0]
 
 
 async def resolve_owner_patient(
@@ -163,8 +146,6 @@ async def resolve_owner_patient(
     if owner_type == NOTE_OWNER_PLAN:
         _, patient_id = await _resolve_plan_owner(db, clinic_id, owner_id)
         return patient_id
-    if owner_type == ATTACHMENT_OWNER_APPOINTMENT_TREATMENT:
-        return await _resolve_appointment_treatment_patient(db, clinic_id, owner_id)
     raise NoteOwnerError(f"unsupported owner_type {owner_type!r}")
 
 
@@ -193,7 +174,6 @@ class NoteService:
                 ClinicalNote.owner_id == owner_id,
                 ClinicalNote.deleted_at.is_(None),
             )
-            .options(selectinload(ClinicalNote.attachments))
             .order_by(ClinicalNote.created_at.desc())
         )
         return list(result.scalars().all())
@@ -201,13 +181,11 @@ class NoteService:
     @staticmethod
     async def get(db: AsyncSession, clinic_id: UUID, note_id: UUID) -> ClinicalNote | None:
         result = await db.execute(
-            select(ClinicalNote)
-            .where(
+            select(ClinicalNote).where(
                 ClinicalNote.id == note_id,
                 ClinicalNote.clinic_id == clinic_id,
                 ClinicalNote.deleted_at.is_(None),
             )
-            .options(selectinload(ClinicalNote.attachments))
         )
         return result.scalar_one_or_none()
 
@@ -240,18 +218,16 @@ class NoteService:
         await db.flush()
 
         if attachment_document_ids:
-            await NoteAttachmentService.link_many(
+            doc_ids = list(attachment_document_ids)
+            await _link_documents_to_note(
                 db,
                 clinic_id=clinic_id,
-                document_ids=list(attachment_document_ids),
-                owner_type=owner_type,
-                owner_id=owner_id,
-                note_id=note.id,
-                owner_patient_id=patient_id,
+                document_ids=doc_ids,
+                note=note,
+                expected_patient_id=patient_id,
             )
 
         await db.flush()
-        await db.refresh(note, attribute_names=["attachments"])
 
         event_name = _NOTE_TYPE_TO_EVENT[note_type]
         event_bus.publish(
@@ -324,143 +300,81 @@ class NoteService:
 
 
 # ---------------------------------------------------------------------------
-# Attachments service
+# Attachments — thin adapter layered on media.AttachmentService
 # ---------------------------------------------------------------------------
 
 
-class NoteAttachmentService:
-    """Polymorphic link between ``media.Document`` and a notes owner."""
+async def _link_documents_to_note(
+    db: AsyncSession,
+    *,
+    clinic_id: UUID,
+    document_ids: list[UUID],
+    note: ClinicalNote,
+    expected_patient_id: UUID,
+) -> None:
+    """Link each document to (a) the note's own owner and (b) the note itself.
 
-    @staticmethod
-    async def list_for_owner(
-        db: AsyncSession,
-        clinic_id: UUID,
-        owner_type: str,
-        owner_id: UUID,
-    ) -> list[ClinicalNoteAttachment]:
-        if owner_type not in ATTACHMENT_OWNER_TYPES:
-            raise NoteOwnerError(f"unsupported attachment owner_type {owner_type!r}")
-        result = await db.execute(
-            select(ClinicalNoteAttachment)
-            .where(
-                ClinicalNoteAttachment.clinic_id == clinic_id,
-                ClinicalNoteAttachment.owner_type == owner_type,
-                ClinicalNoteAttachment.owner_id == owner_id,
-            )
-            .order_by(
-                ClinicalNoteAttachment.display_order,
-                ClinicalNoteAttachment.created_at,
-            )
-        )
-        return list(result.scalars().all())
-
-    @staticmethod
-    async def _load_documents(
-        db: AsyncSession, clinic_id: UUID, document_ids: list[UUID]
-    ) -> list[Document]:
-        if not document_ids:
-            return []
-        result = await db.execute(
-            select(Document).where(
-                Document.id.in_(document_ids),
-                Document.clinic_id == clinic_id,
-            )
-        )
-        return list(result.scalars().all())
-
-    @classmethod
-    async def link(
-        cls,
-        db: AsyncSession,
-        *,
-        clinic_id: UUID,
-        document_id: UUID,
-        owner_type: str,
-        owner_id: UUID,
-        note_id: UUID | None = None,
-        display_order: int = 0,
-        owner_patient_id: UUID | None = None,
-    ) -> ClinicalNoteAttachment:
-        if owner_type not in ATTACHMENT_OWNER_TYPES:
-            raise NoteOwnerError(f"unsupported attachment owner_type {owner_type!r}")
-
-        if owner_patient_id is None:
-            owner_patient_id = await resolve_owner_patient(db, clinic_id, owner_type, owner_id)
-
-        docs = await cls._load_documents(db, clinic_id, [document_id])
-        if not docs:
-            raise NoteOwnerError(f"document {document_id} not found")
-        doc = docs[0]
-        if doc.patient_id != owner_patient_id:
+    Patient-mismatch is enforced by ``media.AttachmentService.link`` via
+    the registry's owner resolvers, so we only validate here when the
+    expected patient is known up-front (defensive — a wrong document_id
+    would otherwise leak across patients).
+    """
+    docs = await _load_documents(db, clinic_id, document_ids)
+    by_id = {d.id: d for d in docs}
+    missing = [d for d in document_ids if d not in by_id]
+    if missing:
+        raise NoteOwnerError(f"documents not found: {missing}")
+    for doc in docs:
+        if doc.patient_id != expected_patient_id:
             raise AttachmentPatientMismatchError("Document does not belong to the owner's patient")
 
-        link_row = ClinicalNoteAttachment(
+    for order, doc_id in enumerate(document_ids):
+        # Link to the note's owner so the gallery for that owner sees it.
+        await AttachmentService.link(
+            db,
             clinic_id=clinic_id,
-            document_id=document_id,
-            owner_type=owner_type,
-            owner_id=owner_id,
-            note_id=note_id,
-            display_order=display_order,
+            document_id=doc_id,
+            owner_type=note.owner_type,
+            owner_id=note.owner_id,
+            display_order=order,
         )
-        db.add(link_row)
-        await db.flush()
-        return link_row
-
-    @classmethod
-    async def link_many(
-        cls,
-        db: AsyncSession,
-        *,
-        clinic_id: UUID,
-        document_ids: list[UUID],
-        owner_type: str,
-        owner_id: UUID,
-        note_id: UUID | None = None,
-        owner_patient_id: UUID | None = None,
-    ) -> list[ClinicalNoteAttachment]:
-        if not document_ids:
-            return []
-        if owner_patient_id is None:
-            owner_patient_id = await resolve_owner_patient(db, clinic_id, owner_type, owner_id)
-        docs = await cls._load_documents(db, clinic_id, document_ids)
-        by_id = {d.id: d for d in docs}
-        missing = [d for d in document_ids if d not in by_id]
-        if missing:
-            raise NoteOwnerError(f"documents not found: {missing}")
-        for doc in docs:
-            if doc.patient_id != owner_patient_id:
-                raise AttachmentPatientMismatchError(
-                    "Document does not belong to the owner's patient"
-                )
-        rows: list[ClinicalNoteAttachment] = []
-        for order, doc_id in enumerate(document_ids):
-            row = ClinicalNoteAttachment(
-                clinic_id=clinic_id,
-                document_id=doc_id,
-                owner_type=owner_type,
-                owner_id=owner_id,
-                note_id=note_id,
-                display_order=order,
-            )
-            db.add(row)
-            rows.append(row)
-        await db.flush()
-        return rows
-
-    @staticmethod
-    async def unlink(db: AsyncSession, *, clinic_id: UUID, attachment_id: UUID) -> bool:
-        result = await db.execute(
-            select(ClinicalNoteAttachment).where(
-                ClinicalNoteAttachment.id == attachment_id,
-                ClinicalNoteAttachment.clinic_id == clinic_id,
-            )
+        # Link to the note itself so the note renderer can fetch by note_id.
+        await AttachmentService.link(
+            db,
+            clinic_id=clinic_id,
+            document_id=doc_id,
+            owner_type="clinical_note",
+            owner_id=note.id,
+            display_order=order,
         )
-        row = result.scalar_one_or_none()
-        if row is None:
-            return False
-        await db.delete(row)
-        await db.flush()
-        return True
+
+
+async def _load_documents(
+    db: AsyncSession, clinic_id: UUID, document_ids: list[UUID]
+) -> list[Document]:
+    if not document_ids:
+        return []
+    result = await db.execute(
+        select(Document).where(
+            Document.id.in_(document_ids),
+            Document.clinic_id == clinic_id,
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def list_attachments_for_note(
+    db: AsyncSession, clinic_id: UUID, note_id: UUID
+) -> list[MediaAttachment]:
+    return await AttachmentService.list_by_owner(db, clinic_id, "clinical_note", note_id)
+
+
+async def list_attachments_for_owner(
+    db: AsyncSession, clinic_id: UUID, owner_type: str, owner_id: UUID
+) -> list[MediaAttachment]:
+    if owner_type not in _VALID_ATTACHMENT_OWNER_TYPES:
+        raise NoteOwnerError(f"unsupported attachment owner_type {owner_type!r}")
+    return await AttachmentService.list_by_owner(db, clinic_id, owner_type, owner_id)
 
 
 # ---------------------------------------------------------------------------
@@ -496,13 +410,7 @@ async def list_recent_for_patient(
     limit: int,
     before: datetime | None,
 ) -> list[dict]:
-    """Recent notes feed for a patient across every owner type.
-
-    Returned entries match :class:`.schemas.RecentNoteEntry`. Includes a
-    ``linked`` descriptor so the UI can render contextual chips ("Diente 47",
-    "Plan: PLAN-2024-0001") without further fetches.
-    """
-    # Validate patient is in clinic up-front — also yields a stable 404 vs 200 [].
+    """Recent notes feed for a patient across every owner type."""
     await _resolve_patient_owner(db, clinic_id, patient_id)
 
     treatments_by_id = await _resolve_treatments_for_patient(db, clinic_id, patient_id)
@@ -540,10 +448,7 @@ async def list_recent_for_patient(
             ClinicalNote.deleted_at.is_(None),
             owner_filter,
         )
-        .options(
-            selectinload(ClinicalNote.attachments),
-            selectinload(ClinicalNote.author),
-        )
+        .options(selectinload(ClinicalNote.author))
         .order_by(ClinicalNote.created_at.desc())
         .limit(limit)
     )
@@ -557,6 +462,7 @@ async def list_recent_for_patient(
 
     entries: list[dict] = []
     for note in notes:
+        attachments = await list_attachments_for_note(db, clinic_id, note.id)
         linked = _build_linked(note, plan_by_id, treatments_by_id, patient_id)
         entries.append(
             {
@@ -570,7 +476,7 @@ async def list_recent_for_patient(
                 "updated_at": note.updated_at,
                 "author": _author_brief(note.author) if note.author else {"id": note.author_id},
                 "linked": linked,
-                "attachments": list(note.attachments),
+                "attachments": attachments,
             }
         )
     return entries
@@ -639,12 +545,7 @@ def _build_linked(
 
 
 async def list_merged_for_plan(db: AsyncSession, clinic_id: UUID, plan_id: UUID) -> list[dict]:
-    """Plan + treatment + visit notes for a single plan, newest-first.
-
-    Returned shape matches :class:`.schemas.ClinicalNoteEntry`. Plan-level
-    notes use ``source='plan'``; per-treatment notes use ``source='treatment'``;
-    appointment-derived notes (``AppointmentTreatment.notes``) use ``source='visit'``.
-    """
+    """Plan + treatment + visit notes for a single plan, newest-first."""
     from app.modules.agenda.models import Appointment, AppointmentTreatment
 
     plan_result = await db.execute(
@@ -690,7 +591,6 @@ async def list_merged_for_plan(db: AsyncSession, clinic_id: UUID, plan_id: UUID)
             ClinicalNote.deleted_at.is_(None),
             owner_filter,
         )
-        .options(selectinload(ClinicalNote.attachments))
         .order_by(ClinicalNote.created_at.desc())
     )
     notes = list(notes_result.scalars().all())
@@ -699,6 +599,7 @@ async def list_merged_for_plan(db: AsyncSession, clinic_id: UUID, plan_id: UUID)
     for note in notes:
         is_treatment = note.owner_type == NOTE_OWNER_TREATMENT
         plan_item_id = plan_item_id_for_treatment.get(note.owner_id) if is_treatment else None
+        attachments = await list_attachments_for_note(db, clinic_id, note.id)
         entries.append(
             {
                 "source": "treatment" if is_treatment else "plan",
@@ -709,11 +610,10 @@ async def list_merged_for_plan(db: AsyncSession, clinic_id: UUID, plan_id: UUID)
                 "author_id": note.author_id,
                 "created_at": note.created_at,
                 "updated_at": note.updated_at,
-                "attachments": list(note.attachments),
+                "attachments": attachments,
             }
         )
 
-    # Visit notes (live in agenda — read-only here).
     if item_rows:
         item_ids = [row[0] for row in item_rows]
         visit_result = await db.execute(
@@ -727,12 +627,6 @@ async def list_merged_for_plan(db: AsyncSession, clinic_id: UUID, plan_id: UUID)
             )
         )
         for apt_tr, apt_created in visit_result.all():
-            attachments = await NoteAttachmentService.list_for_owner(
-                db,
-                clinic_id,
-                ATTACHMENT_OWNER_APPOINTMENT_TREATMENT,
-                apt_tr.id,
-            )
             entries.append(
                 {
                     "source": "visit",
@@ -743,7 +637,7 @@ async def list_merged_for_plan(db: AsyncSession, clinic_id: UUID, plan_id: UUID)
                     "author_id": None,
                     "created_at": apt_tr.created_at or apt_created,
                     "updated_at": None,
-                    "attachments": attachments,
+                    "attachments": [],
                 }
             )
 

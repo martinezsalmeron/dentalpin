@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **0.2.0 (issue #55)** — Polymorphic attachments delegated to `media`:
+  the legacy `clinical_note_attachments` table is dropped (migration
+  `cn_0002`, depends on `med_0002`); the model is removed and the
+  service/routes now proxy to `media.AttachmentService`. New
+  `owner_resolvers.py` registers `patient`, `treatment`, `plan` and
+  `clinical_note` owner_types with `media.attachment_registry` at
+  module import time. `NoteService.create`
+  links each `attachment_document_id` twice (once to the note's owner
+  for gallery surfacing, once to `clinical_note` for note-scoped
+  rendering).
 - `DiagnosisNotesSidebar` now uses cursor pagination (`limit=20`,
   `before` timestamp) with a "Cargar más" button, mirroring
   `RecentNotesFeed`. Previously fetched a hard-coded `limit=30` once

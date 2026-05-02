@@ -20,6 +20,8 @@ const props = defineProps<{
   items: PlannedTreatmentItem[]
   templateCategory?: string
   readonly?: boolean
+  /** Enables the inline attachment uploader on the composer. */
+  patientId?: string | null
 }>()
 
 const emit = defineEmits<{ updated: [] }>()
@@ -116,17 +118,22 @@ function startEdit(entry: ClinicalNoteEntry) {
   composerOpen.value = true
 }
 
-async function handleSubmit({ body }: { body: string }) {
+async function handleSubmit(payload: {
+  body: string
+  toothNumber: number | null
+  attachmentDocumentIds: string[]
+}) {
   saving.value = true
   try {
     if (editingId.value) {
-      await updateNote(editingId.value, body)
+      await updateNote(editingId.value, payload.body)
     } else {
       await createNote({
         note_type: 'treatment_plan',
         owner_type: 'plan',
         owner_id: props.planId,
-        body
+        body: payload.body,
+        attachment_document_ids: payload.attachmentDocumentIds
       })
     }
     composerOpen.value = false
@@ -283,6 +290,7 @@ watch(() => props.planId, refresh, { immediate: true })
       :note-type="'treatment_plan'"
       :initial-body="composerBody"
       :template-category="templateCategory"
+      :patient-id="patientId"
       :busy="saving"
       autofocus
       @submit="handleSubmit"

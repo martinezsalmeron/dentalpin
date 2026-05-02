@@ -69,19 +69,6 @@ class TreatmentBrief(BaseModel):
     teeth: list[TreatmentToothBrief] = Field(default_factory=list)
 
 
-class TreatmentMediaResponse(BaseModel):
-    """Response for treatment media."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    document_id: UUID
-    media_type: str
-    display_order: int
-    notes: str | None = None
-    created_at: datetime
-
-
 # ---------------------------------------------------------------------------
 # Treatment Plan schemas
 # ---------------------------------------------------------------------------
@@ -243,7 +230,6 @@ class PlannedTreatmentItemResponse(BaseModel):
     # Embedded Treatment + optional catalog item.
     treatment: TreatmentBrief | None = None
     catalog_item: CatalogItemBrief | None = None
-    media: list[TreatmentMediaResponse] = []
 
 
 class CompleteItemRequest(BaseModel):
@@ -283,18 +269,10 @@ class GenerateBudgetResponse(BaseModel):
     budget_number: str
 
 
-# ---------------------------------------------------------------------------
-# Media schemas
-# ---------------------------------------------------------------------------
-
-
-class TreatmentMediaCreate(BaseModel):
-    document_id: UUID
-    media_type: str = Field(..., pattern="^(before|after|xray|reference)$")
-    display_order: int = 0
-    notes: str | None = None
-
-
+# Media attachment schemas live in the ``media`` module since issue #55 —
+# call ``POST /api/v1/media/attachments`` with ``owner_type='plan_item'``
+# instead of the previous ``POST /treatment-plans/items/{id}/media``.
+#
 # Clinical-note schemas moved to the ``clinical_notes`` module — see issue #60.
 
 TreatmentPlanDetailResponse.model_rebuild()

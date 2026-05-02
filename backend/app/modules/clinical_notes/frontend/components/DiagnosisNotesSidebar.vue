@@ -89,19 +89,24 @@ function startNew() {
   composerOpen.value = true
 }
 
-async function handleSubmit({ body, toothNumber }: { body: string; toothNumber: number | null }) {
+async function handleSubmit(payload: {
+  body: string
+  toothNumber: number | null
+  attachmentDocumentIds: string[]
+}) {
   if (!props.ctx?.patientId) return
   saving.value = true
   try {
     if (editingId.value) {
-      await updateNote(editingId.value, body)
+      await updateNote(editingId.value, payload.body)
     } else {
       await createNote({
         note_type: 'diagnosis',
         owner_type: 'patient',
         owner_id: props.ctx.patientId,
-        tooth_number: toothNumber,
-        body
+        tooth_number: payload.toothNumber,
+        body: payload.body,
+        attachment_document_ids: payload.attachmentDocumentIds
       })
     }
     editingId.value = null
@@ -159,6 +164,7 @@ watch(
       note-type="diagnosis"
       :initial-body="composerBody"
       :tooth-number="composerToothNumber"
+      :patient-id="props.ctx?.patientId"
       :busy="saving"
       @submit="handleSubmit"
       @cancel="composerOpen = false"

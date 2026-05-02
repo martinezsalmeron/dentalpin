@@ -7,7 +7,13 @@
  * chip. Edit/delete only render when the parent passes ``can-edit``.
  */
 
-import type { NoteType, ClinicalNoteLinked, ClinicalNoteAuthor, NoteAttachment } from '~~/app/types'
+import type {
+  ClinicalNoteAuthor,
+  ClinicalNoteLinked,
+  Document,
+  NoteAttachment,
+  NoteType
+} from '~~/app/types'
 
 const props = defineProps<{
   noteId: string
@@ -83,6 +89,89 @@ const initials = computed(() => {
     .join('')
     .toUpperCase()
 })
+
+// Split attachments: image-like get inline thumbs + click-to-lightbox.
+// Anything else stays as a paperclip badge with the document title.
+function isImageAttachment(att: NoteAttachment): boolean {
+  return (
+    !!att.thumb_url
+    && (att.media_kind === 'photo' || att.media_kind === 'xray')
+    && !!att.mime_type?.startsWith('image/')
+  )
+}
+
+const imageAttachments = computed<NoteAttachment[]>(
+  () => (props.attachments ?? []).filter(isImageAttachment)
+)
+const nonImageAttachments = computed<NoteAttachment[]>(
+  () => (props.attachments ?? []).filter(a => !isImageAttachment(a))
+)
+
+// Build minimal Document objects so the shared media PhotoLightbox
+// (clinical_notes already depends on media) can paginate through them.
+const lightboxDocuments = computed<Document[]>(() =>
+  imageAttachments.value.map(att => ({
+    id: att.document_id,
+    patient_id: '',
+    document_type: 'other',
+    title: att.title ?? '',
+    description: undefined,
+    original_filename: '',
+    mime_type: att.mime_type ?? 'image/jpeg',
+    file_size: 0,
+    status: 'active',
+    media_kind: (att.media_kind ?? 'photo') as Document['media_kind'],
+    media_category: null,
+    media_subtype: null,
+    captured_at: null,
+    paired_document_id: null,
+    tags: [],
+    uploaded_by: '',
+    created_at: att.created_at,
+    updated_at: att.created_at,
+    thumb_url: att.thumb_url,
+    medium_url: att.medium_url,
+    full_url: att.full_url
+  }))
+)
+
+// Auth-aware blob URLs for the inline thumbs (server requires bearer).
+const config = useRuntimeConfig()
+const auth = useAuth()
+const apiBaseUrl = computed(() =>
+  import.meta.server ? config.apiBaseUrlServer : config.public.apiBaseUrl
+)
+const thumbBlobs = ref<Record<string, string>>({})
+
+async function loadThumb(att: NoteAttachment) {
+  if (!att.thumb_url || thumbBlobs.value[att.id]) return
+  try {
+    const blob = await $fetch<Blob>(att.thumb_url, {
+      baseURL: apiBaseUrl.value,
+      headers: { Authorization: `Bearer ${auth.accessToken.value}` },
+      responseType: 'blob'
+    })
+    thumbBlobs.value[att.id] = URL.createObjectURL(blob)
+  } catch { /* swallow — falls back to icon placeholder */ }
+}
+
+watch(
+  imageAttachments,
+  list => { for (const a of list) loadThumb(a) },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  for (const url of Object.values(thumbBlobs.value)) URL.revokeObjectURL(url)
+})
+
+const lightboxOpen = ref(false)
+const lightboxStartId = ref<string | null>(null)
+
+function openLightbox(att: NoteAttachment) {
+  lightboxStartId.value = att.document_id
+  lightboxOpen.value = true
+}
 
 const linkedLabel = computed(() => {
   const linked = props.linked
@@ -188,24 +277,61 @@ const linkedLabel = computed(() => {
       {{ expanded ? t('clinicalNotes.actions.showLess') : t('clinicalNotes.actions.showMore') }}
     </button>
 
+    <!-- Image attachments: thumbnail grid that opens the shared lightbox. -->
     <div
-      v-if="attachments?.length"
-      class="mt-2 flex flex-wrap gap-1"
+      v-if="imageAttachments.length"
+      class="mt-2 flex flex-wrap gap-1.5 relative z-10"
     >
-      <UBadge
-        v-for="att in attachments"
+      <button
+        v-for="att in imageAttachments"
         :key="att.id"
-        color="neutral"
-        variant="soft"
-        size="xs"
+        type="button"
+        class="group relative h-16 w-16 overflow-hidden rounded border border-default bg-elevated transition hover:ring-2 hover:ring-primary focus:outline-none focus:ring-2 focus:ring-primary"
+        :title="att.title ?? ''"
+        @click.stop="openLightbox(att)"
+      >
+        <img
+          v-if="thumbBlobs[att.id]"
+          :src="thumbBlobs[att.id]"
+          :alt="att.title ?? ''"
+          class="h-full w-full object-cover"
+        >
+        <UIcon
+          v-else
+          name="i-lucide-image"
+          class="absolute inset-0 m-auto h-5 w-5 text-muted"
+        />
+      </button>
+    </div>
+
+    <!-- Non-image attachments: small file pill (no preview). -->
+    <div
+      v-if="nonImageAttachments.length"
+      class="mt-2 flex flex-wrap gap-1 relative z-10"
+    >
+      <a
+        v-for="att in nonImageAttachments"
+        :key="att.id"
+        :href="att.full_url ?? '#'"
+        target="_blank"
+        rel="noopener"
+        class="inline-flex items-center gap-1 rounded bg-elevated px-2 py-0.5 text-caption text-muted hover:text-default hover:bg-default"
+        @click.stop
       >
         <UIcon
-          name="i-lucide-paperclip"
-          class="w-3 h-3 mr-1"
+          :name="att.mime_type === 'application/pdf' ? 'i-lucide-file-text' : 'i-lucide-paperclip'"
+          class="h-3 w-3"
         />
-        {{ att.document_id.slice(0, 8) }}
-      </UBadge>
+        {{ att.title ?? att.document_id.slice(0, 8) }}
+      </a>
     </div>
+
+    <PhotoLightbox
+      v-if="imageAttachments.length"
+      v-model:open="lightboxOpen"
+      :documents="lightboxDocuments"
+      :start-id="lightboxStartId"
+    />
 
     <button
       v-if="linked && linked.id"

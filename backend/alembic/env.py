@@ -65,7 +65,7 @@ from app.modules.catalog.models import (  # noqa: F401
     TreatmentOdontogramMapping,
     VatType,
 )
-from app.modules.media.models import Document  # noqa: F401
+from app.modules.media.models import Document, MediaAttachment  # noqa: F401
 from app.modules.notifications.models import (  # noqa: F401
     ClinicNotificationSettings,
     ClinicSmtpSettings,
@@ -104,7 +104,6 @@ from app.modules.schedules.models import (  # noqa: F401
 )
 from app.modules.treatment_plan.models import (  # noqa: F401
     PlannedTreatmentItem,
-    TreatmentMedia,
     TreatmentPlan,
 )
 

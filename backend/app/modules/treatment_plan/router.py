@@ -21,8 +21,6 @@ from .schemas import (
     PlannedTreatmentItemResponse,
     PlannedTreatmentItemUpdate,
     ReorderItemsRequest,
-    TreatmentMediaCreate,
-    TreatmentMediaResponse,
     TreatmentPlanCreate,
     TreatmentPlanDetailResponse,
     TreatmentPlanResponse,
@@ -630,47 +628,8 @@ async def generate_budget_from_plan(
     )
 
 
-# -----------------------------------------------------------------------------
-# Media
-# -----------------------------------------------------------------------------
-
-
-@router.post(
-    "/treatment-plans/items/{item_id}/media",
-    response_model=ApiResponse[TreatmentMediaResponse],
-    status_code=status.HTTP_201_CREATED,
-)
-async def add_media_to_item(
-    item_id: UUID,
-    data: TreatmentMediaCreate,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[TreatmentMediaResponse]:
-    """Add media to a treatment item."""
-    try:
-        media = await TreatmentPlanService.add_media(db, ctx.clinic_id, item_id, data.model_dump())
-        return ApiResponse(data=TreatmentMediaResponse.model_validate(media))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.delete(
-    "/treatment-plans/items/{item_id}/media/{media_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-async def remove_media_from_item(
-    item_id: UUID,
-    media_id: UUID,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("treatment_plan.plans.write"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
-    """Remove media from a treatment item."""
-    removed = await TreatmentPlanService.remove_media(db, ctx.clinic_id, item_id, media_id)
-    if not removed:
-        raise HTTPException(status_code=404, detail="Media not found")
-
-
-# Clinical-notes endpoints moved to the ``clinical_notes`` module
-# (``/api/v1/clinical_notes/*``) — see issue #60.
+# Media attachment endpoints moved to the ``media`` module since issue #55.
+# Use ``POST /api/v1/media/attachments`` with ``owner_type='plan_item'``.
+#
+# Clinical-notes endpoints moved to the ``clinical_notes`` module since
+# issue #60 (``/api/v1/clinical_notes/*``).

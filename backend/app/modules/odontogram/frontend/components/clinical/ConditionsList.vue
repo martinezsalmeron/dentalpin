@@ -12,6 +12,9 @@ import { getTreatmentDisplayName, viewForTooth } from '~~/app/utils/treatmentVie
 const props = defineProps<{
   conditions: Treatment[]
   highlightedTeeth?: number[]
+  /** Forwarded into the per-treatment action slot ctx for downstream
+   *  attachments / clinical-notes composer. */
+  patientId?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -113,7 +116,8 @@ function isHighlighted(toothNumber: number): boolean {
                 :ctx="{
                   treatmentId: condition.id,
                   toothNumber: group.toothNumber,
-                  status: condition.status
+                  status: condition.status,
+                  patientId: patientId
                 }"
               />
             </span>

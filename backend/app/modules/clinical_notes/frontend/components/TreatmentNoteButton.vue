@@ -15,6 +15,8 @@ const props = defineProps<{
     treatmentId: string
     toothNumber?: number | null
     status?: string
+    /** When provided, enables the inline attachment uploader on the composer. */
+    patientId?: string | null
   }
 }>()
 
@@ -90,17 +92,22 @@ function startEdit(entry: RecentNoteEntry) {
   composerOpen.value = true
 }
 
-async function handleSubmit({ body }: { body: string }) {
+async function handleSubmit(payload: {
+  body: string
+  toothNumber: number | null
+  attachmentDocumentIds: string[]
+}) {
   saving.value = true
   try {
     if (editingId.value) {
-      await updateNote(editingId.value, body)
+      await updateNote(editingId.value, payload.body)
     } else {
       await createNote({
         note_type: 'treatment',
         owner_type: 'treatment',
         owner_id: props.ctx.treatmentId,
-        body
+        body: payload.body,
+        attachment_document_ids: payload.attachmentDocumentIds
       })
     }
     composerOpen.value = false
@@ -172,6 +179,7 @@ watch(() => props.ctx?.treatmentId, loadCount, { immediate: true })
           v-if="composerOpen && canWrite"
           :note-type="'treatment'"
           :initial-body="composerBody"
+          :patient-id="ctx?.patientId"
           :busy="saving"
           autofocus
           @submit="handleSubmit"

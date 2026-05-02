@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **0.2.0 (issue #55)** — `TreatmentMedia` model + `treatment_media`
+  table dropped (migration `tp_0004`, depends on `med_0002`). Existing
+  rows are migrated into `media.media_attachments` with
+  `owner_type='plan_item'`; the legacy `media_type` enum maps onto the
+  new `media_kind` / `media_category` / `media_subtype` columns on
+  `documents`. Service methods `add_media` / `remove_media` and the
+  `POST/DELETE /treatment-plans/items/{id}/media` endpoints are gone
+  — clients call `POST /api/v1/media/attachments` with
+  `owner_type='plan_item'` instead. New `owner_resolvers.py` registers
+  the `plan_item` resolver with `media.attachment_registry` at module
+  import time.
+
 - Enrich `treatment_plan.treatment_completed` event payload with a
   `treatment_category_key` snapshot (issue #62, recalls). Allows
   sibling modules to map completed treatments to follow-up policies

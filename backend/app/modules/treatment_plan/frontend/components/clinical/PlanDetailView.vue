@@ -683,6 +683,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
           <PlanNotesTimeline
             ref="notesTimelineRef"
             :plan-id="plan.id"
+            :patient-id="plan.patient_id"
             :items="plan.items"
             :readonly="readonly"
           />

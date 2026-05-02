@@ -6,7 +6,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .models import (
-    ATTACHMENT_OWNER_TYPES,
     NOTE_OWNER_PATIENT,
     NOTE_OWNER_PLAN,
     NOTE_OWNER_TREATMENT,
@@ -20,16 +19,22 @@ from .models import (
 
 NOTE_TYPE_PATTERN = "^(administrative|diagnosis|treatment|treatment_plan)$"
 NOTE_OWNER_PATTERN = "^(patient|treatment|plan)$"
-ATTACHMENT_OWNER_PATTERN = "^(patient|treatment|plan|appointment_treatment)$"
 
 
 # ---------------------------------------------------------------------------
-# Attachments
+# Attachments — projected from media.MediaAttachment for backwards-compatible
+# response shape (`note_id` is no longer a column; it's reconstructed on the
+# rare path where a caller still cares).
 # ---------------------------------------------------------------------------
 
 
 class NoteAttachmentResponse(BaseModel):
-    """Response for a single polymorphic note attachment."""
+    """Response for a single attachment (projected from MediaAttachment).
+
+    The document brief + signed URLs are populated by the router so the
+    UI can render inline image previews and open the lightbox without a
+    second round-trip.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -37,19 +42,16 @@ class NoteAttachmentResponse(BaseModel):
     document_id: UUID
     owner_type: str
     owner_id: UUID
-    note_id: UUID | None
     display_order: int
     created_at: datetime
 
-
-class NoteAttachmentCreate(BaseModel):
-    """Link an existing Document to an owner, with optional note attribution."""
-
-    owner_type: str = Field(..., pattern=ATTACHMENT_OWNER_PATTERN)
-    owner_id: UUID
-    document_id: UUID
-    note_id: UUID | None = None
-    display_order: int = 0
+    # Document brief (optional for transitional callers that don't decorate).
+    title: str | None = None
+    mime_type: str | None = None
+    media_kind: str | None = None
+    thumb_url: str | None = None
+    medium_url: str | None = None
+    full_url: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -130,11 +132,7 @@ class AuthorBrief(BaseModel):
 
 
 class LinkedEntityBrief(BaseModel):
-    """Lightweight descriptor of the owner — surfaced as a chip in the feed.
-
-    The frontend uses this to render contextual labels like "Diente 47" or
-    "Plan: Endodoncia 23" without an extra round-trip.
-    """
+    """Lightweight descriptor of the owner — surfaced as a chip in the feed."""
 
     kind: str  # 'patient' | 'treatment' | 'plan'
     id: UUID | None = None
@@ -161,8 +159,7 @@ class RecentNoteEntry(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Plan-grouped feed (carried over from treatment_plan, types open-ended so
-# the host module can decorate plan / item details after fetching)
+# Plan-grouped feed
 # ---------------------------------------------------------------------------
 
 
@@ -229,8 +226,6 @@ class NoteTemplateResponse(BaseModel):
 
 
 __all__ = [
-    "ATTACHMENT_OWNER_PATTERN",
-    "ATTACHMENT_OWNER_TYPES",
     "AuthorBrief",
     "ClinicalNoteCreate",
     "ClinicalNoteEntry",
@@ -241,7 +236,6 @@ __all__ = [
     "NOTE_OWNER_TYPES",
     "NOTE_TYPES",
     "NOTE_TYPE_PATTERN",
-    "NoteAttachmentCreate",
     "NoteAttachmentResponse",
     "NoteTemplateResponse",
     "PlanItemNotesGroup",

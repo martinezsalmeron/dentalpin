@@ -174,6 +174,16 @@ const tabs = computed(() => {
     })
   }
 
+  // Gallery tab — clinical photos / X-rays (issue #55).
+  if (can(PERMISSIONS.documents.read)) {
+    baseTabs.push({
+      value: 'gallery',
+      label: t('patientDetail.tabs.gallery', 'Galería'),
+      icon: 'i-lucide-images',
+      slot: 'gallery'
+    })
+  }
+
   // Timeline tab
   baseTabs.push({
     value: 'timeline',
@@ -422,6 +432,13 @@ const isMinor = computed(() => {
             <div class="mt-4">
               <AdministrationTab :patient-id="patientId" />
             </div>
+          </template>
+
+          <!-- Gallery tab content -->
+          <template #gallery>
+            <UCard class="mt-4">
+              <PhotoGallery :patient-id="patientId" />
+            </UCard>
           </template>
 
           <!-- Timeline tab content -->

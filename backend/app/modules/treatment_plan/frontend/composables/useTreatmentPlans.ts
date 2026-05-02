@@ -7,8 +7,6 @@ import type {
   PlannedTreatmentItem,
   PlannedTreatmentItemCreate,
   PlannedTreatmentItemUpdate,
-  TreatmentMediaCreate,
-  TreatmentMedia,
   TreatmentPlan,
   TreatmentPlanCreate,
   TreatmentPlanDetail,
@@ -532,41 +530,6 @@ export function useTreatmentPlans() {
     }
   }
 
-  // Add media to item
-  async function addMedia(itemId: string, data: TreatmentMediaCreate) {
-    try {
-      const response = await api.post<ApiResponse<TreatmentMedia>>(
-        `/api/v1/treatment_plan/treatment-plans/items/${itemId}/media`,
-        data
-      )
-      return response.data
-    } catch (error) {
-      console.error('Error adding media:', error)
-      toast.add({
-        title: t('errors.createFailed'),
-        color: 'red'
-      })
-      return null
-    }
-  }
-
-  // Remove media from item
-  async function removeMedia(itemId: string, mediaId: string) {
-    try {
-      await api.del(
-        `/api/v1/treatment_plan/treatment-plans/items/${itemId}/media/${mediaId}`
-      )
-      return true
-    } catch (error) {
-      console.error('Error removing media:', error)
-      toast.add({
-        title: t('errors.deleteFailed'),
-        color: 'red'
-      })
-      return false
-    }
-  }
-
   /**
    * Fetch pending items for a patient from all active plans.
    * Used in appointment modal to select which treatments to schedule.
@@ -651,10 +614,6 @@ export function useTreatmentPlans() {
     linkToBudget,
     syncBudget,
     generateBudget,
-
-    // Media operations
-    addMedia,
-    removeMedia,
 
     // Appointment integration
     fetchPatientPendingItems

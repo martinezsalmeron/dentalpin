@@ -168,6 +168,7 @@ async function handleTreatmentsChanged() {
         <ConditionsList
           v-if="!conditionsCollapsed"
           :conditions="conditions"
+          :patient-id="patientId"
           :highlighted-teeth="hoveredTeeth"
           @tooth-hover="handleConditionHover"
         />

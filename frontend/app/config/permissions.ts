@@ -69,6 +69,10 @@ export const PERMISSIONS = {
     read: 'media.documents.read',
     write: 'media.documents.write'
   },
+  attachments: {
+    read: 'media.attachments.read',
+    write: 'media.attachments.write'
+  },
   treatmentPlans: {
     read: 'treatment_plan.plans.read',
     write: 'treatment_plan.plans.write',

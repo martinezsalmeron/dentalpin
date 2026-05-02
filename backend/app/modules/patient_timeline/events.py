@@ -554,6 +554,11 @@ async def on_medical_updated(data: dict) -> None:
 
 async def on_document_uploaded(data: dict) -> None:
     title = data.get("title") or "Documento"
+    media_kind = data.get("media_kind") or "document"
+    # Photos / X-rays get their own dedicated card via on_photo_uploaded.
+    # Skip the generic document row to avoid duplicate timeline entries.
+    if media_kind in ("photo", "xray"):
+        return
     await _record(
         event_type=EventType.DOCUMENT_UPLOADED,
         event_category="document",
@@ -562,6 +567,51 @@ async def on_document_uploaded(data: dict) -> None:
         source_id_key="document_id",
         title=f"Documento: {title}",
         event_data={"document_type": data.get("document_type")},
+    )
+
+
+async def on_photo_uploaded(data: dict) -> None:
+    """Photo / X-ray-aware variant — surfaces thumbnail-friendly metadata."""
+    title = data.get("title") or "Foto"
+    media_kind = data.get("media_kind") or "photo"
+    category = data.get("media_category")
+    subtype = data.get("media_subtype")
+    label_kind = "Radiografía" if media_kind == "xray" else "Foto clínica"
+    chip_parts = [label_kind]
+    if subtype:
+        chip_parts.append(subtype)
+    elif category:
+        chip_parts.append(category)
+    await _record(
+        event_type=EventType.PHOTO_UPLOADED,
+        event_category="document",
+        source_table="documents",
+        data=data,
+        source_id_key="document_id",
+        title=f"{label_kind}: {title}",
+        event_data={
+            "media_kind": media_kind,
+            "media_category": category,
+            "media_subtype": subtype,
+            "captured_at": data.get("captured_at"),
+            "chip": " · ".join(chip_parts),
+        },
+        occurred_at_key="captured_at",
+    )
+
+
+async def on_pair_created(data: dict) -> None:
+    await _record(
+        event_type=EventType.PAIR_CREATED,
+        event_category="document",
+        source_table="documents",
+        data=data,
+        source_id_key="document_a_id",
+        title="Comparativa antes/después creada",
+        event_data={
+            "document_a_id": data.get("document_a_id"),
+            "document_b_id": data.get("document_b_id"),
+        },
     )
 
 

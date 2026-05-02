@@ -7,7 +7,7 @@
  * ``submit`` payload. The parent decides where to write (note_type / owner).
  */
 
-import type { NoteTemplate, NoteType } from '~~/app/types'
+import type { Document, NoteTemplate, NoteType } from '~~/app/types'
 
 const props = defineProps<{
   /** Initial body — pre-fills the textarea (use for edit, or clear with ''). */
@@ -20,14 +20,65 @@ const props = defineProps<{
   toothNumber?: number | null
   /** Hide the tooth-binding checkbox even when noteType='diagnosis'. */
   hideToothBinding?: boolean
+  /** When provided, enables the inline photo attachment uploader. */
+  patientId?: string | null
   busy?: boolean
   autofocus?: boolean
 }>()
 
 const emit = defineEmits<{
-  submit: [{ body: string; toothNumber: number | null }]
+  submit: [{ body: string; toothNumber: number | null; attachmentDocumentIds: string[] }]
   cancel: []
 }>()
+
+// Attachments — supports both clinical photos (image/*) and documents
+// (PDFs). Photos go through the photo-aware endpoint so they land in
+// the patient gallery; documents go through the document endpoint so
+// they appear in the Documents tab. Both produce a Document row whose
+// id we send up via ``attachmentDocumentIds``.
+const { uploadPhoto, uploading: uploadingPhoto } = usePhotos()
+const { uploadDocument, uploading: uploadingDoc } = useDocuments()
+const attachedDocs = ref<Document[]>([])
+
+const uploadingAttachment = computed(() => uploadingPhoto.value || uploadingDoc.value)
+
+async function onFilesSelected(event: Event) {
+  if (!props.patientId) return
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  for (const file of files) {
+    const cleanTitle = file.name.replace(/\.[^.]+$/, '')
+    if (file.type.startsWith('image/')) {
+      const doc = await uploadPhoto(props.patientId, {
+        file,
+        title: cleanTitle,
+        media_kind: 'photo',
+        media_category: 'clinical',
+        media_subtype: 'reference'
+      })
+      if (doc) attachedDocs.value.push(doc)
+    } else {
+      const doc = await uploadDocument(
+        props.patientId,
+        file,
+        'other',
+        cleanTitle
+      )
+      if (doc) attachedDocs.value.push(doc)
+    }
+  }
+  input.value = ''
+}
+
+function removeAttached(id: string) {
+  attachedDocs.value = attachedDocs.value.filter(d => d.id !== id)
+}
+
+function attachmentIcon(doc: Document): string {
+  if (doc.media_kind === 'photo' || doc.media_kind === 'xray') return 'i-lucide-image'
+  if (doc.mime_type === 'application/pdf') return 'i-lucide-file-text'
+  return 'i-lucide-paperclip'
+}
 
 const { t } = useI18n()
 const { metaFor } = useNoteTypeMeta()
@@ -74,12 +125,15 @@ function handleSubmit() {
     toothNumber:
       props.noteType === 'diagnosis' && bindToTooth.value && props.toothNumber
         ? props.toothNumber
-        : null
+        : null,
+    attachmentDocumentIds: attachedDocs.value.map(d => d.id)
   })
+  attachedDocs.value = []
 }
 
 function handleCancel() {
   body.value = props.initialBody ?? ''
+  attachedDocs.value = []
   emit('cancel')
 }
 
@@ -121,6 +175,66 @@ watch(category, refreshTemplates)
       class="composer-textarea"
       :disabled="busy"
     />
+
+    <!-- Inline attachments (photos + documents). Only when patientId is provided. -->
+    <div
+      v-if="patientId"
+      class="space-y-1"
+    >
+      <div
+        v-if="attachedDocs.length"
+        class="flex flex-wrap gap-2"
+      >
+        <UBadge
+          v-for="doc in attachedDocs"
+          :key="doc.id"
+          color="primary"
+          variant="soft"
+          class="cursor-default"
+        >
+          <UIcon
+            :name="attachmentIcon(doc)"
+            class="mr-1 h-3 w-3"
+          />
+          {{ doc.title }}
+          <button
+            type="button"
+            class="ml-1"
+            :aria-label="t('actions.remove', 'Quitar')"
+            @click="removeAttached(doc.id)"
+          >
+            <UIcon
+              name="i-lucide-x"
+              class="h-3 w-3"
+            />
+          </button>
+        </UBadge>
+      </div>
+      <label
+        class="inline-flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-muted hover:bg-elevated hover:text-default"
+        :class="{ 'pointer-events-none opacity-50': busy || uploadingAttachment }"
+      >
+        <UIcon
+          v-if="!uploadingAttachment"
+          name="i-lucide-paperclip"
+          class="h-3.5 w-3.5"
+        />
+        <UIcon
+          v-else
+          name="i-lucide-loader-2"
+          class="h-3.5 w-3.5 animate-spin"
+        />
+        <span>{{ t('clinicalNotes.composer.attach', 'Adjuntar foto o documento') }}</span>
+        <input
+          type="file"
+          accept="image/*,application/pdf"
+          multiple
+          class="hidden"
+          :disabled="busy || uploadingAttachment"
+          @change="onFilesSelected"
+        >
+      </label>
+    </div>
 
     <div class="flex flex-wrap items-center gap-2 justify-between">
       <label

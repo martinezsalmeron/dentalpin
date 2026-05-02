@@ -15,7 +15,7 @@ from app.core.events.types import EventType
 from app.modules.odontogram.models import Treatment
 from app.modules.patients.models import Patient
 
-from .models import PlannedTreatmentItem, TreatmentMedia, TreatmentPlan
+from .models import PlannedTreatmentItem, TreatmentPlan
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,6 @@ class TreatmentPlanService:
                 selectinload(TreatmentPlan.items)
                 .selectinload(PlannedTreatmentItem.treatment)
                 .selectinload(Treatment.catalog_item),
-                selectinload(TreatmentPlan.items).selectinload(PlannedTreatmentItem.media),
             )
         )
         return result.scalar_one_or_none()
@@ -432,7 +431,6 @@ class TreatmentPlanService:
             .options(
                 selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.teeth),
                 selectinload(PlannedTreatmentItem.treatment).selectinload(Treatment.catalog_item),
-                selectinload(PlannedTreatmentItem.media),
             )
             .where(PlannedTreatmentItem.id == item.id)
         )
@@ -493,7 +491,6 @@ class TreatmentPlanService:
             )
             .options(
                 _treatment_loader(),
-                selectinload(PlannedTreatmentItem.media),
             )
         )
         item = result.scalar_one_or_none()
@@ -662,7 +659,6 @@ class TreatmentPlanService:
             )
             .options(
                 _treatment_loader(),
-                selectinload(PlannedTreatmentItem.media),
             )
         )
         item = result.scalar_one_or_none()
@@ -1438,61 +1434,3 @@ class TreatmentPlanService:
             },
         )
         return plan
-
-    # -------------------------------------------------------------------------
-    # Media Operations
-    # -------------------------------------------------------------------------
-
-    @staticmethod
-    async def add_media(
-        db: AsyncSession,
-        clinic_id: UUID,
-        item_id: UUID,
-        data: dict,
-    ) -> TreatmentMedia:
-        """Add media to a treatment item."""
-        # Verify item exists
-        result = await db.execute(
-            select(PlannedTreatmentItem).where(
-                PlannedTreatmentItem.id == item_id,
-                PlannedTreatmentItem.clinic_id == clinic_id,
-            )
-        )
-        item = result.scalar_one_or_none()
-        if not item:
-            raise ValueError("Treatment item not found")
-
-        media = TreatmentMedia(
-            clinic_id=clinic_id,
-            planned_treatment_item_id=item_id,
-            document_id=data["document_id"],
-            media_type=data["media_type"],
-            display_order=data.get("display_order", 0),
-            notes=data.get("notes"),
-        )
-        db.add(media)
-        await db.flush()
-
-        return media
-
-    @staticmethod
-    async def remove_media(
-        db: AsyncSession,
-        clinic_id: UUID,
-        item_id: UUID,
-        media_id: UUID,
-    ) -> bool:
-        """Remove media from a treatment item."""
-        result = await db.execute(
-            select(TreatmentMedia).where(
-                TreatmentMedia.id == media_id,
-                TreatmentMedia.planned_treatment_item_id == item_id,
-                TreatmentMedia.clinic_id == clinic_id,
-            )
-        )
-        media = result.scalar_one_or_none()
-        if not media:
-            return False
-
-        await db.delete(media)
-        return True

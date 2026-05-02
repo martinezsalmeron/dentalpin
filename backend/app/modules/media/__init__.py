@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import EventType
 from app.core.plugins import BaseModule
 
-from .models import Document
+from .models import Document, MediaAttachment
 from .router import router
 from .service import DocumentService
 
@@ -18,8 +18,8 @@ class MediaModule(BaseModule):
 
     manifest = {
         "name": "media",
-        "version": "0.1.0",
-        "summary": "Patient documents, images, file storage.",
+        "version": "0.2.0",
+        "summary": "Patient documents, photos, X-rays + polymorphic attachments.",
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
@@ -30,7 +30,11 @@ class MediaModule(BaseModule):
         "role_permissions": {
             "admin": ["*"],
             "dentist": ["*"],
-            "hygienist": ["documents.read"],
+            "hygienist": [
+                "documents.read",
+                "attachments.read",
+                "attachments.write",
+            ],
             "assistant": ["*"],
             "receptionist": ["*"],
         },
@@ -40,7 +44,7 @@ class MediaModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [Document]
+        return [Document, MediaAttachment]
 
     def get_router(self) -> APIRouter:
         return router
@@ -49,6 +53,8 @@ class MediaModule(BaseModule):
         return [
             "documents.read",
             "documents.write",
+            "attachments.read",
+            "attachments.write",
         ]
 
     def get_event_handlers(self) -> dict[str, Any]:

@@ -125,12 +125,14 @@ function startEdit(entry: RecentNoteEntry) {
   composerOpen.value = true
 }
 
-async function handleSubmit({ body }: { body: string }) {
+async function handleSubmit(
+  payload: { body: string; toothNumber: number | null; attachmentDocumentIds: string[] }
+) {
   if (!patientId.value) return
   saving.value = true
   try {
     if (editingId.value) {
-      await updateNote(editingId.value, body)
+      await updateNote(editingId.value, payload.body)
     } else {
       // Quick action only creates administrative notes — diagnosis /
       // treatment / treatment_plan notes are written from their own
@@ -139,7 +141,8 @@ async function handleSubmit({ body }: { body: string }) {
         note_type: 'administrative',
         owner_type: 'patient',
         owner_id: patientId.value,
-        body
+        body: payload.body,
+        attachment_document_ids: payload.attachmentDocumentIds
       })
     }
     composerOpen.value = false
@@ -258,6 +261,7 @@ watch(patientId, refresh, { immediate: true })
           ? (entries.find(e => e.id === editingId)?.note_type ?? 'administrative')
           : 'administrative'"
         :initial-body="composerBody"
+        :patient-id="patientId"
         :busy="saving"
         autofocus
         @submit="handleSubmit"

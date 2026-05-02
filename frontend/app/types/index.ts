@@ -1859,6 +1859,9 @@ export interface TimelineResponse {
 
 export type DocumentType = 'consent' | 'id_scan' | 'insurance' | 'report' | 'referral' | 'other'
 
+export type MediaKind = 'document' | 'photo' | 'xray' | 'scan' | 'video'
+export type MediaCategory = 'intraoral' | 'extraoral' | 'xray' | 'clinical' | 'other'
+
 export interface UploaderBrief {
   id: string
   first_name: string
@@ -1875,10 +1878,35 @@ export interface Document {
   mime_type: string
   file_size: number
   status: 'active' | 'archived'
+  // Media taxonomy (issue #55)
+  media_kind: MediaKind
+  media_category?: MediaCategory | null
+  media_subtype?: string | null
+  captured_at?: string | null
+  paired_document_id?: string | null
+  tags: string[]
   uploaded_by: string
   uploader?: UploaderBrief
   created_at: string
   updated_at: string
+  // Convenience download URLs (server-decorated). thumb/medium are null for
+  // non-thumbnailable documents (PDFs, etc.); full is always present.
+  thumb_url?: string | null
+  medium_url?: string | null
+  full_url?: string | null
+}
+
+export interface DocumentBrief {
+  id: string
+  document_type: string
+  title: string
+  original_filename: string
+  mime_type: string
+  file_size: number
+  media_kind: MediaKind
+  media_category?: MediaCategory | null
+  media_subtype?: string | null
+  created_at: string
 }
 
 export interface DocumentCreate {
@@ -1893,6 +1921,32 @@ export interface DocumentUpdate {
   description?: string
 }
 
+export interface PhotoMetadataUpdate {
+  media_category?: MediaCategory | null
+  media_subtype?: string | null
+  captured_at?: string | null
+  tags?: string[] | null
+  paired_document_id?: string | null
+}
+
+export interface MediaAttachment {
+  id: string
+  document_id: string
+  owner_type: string
+  owner_id: string
+  display_order: number
+  created_at: string
+  document?: DocumentBrief | null
+  thumb_url?: string | null
+}
+
+export interface AttachmentCreate {
+  document_id: string
+  owner_type: string
+  owner_id: string
+  display_order?: number
+}
+
 // ============================================================================
 // Treatment Plan Types
 // ============================================================================
@@ -1900,8 +1954,6 @@ export interface DocumentUpdate {
 export type TreatmentPlanStatus = 'draft' | 'active' | 'completed' | 'archived' | 'cancelled'
 
 export type PlannedItemStatus = 'pending' | 'completed' | 'cancelled'
-
-export type TreatmentMediaType = 'before' | 'after' | 'xray' | 'reference'
 
 /** Nested Treatment brief embedded in plan items (subset of Treatment). */
 export interface TreatmentBrief {
@@ -1918,23 +1970,6 @@ export interface TreatmentBrief {
     role?: 'pillar' | 'pontic' | null
     surfaces?: Surface[] | null
   }>
-}
-
-// Treatment Media (before/after images)
-export interface TreatmentMedia {
-  id: string
-  document_id: string
-  media_type: TreatmentMediaType
-  display_order: number
-  notes?: string
-  created_at: string
-}
-
-export interface TreatmentMediaCreate {
-  document_id: string
-  media_type: TreatmentMediaType
-  display_order?: number
-  notes?: string
 }
 
 // Brief treatment plan info (for embedding in items)
@@ -1962,7 +1997,6 @@ export interface PlannedTreatmentItem {
   // Nested data
   treatment?: TreatmentBrief
   catalog_item?: TreatmentCatalogItemBrief
-  media: TreatmentMedia[]
   // Optional plan info (enriched client-side for appointment selector)
   treatment_plan?: TreatmentPlanBrief
 }
@@ -1995,16 +2029,24 @@ export type NoteType
     | 'treatment_plan'
 
 export type ClinicalNoteOwnerType = 'patient' | 'treatment' | 'plan'
-export type AttachmentOwnerType = ClinicalNoteOwnerType | 'appointment_treatment'
+export type AttachmentOwnerType = ClinicalNoteOwnerType | 'clinical_note'
 
 export interface NoteAttachment {
   id: string
   document_id: string
   owner_type: AttachmentOwnerType
   owner_id: string
-  note_id: string | null
   display_order: number
   created_at: string
+  // Document brief — populated by clinical_notes router for inline rendering
+  // (preview thumbnail, click-to-lightbox). All optional so transitional
+  // callers that don't decorate still parse.
+  title?: string | null
+  mime_type?: string | null
+  media_kind?: MediaKind | null
+  thumb_url?: string | null
+  medium_url?: string | null
+  full_url?: string | null
 }
 
 export interface ClinicalNote {

@@ -17,10 +17,15 @@ from app.core.plugins import BaseModule
 
 from .models import (
     PlannedTreatmentItem,
-    TreatmentMedia,
     TreatmentPlan,
 )
+from .owner_resolvers import register as _register_attachment_owners
 from .router import router
+
+# Register the ``plan_item`` attachment owner_type with media at import
+# time. Safe because ``media`` is in ``manifest.depends`` and Python
+# import order resolves it first.
+_register_attachment_owners()
 
 
 class TreatmentPlanModule(BaseModule):
@@ -82,7 +87,6 @@ class TreatmentPlanModule(BaseModule):
         return [
             TreatmentPlan,
             PlannedTreatmentItem,
-            TreatmentMedia,
         ]
 
     def get_router(self) -> APIRouter:

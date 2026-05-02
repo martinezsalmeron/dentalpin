@@ -26,13 +26,17 @@ export function useDocuments() {
     patientId: string,
     documentType?: DocumentType,
     page = 1,
-    pageSize = 20
+    pageSize = 20,
+    mediaKind?: 'document' | 'photo' | 'xray' | 'scan' | 'video'
   ) {
     loading.value = true
     try {
       let url = `/api/v1/media/patients/${patientId}/documents?page=${page}&page_size=${pageSize}`
       if (documentType) {
         url += `&document_type=${documentType}`
+      }
+      if (mediaKind) {
+        url += `&media_kind=${mediaKind}`
       }
 
       const response = await $fetch<PaginatedResponse<Document>>(url, {

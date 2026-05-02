@@ -7,6 +7,19 @@ from app.config import settings
 # Document types enum
 DOCUMENT_TYPES = ["consent", "id_scan", "insurance", "report", "referral", "other"]
 
+# Modern image formats not in the default config allowlist but commonly
+# uploaded from clinical phones / tablets. The base allowlist covers
+# JPEG / PNG / PDF; we extend for HEIC (iOS), WebP and GIF so the photo
+# gallery accepts them without per-clinic config changes.
+_PHOTO_MIME_EXTRA = frozenset(
+    {
+        "image/heic",
+        "image/heif",
+        "image/webp",
+        "image/gif",
+    }
+)
+
 
 def validate_file_size(file: UploadFile, content_length: int | None = None) -> None:
     """Validate file size against limit.
@@ -39,13 +52,13 @@ def validate_mime_type(file: UploadFile) -> str:
     Raises:
         HTTPException: If MIME type not allowed
     """
-    allowed = settings.storage_allowed_mime_types_list
+    allowed = set(settings.storage_allowed_mime_types_list) | _PHOTO_MIME_EXTRA
     content_type = file.content_type or "application/octet-stream"
 
     if content_type not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=f"File type '{content_type}' not allowed. Allowed: {', '.join(allowed)}",
+            detail=f"File type '{content_type}' not allowed. Allowed: {', '.join(sorted(allowed))}",
         )
 
     return content_type

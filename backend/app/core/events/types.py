@@ -91,10 +91,23 @@ class EventType:
     ODONTOGRAM_TREATMENT_PERFORMED = "odontogram.treatment.performed"
     ODONTOGRAM_TREATMENT_DELETED = "odontogram.treatment.deleted"
 
-    # Document events
+    # Document / media events
     DOCUMENT_UPLOADED = "document.uploaded"
     DOCUMENT_DELETED = "document.deleted"
     DOCUMENT_ARCHIVED = "document.archived"
+    # Photo-aware subset of DOCUMENT_UPLOADED. Fired alongside the
+    # generic event whenever ``media_kind ∈ {photo, xray}`` so timeline
+    # / gallery subscribers can render thumbnails inline without
+    # filtering every document upload by mime_type.
+    PHOTO_UPLOADED = "media.photo_uploaded"
+    # Polymorphic attachment lifecycle. Subscribers (e.g. patient_timeline)
+    # can react to documents being attached to plans, notes, visits, etc.
+    ATTACHMENT_LINKED = "media.attachment_linked"
+    ATTACHMENT_UNLINKED = "media.attachment_unlinked"
+    # Before/after pairing. PAIR_CREATED carries both document ids so the
+    # timeline can render the comparison inline.
+    PAIR_CREATED = "media.pair_created"
+    PAIR_REMOVED = "media.pair_removed"
 
     # Treatment plan events
     TREATMENT_PLAN_CREATED = "treatment_plan.created"

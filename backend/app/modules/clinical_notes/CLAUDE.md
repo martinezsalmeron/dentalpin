@@ -1,8 +1,11 @@
 # Clinical notes module
 
-Polymorphic clinical-notes store. Owns ``clinical_notes`` and
-``clinical_note_attachments``. Replaces the notes that previously lived
-inside ``treatment_plan`` (issue #60).
+Polymorphic clinical-notes store. Owns ``clinical_notes``. Document
+attachments live in the ``media`` module since issue #55 — this module
+registers its owner_types with ``media.attachment_registry`` and
+delegates link/unlink/list operations to ``media.AttachmentService``.
+Replaces the notes that previously lived inside ``treatment_plan``
+(issue #60).
 
 ## Public API
 
@@ -12,9 +15,8 @@ Routes mounted at `/api/v1/clinical_notes/`.
 - `POST   /notes`                                  — create; `clinical_notes.notes.write`
 - `PATCH  /notes/{id}`                             — edit body; author or admin
 - `DELETE /notes/{id}`                             — soft delete; author or admin
-- `GET    /attachments?owner_type=…&owner_id=…`    — list attachments
-- `POST   /attachments`                            — link Document to owner
-- `DELETE /attachments/{id}`                       — unlink (Document stays)
+- `GET    /attachments?owner_type=…&owner_id=…`    — read-only proxy; new
+  callers should use `/api/v1/media/attachments` directly
 - `GET    /patients/{id}/recent`                   — Summary-tab feed (filterable)
 - `GET    /patients/{id}/by-plan`                  — plan→treatment grouped feed
 - `GET    /treatment-plans/{id}/merged`            — plan + treatment + visit notes for one plan

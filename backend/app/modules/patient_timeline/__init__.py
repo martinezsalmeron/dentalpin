@@ -90,8 +90,10 @@ class PatientTimelineModule(BaseModule):
             EventType.EMAIL_FAILED: events.on_email_failed,
             # Medical history
             EventType.PATIENT_MEDICAL_UPDATED: events.on_medical_updated,
-            # Documents
+            # Documents + photos
             EventType.DOCUMENT_UPLOADED: events.on_document_uploaded,
+            EventType.PHOTO_UPLOADED: events.on_photo_uploaded,
+            EventType.PAIR_CREATED: events.on_pair_created,
             # Clinical notes (clinical_notes module — single handler covers
             # administrative / diagnosis / treatment / treatment_plan).
             EventType.CLINICAL_NOTE_ADMINISTRATIVE_CREATED: events.on_clinical_note_created,

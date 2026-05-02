@@ -27,7 +27,6 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic, User
     from app.modules.budget.models import Budget
-    from app.modules.media.models import Document
     from app.modules.odontogram.models import Treatment
     from app.modules.patients.models import Patient
 
@@ -149,46 +148,10 @@ class PlannedTreatmentItem(Base, TimestampMixin):
     treatment_plan: Mapped["TreatmentPlan"] = relationship(back_populates="items")
     treatment: Mapped["Treatment"] = relationship()
     completer: Mapped["User | None"] = relationship(foreign_keys=[completed_by])
-    media: Mapped[list["TreatmentMedia"]] = relationship(
-        back_populates="planned_item", cascade="all, delete-orphan"
-    )
 
     __table_args__ = (
         UniqueConstraint("treatment_id", name="uq_planned_item_treatment"),
         Index("idx_planned_items_plan", "treatment_plan_id"),
         Index("idx_planned_items_treatment", "treatment_id"),
         Index("idx_planned_items_status", "treatment_plan_id", "status"),
-    )
-
-
-class TreatmentMedia(Base, TimestampMixin):
-    """Images associated with a planned treatment item.
-
-    Links to the media module's Document model for actual file storage.
-    """
-
-    __tablename__ = "treatment_media"
-
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
-    planned_treatment_item_id: Mapped[UUID] = mapped_column(
-        ForeignKey("planned_treatment_items.id", ondelete="CASCADE"), index=True
-    )
-    document_id: Mapped[UUID] = mapped_column(
-        ForeignKey("documents.id", ondelete="CASCADE"), index=True
-    )
-
-    # Media classification
-    media_type: Mapped[str] = mapped_column(String(20))  # before|after|xray|reference
-    display_order: Mapped[int] = mapped_column(Integer, default=0)
-    notes: Mapped[str | None] = mapped_column(Text)
-
-    # Relationships
-    clinic: Mapped["Clinic"] = relationship()
-    planned_item: Mapped["PlannedTreatmentItem"] = relationship(back_populates="media")
-    document: Mapped["Document"] = relationship()
-
-    __table_args__ = (
-        Index("idx_treatment_media_item", "planned_treatment_item_id"),
-        Index("idx_treatment_media_document", "document_id"),
     )

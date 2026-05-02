@@ -43,11 +43,8 @@ from app.modules.catalog.models import (  # noqa: F401
     TreatmentCategory,
     TreatmentOdontogramMapping,
 )
-from app.modules.clinical_notes.models import (  # noqa: F401
-    ClinicalNote,
-    ClinicalNoteAttachment,
-)
-from app.modules.media.models import Document  # noqa: F401
+from app.modules.clinical_notes.models import ClinicalNote  # noqa: F401
+from app.modules.media.models import Document, MediaAttachment  # noqa: F401
 from app.modules.odontogram.models import (  # noqa: F401
     OdontogramHistory,
     ToothRecord,
@@ -69,7 +66,6 @@ from app.modules.schedules.models import (  # noqa: F401
 )
 from app.modules.treatment_plan.models import (  # noqa: F401
     PlannedTreatmentItem,
-    TreatmentMedia,
     TreatmentPlan,
 )
 from app.modules.verifactu.models import (  # noqa: F401
