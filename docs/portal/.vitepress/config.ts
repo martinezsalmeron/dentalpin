@@ -42,9 +42,19 @@ export default defineConfig({
     "**/TEMPLATE.md",
     "**/*-template.md",
   ],
-  // Treat the existing /docs/README.md as the home page.
+  // Rewrite every `README.md` to `index.md` so each folder resolves
+  // cleanly under `/<folder>/` (otherwise VitePress emits
+  // `<folder>/README.html` and nginx 403s on the bare directory).
   rewrites: {
     "README.md": "index.md",
+    "adr/README.md": "adr/index.md",
+    "diagrams/README.md": "diagrams/index.md",
+    "features/README.md": "features/index.md",
+    "modules/README.md": "modules/index.md",
+    "technical/README.md": "technical/index.md",
+    "user-manual/README.md": "user-manual/index.md",
+    "user-manual/en/README.md": "user-manual/en/index.md",
+    "user-manual/es/README.md": "user-manual/es/index.md",
   },
   // The /docs source predates the portal: some markdown links point to
   // files outside /docs (root CLAUDE.md, backend module CLAUDE.md files)
