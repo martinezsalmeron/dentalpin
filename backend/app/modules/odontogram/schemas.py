@@ -206,6 +206,7 @@ class TreatmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    patient_id: UUID
     clinical_type: str
     scope: Literal["tooth", "multi_tooth", "global_mouth", "global_arch"]
     arch: Literal["upper", "lower"] | None = None

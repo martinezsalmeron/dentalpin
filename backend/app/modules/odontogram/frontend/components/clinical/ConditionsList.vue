@@ -111,10 +111,10 @@ function isHighlighted(toothNumber: number): boolean {
               </span>
               <!-- Per-treatment action slot (e.g. clinical_notes' note button). -->
               <ModuleSlot
-                v-if="condition.id"
+                v-if="condition.treatment_id"
                 name="odontogram.condition.actions"
                 :ctx="{
-                  treatmentId: condition.id,
+                  treatmentId: condition.treatment_id,
                   toothNumber: group.toothNumber,
                   status: condition.status,
                   patientId: patientId

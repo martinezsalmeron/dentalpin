@@ -12,18 +12,21 @@ const props = defineProps<{
 
 const { t, locale } = useI18n()
 
-const patientRecalls = computed(() =>
-  props.ctx?.patient?.id ? usePatientRecalls(props.ctx.patient.id) : null
-)
+// ``useState`` (inside ``usePatientRecalls``) MUST be called from the
+// component setup, never inside a computed — Vue throws "Must be
+// called at the top of a setup function" when the lazy computed
+// re-evaluates outside the setup pass.
+const initialPatientId = props.ctx?.patient?.id ?? null
+const patientRecalls = initialPatientId ? usePatientRecalls(initialPatientId) : null
 
-const recalls = computed<Recall[]>(() => patientRecalls.value?.recalls.value ?? [])
-const isLoading = computed(() => patientRecalls.value?.isLoading.value ?? false)
+const recalls = computed<Recall[]>(() => patientRecalls?.recalls.value ?? [])
+const isLoading = computed(() => patientRecalls?.isLoading.value ?? false)
 
 onMounted(() => {
-  patientRecalls.value?.ensureLoaded()
+  patientRecalls?.ensureLoaded()
 })
 
-const nextRecall = computed(() => patientRecalls.value?.nextActiveRecall.value ?? null)
+const nextRecall = computed(() => patientRecalls?.nextActiveRecall.value ?? null)
 
 const recentHistory = computed(() => recalls.value.slice(0, 5))
 

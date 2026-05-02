@@ -46,6 +46,7 @@ def build_treatment_response(treatment: Treatment) -> dict:
 
     return {
         "id": treatment.id,
+        "patient_id": treatment.patient_id,
         "clinical_type": treatment.clinical_type,
         "scope": treatment.scope,
         "arch": treatment.arch,

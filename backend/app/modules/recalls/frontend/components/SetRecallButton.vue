@@ -28,13 +28,18 @@ const canSchedule = computed(
 
 // Shared per-patient list — same useState that `RecallSummaryFeed`
 // reads, so the page fires one fetch and both surfaces stay in sync.
-const patientRecalls = computed(() =>
-  patient.value?.id ? usePatientRecalls(patient.value.id) : null
-)
-const nextRecall = computed(() => patientRecalls.value?.nextActiveRecall.value ?? null)
+//
+// ``useState`` (inside ``usePatientRecalls``) MUST be called from the
+// component setup, never inside a computed — Vue throws "Must be
+// called at the top of a setup function" when the lazy computed
+// re-evaluates outside the setup pass. The patient id on this page
+// is route-bound, so resolving it once at setup is enough.
+const initialPatientId = props.ctx?.patient?.id ?? null
+const patientRecalls = initialPatientId ? usePatientRecalls(initialPatientId) : null
+const nextRecall = computed(() => patientRecalls?.nextActiveRecall.value ?? null)
 
 onMounted(() => {
-  patientRecalls.value?.ensureLoaded()
+  patientRecalls?.ensureLoaded()
 })
 
 function formatMonth(iso: string): string {
@@ -56,7 +61,7 @@ function statusColour(status: string): 'success' | 'info' | 'warning' | 'neutral
 async function onSaved() {
   // Refresh the shared list so the inline card + summary feed both
   // pick up the new / updated recall without a page reload.
-  await patientRecalls.value?.refresh()
+  await patientRecalls?.refresh()
 }
 </script>
 

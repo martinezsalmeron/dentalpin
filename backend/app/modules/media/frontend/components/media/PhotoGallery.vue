@@ -191,6 +191,8 @@ function handleUploaded() {
       v-model:open="lightboxOpen"
       :documents="photos"
       :start-id="lightboxStartId"
+      enable-pairing
+      @pair-changed="load"
     />
   </div>
 </template>
