@@ -430,15 +430,19 @@ def _filename_slug_from_route(route: str) -> str:
     in `docs/portal/.vitepress/help.ts` so the source MD lines up with
     the rendered fragment URL.
 
+    Brackets are stripped: VitePress treats `*_[*].md` filenames as
+    dynamic routes and requires a companion `.paths.{js,ts}` file. We
+    just want plain static files.
+
     `/recalls`              → `recalls`
-    `/treatment-plans/[id]` → `treatment-plans_[id]`
-    `/invoices/[id]/edit`   → `invoices_[id]_edit`
+    `/treatment-plans/[id]` → `treatment-plans_id`
+    `/invoices/[id]/edit`   → `invoices_id_edit`
     `/`                     → `index`
     """
     trimmed = route.strip("/")
     if not trimmed:
         return "index"
-    return trimmed.replace("/", "_")
+    return trimmed.replace("/", "_").replace("[", "").replace("]", "")
 
 
 def _gather_actions(facts: ModuleFacts, head: str) -> list[WriteAction]:

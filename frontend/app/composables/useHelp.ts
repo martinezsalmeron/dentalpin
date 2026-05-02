@@ -43,7 +43,9 @@ function collapseDynamicSegments(path: string, matchedRoute: string | undefined)
 function routeToSlug(route: string): string {
   const trimmed = route.replace(/^\/+|\/+$/g, '')
   if (!trimmed) return 'index'
-  return trimmed.replace(/\//g, '_')
+  // Strip `[` `]` to match the portal's `routeToSlug` (filenames with
+  // brackets clash with VitePress' dynamic-route convention).
+  return trimmed.replace(/\//g, '_').replace(/[[\]]/g, '')
 }
 
 export function useHelp() {

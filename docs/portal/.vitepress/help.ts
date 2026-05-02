@@ -76,7 +76,11 @@ function parseFrontmatter(text: string): { fm: Frontmatter; body: string } {
 export function routeToSlug(route: string): string {
   const trimmed = route.replace(/^\/+|\/+$/g, "");
   if (!trimmed) return "index";
-  return trimmed.replace(/\//g, "_");
+  // Strip `[` `]` so the source MD filename does not collide with
+  // VitePress' dynamic-route convention (`*[*].md` would expect a
+  // companion `.paths.{js,ts}` file). The route itself keeps the
+  // brackets — only the slug used as filename / fragment URL drops them.
+  return trimmed.replace(/\//g, "_").replace(/[[\]]/g, "");
 }
 
 async function collectScreens(): Promise<

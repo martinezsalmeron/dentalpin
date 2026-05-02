@@ -24,7 +24,12 @@ export default defineConfig({
     "Open-source dental clinic management software — developer reference and user manual.",
   lang: "en-US",
   cleanUrls: true,
-  lastUpdated: true,
+  // VitePress uses `git log` to compute lastUpdated. The portal Docker
+  // build excludes `.git` (per `Dockerfile.dockerignore`) and the alpine
+  // builder does not ship git, so `spawn git ENOENT` aborts the build.
+  // Re-enable this only after also installing git in the builder stage
+  // and including `.git` in the build context.
+  lastUpdated: false,
   srcDir: "..",
   outDir: "./.vitepress/dist",
   cacheDir: "./.vitepress/cache",
