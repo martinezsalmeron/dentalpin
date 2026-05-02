@@ -28,15 +28,16 @@ existing ``catalog-freshness`` CI job.
 Companion to ``backend/scripts/generate_catalogs.py``. Shares its
 bootstrap, but does **not** mutate any file.
 """
+
 from __future__ import annotations
 
 import argparse
 import os
 import re
 import sys
-from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+
 
 def _locate_repo_root() -> Path:
     """Resolve the repo root.
@@ -58,8 +59,7 @@ def _locate_repo_root() -> Path:
         if (root / "docs").is_dir() and (root / "backend").is_dir():
             return root
         raise RuntimeError(
-            f"DENTALPIN_REPO_ROOT={override!r} but it doesn't contain "
-            "both `docs/` and `backend/`."
+            f"DENTALPIN_REPO_ROOT={override!r} but it doesn't contain both `docs/` and `backend/`."
         )
     here = Path(__file__).resolve()
     for candidate in (here.parent, *here.parents):
@@ -153,8 +153,8 @@ class ModuleFacts:
     permissions: list[str]
     events_emitted: list[str]
     events_consumed: list[str]
-    pages: dict[str, Path]                # route -> .vue path
-    endpoints: list[tuple[str, str]]      # (METHOD, full path including /api/v1/<m>)
+    pages: dict[str, Path]  # route -> .vue path
+    endpoints: list[tuple[str, str]]  # (METHOD, full path including /api/v1/<m>)
     has_frontend: bool
 
 
@@ -162,9 +162,7 @@ HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 ROUTER_DECORATOR_RE = re.compile(
     r"@router\.(?P<method>get|post|put|patch|delete)\(\s*[\"'](?P<path>[^\"']*)[\"']",
 )
-PUBLISH_RE = re.compile(
-    r"event_bus\.publish\(\s*(?:EventType\.[A-Z_]+|[\"'](?P<lit>[\w.]+)[\"'])"
-)
+PUBLISH_RE = re.compile(r"event_bus\.publish\(\s*(?:EventType\.[A-Z_]+|[\"'](?P<lit>[\w.]+)[\"'])")
 
 
 def _scan_module_endpoints(mod_dir: Path, mount_prefix: str) -> list[tuple[str, str]]:
@@ -244,7 +242,7 @@ def _collect_facts(module) -> ModuleFacts:
 
 @dataclass
 class ScreenDoc:
-    locale: str                # 'en' | 'es'
+    locale: str  # 'en' | 'es'
     module: str
     path: Path
     frontmatter: dict[str, object]
@@ -260,9 +258,7 @@ def _collect_screens(module: str) -> dict[str, list[ScreenDoc]]:
         for md in sorted(screens_dir.glob("*.md")):
             text = md.read_text(encoding="utf-8", errors="replace")
             fm = _parse_frontmatter(text)
-            out[locale].append(
-                ScreenDoc(locale=locale, module=module, path=md, frontmatter=fm)
-            )
+            out[locale].append(ScreenDoc(locale=locale, module=module, path=md, frontmatter=fm))
     return out
 
 
@@ -345,8 +341,7 @@ def _check_module(facts: ModuleFacts, findings: Findings) -> None:
             rel = screen.path.relative_to(REPO_ROOT)
             if "module" not in fm or fm["module"] != name:
                 findings.err(
-                    f"{rel}: frontmatter `module` must equal '{name}' "
-                    f"(found {fm.get('module')!r})."
+                    f"{rel}: frontmatter `module` must equal '{name}' (found {fm.get('module')!r})."
                 )
             route = str(fm.get("route") or "")
             if not route:
@@ -358,16 +353,13 @@ def _check_module(facts: ModuleFacts, findings: Findings) -> None:
                     f"(known: {sorted(facts.pages.keys())})."
                 )
             if not fm.get("last_verified_commit"):
-                findings.warn(
-                    f"{rel}: frontmatter `last_verified_commit` is empty."
-                )
+                findings.warn(f"{rel}: frontmatter `last_verified_commit` is empty.")
 
             for ep in fm.get("related_endpoints", []) or []:
                 m = re.match(r"\s*([A-Z]+)\s+(.+)\s*$", str(ep))
                 if not m:
                     findings.warn(
-                        f"{rel}: malformed related_endpoint {ep!r} "
-                        "(expected 'METHOD /path')."
+                        f"{rel}: malformed related_endpoint {ep!r} (expected 'METHOD /path')."
                     )
                     continue
                 method, path = m.group(1), m.group(2).strip()

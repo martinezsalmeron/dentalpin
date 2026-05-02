@@ -31,6 +31,7 @@ Usage::
     python backend/scripts/scaffold_module_docs.py --dry-run
     python backend/scripts/scaffold_module_docs.py --modules patients,recalls
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,7 +59,6 @@ def _bootstrap_env() -> None:
 _bootstrap_env()
 
 from check_docs_coverage import (  # noqa: E402
-    DOCS_ROOT,
     LOCALES,
     REPO_ROOT,
     TECHNICAL_ROOT,
@@ -66,6 +66,7 @@ from check_docs_coverage import (  # noqa: E402
     ModuleFacts,
     _collect_facts,
 )
+
 from app.core.plugins.loader import discover_modules  # noqa: E402
 
 LOCALE_LABELS = {"en": "English", "es": "Español"}
@@ -169,9 +170,9 @@ module: {facts.name}
 last_verified_commit: {head}
 ---
 
-# {facts.name.replace('_', ' ').title()} — technical overview
+# {facts.name.replace("_", " ").title()} — technical overview
 
-> {STUB_NOTE_BY_LOCALE['en']}
+> {STUB_NOTE_BY_LOCALE["en"]}
 
 Auto-discovered facts about the `{facts.name}` module. See the module's
 own notes at `backend/app/modules/{facts.name}/CLAUDE.md` for context
@@ -211,11 +212,11 @@ module: {facts.name}
 last_verified_commit: {head}
 ---
 
-# {facts.name.replace('_', ' ').title()} — permissions
+# {facts.name.replace("_", " ").title()} — permissions
 
-> {STUB_NOTE_BY_LOCALE['en']}
+> {STUB_NOTE_BY_LOCALE["en"]}
 
-Returned by `{facts.name.title().replace('_', '')}Module.get_permissions()`
+Returned by `{facts.name.title().replace("_", "")}Module.get_permissions()`
 (relative names; the registry namespaces them as `{facts.name}.<name>`).
 
 | Permission | Allows | Required by |
@@ -244,8 +245,7 @@ def _technical_events(facts: ModuleFacts, head: str) -> str:
 
     emitted_rows = (
         "\n".join(
-            f"| `{e}` | _When does this fire?_ | _Payload keys._ |"
-            for e in facts.events_emitted
+            f"| `{e}` | _When does this fire?_ | _Payload keys._ |" for e in facts.events_emitted
         )
         or "_This module does not publish any events._"
     )
@@ -273,9 +273,9 @@ module: {facts.name}
 last_verified_commit: {head}
 ---
 
-# {facts.name.replace('_', ' ').title()} — events
+# {facts.name.replace("_", " ").title()} — events
 
-> {STUB_NOTE_BY_LOCALE['en']}
+> {STUB_NOTE_BY_LOCALE["en"]}
 
 Per-module slice of [`docs/events-catalog.md`](../../events-catalog.md)
 (auto-generated). Update both files when adding or removing events.
@@ -308,17 +308,17 @@ last_verified_commit: {head}
 
 # {title}
 
-> {STUB_NOTE_BY_LOCALE['es']}
+> {STUB_NOTE_BY_LOCALE["es"]}
 
 Página de aterrizaje del módulo `{facts.name}` en el manual de usuario.
 
 ## Pantallas
 
-{('Este módulo no aporta páginas Nuxt propias.' if not facts.pages else chr(10).join(f'- `{r}` — _Pendiente de documentar._' for r in sorted(facts.pages)))}
+{("Este módulo no aporta páginas Nuxt propias." if not facts.pages else chr(10).join(f"- `{r}` — _Pendiente de documentar._" for r in sorted(facts.pages)))}
 
 ## Permisos
 
-{('_(sin permisos)_' if not facts.permissions else chr(10).join(f'- `{_normalise_perm(p, facts.name)}`' for p in facts.permissions))}
+{("_(sin permisos)_" if not facts.permissions else chr(10).join(f"- `{_normalise_perm(p, facts.name)}`" for p in facts.permissions))}
 
 ## Recursos técnicos
 
@@ -334,17 +334,17 @@ last_verified_commit: {head}
 
 # {title}
 
-> {STUB_NOTE_BY_LOCALE['en']}
+> {STUB_NOTE_BY_LOCALE["en"]}
 
 Landing page for the `{facts.name}` module in the end-user manual.
 
 ## Screens
 
-{('This module ships no Nuxt pages of its own.' if not facts.pages else chr(10).join(f'- `{r}` — _Documentation pending._' for r in sorted(facts.pages)))}
+{("This module ships no Nuxt pages of its own." if not facts.pages else chr(10).join(f"- `{r}` — _Documentation pending._" for r in sorted(facts.pages)))}
 
 ## Permissions
 
-{('_(none)_' if not facts.permissions else chr(10).join(f'- `{_normalise_perm(p, facts.name)}`' for p in facts.permissions))}
+{("_(none)_" if not facts.permissions else chr(10).join(f"- `{_normalise_perm(p, facts.name)}`" for p in facts.permissions))}
 
 ## Technical references
 
@@ -361,12 +361,8 @@ def _screen_doc(
     head: str,
     locale: str,
 ) -> str:
-    related_endpoints = sorted(
-        f"{m} {p}" for m, p in facts.endpoints
-    )
-    related_permissions = [
-        _normalise_perm(p, facts.name) for p in facts.permissions
-    ]
+    related_endpoints = sorted(f"{m} {p}" for m, p in facts.endpoints)
+    related_permissions = [_normalise_perm(p, facts.name) for p in facts.permissions]
     rel_page = page_path.relative_to(REPO_ROOT).as_posix()
 
     if locale == "es":
@@ -468,9 +464,7 @@ def _gather_actions(facts: ModuleFacts, head: str) -> list[WriteAction]:
             module_dir = USER_MANUAL_ROOT / locale / facts.name
             index = module_dir / "index.md"
             if not index.is_file():
-                actions.append(
-                    WriteAction(index, _user_manual_index(facts, head, locale))
-                )
+                actions.append(WriteAction(index, _user_manual_index(facts, head, locale)))
 
     # Pre-scan existing screen MDs per locale, key by frontmatter route
     # so we don't overwrite hand-authored docs that use semantic filenames
@@ -500,9 +494,7 @@ def _gather_actions(facts: ModuleFacts, head: str) -> list[WriteAction]:
         for locale in LOCALES:
             if route in documented_routes_by_locale[locale]:
                 continue
-            screen_path = (
-                USER_MANUAL_ROOT / locale / facts.name / "screens" / f"{slug}.md"
-            )
+            screen_path = USER_MANUAL_ROOT / locale / facts.name / "screens" / f"{slug}.md"
             if screen_path.is_file():
                 continue
             actions.append(
