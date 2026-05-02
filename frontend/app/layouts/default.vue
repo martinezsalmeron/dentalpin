@@ -332,6 +332,7 @@ function isActive(to: string): boolean {
 
         <!-- Right actions -->
         <div class="flex items-center gap-1">
+          <HelpButton />
           <DensityToggle />
           <UColorModeButton />
           <UButton

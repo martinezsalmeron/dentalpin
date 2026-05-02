@@ -2451,5 +2451,12 @@
     "deleteError": "Error deleting document",
     "updateSuccess": "Document updated",
     "updateError": "Error updating document"
+  },
+  "help": {
+    "label": "Help",
+    "openHelp": "Open help",
+    "drawerTitle": "Help for this page",
+    "unavailable": "No contextual help available for this page yet.",
+    "openFullManual": "Open full manual"
   }
 }

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { defineConfig } from "vitepress";
 import { generateNav, generateSidebar } from "./sidebar.js";
 import { checkStale } from "./staleness.js";
+import { buildHelpFragments } from "./help.js";
 
 // docs/portal/.vitepress/ → /docs/ root (one up from project, two up from this file).
 const DOCS_ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
@@ -95,6 +96,14 @@ export default defineConfig({
       pageData.frontmatter.staleDiffUrl = result.diffUrl;
       pageData.frontmatter.staleCommits = result.staleCommits;
     }
+  },
+  // Emit one standalone HTML fragment per screen MD into
+  // `dist/<lang>/help/<slug>.html`. The frontend `<HelpButton />` drawer
+  // (Fase 5) iframes these fragments. Produced *after* the main build so
+  // `dist/` exists when we write into it.
+  async buildEnd(siteConfig) {
+    const written = await buildHelpFragments(siteConfig.outDir);
+    console.log(`help fragments emitted: ${written}`);
   },
   vite: {
     resolve: {
