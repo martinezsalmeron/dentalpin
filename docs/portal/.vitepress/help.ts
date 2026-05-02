@@ -147,6 +147,27 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+const NOT_FOUND_BY_LOCALE: Record<string, { title: string; body: string }> = {
+  en: {
+    title: "Help — page not documented yet",
+    body: `<h1>No help for this screen yet</h1>
+<p>This part of the app does not have contextual documentation in
+the user manual yet. We're filling the gaps as each module is
+revisited — see <a href="/user-manual/en/" target="_top">the user
+manual</a> for what is already documented.</p>
+<p>If you'd like a guide for this screen, please open an issue.</p>`,
+  },
+  es: {
+    title: "Ayuda — pantalla aún sin documentar",
+    body: `<h1>Aún no hay ayuda para esta pantalla</h1>
+<p>Esta parte de la aplicación todavía no tiene documentación
+contextual en el manual de usuario. Iremos cubriendo huecos a medida
+que se revisen los módulos — consulta <a href="/user-manual/es/"
+target="_top">el manual</a> para ver lo que ya está documentado.</p>
+<p>Si necesitas una guía para esta pantalla, abre una incidencia.</p>`,
+  },
+};
+
 export async function buildHelpFragments(distDir: string): Promise<number> {
   const screens = await collectScreens();
   let written = 0;
@@ -164,6 +185,18 @@ export async function buildHelpFragments(distDir: string): Promise<number> {
     const out = FRAGMENT_SHELL(screen.locale, title, html);
     await writeFile(join(outDir, `${slug}.html`), out, "utf-8");
     written++;
+  }
+
+  // Per-locale fallback fragment served by nginx when no specific file
+  // matches the requested route. Keeps the iframe's HTTP status at 200
+  // so the in-app drawer renders a friendly message instead of nginx's
+  // raw 404 page.
+  for (const locale of LOCALES) {
+    const outDir = join(distDir, locale, "help");
+    await mkdir(outDir, { recursive: true });
+    const data = NOT_FOUND_BY_LOCALE[locale];
+    const out = FRAGMENT_SHELL(locale, data.title, data.body);
+    await writeFile(join(outDir, "_not-found.html"), out, "utf-8");
   }
 
   return written;
