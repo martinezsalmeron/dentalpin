@@ -3,14 +3,16 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth.router import limiter
@@ -20,7 +22,7 @@ from app.core.plugins.processor import PendingProcessor
 from app.core.plugins.service import ModuleService
 from app.core.scheduler import init_scheduler, shutdown_scheduler
 from app.core.schemas import ErrorResponse
-from app.database import async_session_maker, engine
+from app.database import async_session_maker, engine, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +166,9 @@ app.include_router(agents_router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health_check() -> JSONResponse:
+async def health_check(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> JSONResponse:
     """Health check — verifies the schema is reachable, not just the process.
 
     A liveness-only check (process up) misses the real failure mode we hit
@@ -175,8 +179,7 @@ async def health_check() -> JSONResponse:
     re-run `alembic upgrade heads`.
     """
     try:
-        async with async_session_maker() as session:
-            await session.execute(text("SELECT 1 FROM users LIMIT 1"))
+        await db.execute(text("SELECT 1 FROM users LIMIT 1"))
     except Exception as exc:
         logger.error("Health check failed: %s", exc)
         return JSONResponse(
