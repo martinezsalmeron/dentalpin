@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
 
 from app.config import settings
 from app.core.auth.router import limiter
@@ -92,6 +93,25 @@ app.add_middleware(
 )
 
 
+def _cors_headers(request: Request) -> dict[str, str]:
+    # CORSMiddleware can't add headers to responses produced by exception
+    # handlers (BaseHTTPMiddleware-based stacks lose the response when an
+    # exception escapes). Without these headers, browsers report any 5xx
+    # as a network error ("can't connect to server") instead of surfacing
+    # the real status — which masks bugs and confuses users. So we mirror
+    # CORSMiddleware's allow-list logic here for error responses.
+    origin = request.headers.get("origin")
+    if not origin:
+        return {}
+    if origin in allowed_origins or "*" in allowed_origins:
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return {}
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Handler for HTTP exceptions using standard ErrorResponse format."""
@@ -99,32 +119,33 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         message=str(exc.detail),
         errors=[str(exc.detail)] if exc.detail else [],
     )
+    headers = dict(exc.headers or {})
+    headers.update(_cors_headers(request))
     return JSONResponse(
         status_code=exc.status_code,
         content=error_response.model_dump(),
-        headers=exc.headers,
+        headers=headers,
     )
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler for unhandled errors."""
+    logger.exception("Unhandled exception", exc_info=exc)
     if settings.ENVIRONMENT == "development":
         error_response = ErrorResponse(
             message=str(exc),
             errors=[str(exc)],
         )
-        return JSONResponse(
-            status_code=500,
-            content=error_response.model_dump(),
+    else:
+        error_response = ErrorResponse(
+            message="Internal server error",
+            errors=[],
         )
-    error_response = ErrorResponse(
-        message="Internal server error",
-        errors=[],
-    )
     return JSONResponse(
         status_code=500,
         content=error_response.model_dump(),
+        headers=_cors_headers(request),
     )
 
 
@@ -143,9 +164,26 @@ app.include_router(agents_router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health_check() -> dict:
-    """Health check endpoint."""
-    return {"status": "healthy", "version": "2.0.0"}
+async def health_check() -> JSONResponse:
+    """Health check — verifies the schema is reachable, not just the process.
+
+    A liveness-only check (process up) misses the real failure mode we hit
+    in prod: the DB volume gets recreated under a running container, the
+    schema disappears, every business endpoint 500s, but the orchestrator
+    keeps the container "healthy" and never restarts it. Probing a core
+    table forces a restart in that scenario, which lets the entrypoint
+    re-run `alembic upgrade heads`.
+    """
+    try:
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1 FROM users LIMIT 1"))
+    except Exception as exc:
+        logger.error("Health check failed: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "version": "2.0.0", "error": str(exc)},
+        )
+    return JSONResponse(content={"status": "healthy", "version": "2.0.0"})
 
 
 @app.get("/api/v1")
