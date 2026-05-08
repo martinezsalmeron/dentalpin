@@ -56,11 +56,12 @@ services:
       NITRO_HOST: 0.0.0.0
       NITRO_PORT: 3000
       NUXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NODE_OPTIONS: --max-old-space-size=4096
     ports:
       - "3000:3000"
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - ./frontend:/app
       # Mount backend module packages read-only so Nuxt can `extends`

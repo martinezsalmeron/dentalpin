@@ -166,27 +166,40 @@ app.include_router(agents_router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health_check(
+async def health_check() -> JSONResponse:
+    """Liveness probe — process is up.
+
+    Used by the proxy/orchestrator to decide whether the container should
+    receive traffic. Must NOT depend on the DB: a transient DB blip should
+    not pull the backend out of the load balancer (we used to do that and
+    Cloudflare ended up serving "no available server" until someone redeployed
+    by hand).
+    """
+    return JSONResponse(content={"status": "healthy", "version": "2.0.0"})
+
+
+@app.get("/health/ready")
+async def readiness_check(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> JSONResponse:
-    """Health check — verifies the schema is reachable, not just the process.
+    """Readiness probe — schema is reachable.
 
-    A liveness-only check (process up) misses the real failure mode we hit
-    in prod: the DB volume gets recreated under a running container, the
-    schema disappears, every business endpoint 500s, but the orchestrator
-    keeps the container "healthy" and never restarts it. Probing a core
-    table forces a restart in that scenario, which lets the entrypoint
-    re-run `alembic upgrade heads`.
+    Probes a core table so monitoring catches the case where the DB volume
+    gets recreated under a running container (schema gone, every business
+    endpoint 500s). Recovery from that state belongs in the entrypoint
+    (`alembic upgrade heads`) plus an explicit container restart — not in
+    the proxy healthcheck, since Docker's `restart: unless-stopped` does
+    not auto-restart on healthcheck failure.
     """
     try:
         await db.execute(text("SELECT 1 FROM users LIMIT 1"))
     except Exception as exc:
-        logger.error("Health check failed: %s", exc)
+        logger.error("Readiness check failed: %s", exc)
         return JSONResponse(
             status_code=503,
-            content={"status": "unhealthy", "version": "2.0.0", "error": str(exc)},
+            content={"status": "unready", "version": "2.0.0", "error": str(exc)},
         )
-    return JSONResponse(content={"status": "healthy", "version": "2.0.0"})
+    return JSONResponse(content={"status": "ready", "version": "2.0.0"})
 
 
 @app.get("/api/v1")

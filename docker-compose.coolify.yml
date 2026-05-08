@@ -51,7 +51,7 @@ services:
       NUXT_PUBLIC_API_BASE_URL: ${BACKEND_URL}
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
       interval: 30s
