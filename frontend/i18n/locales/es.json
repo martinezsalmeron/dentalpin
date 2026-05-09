@@ -43,6 +43,7 @@
     "tooManyAttempts": "Demasiados intentos. Inténtalo de nuevo en unos minutos",
     "sessionExpired": "Tu sesión ha expirado",
     "networkError": "No se pudo conectar con el servidor",
+    "serverError": "El servidor no está disponible. Inténtalo de nuevo en unos minutos",
     "unknownError": "Error inesperado. Inténtalo de nuevo"
   },
   "actions": {

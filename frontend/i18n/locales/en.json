@@ -43,6 +43,7 @@
     "tooManyAttempts": "Too many attempts. Try again in a few minutes",
     "sessionExpired": "Your session has expired",
     "networkError": "Could not connect to the server",
+    "serverError": "The server is unavailable. Please try again in a few minutes",
     "unknownError": "Unexpected error. Please try again"
   },
   "actions": {

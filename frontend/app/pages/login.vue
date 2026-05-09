@@ -60,6 +60,9 @@ function mapError(err: unknown): string {
   if (!status || status === 0 || (e.message && /network|fetch|failed/i.test(e.message))) {
     return t('auth.networkError')
   }
+  if (status >= 500) {
+    return t('auth.serverError')
+  }
   return t('auth.unknownError')
 }
 

@@ -27,6 +27,13 @@ services:
       ALLOWED_ORIGINS: ${FRONTEND_URL}
       STORAGE_BACKEND: local
       STORAGE_LOCAL_PATH: /app/storage
+      # Demo deployments set SEED_ON_STARTUP=1 in Coolify env so a wiped
+      # DB volume self-heals on next restart: alembic recreates the
+      # schema and seed_demo.py repopulates it (idempotent — no-op when
+      # the demo clinic already exists). Real production deployments
+      # leave it unset so seed never runs.
+      SEED_ON_STARTUP: ${SEED_ON_STARTUP:-0}
+      SEED_LANG: ${SEED_LANG:-es}
     volumes:
       - storage_data:/app/storage
     depends_on:
