@@ -1,0 +1,7 @@
+# Daily demo DB reset + reseed at 04:00 Europe/Madrid.
+# Deploy to /etc/cron.d/dentalpin-reset-demo on the demo host.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+0 4 * * * root /usr/local/bin/dentalpin-reset-demo.sh es >> /var/log/dentalpin-reset.log 2>&1
