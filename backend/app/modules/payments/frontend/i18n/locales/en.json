@@ -83,8 +83,17 @@
       "onAccount": "On account",
       "empty": "No movements."
     },
+    "budgetCard": {
+      "title": "Budget payments",
+      "budgetTotal": "Budgeted",
+      "collected": "Collected",
+      "pending": "Pending",
+      "collect": "Collect",
+      "empty": "No payments imputed to this budget yet."
+    },
     "reports": {
       "title": "Payment reports",
+      "cardDescription": "Collected, refunds, patient balances, aging and trends.",
       "period": "Period",
       "collected": "Collected",
       "refunded": "Refunded",

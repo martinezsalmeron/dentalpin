@@ -129,23 +129,26 @@ class BillingReportService:
         )
         totals = result.one()
 
-        pending_result = await db.execute(
-            select(
-                func.coalesce(func.sum(Invoice.total), Decimal("0"))
-                - func.coalesce(
-                    select(func.coalesce(func.sum(InvoicePayment.amount), Decimal("0")))
-                    .where(InvoicePayment.invoice_id == Invoice.id)
-                    .correlate(Invoice)
-                    .scalar_subquery(),
-                    Decimal("0"),
-                )
-            ).where(
+        # ``total_pending`` = Σ invoice.total − Σ imputed payments, across
+        # all outstanding invoices in the clinic. LEFT JOIN keeps invoices
+        # without any payment imputed.
+        pending_total = await db.execute(
+            select(func.coalesce(func.sum(Invoice.total), Decimal("0"))).where(
                 Invoice.clinic_id == clinic_id,
                 Invoice.status.in_(["issued", "partial"]),
                 Invoice.deleted_at.is_(None),
             )
         )
-        total_pending = pending_result.scalar_one() or Decimal("0")
+        pending_paid = await db.execute(
+            select(func.coalesce(func.sum(InvoicePayment.amount), Decimal("0")))
+            .join(Invoice, Invoice.id == InvoicePayment.invoice_id)
+            .where(
+                Invoice.clinic_id == clinic_id,
+                Invoice.status.in_(["issued", "partial"]),
+                Invoice.deleted_at.is_(None),
+            )
+        )
+        total_pending = pending_total.scalar_one() - pending_paid.scalar_one()
 
         # Total paid in period for billed invoices. Computed from the
         # InvoicePayment link table — this represents the fiscal "cobrado

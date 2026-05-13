@@ -490,7 +490,7 @@ function getItemName(item: BudgetItem): string {
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main content -->
-        <div class="lg:col-span-2 space-y-6">
+        <div class="lg:col-span-2 space-y-6 lg:order-1">
           <!-- Budget details -->
           <UCard>
             <template #header>
@@ -781,6 +781,17 @@ function getItemName(item: BudgetItem): string {
           </UCard>
 
         </div>
+
+        <!-- Sidebar slot — module-driven extension point. Modules
+             (e.g. payments) register cards via
+             ``registerSlot('budget.detail.sidebar', ...)``. Budget
+             never imports them; the registry is the only contract. -->
+        <aside class="space-y-6 lg:order-2">
+          <ModuleSlot
+            name="budget.detail.sidebar"
+            :ctx="{ budget: currentBudget }"
+          />
+        </aside>
       </div>
     </template>
 

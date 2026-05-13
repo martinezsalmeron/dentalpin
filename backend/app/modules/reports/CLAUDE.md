@@ -24,6 +24,15 @@ None.
 
 None today — reports are computed on demand from underlying tables.
 
+## Frontend slots exposed
+
+| Slot | Ctx | Consumer |
+|---|---|---|
+| `reports.categories` | `{}` | `payments` adds the "Informe de cobros" card so the dashboard is discovered from `/reports` without a nav entry. Other modules may add more reports the same way. |
+
+Reports never imports its slot consumers — the registry is the only
+contract.
+
 ## Lifecycle
 
 - `removable=False` — but a candidate for `removable=True` since this

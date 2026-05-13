@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Payment, PaymentMethod } from '~~/app/types'
+import type { PaymentMethod } from '~~/app/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,7 +15,6 @@ const {
   voidInvoice,
   sendInvoice,
   recordPayment,
-  voidPayment,
   createCreditNote,
   downloadPDF,
   canEdit,
@@ -202,9 +201,11 @@ async function handleRecordPayment() {
 
   isProcessing.value = true
   try {
+    // Billing's new "factura + cobro" orchestrator expects the
+    // InvoicePaymentApply shape (`method`, not `payment_method`).
     await recordPayment(invoiceId.value, {
       amount: paymentForm.value.amount,
-      payment_method: paymentForm.value.payment_method,
+      method: paymentForm.value.payment_method,
       payment_date: paymentForm.value.payment_date,
       reference: paymentForm.value.reference || undefined,
       notes: paymentForm.value.notes || undefined
@@ -227,29 +228,9 @@ async function handleRecordPayment() {
   }
 }
 
-async function handleVoidPayment(payment: Payment) {
-  const reason = prompt(t('invoice.prompts.voidPaymentReason'))
-  if (!reason) return
-
-  isProcessing.value = true
-  try {
-    await voidPayment(payment.id, { reason })
-    toast.add({
-      title: t('common.success'),
-      description: t('invoice.messages.paymentVoided'),
-      color: 'success'
-    })
-    await fetchInvoice(invoiceId.value)
-  } catch {
-    toast.add({
-      title: t('common.error'),
-      description: t('invoice.errors.voidPayment'),
-      color: 'error'
-    })
-  } finally {
-    isProcessing.value = false
-  }
-}
+// Voiding a payment was removed from this screen — refunds happen
+// in the payments module (POST /api/v1/payments/{id}/refunds).
+// Admins refund from /payments.
 
 function openCreditNoteModal() {
   creditNoteForm.value = {
@@ -687,8 +668,11 @@ function goToCreditNoteFor() {
             </div>
           </UCard>
 
-          <!-- Payments card -->
-          <UCard v-if="currentInvoice.payments && currentInvoice.payments.length > 0">
+          <!-- Payments card. The link rows live in billing's
+               ``invoice_payments`` table; the underlying Payment is in
+               the payments module. Refunds happen via
+               /api/v1/payments/{id}/refunds — not from this screen. -->
+          <UCard v-if="currentInvoice.invoice_payments && currentInvoice.invoice_payments.length > 0">
             <template #header>
               <h3 class="font-semibold text-default">
                 {{ t('invoice.payments.title') }}
@@ -697,40 +681,18 @@ function goToCreditNoteFor() {
 
             <div class="divide-y divide-[var(--color-border-subtle)]">
               <div
-                v-for="payment in currentInvoice.payments"
-                :key="payment.id"
+                v-for="ip in currentInvoice.invoice_payments"
+                :key="ip.id"
                 class="py-3 first:pt-0 last:pb-0 flex items-center justify-between"
-                :class="{ 'opacity-50 line-through': payment.is_voided }"
               >
                 <div>
                   <p class="font-medium text-default">
-                    {{ formatCurrency(payment.amount) }}
+                    {{ formatCurrency(ip.amount) }}
                   </p>
                   <p class="text-caption text-subtle">
-                    {{ getPaymentMethodLabel(payment.payment_method) }} - {{ formatDate(payment.payment_date) }}
-                  </p>
-                  <p
-                    v-if="payment.reference"
-                    class="text-xs text-subtle"
-                  >
-                    {{ payment.reference }}
-                  </p>
-                  <p
-                    v-if="payment.is_voided"
-                    class="text-xs text-danger-accent"
-                  >
-                    {{ t('invoice.paymentVoided') }}: {{ payment.void_reason }}
+                    {{ formatDate(ip.created_at) }}
                   </p>
                 </div>
-                <UButton
-                  v-if="!payment.is_voided && can('billing.admin')"
-                  variant="ghost"
-                  color="error"
-                  icon="i-lucide-x"
-                  size="sm"
-                  :title="t('invoice.actions.voidPayment')"
-                  @click="handleVoidPayment(payment)"
-                />
               </div>
             </div>
           </UCard>

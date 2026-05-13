@@ -66,13 +66,6 @@ class PaymentsModule(BaseModule):
                     "permission": "payments.record.read",
                     "order": 55,
                 },
-                {
-                    "label": "payments.nav.reports",
-                    "icon": "i-lucide-chart-pie",
-                    "to": "/reports/payments",
-                    "permission": "payments.reports.read",
-                    "order": 96,
-                },
             ],
         },
     }

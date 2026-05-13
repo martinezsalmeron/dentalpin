@@ -60,6 +60,17 @@ Both handlers require `unit_price`/`price_snapshot` in the payload. If
 the publisher omits it, the entry is skipped with a warning — see
 gotchas below.
 
+## Frontend slots consumed
+
+| Slot | Component | Permission |
+|---|---|---|
+| `budget.detail.sidebar` | `BudgetPaymentsCard` (cobrado / pendiente / allocations + "Cobrar" CTA) | `payments.record.read` |
+| `reports.categories` | `PaymentsReportEntry` (card on `/reports` linking to `/reports/payments`) | `payments.reports.read` |
+
+Registered in `frontend/plugins/slots.client.ts`. The card receives
+`ctx = { budget }` from the host page and never imports anything from
+`budget`'s code — only the public allocations endpoint.
+
 ## Lifecycle
 
 - `installable=True`, `auto_install=True`, `removable=False`.

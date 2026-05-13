@@ -83,8 +83,17 @@
       "onAccount": "A cuenta",
       "empty": "Sin movimientos."
     },
+    "budgetCard": {
+      "title": "Cobros del presupuesto",
+      "budgetTotal": "Presupuestado",
+      "collected": "Cobrado",
+      "pending": "Pendiente",
+      "collect": "Cobrar",
+      "empty": "Sin cobros imputados a este presupuesto."
+    },
     "reports": {
       "title": "Informe de cobros",
+      "cardDescription": "Cobros, devoluciones, saldos paciente, antigüedad y tendencias.",
       "period": "Periodo",
       "collected": "Cobrado",
       "refunded": "Devuelto",
