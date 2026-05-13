@@ -123,8 +123,10 @@ def upgrade() -> None:
         sa.Column("total_discount", sa.Numeric(precision=12, scale=2), nullable=False),
         sa.Column("total_tax", sa.Numeric(precision=12, scale=2), nullable=False),
         sa.Column("total", sa.Numeric(precision=12, scale=2), nullable=False),
-        sa.Column("total_paid", sa.Numeric(precision=12, scale=2), nullable=False),
-        sa.Column("balance_due", sa.Numeric(precision=12, scale=2), nullable=False),
+        # ``total_paid`` and ``balance_due`` were stored here originally.
+        # Removed in the same release as the payments-module extraction
+        # (issue #53). Computation now lives in
+        # ``BillingService.compute_paid_summary``.
         sa.Column("currency", sa.String(length=3), nullable=False),
         sa.Column("internal_notes", sa.Text(), nullable=True),
         sa.Column("public_notes", sa.Text(), nullable=True),
@@ -224,49 +226,8 @@ def upgrade() -> None:
         op.f("ix_invoice_history_invoice_id"), "invoice_history", ["invoice_id"], unique=False
     )
 
-    op.create_table(
-        "payments",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("clinic_id", sa.UUID(), nullable=False),
-        sa.Column("invoice_id", sa.UUID(), nullable=False),
-        sa.Column("amount", sa.Numeric(precision=12, scale=2), nullable=False),
-        sa.Column("payment_method", sa.String(length=30), nullable=False),
-        sa.Column("payment_date", sa.Date(), nullable=False),
-        sa.Column("reference", sa.String(length=100), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("recorded_by", sa.UUID(), nullable=False),
-        sa.Column("is_voided", sa.Boolean(), nullable=False),
-        sa.Column("voided_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("voided_by", sa.UUID(), nullable=True),
-        sa.Column("void_reason", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["clinic_id"],
-            ["clinics.id"],
-        ),
-        sa.ForeignKeyConstraint(["invoice_id"], ["invoices.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["recorded_by"],
-            ["users.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["voided_by"],
-            ["users.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index("idx_payments_clinic", "payments", ["clinic_id"], unique=False)
-    op.create_index(
-        "idx_payments_clinic_date", "payments", ["clinic_id", "payment_date"], unique=False
-    )
-    op.create_index(
-        "idx_payments_clinic_method", "payments", ["clinic_id", "payment_method"], unique=False
-    )
-    op.create_index("idx_payments_invoice", "payments", ["invoice_id"], unique=False)
-    op.create_index(op.f("ix_payments_clinic_id"), "payments", ["clinic_id"], unique=False)
-    op.create_index(op.f("ix_payments_invoice_id"), "payments", ["invoice_id"], unique=False)
-
+    # Legacy ``payments`` table creation removed. The payments module
+    # (issue #53) owns the ``payments`` table on its own Alembic branch.
     op.create_table(
         "invoice_items",
         sa.Column("id", sa.UUID(), nullable=False),
@@ -337,7 +298,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("invoice_items")
-    op.drop_table("payments")
     op.drop_table("invoice_history")
     op.drop_table("invoices")
     op.drop_table("invoice_series_history")

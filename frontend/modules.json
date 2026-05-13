@@ -5,6 +5,7 @@
     "/module_layers/agenda/frontend",
     "/module_layers/odontogram/frontend",
     "/module_layers/budget/frontend",
+    "/module_layers/payments/frontend",
     "/module_layers/billing/frontend",
     "/module_layers/media/frontend",
     "/module_layers/notifications/frontend",
@@ -36,6 +37,10 @@
     {
       "name": "budget",
       "path": "/module_layers/budget/frontend"
+    },
+    {
+      "name": "payments",
+      "path": "/module_layers/payments/frontend"
     },
     {
       "name": "billing",

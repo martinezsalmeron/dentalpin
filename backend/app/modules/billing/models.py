@@ -28,10 +28,7 @@ if TYPE_CHECKING:
     from app.modules.budget.models import Budget, BudgetItem
     from app.modules.catalog.models import TreatmentCatalogItem, VatType
     from app.modules.patients.models import Patient
-
-
-# Payment method constants
-PAYMENT_METHODS = ["cash", "card", "bank_transfer", "direct_debit", "other"]
+    from app.modules.payments.models import Payment
 
 
 class InvoiceSeries(Base, TimestampMixin):
@@ -123,13 +120,14 @@ class Invoice(Base, TimestampMixin):
     )  # {street, city, postal_code, country}
     billing_email: Mapped[str | None] = mapped_column(String(255), default=None)
 
-    # Totals (Decimal for money)
+    # Totals (Decimal for money). `total_paid` and `balance_due` are no
+    # longer stored — they are computed from ``InvoicePayment`` minus
+    # proportional refunds via ``BillingService.invoice_paid_summary``.
+    # The Invoice keeps only the gross invoice totals here.
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
     total_discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
     total_tax: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
-    total_paid: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
-    balance_due: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
 
     # Notes
     internal_notes: Mapped[str | None] = mapped_column(Text, default=None)
@@ -170,10 +168,10 @@ class Invoice(Base, TimestampMixin):
         cascade="all, delete-orphan",
         order_by="InvoiceItem.display_order",
     )
-    payments: Mapped[list["Payment"]] = relationship(
+    invoice_payments: Mapped[list["InvoicePayment"]] = relationship(
         back_populates="invoice",
         cascade="all, delete-orphan",
-        order_by="Payment.payment_date.desc()",
+        order_by="InvoicePayment.created_at",
     )
     history: Mapped[list["InvoiceHistory"]] = relationship(
         back_populates="invoice",
@@ -270,47 +268,39 @@ class InvoiceItem(Base, TimestampMixin):
     )
 
 
-class Payment(Base, TimestampMixin):
-    """Payment record for an invoice.
+class InvoicePayment(Base, TimestampMixin):
+    """Link between an Invoice and a Payment from the ``payments`` module.
 
-    Supports multiple payments per invoice for partial payment tracking.
+    Billing owns this link in its own schema so the payments module
+    never needs a back-reference to billing. One row per imputation —
+    a single Payment can have multiple ``InvoicePayment`` rows when its
+    allocations span several invoices, and a single Invoice can collect
+    via several Payments. ``Invoice.total_paid`` / ``balance_due`` are
+    computed by aggregating amounts here minus proportional refunds on
+    the underlying Payment.
     """
 
-    __tablename__ = "payments"
+    __tablename__ = "invoice_payments"
 
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
     invoice_id: Mapped[UUID] = mapped_column(
         ForeignKey("invoices.id", ondelete="CASCADE"), index=True
     )
-
-    # Payment details
+    payment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("payments.id", ondelete="RESTRICT"), index=True
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
-    payment_method: Mapped[str] = mapped_column(String(30))  # cash, card, bank_transfer, etc.
-    payment_date: Mapped[date] = mapped_column(Date)
-    reference: Mapped[str | None] = mapped_column(String(100), default=None)  # Transaction ref
-    notes: Mapped[str | None] = mapped_column(Text, default=None)
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
 
-    # Audit
-    recorded_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
-
-    # Voiding
-    is_voided: Mapped[bool] = mapped_column(Boolean, default=False)
-    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
-    voided_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), default=None)
-    void_reason: Mapped[str | None] = mapped_column(Text, default=None)
-
-    # Relationships
     clinic: Mapped["Clinic"] = relationship(foreign_keys=[clinic_id])
-    invoice: Mapped["Invoice"] = relationship(back_populates="payments")
-    recorder: Mapped["User"] = relationship(foreign_keys=[recorded_by])
-    voider: Mapped["User | None"] = relationship(foreign_keys=[voided_by])
+    invoice: Mapped["Invoice"] = relationship(back_populates="invoice_payments")
+    payment: Mapped["Payment"] = relationship(foreign_keys=[payment_id])
+    creator: Mapped["User"] = relationship(foreign_keys=[created_by])
 
     __table_args__ = (
-        Index("idx_payments_invoice", "invoice_id"),
-        Index("idx_payments_clinic", "clinic_id"),
-        Index("idx_payments_clinic_date", "clinic_id", "payment_date"),
-        Index("idx_payments_clinic_method", "clinic_id", "payment_method"),
+        Index("idx_invpay_clinic_invoice", "clinic_id", "invoice_id"),
+        Index("idx_invpay_payment", "payment_id"),
     )
 
 

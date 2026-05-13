@@ -13,7 +13,6 @@ from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
 from .hooks import BillingHookRegistry
-from .models import PAYMENT_METHODS
 from .schemas import (
     BillingPartyUpdate,
     BillingSettingsResponse,
@@ -28,6 +27,8 @@ from .schemas import (
     InvoiceItemResponse,
     InvoiceItemUpdate,
     InvoiceListResponse,
+    InvoicePaymentApply,
+    InvoicePaymentResponse,
     InvoiceResponse,
     InvoiceSendRequest,
     InvoiceSeriesCreate,
@@ -35,19 +36,29 @@ from .schemas import (
     InvoiceSeriesUpdate,
     InvoiceUpdate,
     PatientBillingSummary,
-    PaymentCreate,
-    PaymentResponse,
-    PaymentVoidRequest,
     SeriesResetRequest,
 )
 from .service import (
     InvoiceHistoryService,
     InvoiceItemService,
+    InvoicePaymentService,
     InvoiceSeriesService,
     InvoiceService,
-    PaymentService,
+    compute_paid_summaries_for_invoices,
+    compute_paid_summary,
 )
 from .workflow import InvoiceWorkflowError, InvoiceWorkflowService
+
+
+def _attach_paid_summary(
+    response: InvoiceResponse | InvoiceListResponse | InvoiceDetailResponse,
+    paid: tuple,
+) -> None:
+    """In-place set ``total_paid`` / ``balance_due`` on a response."""
+    total_paid, balance_due = paid
+    response.total_paid = total_paid
+    response.balance_due = balance_due
+
 
 router = APIRouter()
 
@@ -218,8 +229,14 @@ async def list_invoices(
         is_credit_note=is_credit_note,
         compliance_severity=compliance_severity,
     )
+    items = [InvoiceListResponse.model_validate(i) for i in invoices]
+    summaries = await compute_paid_summaries_for_invoices(
+        db, ctx.clinic_id, [i.id for i in invoices]
+    )
+    for inv, resp in zip(invoices, items):
+        _attach_paid_summary(resp, summaries.get(inv.id, (0, inv.total)))
     return PaginatedApiResponse(
-        data=[InvoiceListResponse.model_validate(i) for i in invoices],
+        data=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -240,7 +257,10 @@ async def get_invoice(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    return ApiResponse(data=InvoiceDetailResponse.model_validate(invoice))
+    response = InvoiceDetailResponse.model_validate(invoice)
+    summaries = await compute_paid_summaries_for_invoices(db, ctx.clinic_id, [invoice.id])
+    _attach_paid_summary(response, summaries.get(invoice.id, (0, invoice.total)))
+    return ApiResponse(data=response)
 
 
 @router.post("/invoices", response_model=ApiResponse[InvoiceResponse], status_code=201)
@@ -761,106 +781,119 @@ async def create_credit_note(
 
 
 # ============================================================================
-# Payment Endpoints
+# Invoice ↔ Payment Endpoints
 # ============================================================================
+#
+# Payment lifecycle (create, refund, reallocate, list across clinic)
+# lives in the payments module. Here billing exposes:
+#
+# - GET  /invoices/{id}/payments       — payment links for one invoice
+# - POST /invoices/{id}/payments       — orchestrator: create Payment +
+#                                        InvoicePayment in one go (the
+#                                        common "factura+cobro" flow)
+#
+# To register an anticipo (against a budget, no invoice yet) or to
+# refund a payment, use ``/api/v1/payments/*`` directly.
 
 
 @router.get(
     "/invoices/{invoice_id}/payments",
-    response_model=ApiResponse[list[PaymentResponse]],
+    response_model=ApiResponse[list[InvoicePaymentResponse]],
 )
-async def list_payments(
+async def list_invoice_payments(
     invoice_id: UUID,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("billing.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-    include_voided: bool = Query(default=False),
-) -> ApiResponse[list[PaymentResponse]]:
-    """List payments for an invoice."""
+) -> ApiResponse[list[InvoicePaymentResponse]]:
     invoice = await InvoiceService.get_invoice(
         db, ctx.clinic_id, invoice_id, include_items=False, include_payments=False
     )
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    payments = await PaymentService.list_payments(
-        db, ctx.clinic_id, invoice_id, include_voided=include_voided
-    )
-    return ApiResponse(data=[PaymentResponse.model_validate(p) for p in payments])
+    rows = await InvoicePaymentService.list_for_invoice(db, ctx.clinic_id, invoice_id)
+    return ApiResponse(data=[InvoicePaymentResponse.model_validate(r) for r in rows])
 
 
 @router.post(
     "/invoices/{invoice_id}/payments",
-    response_model=ApiResponse[PaymentResponse],
+    response_model=ApiResponse[InvoicePaymentResponse],
     status_code=201,
 )
-async def record_payment(
+async def apply_payment_to_invoice(
     invoice_id: UUID,
-    data: PaymentCreate,
+    payload: InvoicePaymentApply,
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("billing.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[PaymentResponse]:
-    """Record a payment for an invoice."""
+) -> ApiResponse[InvoicePaymentResponse]:
+    """Create a Payment and impute it to this invoice atomically.
+
+    Convenience for the common case ``record the cobro al facturar``.
+    For anticipos that don't yet have an invoice, use POST
+    ``/api/v1/payments`` and later reallocate.
+    """
+    # Lazy imports: billing imports payments (depends), but payments
+    # doesn't import billing — keeping the top-level imports clean
+    # prevents circular initialisation through catalog/budget.
+    from app.modules.payments.workflow import PaymentWorkflowError, record_payment
+
+    from .models import InvoicePayment
+
     invoice = await InvoiceService.get_invoice(
         db, ctx.clinic_id, invoice_id, include_items=False, include_payments=False
     )
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-
-    # Validate payment method
-    if data.payment_method not in PAYMENT_METHODS:
+    if not InvoiceWorkflowService.can_record_payment(invoice):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid payment method. Must be one of: {PAYMENT_METHODS}",
+            detail=f"Cannot record payment for invoice with status '{invoice.status}'",
+        )
+
+    total_paid, balance_due = await compute_paid_summary(db, ctx.clinic_id, invoice_id)
+    if payload.amount > balance_due:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment amount ({payload.amount}) exceeds balance due ({balance_due})",
         )
 
     try:
-        payment = await InvoiceWorkflowService.record_payment(
+        payment = await record_payment(
             db,
-            invoice=invoice,
-            amount=data.amount,
-            payment_method=data.payment_method,
-            payment_date=data.payment_date,
+            clinic_id=ctx.clinic_id,
+            currency=ctx.clinic.currency,
+            patient_id=invoice.patient_id,
+            amount=payload.amount,
+            method=payload.method,
+            payment_date=payload.payment_date,
             recorded_by=ctx.user_id,
-            reference=data.reference,
-            notes=data.notes,
+            # Imputation against an invoice is tracked here in billing's
+            # ``invoice_payments``. The payment itself records an
+            # ``on_account`` allocation so the invariant holds without
+            # leaking invoice references into payments.
+            allocations=[{"target_type": "on_account", "amount": payload.amount}],
+            reference=payload.reference,
+            notes=payload.notes,
         )
-        await db.commit()
-        return ApiResponse(data=PaymentResponse.model_validate(payment))
-    except InvoiceWorkflowError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except PaymentWorkflowError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
+    link = InvoicePayment(
+        clinic_id=ctx.clinic_id,
+        invoice_id=invoice_id,
+        payment_id=payment.id,
+        amount=payload.amount,
+        created_by=ctx.user_id,
+    )
+    db.add(link)
+    await db.flush()
 
-@router.post("/payments/{payment_id}/void", response_model=ApiResponse[PaymentResponse])
-async def void_payment(
-    payment_id: UUID,
-    data: PaymentVoidRequest,
-    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("billing.admin"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ApiResponse[PaymentResponse]:
-    """Void a payment."""
-    payment = await PaymentService.get_payment(db, ctx.clinic_id, payment_id)
-    if not payment:
-        raise HTTPException(status_code=404, detail="Payment not found")
+    await InvoiceWorkflowService.recalc_invoice_status(db, invoice, actor_id=ctx.user_id)
+    await db.commit()
 
-    invoice = payment.invoice
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    try:
-        payment = await InvoiceWorkflowService.void_payment(
-            db,
-            payment=payment,
-            invoice=invoice,
-            voided_by=ctx.user_id,
-            reason=data.reason,
-        )
-        await db.commit()
-        return ApiResponse(data=PaymentResponse.model_validate(payment))
-    except InvoiceWorkflowError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return ApiResponse(data=InvoicePaymentResponse.model_validate(link))
 
 
 # ============================================================================
@@ -923,12 +956,15 @@ async def download_invoice_pdf(
     hook = BillingHookRegistry.get_for_clinic(clinic) if clinic else None
     extra_pdf_data = hook.enhance_pdf_data({}, invoice) if hook else None
 
+    total_paid, balance_due = await compute_paid_summary(db, ctx.clinic_id, invoice.id)
     pdf_bytes = InvoicePDFService.generate_pdf(
         invoice,
         clinic,
         is_preview=False,
         locale=locale,
         extra_pdf_data=extra_pdf_data,
+        total_paid=total_paid,
+        balance_due=balance_due,
     )
 
     # Generate filename
@@ -970,12 +1006,15 @@ async def preview_invoice_pdf(
     hook = BillingHookRegistry.get_for_clinic(clinic) if clinic else None
     extra_pdf_data = hook.enhance_pdf_data({}, invoice) if hook else None
 
+    total_paid, balance_due = await compute_paid_summary(db, ctx.clinic_id, invoice.id)
     pdf_bytes = InvoicePDFService.generate_pdf(
         invoice,
         clinic,
         is_preview=True,
         locale=locale,
         extra_pdf_data=extra_pdf_data,
+        total_paid=total_paid,
+        balance_due=balance_due,
     )
 
     return Response(

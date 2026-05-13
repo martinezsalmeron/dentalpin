@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import EventType, event_bus
 
 from .hooks import BillingHookRegistry
-from .models import Invoice, InvoiceItem, Payment
+from .models import Invoice, InvoiceItem
 
 # Valid status transitions
 VALID_TRANSITIONS: dict[str, list[str]] = {
@@ -188,8 +188,9 @@ class InvoiceWorkflowService:
 
             invoice.due_date = invoice.issue_date + timedelta(days=invoice.payment_term_days)
 
-        # Initialize balance
-        invoice.balance_due = invoice.total
+        # ``total_paid`` and ``balance_due`` are computed on read from
+        # ``invoice_payments`` (see ``compute_paid_summary``). No state to
+        # initialize here.
 
         # Execute compliance hook if provided
         if hook_callback:
@@ -244,11 +245,9 @@ class InvoiceWorkflowService:
         #
         # =======================================================================
         if invoice.credit_note_for_id:
-            # Credit note stays in "issued" status with negative balance.
-            # The negative balance_due represents a credit in the patient's favor.
-            # total_paid starts at 0 - payments/refunds are recorded separately.
-            invoice.total_paid = Decimal("0.00")
-            invoice.balance_due = invoice.total  # Negative amount = credit
+            # Credit note stays in "issued" status. Its negative ``total``
+            # already represents the credit in the patient's favour; no
+            # cached paid columns exist anymore.
 
             # Add history to original invoice (informational, no status change)
             from sqlalchemy import select
@@ -410,151 +409,69 @@ class InvoiceWorkflowService:
         return invoice
 
     @staticmethod
-    async def record_payment(
+    async def recalc_invoice_status(
         db: AsyncSession,
         invoice: Invoice,
-        amount: Decimal,
-        payment_method: str,
-        payment_date: date,
-        recorded_by: UUID,
-        reference: str | None = None,
-        notes: str | None = None,
-    ) -> Payment:
-        """Record a payment for an invoice.
+        *,
+        actor_id: UUID,
+    ) -> str:
+        """Recalculate ``invoice.status`` from current invoice_payments.
 
-        Updates invoice status based on payment amount.
+        Called by the billing-side orchestration endpoint (after creating
+        a Payment + InvoicePayment via the payments module) and by the
+        ``payment.refunded`` event handler. Returns the new status.
+
+        - ``balance_due <= 0`` → ``paid`` (also emits ``INVOICE_PAID``).
+        - ``0 < total_paid < total`` → ``partial``.
+        - ``total_paid <= 0`` → ``issued`` (no payment registered).
+        Never moves a ``draft`` / ``cancelled`` / ``voided`` invoice.
         """
-        if not InvoiceWorkflowService.can_record_payment(invoice):
-            raise InvoiceWorkflowError(
-                f"Cannot record payment for invoice with status '{invoice.status}'"
-            )
+        from .service import InvoiceHistoryService, compute_paid_summary
 
-        # Validate amount doesn't exceed balance
-        if amount > invoice.balance_due:
-            raise InvoiceWorkflowError(
-                f"Payment amount ({amount}) exceeds balance due ({invoice.balance_due})"
-            )
+        total_paid, balance_due = await compute_paid_summary(db, invoice.clinic_id, invoice.id)
 
-        # Create payment
-        payment = Payment(
-            clinic_id=invoice.clinic_id,
-            invoice_id=invoice.id,
-            amount=amount,
-            payment_method=payment_method,
-            payment_date=payment_date,
-            reference=reference,
-            notes=notes,
-            recorded_by=recorded_by,
-        )
-        db.add(payment)
+        if invoice.status in ("draft", "cancelled", "voided"):
+            return invoice.status
 
-        # Update invoice totals
-        invoice.total_paid = invoice.total_paid + amount
-        invoice.balance_due = invoice.total - invoice.total_paid
-
-        # Update status based on payment
         previous_status = invoice.status
-        if invoice.balance_due <= Decimal("0.00"):
+        if balance_due <= Decimal("0.00") and invoice.total > 0:
             invoice.status = "paid"
-        else:
+        elif total_paid > 0:
             invoice.status = "partial"
+        else:
+            invoice.status = "issued"
 
-        # Add history
-        from .service import InvoiceHistoryService
-
-        await InvoiceHistoryService.add_entry(
-            db,
-            clinic_id=invoice.clinic_id,
-            invoice_id=invoice.id,
-            action="payment_recorded",
-            changed_by=recorded_by,
-            previous_state={
-                "status": previous_status,
-                "total_paid": str(invoice.total_paid - amount),
-                "balance_due": str(invoice.balance_due + amount),
-            },
-            new_state={
-                "status": invoice.status,
-                "total_paid": str(invoice.total_paid),
-                "balance_due": str(invoice.balance_due),
-                "payment_amount": str(amount),
-                "payment_method": payment_method,
-            },
-        )
-
-        await db.flush()
-
-        if invoice.status == "paid":
-            event_bus.publish(
-                EventType.INVOICE_PAID,
-                {
-                    "clinic_id": str(invoice.clinic_id),
-                    "invoice_id": str(invoice.id),
-                    "patient_id": str(invoice.patient_id),
-                    "invoice_number": invoice.invoice_number,
-                    "total": str(invoice.total) if invoice.total is not None else None,
-                    "total_paid": str(invoice.total_paid),
-                    "occurred_at": datetime.now(UTC).isoformat(),
+        if invoice.status != previous_status:
+            await InvoiceHistoryService.add_entry(
+                db,
+                clinic_id=invoice.clinic_id,
+                invoice_id=invoice.id,
+                action="status_recomputed",
+                changed_by=actor_id,
+                previous_state={"status": previous_status},
+                new_state={
+                    "status": invoice.status,
+                    "total_paid": str(total_paid),
+                    "balance_due": str(balance_due),
                 },
             )
+            await db.flush()
 
-        return payment
+            if invoice.status == "paid":
+                event_bus.publish(
+                    EventType.INVOICE_PAID,
+                    {
+                        "clinic_id": str(invoice.clinic_id),
+                        "invoice_id": str(invoice.id),
+                        "patient_id": str(invoice.patient_id),
+                        "invoice_number": invoice.invoice_number,
+                        "total": str(invoice.total),
+                        "total_paid": str(total_paid),
+                        "occurred_at": datetime.now(UTC).isoformat(),
+                    },
+                )
 
-    @staticmethod
-    async def void_payment(
-        db: AsyncSession,
-        payment: Payment,
-        invoice: Invoice,
-        voided_by: UUID,
-        reason: str,
-    ) -> Payment:
-        """Void a payment and update invoice balance."""
-        if payment.is_voided:
-            raise InvoiceWorkflowError("Payment is already voided")
-
-        # Void the payment
-        payment.is_voided = True
-        payment.voided_at = datetime.now(UTC)
-        payment.voided_by = voided_by
-        payment.void_reason = reason
-
-        # Update invoice totals
-        invoice.total_paid = invoice.total_paid - payment.amount
-        invoice.balance_due = invoice.total - invoice.total_paid
-
-        # Update status
-        previous_status = invoice.status
-        if invoice.balance_due >= invoice.total:
-            invoice.status = "issued"
-        elif invoice.balance_due > Decimal("0.00"):
-            invoice.status = "partial"
-
-        # Add history
-        from .service import InvoiceHistoryService
-
-        await InvoiceHistoryService.add_entry(
-            db,
-            clinic_id=invoice.clinic_id,
-            invoice_id=invoice.id,
-            action="payment_voided",
-            changed_by=voided_by,
-            previous_state={
-                "status": previous_status,
-                "total_paid": str(invoice.total_paid + payment.amount),
-                "balance_due": str(invoice.balance_due - payment.amount),
-            },
-            new_state={
-                "status": invoice.status,
-                "total_paid": str(invoice.total_paid),
-                "balance_due": str(invoice.balance_due),
-                "voided_payment_amount": str(payment.amount),
-                "void_reason": reason,
-            },
-        )
-
-        await db.flush()
-
-        return payment
+        return invoice.status
 
     @staticmethod
     async def create_credit_note(

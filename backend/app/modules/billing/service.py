@@ -8,14 +8,81 @@ from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.modules.payments.models import Payment as PaymentModel
+from app.modules.payments.models import Refund as RefundModel
+
 from .models import (
     Invoice,
     InvoiceHistory,
     InvoiceItem,
+    InvoicePayment,
     InvoiceSeries,
     InvoiceSeriesHistory,
-    Payment,
 )
+
+# --- Invoice ↔ Payment computed summary -----------------------------------
+
+
+async def compute_paid_summary(
+    db: AsyncSession, clinic_id: UUID, invoice_id: UUID
+) -> tuple[Decimal, Decimal]:
+    """Return ``(total_paid, balance_due)`` for an invoice.
+
+    ``total_paid`` is the sum of ``InvoicePayment.amount`` on this
+    invoice minus the proportional share of any refunds on the linked
+    payments. The proportional share is
+    ``refund.amount * imputed_amount / payment.amount`` summed across
+    refunds and invoice-payment links.
+    """
+    # Sum of imputed amounts per linked payment for this invoice.
+    rows = await db.execute(
+        select(InvoicePayment.payment_id, func.sum(InvoicePayment.amount))
+        .where(
+            InvoicePayment.clinic_id == clinic_id,
+            InvoicePayment.invoice_id == invoice_id,
+        )
+        .group_by(InvoicePayment.payment_id)
+    )
+    imputed_per_payment: dict[UUID, Decimal] = {row[0]: row[1] for row in rows.all()}
+
+    if not imputed_per_payment:
+        # Need the invoice.total to compute balance_due.
+        total_row = await db.execute(
+            select(Invoice.total).where(Invoice.id == invoice_id, Invoice.clinic_id == clinic_id)
+        )
+        total = total_row.scalar_one_or_none() or Decimal("0.00")
+        return Decimal("0.00"), total
+
+    payment_ids = list(imputed_per_payment.keys())
+
+    payment_rows = await db.execute(
+        select(PaymentModel.id, PaymentModel.amount).where(PaymentModel.id.in_(payment_ids))
+    )
+    payment_amount: dict[UUID, Decimal] = {row[0]: row[1] for row in payment_rows.all()}
+
+    refund_rows = await db.execute(
+        select(RefundModel.payment_id, func.coalesce(func.sum(RefundModel.amount), Decimal("0")))
+        .where(RefundModel.payment_id.in_(payment_ids))
+        .group_by(RefundModel.payment_id)
+    )
+    refunded_per_payment: dict[UUID, Decimal] = {row[0]: row[1] for row in refund_rows.all()}
+
+    net_paid = Decimal("0.00")
+    for pid, imputed in imputed_per_payment.items():
+        full_amount = payment_amount.get(pid, imputed)
+        refunded = refunded_per_payment.get(pid, Decimal("0"))
+        # Proportional share of refunds affecting this invoice link.
+        if full_amount > 0:
+            adjustment = refunded * (imputed / full_amount)
+        else:  # pragma: no cover - defensive
+            adjustment = Decimal("0")
+        net_paid += imputed - adjustment
+
+    total_row = await db.execute(
+        select(Invoice.total).where(Invoice.id == invoice_id, Invoice.clinic_id == clinic_id)
+    )
+    invoice_total = total_row.scalar_one_or_none() or Decimal("0.00")
+    return net_paid, invoice_total - net_paid
 
 
 class InvoiceNumberService:
@@ -529,10 +596,6 @@ class InvoiceService:
         invoice.total_tax = total_tax
         invoice.total = total
 
-        # Update balance if not draft
-        if invoice.status != "draft":
-            invoice.balance_due = invoice.total - invoice.total_paid
-
         await db.flush()
 
     @staticmethod
@@ -590,7 +653,6 @@ class InvoiceService:
             query = query.where(
                 and_(
                     Invoice.due_date < today,
-                    Invoice.balance_due > 0,
                     Invoice.status.in_(["issued", "partial"]),
                 )
             )
@@ -682,8 +744,9 @@ class InvoiceService:
             options.append(selectinload(Invoice.items).joinedload(InvoiceItem.vat_type))
 
         if include_payments:
-            options.append(selectinload(Invoice.payments).joinedload(Payment.recorder))
-            options.append(selectinload(Invoice.payments).joinedload(Payment.voider))
+            options.append(
+                selectinload(Invoice.invoice_payments).joinedload(InvoicePayment.payment)
+            )
 
         query = query.options(*options)
 
@@ -989,53 +1052,84 @@ class InvoiceService:
         return invoice
 
 
-class PaymentService:
-    """Service for payment operations."""
+async def compute_paid_summaries_for_invoices(
+    db: AsyncSession, clinic_id: UUID, invoice_ids: list[UUID]
+) -> dict[UUID, tuple[Decimal, Decimal]]:
+    """Batch version of ``compute_paid_summary`` for list views.
 
-    @staticmethod
-    async def list_payments(
-        db: AsyncSession,
-        clinic_id: UUID,
-        invoice_id: UUID,
-        include_voided: bool = False,
-    ) -> list[Payment]:
-        """List payments for an invoice."""
-        query = (
-            select(Payment)
-            .where(
-                Payment.clinic_id == clinic_id,
-                Payment.invoice_id == invoice_id,
-            )
-            .options(
-                joinedload(Payment.recorder),
-                joinedload(Payment.voider),
-            )
-            .order_by(desc(Payment.payment_date))
+    Returns ``{invoice_id: (total_paid, balance_due)}``. Invoices with
+    no ``InvoicePayment`` rows still appear with ``(0, invoice.total)``.
+    """
+    if not invoice_ids:
+        return {}
+
+    # Imputed amounts per (invoice, payment).
+    imp_rows = await db.execute(
+        select(
+            InvoicePayment.invoice_id,
+            InvoicePayment.payment_id,
+            func.sum(InvoicePayment.amount),
         )
+        .where(
+            InvoicePayment.clinic_id == clinic_id,
+            InvoicePayment.invoice_id.in_(invoice_ids),
+        )
+        .group_by(InvoicePayment.invoice_id, InvoicePayment.payment_id)
+    )
 
-        if not include_voided:
-            query = query.where(Payment.is_voided.is_(False))
+    imputed_by_invoice: dict[UUID, dict[UUID, Decimal]] = {}
+    payment_ids: set[UUID] = set()
+    for invoice_id, payment_id, amount in imp_rows.all():
+        imputed_by_invoice.setdefault(invoice_id, {})[payment_id] = amount
+        payment_ids.add(payment_id)
 
-        result = await db.execute(query)
-        return list(result.scalars().all())
+    payment_amount: dict[UUID, Decimal] = {}
+    refunded_per_payment: dict[UUID, Decimal] = {}
+    if payment_ids:
+        pay_rows = await db.execute(
+            select(PaymentModel.id, PaymentModel.amount).where(PaymentModel.id.in_(payment_ids))
+        )
+        payment_amount = {row[0]: row[1] for row in pay_rows.all()}
+
+        ref_rows = await db.execute(
+            select(RefundModel.payment_id, func.sum(RefundModel.amount))
+            .where(RefundModel.payment_id.in_(payment_ids))
+            .group_by(RefundModel.payment_id)
+        )
+        refunded_per_payment = {row[0]: row[1] or Decimal("0") for row in ref_rows.all()}
+
+    totals_rows = await db.execute(
+        select(Invoice.id, Invoice.total).where(Invoice.id.in_(invoice_ids))
+    )
+    totals: dict[UUID, Decimal] = {row[0]: row[1] for row in totals_rows.all()}
+
+    out: dict[UUID, tuple[Decimal, Decimal]] = {}
+    for invoice_id in invoice_ids:
+        net_paid = Decimal("0")
+        for payment_id, imputed in imputed_by_invoice.get(invoice_id, {}).items():
+            full = payment_amount.get(payment_id, imputed)
+            refunded = refunded_per_payment.get(payment_id, Decimal("0"))
+            adjustment = refunded * (imputed / full) if full > 0 else Decimal("0")
+            net_paid += imputed - adjustment
+        total = totals.get(invoice_id, Decimal("0"))
+        out[invoice_id] = (net_paid, total - net_paid)
+    return out
+
+
+class InvoicePaymentService:
+    """Operations on the ``invoice_payments`` link table."""
 
     @staticmethod
-    async def get_payment(
-        db: AsyncSession,
-        clinic_id: UUID,
-        payment_id: UUID,
-    ) -> Payment | None:
-        """Get a payment by ID."""
+    async def list_for_invoice(
+        db: AsyncSession, clinic_id: UUID, invoice_id: UUID
+    ) -> list[InvoicePayment]:
         result = await db.execute(
-            select(Payment)
+            select(InvoicePayment)
             .where(
-                Payment.id == payment_id,
-                Payment.clinic_id == clinic_id,
+                InvoicePayment.clinic_id == clinic_id,
+                InvoicePayment.invoice_id == invoice_id,
             )
-            .options(
-                joinedload(Payment.recorder),
-                joinedload(Payment.voider),
-                joinedload(Payment.invoice),
-            )
+            .options(joinedload(InvoicePayment.payment))
+            .order_by(desc(InvoicePayment.created_at))
         )
-        return result.scalar_one_or_none()
+        return list(result.scalars().unique().all())

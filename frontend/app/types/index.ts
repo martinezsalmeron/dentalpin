@@ -1298,7 +1298,181 @@ export interface SmtpTestRequest {
 
 export type InvoiceStatus = 'draft' | 'issued' | 'partial' | 'paid' | 'cancelled' | 'voided'
 
-export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'direct_debit' | 'other'
+export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'direct_debit' | 'insurance' | 'other'
+
+// ============================================================================
+// Payments module (issue #53). Patient-centric Payment, allocations,
+// refunds, ledger, reports. See ADR 0010.
+// ============================================================================
+
+export type AllocationTarget = 'budget' | 'on_account'
+export type RefundReason = 'duplicate' | 'overpaid' | 'treatment_cancelled' | 'dispute' | 'other'
+
+export interface PaymentAllocation {
+  id: string
+  target_type: AllocationTarget
+  target_id?: string
+  amount: number
+  created_at: string
+  created_by: string
+}
+
+export interface PaymentAllocationCreate {
+  target_type: AllocationTarget
+  target_id?: string
+  amount: number
+}
+
+export interface PaymentRefund {
+  id: string
+  payment_id: string
+  amount: number
+  method: PaymentMethod
+  reason_code: RefundReason
+  reason_note?: string
+  refunded_at: string
+  refunded_by: string
+  refunder?: UserBrief
+}
+
+export interface PaymentRefundCreate {
+  amount: number
+  method: PaymentMethod
+  reason_code: RefundReason
+  reason_note?: string
+}
+
+export interface PaymentRecord {
+  id: string
+  clinic_id: string
+  patient_id: string
+  amount: number
+  currency: string
+  method: PaymentMethod
+  payment_date: string
+  reference?: string
+  notes?: string
+  recorded_by: string
+  created_at: string
+  updated_at: string
+  allocations: PaymentAllocation[]
+  refunded_total: number
+  net_amount: number
+  recorder?: UserBrief
+  patient?: { id: string, first_name: string, last_name: string }
+}
+
+export interface PaymentRecordCreate {
+  patient_id: string
+  amount: number
+  method: PaymentMethod
+  payment_date?: string
+  reference?: string
+  notes?: string
+  allocations: PaymentAllocationCreate[]
+}
+
+export interface PaymentReallocate {
+  allocations: PaymentAllocationCreate[]
+}
+
+export interface PatientLedgerEntry {
+  entry_type: 'payment' | 'refund' | 'earned'
+  occurred_at: string
+  amount: number
+  reference_id: string
+  description?: string
+}
+
+export interface PatientLedger {
+  patient_id: string
+  currency: string
+  total_paid: number
+  total_earned: number
+  patient_credit: number
+  clinic_receivable: number
+  on_account_balance: number
+  timeline: PatientLedgerEntry[]
+}
+
+export interface PaymentsSummary {
+  period_start: string
+  period_end: string
+  currency: string
+  total_collected: number
+  total_refunded: number
+  net_collected: number
+  patient_credit_total: number
+  clinic_receivable_total: number
+  refund_ratio: number
+  payment_count: number
+  refund_count: number
+}
+
+export interface MethodBreakdown {
+  method: string
+  total: number
+  count: number
+}
+
+export interface ProfessionalBreakdown {
+  professional_id?: string
+  professional_name?: string
+  total_earned: number
+  count: number
+}
+
+export interface AgingBucket {
+  label: string
+  total: number
+  patient_count: number
+}
+
+export interface AgingBuckets {
+  currency: string
+  buckets: AgingBucket[]
+}
+
+export interface RefundsReport {
+  period_start: string
+  period_end: string
+  currency: string
+  total_refunded: number
+  refund_ratio: number
+  by_reason: { reason_code: string, total: number, count: number }[]
+  by_method: MethodBreakdown[]
+}
+
+export interface PaymentsTrendPoint {
+  bucket_start: string
+  collected: number
+  refunded: number
+  net: number
+}
+
+export interface PaymentsTrends {
+  granularity: 'day' | 'week' | 'month' | 'year'
+  currency: string
+  points: PaymentsTrendPoint[]
+}
+
+// Billing-side link to a Payment (issue #53).
+export interface InvoicePayment {
+  id: string
+  invoice_id: string
+  payment_id: string
+  amount: number
+  created_by: string
+  created_at: string
+}
+
+export interface InvoicePaymentApply {
+  amount: number
+  method: PaymentMethod
+  payment_date?: string
+  reference?: string
+  notes?: string
+}
 
 export type SeriesType = 'invoice' | 'credit_note'
 

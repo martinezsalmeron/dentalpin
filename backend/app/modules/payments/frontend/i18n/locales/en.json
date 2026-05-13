@@ -1,0 +1,101 @@
+{
+  "payments": {
+    "nav": {
+      "payments": "Payments",
+      "reports": "Payment reports"
+    },
+    "list": {
+      "title": "Payments",
+      "subtitle": "Patient payments, budget anticipos and on-account credit.",
+      "empty": "No payments recorded.",
+      "new": "New payment",
+      "filterDateFrom": "From",
+      "filterDateTo": "To",
+      "filterMethod": "Method",
+      "filterPatient": "Patient",
+      "columnDate": "Date",
+      "columnPatient": "Patient",
+      "columnAmount": "Amount",
+      "columnMethod": "Method",
+      "columnAllocations": "Allocation",
+      "columnNet": "Net",
+      "columnActions": "Actions"
+    },
+    "detail": {
+      "title": "Payment {reference}",
+      "amount": "Amount",
+      "method": "Method",
+      "date": "Date",
+      "recordedBy": "Recorded by",
+      "allocations": "Allocations",
+      "refunds": "Refunds",
+      "refund": "Refund",
+      "refundedTotal": "Refunded",
+      "netAmount": "Net",
+      "reference": "Reference",
+      "notes": "Notes"
+    },
+    "new": {
+      "title": "Record payment",
+      "patient": "Patient",
+      "amount": "Amount",
+      "method": "Method",
+      "date": "Payment date",
+      "reference": "Reference",
+      "notes": "Notes",
+      "allocations": "Allocation",
+      "addAllocation": "Add allocation",
+      "allocationToBudget": "To budget",
+      "allocationOnAccount": "On account",
+      "submit": "Record",
+      "cancel": "Cancel",
+      "errSum": "Allocation sum must equal the amount"
+    },
+    "methods": {
+      "cash": "Cash",
+      "card": "Card",
+      "bank_transfer": "Transfer",
+      "direct_debit": "Direct debit",
+      "insurance": "Insurance",
+      "other": "Other"
+    },
+    "refund": {
+      "title": "Refund payment",
+      "amount": "Amount",
+      "method": "Method",
+      "reason": "Reason",
+      "note": "Details",
+      "submit": "Refund",
+      "reasonCodes": {
+        "duplicate": "Duplicate payment",
+        "overpaid": "Overpaid",
+        "treatment_cancelled": "Treatment cancelled",
+        "dispute": "Dispute",
+        "other": "Other"
+      }
+    },
+    "ledger": {
+      "title": "Patient ledger",
+      "totalPaid": "Total paid",
+      "totalEarned": "Treatment performed",
+      "patientCredit": "Patient credit balance",
+      "clinicReceivable": "Clinic receivable",
+      "onAccount": "On account",
+      "empty": "No movements."
+    },
+    "reports": {
+      "title": "Payment reports",
+      "period": "Period",
+      "collected": "Collected",
+      "refunded": "Refunded",
+      "net": "Net",
+      "patientCredit": "Patient credit total",
+      "clinicReceivable": "Clinic receivable",
+      "refundRatio": "Refund ratio",
+      "byMethod": "By method",
+      "byProfessional": "By professional",
+      "aging": "Receivables aging",
+      "refunds": "Refunds"
+    }
+  }
+}

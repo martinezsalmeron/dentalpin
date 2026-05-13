@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- **Payment domain extracted to its own `payments` module (issue #53, ADR 0010).**
+  - Billing no longer owns the `Payment` model, `PaymentService`, or
+    `InvoiceWorkflowService.record_payment` / `void_payment`. Those move
+    to `app.modules.payments`.
+  - New `InvoicePayment` model + `bil_0004_invoice_payments` migration —
+    one row per imputation of a Payment to an Invoice. Multiple rows
+    per invoice (parcial cobros) and per payment (allocations across
+    invoices) are supported.
+  - `Invoice.total_paid` / `Invoice.balance_due` columns dropped. The
+    values are computed by `BillingService.compute_paid_summary` from
+    `invoice_payments` minus proportional refunds.
+  - New endpoint `POST /api/v1/billing/invoices/{id}/payments` is the
+    "factura + cobro" orchestrator: it creates a Payment via the
+    payments module, links it via `InvoicePayment`, and recomputes the
+    invoice status. For anticipos against budgets, use the payments
+    module directly.
+  - New event subscription `payment.refunded` recomputes the invoice
+    status of any invoice with an `InvoicePayment` pointing to the
+    refunded payment.
+  - `BillingComplianceHook.on_payment_recorded` was previously defined
+    but never invoked. The new orchestrator now calls it after creating
+    the link (placeholder until verifactu wires it up).
+  - Manifest: `depends` now lists `"payments"`.
+
 - `PatientBillingSummary` (patient detail → Administración → Facturación)
   now paginates invoices at page_size=20 with the shared `PaginationBar`,
   replacing the previous hard-coded `page_size: 100` single-page dump.

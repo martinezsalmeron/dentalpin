@@ -13,7 +13,11 @@ from pydantic import BaseModel, Field, field_validator
 
 InvoiceStatus = Literal["draft", "issued", "partial", "paid", "cancelled", "voided"]
 
-PaymentMethod = Literal["cash", "card", "bank_transfer", "direct_debit", "other"]
+# Payment domain literals live in the payments module; billing only
+# imports them where it orchestrates Payment+InvoicePayment creation.
+from app.modules.payments.schemas import PaymentMethod as PaymentMethodLiteral  # noqa: E402
+
+PaymentMethod = PaymentMethodLiteral
 
 SeriesType = Literal["invoice", "credit_note"]
 
@@ -267,19 +271,24 @@ class InvoiceItemResponse(BaseModel):
 # ============================================================================
 
 
-class PaymentCreate(BaseModel):
-    """Schema for recording a payment."""
+class InvoicePaymentApply(BaseModel):
+    """Orchestrator payload for ``POST /invoices/{id}/payments``.
+
+    The endpoint creates a Payment via the payments module's workflow,
+    creates the ``InvoicePayment`` link, and recomputes invoice status
+    — all in one transaction. Use the payments module endpoints
+    directly when the cobro is not tied to a specific invoice.
+    """
 
     amount: Decimal = Field(gt=0)
-    payment_method: PaymentMethod
+    method: PaymentMethod
     payment_date: date = Field(default_factory=date.today)
     reference: str | None = Field(default=None, max_length=100)
     notes: str | None = None
 
     @field_validator("reference", "notes", mode="before")
     @classmethod
-    def empty_string_to_none(cls, v: str | None) -> str | None:
-        """Convert empty or whitespace-only strings to None for optional fields."""
+    def _empty_to_none(cls, v: str | None) -> str | None:
         if isinstance(v, str):
             v = v.strip()
             if v == "":
@@ -287,34 +296,15 @@ class PaymentCreate(BaseModel):
         return v
 
 
-class PaymentVoidRequest(BaseModel):
-    """Schema for voiding a payment."""
-
-    reason: str = Field(min_length=1)
-
-
-class PaymentResponse(BaseModel):
-    """Schema for payment response."""
+class InvoicePaymentResponse(BaseModel):
+    """Link row between an invoice and a payment."""
 
     id: UUID
     invoice_id: UUID
+    payment_id: UUID
     amount: Decimal
-    payment_method: str
-    payment_date: date
-    reference: str | None
-    notes: str | None
-    recorded_by: UUID
+    created_by: UUID
     created_at: datetime
-
-    # Voiding
-    is_voided: bool
-    voided_at: datetime | None
-    voided_by: UUID | None
-    void_reason: str | None
-
-    # Related
-    recorder: UserBrief | None = None
-    voider: UserBrief | None = None
 
     class Config:
         from_attributes = True
@@ -464,13 +454,16 @@ class InvoiceResponse(BaseModel):
     billing_address: dict | None
     billing_email: str | None
 
-    # Totals
+    # Totals. ``total_paid`` / ``balance_due`` are computed from
+    # ``invoice_payments`` at response build time — the router populates
+    # them from ``compute_paid_summary`` rather than reading model
+    # attributes.
     subtotal: Decimal
     total_discount: Decimal
     total_tax: Decimal
     total: Decimal
-    total_paid: Decimal
-    balance_due: Decimal
+    total_paid: Decimal = Decimal("0")
+    balance_due: Decimal = Decimal("0")
 
     # Notes
     internal_notes: str | None
@@ -502,10 +495,10 @@ class InvoiceResponse(BaseModel):
 
 
 class InvoiceDetailResponse(InvoiceResponse):
-    """Schema for invoice with full details including items and payments."""
+    """Schema for invoice with full details including items and payment links."""
 
     items: list[InvoiceItemResponse] = []
-    payments: list[PaymentResponse] = []
+    invoice_payments: list[InvoicePaymentResponse] = []
 
     class Config:
         from_attributes = True
@@ -520,8 +513,8 @@ class InvoiceListResponse(BaseModel):
     issue_date: date | None
     due_date: date | None
     total: Decimal
-    total_paid: Decimal
-    balance_due: Decimal
+    total_paid: Decimal = Decimal("0")
+    balance_due: Decimal = Decimal("0")
     created_at: datetime
 
     # Generic compliance summary — shape is country-keyed

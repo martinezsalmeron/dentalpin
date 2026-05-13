@@ -1,0 +1,101 @@
+{
+  "payments": {
+    "nav": {
+      "payments": "Cobros",
+      "reports": "Informe de pagos"
+    },
+    "list": {
+      "title": "Cobros",
+      "subtitle": "Pagos del paciente, anticipos sobre presupuesto y a cuenta.",
+      "empty": "Sin cobros registrados.",
+      "new": "Nuevo cobro",
+      "filterDateFrom": "Desde",
+      "filterDateTo": "Hasta",
+      "filterMethod": "Método",
+      "filterPatient": "Paciente",
+      "columnDate": "Fecha",
+      "columnPatient": "Paciente",
+      "columnAmount": "Importe",
+      "columnMethod": "Método",
+      "columnAllocations": "Asignación",
+      "columnNet": "Neto",
+      "columnActions": "Acciones"
+    },
+    "detail": {
+      "title": "Cobro {reference}",
+      "amount": "Importe",
+      "method": "Método",
+      "date": "Fecha",
+      "recordedBy": "Registrado por",
+      "allocations": "Asignaciones",
+      "refunds": "Devoluciones",
+      "refund": "Devolver",
+      "refundedTotal": "Devuelto",
+      "netAmount": "Neto",
+      "reference": "Referencia",
+      "notes": "Notas"
+    },
+    "new": {
+      "title": "Registrar cobro",
+      "patient": "Paciente",
+      "amount": "Importe",
+      "method": "Método",
+      "date": "Fecha del cobro",
+      "reference": "Referencia",
+      "notes": "Notas",
+      "allocations": "Distribución",
+      "addAllocation": "Añadir asignación",
+      "allocationToBudget": "A presupuesto",
+      "allocationOnAccount": "A cuenta",
+      "submit": "Registrar",
+      "cancel": "Cancelar",
+      "errSum": "La suma de asignaciones debe coincidir con el importe"
+    },
+    "methods": {
+      "cash": "Efectivo",
+      "card": "Tarjeta",
+      "bank_transfer": "Transferencia",
+      "direct_debit": "Domiciliación",
+      "insurance": "Seguro",
+      "other": "Otro"
+    },
+    "refund": {
+      "title": "Devolver cobro",
+      "amount": "Importe",
+      "method": "Método",
+      "reason": "Motivo",
+      "note": "Detalles",
+      "submit": "Devolver",
+      "reasonCodes": {
+        "duplicate": "Pago duplicado",
+        "overpaid": "Cobro excesivo",
+        "treatment_cancelled": "Tratamiento cancelado",
+        "dispute": "Disputa",
+        "other": "Otro"
+      }
+    },
+    "ledger": {
+      "title": "Estado de cuenta",
+      "totalPaid": "Total cobrado",
+      "totalEarned": "Tratamiento ejecutado",
+      "patientCredit": "Saldo a favor del paciente",
+      "clinicReceivable": "Pendiente de cobro",
+      "onAccount": "A cuenta",
+      "empty": "Sin movimientos."
+    },
+    "reports": {
+      "title": "Informe de cobros",
+      "period": "Periodo",
+      "collected": "Cobrado",
+      "refunded": "Devuelto",
+      "net": "Neto",
+      "patientCredit": "Saldo a favor pacientes",
+      "clinicReceivable": "Pendiente de cobro",
+      "refundRatio": "Tasa devoluciones",
+      "byMethod": "Por método",
+      "byProfessional": "Por profesional",
+      "aging": "Antigüedad de cobros pendientes",
+      "refunds": "Devoluciones"
+    }
+  }
+}

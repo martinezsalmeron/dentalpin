@@ -33,7 +33,7 @@ from app.core.auth.models import Clinic, ClinicMembership, User
 from app.core.auth.service import hash_password
 from app.database import async_session_maker
 from app.modules.agenda.models import Appointment, AppointmentTreatment
-from app.modules.billing.models import Invoice, InvoiceItem, InvoiceSeries, Payment
+from app.modules.billing.models import Invoice, InvoiceItem, InvoicePayment, InvoiceSeries
 from app.modules.budget.models import Budget, BudgetItem, BudgetSignature
 from app.modules.catalog.models import TreatmentCatalogItem
 from app.modules.catalog.seed import seed_catalog
@@ -53,6 +53,7 @@ from app.modules.patients_clinical.models import (
     SurgicalHistory,
     SystemicDisease,
 )
+from app.modules.payments.models import Payment, PaymentAllocation
 from app.modules.treatment_plan.models import PlannedTreatmentItem, TreatmentPlan
 from app.seeds.demo_data import (
     CLINIC_ID,
@@ -532,6 +533,14 @@ async def seed_invoices(db: AsyncSession, catalog_map: dict, budgets_result: dic
         db.add(Payment(**payment_dict))
     await db.flush()
 
+    for alloc_dict in data["payment_allocations"]:
+        db.add(PaymentAllocation(**alloc_dict))
+    await db.flush()
+
+    for invpay_dict in data["invoice_payments"]:
+        db.add(InvoicePayment(**invpay_dict))
+    await db.flush()
+
     for budget_item_id, qty in data["invoiced_quantity_by_budget_item"].items():
         await db.execute(
             update(BudgetItem).where(BudgetItem.id == budget_item_id).values(invoiced_quantity=qty)
@@ -541,6 +550,8 @@ async def seed_invoices(db: AsyncSession, catalog_map: dict, budgets_result: dic
     _print_status_counts(f"  Created {len(data['invoices'])} invoices:", data["invoices"])
     print(f"  Created {len(data['items'])} invoice items")
     print(f"  Created {len(data['payments'])} payments")
+    print(f"  Created {len(data['payment_allocations'])} payment allocations")
+    print(f"  Created {len(data['invoice_payments'])} invoice payments")
     return data
 
 
