@@ -1,19 +1,9 @@
 <script setup lang="ts">
 import type { InvoiceListItem, InvoiceStatus } from '~~/app/types'
-import { roleToUiColor, type SemanticRole } from '~~/app/config/severity'
-
-// Invoice status → semantic role (local mapping; `voided` is invoice-specific)
-const INVOICE_STATUS_ROLE: Record<InvoiceStatus, SemanticRole> = {
-  draft: 'neutral',
-  issued: 'info',
-  partial: 'warning',
-  paid: 'success',
-  cancelled: 'danger',
-  voided: 'neutral'
-}
+import { INVOICE_STATUS_ROLE, roleToUiColor } from '~~/app/config/severity'
 
 function getStatusBadgeColor(status: InvoiceStatus) {
-  return roleToUiColor(INVOICE_STATUS_ROLE[status] || 'neutral')
+  return roleToUiColor(INVOICE_STATUS_ROLE[status] ?? 'neutral')
 }
 
 const { t, locale } = useI18n()

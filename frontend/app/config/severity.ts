@@ -113,16 +113,20 @@ export type BudgetStatus
   = | 'draft'
     | 'sent'
     | 'accepted'
+    | 'completed'
     | 'rejected'
     | 'expired'
+    | 'cancelled'
     | 'invoiced'
 
 export const BUDGET_STATUS_ROLE: Record<BudgetStatus, SemanticRole> = {
   draft: 'neutral',
   sent: 'info',
   accepted: 'success',
+  completed: 'success',
   rejected: 'danger',
   expired: 'warning',
+  cancelled: 'neutral',
   invoiced: 'primary'
 }
 
@@ -135,16 +139,16 @@ export type InvoiceStatus
     | 'issued'
     | 'paid'
     | 'partial'
-    | 'overdue'
     | 'cancelled'
+    | 'voided'
 
 export const INVOICE_STATUS_ROLE: Record<InvoiceStatus, SemanticRole> = {
   draft: 'neutral',
   issued: 'info',
   paid: 'success',
   partial: 'warning',
-  overdue: 'danger',
-  cancelled: 'neutral'
+  cancelled: 'neutral',
+  voided: 'neutral'
 }
 
 // ---------------------------------------------------------------------------

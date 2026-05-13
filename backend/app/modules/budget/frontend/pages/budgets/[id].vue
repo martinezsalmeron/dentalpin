@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
 import type { BudgetItem, InvoiceListItem, PaginatedResponse, SignatureCreate } from '~~/app/types'
+import { BUDGET_STATUS_ROLE } from '~~/app/config/severity'
+import type { EntityChip } from '~~/app/components/shared/EntityStatusChips.vue'
+import type { EntityAction } from '~~/app/components/shared/EntityActionBar.vue'
+import type { TotalLine } from '~~/app/components/shared/EntityTotalsCard.vue'
+import type { InfoItem } from '~~/app/components/shared/EntityInfoCard.vue'
 import PublicBudgetLinkCard from '../../components/budget/PublicBudgetLinkCard.vue'
 import BudgetSignatureCard from '../../components/budget/BudgetSignatureCard.vue'
 
@@ -330,34 +334,176 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(locale.value)
 }
 
-const moreMenuItems = computed<DropdownMenuItem[][]>(() => {
-  if (!currentBudget.value) return []
-  const primary: DropdownMenuItem[] = [
+const statusChips = computed<EntityChip[]>(() => {
+  const budget = currentBudget.value
+  if (!budget) return []
+  return [
     {
+      key: 'status',
+      role: BUDGET_STATUS_ROLE[budget.status] ?? 'neutral',
+      label: t(`budget.status.${budget.status}`)
+    }
+  ]
+})
+
+const primaryActions = computed<EntityAction[]>(() => {
+  const budget = currentBudget.value
+  if (!budget) return []
+  const actions: EntityAction[] = []
+
+  if (canSend(budget) && can('budget.write')) {
+    actions.push({
+      key: 'send',
+      label: t('budget.actions.send'),
+      icon: 'i-lucide-send',
+      onClick: () => { isSendModalOpen.value = true }
+    })
+  }
+
+  if (budget.public_token && ['sent', 'accepted', 'rejected', 'expired'].includes(budget.status)) {
+    actions.push({
+      key: 'shareLink',
+      label: t('budget.publicLink.action'),
+      icon: 'i-lucide-share-2',
+      variant: 'soft',
+      onClick: () => { isShareLinkModalOpen.value = true }
+    })
+  }
+
+  if (['accepted', 'completed'].includes(budget.status)) {
+    actions.push({
+      key: 'viewSignature',
+      label: t('budget.signature.viewAction'),
+      icon: 'i-lucide-pen-tool',
+      variant: 'soft',
+      onClick: () => { isSignatureViewModalOpen.value = true }
+    })
+  }
+
+  if (canAccept(budget) && can('budget.write')) {
+    actions.push({
+      key: 'reject',
+      label: t('budget.actions.reject'),
+      icon: 'i-lucide-x',
+      color: 'error',
+      variant: 'ghost',
+      onClick: () => openSignatureModal('reject')
+    })
+    actions.push({
+      key: 'accept',
+      label: t('budget.actions.accept'),
+      icon: 'i-lucide-check',
+      color: 'success',
+      onClick: () => openSignatureModal('accept')
+    })
+  }
+
+  if (canInvoice() && can('billing.write')) {
+    actions.push({
+      key: 'createInvoice',
+      label: t('invoice.createFromBudget'),
+      icon: 'i-lucide-receipt',
+      onClick: goToCreateInvoice
+    })
+  }
+
+  return actions
+})
+
+const overflowActions = computed<EntityAction[]>(() => {
+  const budget = currentBudget.value
+  if (!budget) return []
+  const actions: EntityAction[] = [
+    {
+      key: 'downloadPdf',
       label: t('budget.actions.downloadPdf'),
       icon: 'i-lucide-download',
-      onSelect: handleDownloadPDF
+      onClick: handleDownloadPDF
     }
   ]
   if (can('budget.write')) {
-    primary.push({
+    actions.push({
+      key: 'duplicate',
       label: t('budget.actions.duplicate'),
       icon: 'i-lucide-copy',
-      onSelect: handleDuplicate
+      onClick: handleDuplicate
     })
   }
-  const groups: DropdownMenuItem[][] = [primary]
-  if (canCancel(currentBudget.value) && can('budget.write')) {
-    groups.push([
-      {
-        label: t('budget.actions.cancel'),
-        icon: 'i-lucide-ban',
-        color: 'error',
-        onSelect: handleCancel
-      }
-    ])
+  if (canCancel(budget) && can('budget.write')) {
+    actions.push({
+      key: 'cancel',
+      label: t('budget.actions.cancel'),
+      icon: 'i-lucide-ban',
+      destructive: true,
+      onClick: handleCancel
+    })
   }
-  return groups
+  return actions
+})
+
+const totalsLines = computed<TotalLine[]>(() => {
+  const budget = currentBudget.value
+  if (!budget) return []
+  const lines: TotalLine[] = [
+    { key: 'subtotal', label: t('budget.subtotal'), value: budget.subtotal }
+  ]
+  if (budget.total_discount > 0) {
+    lines.push({
+      key: 'discount',
+      label: t('budget.totalDiscount'),
+      value: budget.total_discount,
+      sign: '-',
+      role: 'success'
+    })
+  }
+  if (budget.total_tax > 0) {
+    lines.push({
+      key: 'tax',
+      label: t('budget.totalTax'),
+      value: budget.total_tax
+    })
+  }
+  lines.push({
+    key: 'total',
+    label: t('budget.total'),
+    value: budget.total,
+    emphasis: 'strong',
+    divider: 'above'
+  })
+  return lines
+})
+
+const infoItems = computed<InfoItem[]>(() => {
+  const budget = currentBudget.value
+  if (!budget) return []
+  const items: InfoItem[] = [
+    { key: 'number', label: t('budget.budgetNumber'), value: budget.budget_number },
+    { key: 'version', label: t('budget.version'), value: `v${budget.version}` }
+  ]
+  if (budget.creator) {
+    items.push({
+      key: 'creator',
+      label: t('common.createdBy'),
+      value: `${budget.creator.first_name} ${budget.creator.last_name}`
+    })
+  }
+  items.push({
+    key: 'createdAt',
+    label: t('common.date'),
+    value: formatDate(budget.created_at)
+  })
+  if (budget.treatment_plan) {
+    const plan = budget.treatment_plan
+    items.push({
+      key: 'plan',
+      label: t('budget.treatmentPlan'),
+      link: {
+        to: `/treatment-plans/${plan.id}`,
+        label: plan.title ? `${plan.plan_number} — ${plan.title}` : plan.plan_number
+      }
+    })
+  }
+  return items
 })
 
 function getItemName(item: BudgetItem): string {
@@ -379,114 +525,33 @@ function getItemName(item: BudgetItem): string {
 
     <template v-else-if="currentBudget">
       <!-- Header -->
-      <div>
-        <UButton
-          variant="ghost"
-          color="neutral"
-          icon="i-lucide-arrow-left"
-          size="sm"
-          class="-ml-2 mb-3"
-          @click="comesFromPatient ? router.push(`/patients/${route.query.patientId}`) : router.push('/budgets')"
-        >
-          {{ backLabel }}
-        </UButton>
-
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-3 flex-wrap">
-              <h1 class="text-display text-default">
-                {{ currentBudget.budget_number }}
-              </h1>
-              <span class="text-subtle">v{{ currentBudget.version }}</span>
-              <BudgetStatusBadge :status="currentBudget.status" />
-            </div>
-            <NuxtLink
-              v-if="currentBudget.patient"
-              :to="`/patients/${currentBudget.patient.id}`"
-              class="mt-1 inline-block text-body text-primary-accent hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
-            >
-              {{ currentBudget.patient.first_name }} {{ currentBudget.patient.last_name }}
-            </NuxtLink>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex items-center gap-2 shrink-0">
-            <!-- Primary contextual actions -->
-            <UButton
-              v-if="canSend(currentBudget) && can('budget.write')"
-              color="primary"
-              icon="i-lucide-send"
-              size="sm"
-              @click="isSendModalOpen = true"
-            >
-              {{ t('budget.actions.send') }}
-            </UButton>
-
-            <UButton
-              v-if="currentBudget.public_token && ['sent', 'accepted', 'rejected', 'expired'].includes(currentBudget.status)"
-              color="primary"
-              variant="soft"
-              icon="i-lucide-share-2"
-              size="sm"
-              @click="isShareLinkModalOpen = true"
-            >
-              {{ t('budget.publicLink.action') }}
-            </UButton>
-
-            <UButton
-              v-if="['accepted', 'completed'].includes(currentBudget.status)"
-              color="primary"
-              variant="soft"
-              icon="i-lucide-pen-tool"
-              size="sm"
-              @click="isSignatureViewModalOpen = true"
-            >
-              {{ t('budget.signature.viewAction') }}
-            </UButton>
-
-            <template v-if="canAccept(currentBudget) && can('budget.write')">
-              <UButton
-                color="error"
-                variant="ghost"
-                icon="i-lucide-x"
-                size="sm"
-                @click="openSignatureModal('reject')"
-              >
-                {{ t('budget.actions.reject') }}
-              </UButton>
-              <UButton
-                color="success"
-                icon="i-lucide-check"
-                size="sm"
-                @click="openSignatureModal('accept')"
-              >
-                {{ t('budget.actions.accept') }}
-              </UButton>
-            </template>
-
-            <UButton
-              v-if="canInvoice() && can('billing.write')"
-              color="primary"
-              icon="i-lucide-receipt"
-              size="sm"
-              @click="goToCreateInvoice"
-            >
-              {{ t('invoice.createFromBudget') }}
-            </UButton>
-
-            <!-- Secondary actions in dropdown -->
-            <UDropdownMenu :items="moreMenuItems">
-              <UButton
-                variant="ghost"
-                color="neutral"
-                icon="i-lucide-more-horizontal"
-                size="sm"
-                :aria-label="t('common.actions')"
-              />
-            </UDropdownMenu>
-          </div>
-        </div>
-      </div>
+      <DetailPageHeader
+        :title="currentBudget.budget_number"
+        :version="currentBudget.version"
+        :back-to="{
+          to: comesFromPatient ? `/patients/${route.query.patientId}` : '/budgets',
+          label: backLabel
+        }"
+      >
+        <template #status>
+          <EntityStatusChips :chips="statusChips" />
+        </template>
+        <template #subtitle>
+          <NuxtLink
+            v-if="currentBudget.patient"
+            :to="`/patients/${currentBudget.patient.id}`"
+            class="inline-block text-body text-primary-accent hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
+          >
+            {{ currentBudget.patient.first_name }} {{ currentBudget.patient.last_name }}
+          </NuxtLink>
+        </template>
+        <template #actions>
+          <EntityActionBar
+            :primary="primaryActions"
+            :overflow="overflowActions"
+          />
+        </template>
+      </DetailPageHeader>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main content -->
@@ -718,84 +783,12 @@ function getItemName(item: BudgetItem): string {
             :ctx="{ budget: currentBudget }"
           />
 
-          <!-- Totals -->
-          <UCard>
-            <template #header>
-              <h2 class="text-h1 text-default">
-                {{ t('budget.total') }}
-              </h2>
-            </template>
+          <EntityTotalsCard
+            :title="t('budget.total')"
+            :lines="totalsLines"
+          />
 
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-subtle">{{ t('budget.subtotal') }}</span>
-                <span class="tabular-nums">{{ formatMoney(currentBudget.subtotal) }}</span>
-              </div>
-              <div
-                v-if="currentBudget.total_discount > 0"
-                class="flex justify-between text-success-accent"
-              >
-                <span>{{ t('budget.totalDiscount') }}</span>
-                <span class="tabular-nums">-{{ formatMoney(currentBudget.total_discount) }}</span>
-              </div>
-              <div
-                v-if="currentBudget.total_tax > 0"
-                class="flex justify-between"
-              >
-                <span class="text-subtle">{{ t('budget.totalTax') }}</span>
-                <span class="tabular-nums">{{ formatMoney(currentBudget.total_tax) }}</span>
-              </div>
-              <div class="border-t border-default pt-3 flex justify-between items-baseline">
-                <span class="text-default font-semibold">{{ t('budget.total') }}</span>
-                <span class="text-h1 font-bold tabular-nums">{{ formatMoney(currentBudget.total) }}</span>
-              </div>
-            </div>
-          </UCard>
-
-          <!-- Info -->
-          <UCard>
-            <div class="space-y-3 text-sm">
-              <div>
-                <span class="text-subtle">{{ t('budget.budgetNumber') }}</span>
-                <p class="font-medium">
-                  {{ currentBudget.budget_number }}
-                </p>
-              </div>
-              <div>
-                <span class="text-subtle">{{ t('budget.version') }}</span>
-                <p class="font-medium">
-                  v{{ currentBudget.version }}
-                </p>
-              </div>
-              <div v-if="currentBudget.creator">
-                <span class="text-subtle">{{ t('common.createdBy') }}</span>
-                <p class="font-medium">
-                  {{ currentBudget.creator.first_name }} {{ currentBudget.creator.last_name }}
-                </p>
-              </div>
-              <div>
-                <span class="text-subtle">{{ t('common.date') }}</span>
-                <p class="font-medium">
-                  {{ formatDate(currentBudget.created_at) }}
-                </p>
-              </div>
-              <div v-if="currentBudget.treatment_plan">
-                <span class="text-subtle">{{ t('budget.treatmentPlan') }}</span>
-                <NuxtLink
-                  :to="`/treatment-plans/${currentBudget.treatment_plan.id}`"
-                  class="block font-medium text-primary-accent hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
-                >
-                  {{ currentBudget.treatment_plan.plan_number }}
-                  <span
-                    v-if="currentBudget.treatment_plan.title"
-                    class="text-subtle font-normal"
-                  >
-                    - {{ currentBudget.treatment_plan.title }}
-                  </span>
-                </NuxtLink>
-              </div>
-            </div>
-          </UCard>
+          <EntityInfoCard :items="infoItems" />
         </div>
       </div>
     </template>

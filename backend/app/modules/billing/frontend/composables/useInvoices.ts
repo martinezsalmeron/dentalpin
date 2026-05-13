@@ -45,16 +45,6 @@ export interface InvoiceListParams {
   compliance_severity?: string[]
 }
 
-// Status colors for badges
-const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  draft: 'gray',
-  issued: 'blue',
-  partial: 'amber',
-  paid: 'green',
-  cancelled: 'red',
-  voided: 'neutral'
-}
-
 // Payment method labels
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo',
@@ -534,10 +524,6 @@ export function useInvoices() {
   // Helpers
   // ============================================================================
 
-  function getStatusColor(status: InvoiceStatus): string {
-    return STATUS_COLORS[status] || 'gray'
-  }
-
   function getPaymentMethodLabel(method: string): string {
     return PAYMENT_METHOD_LABELS[method] || method
   }
@@ -635,7 +621,6 @@ export function useInvoices() {
     getPDFPreviewUrl,
 
     // Helpers
-    getStatusColor,
     getPaymentMethodLabel,
     canEdit,
     canIssue,

@@ -1166,7 +1166,30 @@
     "today": "Hoy",
     "tomorrow": "Mañana",
     "yesterday": "Ayer",
-    "copied": "Copiado al portapapeles"
+    "copied": "Copiado al portapapeles",
+    "copy": "Copiar",
+    "copyFailed": "No se pudo copiar"
+  },
+  "shared": {
+    "totals": "Totales",
+    "info": "Información",
+    "moreActions": "Más acciones",
+    "criticalBanner": {
+      "dismiss": "Cerrar aviso"
+    },
+    "collect": {
+      "amountLabel": "Importe a cobrar",
+      "methodLabel": "Método de pago",
+      "dateLabel": "Fecha del cobro",
+      "today": "Hoy",
+      "quickFull": "Completo",
+      "optionalDetails": "Añadir referencia o notas (opcional)",
+      "referenceLabel": "Referencia",
+      "referencePlaceholder": "Ej. número de operación TPV",
+      "notesLabel": "Notas internas",
+      "submit": "Cobrar",
+      "cancel": "Cancelar"
+    }
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -1965,6 +1988,37 @@
     "balance": "Pendiente",
     "balanceDue": "Saldo pendiente",
     "overdue": "Vencida",
+    "overdueDays": "Vencida {n}d",
+    "info": {
+      "issueDate": "Fecha emisión",
+      "dueDate": "Vencimiento",
+      "issuedBy": "Emitida por",
+      "createdBy": "Creada por",
+      "createdAt": "Creada",
+      "budget": "Presupuesto",
+      "creditNoteFor": "Rectificativa de"
+    },
+    "criticalBanner": {
+      "aeatRejected": {
+        "title": "AEAT rechazó esta factura",
+        "cta": "Corregir y reenviar"
+      },
+      "billingIncomplete": {
+        "title": "Datos de facturación incompletos",
+        "cta": "Completar datos"
+      }
+    },
+    "collect": {
+      "title": "Cobrar factura",
+      "submit": "Cobrar",
+      "noteAppliedToInvoice": "se imputarán a la factura.",
+      "notePendingAfter": "Quedará pendiente",
+      "noteFullySettled": "Se cobra la factura completa. Queda saldada.",
+      "noteToInvoice": "se imputan a la factura y",
+      "noteExcessToOnAccount": "quedan a cuenta del paciente.",
+      "noteInvoiceSettled": "La factura ya está cobrada.",
+      "noteToOnAccount": "se ingresarán a cuenta del paciente."
+    },
     "tooth": "Diente",
     "vat": "IVA",
     "items": "Líneas de factura",

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BudgetStatus } from '~~/app/types'
+import { BUDGET_STATUS_ROLE } from '~~/app/config/severity'
 
 const props = defineProps<{
   status: BudgetStatus
@@ -7,27 +8,14 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-
-const colorMap: Record<BudgetStatus, string> = {
-  draft: 'gray',
-  sent: 'blue',
-  accepted: 'green',
-  completed: 'emerald',
-  rejected: 'red',
-  expired: 'orange',
-  cancelled: 'neutral'
-}
-
-const color = computed(() => colorMap[props.status] || 'gray')
+const role = computed(() => BUDGET_STATUS_ROLE[props.status] ?? 'neutral')
 const label = computed(() => t(`budget.status.${props.status}`))
 </script>
 
 <template>
-  <UBadge
-    :color="color"
-    :size="size || 'sm'"
-    variant="subtle"
-  >
-    {{ label }}
-  </UBadge>
+  <StatusBadge
+    :role="role"
+    :label="label"
+    :size="size ?? 'sm'"
+  />
 </template>

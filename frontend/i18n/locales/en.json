@@ -1144,7 +1144,30 @@
     "today": "Today",
     "tomorrow": "Tomorrow",
     "yesterday": "Yesterday",
-    "copied": "Copied to clipboard"
+    "copied": "Copied to clipboard",
+    "copy": "Copy",
+    "copyFailed": "Could not copy"
+  },
+  "shared": {
+    "totals": "Totals",
+    "info": "Details",
+    "moreActions": "More actions",
+    "criticalBanner": {
+      "dismiss": "Dismiss alert"
+    },
+    "collect": {
+      "amountLabel": "Amount to collect",
+      "methodLabel": "Payment method",
+      "dateLabel": "Payment date",
+      "today": "Today",
+      "quickFull": "Full",
+      "optionalDetails": "Add reference or notes (optional)",
+      "referenceLabel": "Reference",
+      "referencePlaceholder": "e.g. POS transaction number",
+      "notesLabel": "Internal notes",
+      "submit": "Collect",
+      "cancel": "Cancel"
+    }
   },
   "validation": {
     "required": "This field is required",
@@ -2043,6 +2066,37 @@
     "balance": "Balance",
     "balanceDue": "Balance due",
     "overdue": "Overdue",
+    "overdueDays": "Overdue {n}d",
+    "info": {
+      "issueDate": "Issue date",
+      "dueDate": "Due date",
+      "issuedBy": "Issued by",
+      "createdBy": "Created by",
+      "createdAt": "Created",
+      "budget": "Budget",
+      "creditNoteFor": "Credit note for"
+    },
+    "criticalBanner": {
+      "aeatRejected": {
+        "title": "AEAT rejected this invoice",
+        "cta": "Fix and resubmit"
+      },
+      "billingIncomplete": {
+        "title": "Billing data incomplete",
+        "cta": "Complete data"
+      }
+    },
+    "collect": {
+      "title": "Collect invoice",
+      "submit": "Collect",
+      "noteAppliedToInvoice": "applied to this invoice.",
+      "notePendingAfter": "Remaining balance",
+      "noteFullySettled": "This payment fully settles the invoice.",
+      "noteToInvoice": "applied to this invoice and",
+      "noteExcessToOnAccount": "credited to the patient on-account.",
+      "noteInvoiceSettled": "This invoice is already paid.",
+      "noteToOnAccount": "will be credited to the patient on-account."
+    },
     "tooth": "Tooth",
     "vat": "VAT",
     "currency": "Currency",

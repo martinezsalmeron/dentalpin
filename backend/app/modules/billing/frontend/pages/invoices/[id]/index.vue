@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { PaymentMethod } from '~~/app/types'
+import { INVOICE_STATUS_ROLE } from '~~/app/config/severity'
+import type { EntityChip } from '~~/app/components/shared/EntityStatusChips.vue'
+import type { EntityAction } from '~~/app/components/shared/EntityActionBar.vue'
+import type { TotalLine } from '~~/app/components/shared/EntityTotalsCard.vue'
+import type { InfoItem } from '~~/app/components/shared/EntityInfoCard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,7 +18,6 @@ const {
   issueInvoice,
   voidInvoice,
   sendInvoice,
-  recordPayment,
   createCreditNote,
   downloadPDF,
   canEdit,
@@ -48,15 +51,6 @@ const isProcessing = ref(false)
 const isDownloadingPdf = ref(false)
 const isSending = ref(false)
 
-// Payment form
-const paymentForm = ref({
-  amount: 0,
-  payment_method: 'cash' as PaymentMethod,
-  payment_date: new Date().toISOString().split('T')[0],
-  reference: '',
-  notes: ''
-})
-
 // Credit note form
 const creditNoteForm = ref({
   reason: '',
@@ -69,15 +63,6 @@ const sendForm = ref({
   custom_message: ''
 })
 
-// Payment method options
-const paymentMethodOptions = [
-  { label: 'Efectivo', value: 'cash' },
-  { label: 'Tarjeta', value: 'card' },
-  { label: 'Transferencia', value: 'bank_transfer' },
-  { label: 'Domiciliaci\u00f3n', value: 'direct_debit' },
-  { label: 'Otro', value: 'other' }
-]
-
 // Load invoice
 onMounted(async () => {
   await fetchInvoice(invoiceId.value)
@@ -89,12 +74,19 @@ function formatDate(dateStr: string | undefined): string {
   return new Date(dateStr).toLocaleDateString(locale.value)
 }
 
-// Check if overdue
-function isOverdue(): boolean {
-  if (!currentInvoice.value?.due_date) return false
-  if (!['issued', 'partial'].includes(currentInvoice.value.status)) return false
-  return new Date(currentInvoice.value.due_date) < new Date()
-}
+// Days overdue (positive when due_date is past). Only meaningful for
+// invoices still chasing payment — drafts/paid/voided return null.
+const daysOverdue = computed<number | null>(() => {
+  const inv = currentInvoice.value
+  if (!inv?.due_date) return null
+  if (!['issued', 'partial'].includes(inv.status)) return null
+  const due = new Date(inv.due_date)
+  const now = new Date()
+  const diff = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))
+  return diff > 0 ? diff : null
+})
+
+const isOverdue = computed<boolean>(() => daysOverdue.value !== null)
 
 // Check if billing data is incomplete (for drafts, check patient billing info)
 const hasBillingDataIncomplete = computed(() => {
@@ -104,18 +96,22 @@ const hasBillingDataIncomplete = computed(() => {
   return currentInvoice.value.patient?.has_complete_billing_info === false
 })
 
-// Get status badge color
-function getStatusBadgeColor(status: string): string {
-  const colors: Record<string, string> = {
-    draft: 'gray',
-    issued: 'blue',
-    partial: 'amber',
-    paid: 'green',
-    cancelled: 'red',
-    voided: 'neutral'
+// AEAT/compliance rejection summary — picks the worst severity across
+// all country-keyed compliance entries. Used to surface a critical
+// banner when the invoice was rejected.
+const complianceRejection = computed<{ message?: string } | null>(() => {
+  const cd = currentInvoice.value?.compliance_data
+  if (!cd) return null
+  for (const country of Object.keys(cd)) {
+    const entry = cd[country] as Record<string, unknown> | undefined
+    if (!entry) continue
+    const severity = entry.severity as string | undefined
+    if (severity === 'error') {
+      return { message: (entry.error_message as string | undefined) ?? undefined }
+    }
   }
-  return colors[status] || 'gray'
-}
+  return null
+})
 
 // Actions
 function requestIssue() {
@@ -186,46 +182,7 @@ async function handleVoid() {
 
 function openPaymentModal() {
   if (!currentInvoice.value) return
-  paymentForm.value = {
-    amount: currentInvoice.value.balance_due,
-    payment_method: 'cash',
-    payment_date: new Date().toISOString().split('T')[0],
-    reference: '',
-    notes: ''
-  }
   showPaymentModal.value = true
-}
-
-async function handleRecordPayment() {
-  if (!currentInvoice.value) return
-
-  isProcessing.value = true
-  try {
-    // Billing's new "factura + cobro" orchestrator expects the
-    // InvoicePaymentApply shape (`method`, not `payment_method`).
-    await recordPayment(invoiceId.value, {
-      amount: paymentForm.value.amount,
-      method: paymentForm.value.payment_method,
-      payment_date: paymentForm.value.payment_date,
-      reference: paymentForm.value.reference || undefined,
-      notes: paymentForm.value.notes || undefined
-    })
-    toast.add({
-      title: t('common.success'),
-      description: t('invoice.messages.paymentRecorded'),
-      color: 'success'
-    })
-    showPaymentModal.value = false
-    await fetchInvoice(invoiceId.value)
-  } catch {
-    toast.add({
-      title: t('common.error'),
-      description: t('invoice.errors.recordPayment'),
-      color: 'error'
-    })
-  } finally {
-    isProcessing.value = false
-  }
 }
 
 // Voiding a payment was removed from this screen — refunds happen
@@ -340,6 +297,211 @@ function goBack() {
   }
 }
 
+function scrollToCompliancePanel() {
+  const el = document.getElementById('invoice-compliance-panel')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+const statusChips = computed<EntityChip[]>(() => {
+  const inv = currentInvoice.value
+  if (!inv) return []
+  const chips: EntityChip[] = [
+    {
+      key: 'status',
+      role: INVOICE_STATUS_ROLE[inv.status] ?? 'neutral',
+      label: t(`invoice.status.${inv.status}`)
+    }
+  ]
+  if (daysOverdue.value !== null) {
+    chips.push({
+      key: 'overdue',
+      role: 'danger',
+      label: t('invoice.overdueDays', { n: daysOverdue.value }),
+      icon: 'i-lucide-alarm-clock'
+    })
+  }
+  return chips
+})
+
+const primaryActions = computed<EntityAction[]>(() => {
+  const inv = currentInvoice.value
+  if (!inv) return []
+  const actions: EntityAction[] = []
+
+  if (canRecordPayment(inv) && can('billing.write')) {
+    actions.push({
+      key: 'recordPayment',
+      label: t('invoice.actions.recordPayment'),
+      icon: 'i-lucide-credit-card',
+      color: 'success',
+      onClick: openPaymentModal
+    })
+  }
+
+  if (canIssue(inv) && can('billing.write')) {
+    actions.push({
+      key: 'issue',
+      label: t('invoice.actions.issue'),
+      icon: 'i-lucide-send',
+      color: 'primary',
+      onClick: requestIssue
+    })
+  }
+
+  if (canSend(inv) && can('billing.write')) {
+    actions.push({
+      key: 'sendEmail',
+      label: t('invoice.actions.sendEmail'),
+      icon: 'i-lucide-mail',
+      variant: 'soft',
+      onClick: openSendModal
+    })
+  }
+
+  if (canEdit(inv) && can('billing.write')) {
+    actions.push({
+      key: 'edit',
+      label: t('common.edit'),
+      icon: 'i-lucide-pencil',
+      variant: 'soft',
+      onClick: goToEdit
+    })
+  }
+
+  return actions
+})
+
+const overflowActions = computed<EntityAction[]>(() => {
+  const inv = currentInvoice.value
+  if (!inv) return []
+  const actions: EntityAction[] = []
+
+  if (inv.status !== 'draft' && can('billing.read')) {
+    actions.push({
+      key: 'downloadPdf',
+      label: t('invoice.actions.downloadPdf'),
+      icon: 'i-lucide-download',
+      loading: isDownloadingPdf.value,
+      onClick: handleDownloadPDF
+    })
+  }
+
+  if (canCreateCreditNote(inv) && can('billing.write')) {
+    actions.push({
+      key: 'createCreditNote',
+      label: t('invoice.actions.createCreditNote'),
+      icon: 'i-lucide-file-minus',
+      onClick: openCreditNoteModal
+    })
+  }
+
+  if (canVoid(inv) && can('billing.admin')) {
+    actions.push({
+      key: 'void',
+      label: t('invoice.actions.void'),
+      icon: 'i-lucide-ban',
+      destructive: true,
+      onClick: handleVoid
+    })
+  }
+
+  return actions
+})
+
+const totalsLines = computed<TotalLine[]>(() => {
+  const inv = currentInvoice.value
+  if (!inv) return []
+  const lines: TotalLine[] = [
+    { key: 'subtotal', label: t('invoice.subtotal'), value: inv.subtotal }
+  ]
+  if (inv.total_discount > 0) {
+    lines.push({
+      key: 'discount',
+      label: t('invoice.discount'),
+      value: inv.total_discount,
+      sign: '-',
+      role: 'success'
+    })
+  }
+  if (inv.total_tax > 0) {
+    lines.push({
+      key: 'tax',
+      label: t('invoice.tax'),
+      value: inv.total_tax
+    })
+  }
+  lines.push({
+    key: 'total',
+    label: t('invoice.total'),
+    value: inv.total,
+    emphasis: 'strong',
+    divider: 'above'
+  })
+  if (inv.status !== 'draft') {
+    lines.push({
+      key: 'paid',
+      label: t('invoice.paid'),
+      value: inv.total_paid,
+      role: 'success'
+    })
+    if (inv.balance_due > 0) {
+      lines.push({
+        key: 'pending',
+        label: t('invoice.balanceDue'),
+        value: inv.balance_due,
+        role: 'warning',
+        divider: 'above'
+      })
+    }
+  }
+  return lines
+})
+
+const infoItems = computed<InfoItem[]>(() => {
+  const inv = currentInvoice.value
+  if (!inv) return []
+  const items: InfoItem[] = []
+  if (inv.issue_date) {
+    items.push({ key: 'issueDate', label: t('invoice.info.issueDate'), value: formatDate(inv.issue_date) })
+  }
+  if (inv.due_date) {
+    items.push({ key: 'dueDate', label: t('invoice.info.dueDate'), value: formatDate(inv.due_date) })
+  }
+  if (inv.issuer) {
+    items.push({
+      key: 'issuedBy',
+      label: t('invoice.info.issuedBy'),
+      value: `${inv.issuer.first_name} ${inv.issuer.last_name}`
+    })
+  } else if (inv.creator) {
+    items.push({
+      key: 'createdBy',
+      label: t('invoice.info.createdBy'),
+      value: `${inv.creator.first_name} ${inv.creator.last_name}`
+    })
+  }
+  if (inv.budget) {
+    items.push({
+      key: 'budget',
+      label: t('invoice.info.budget'),
+      link: { to: `/budgets/${inv.budget.id}`, label: inv.budget.budget_number }
+    })
+  }
+  if (inv.credit_note_for) {
+    items.push({
+      key: 'creditNoteFor',
+      label: t('invoice.info.creditNoteFor'),
+      link: {
+        to: `/invoices/${inv.credit_note_for.id}`,
+        label: inv.credit_note_for.invoice_number ?? t('invoice.draftNoNumber')
+      }
+    })
+  }
+  return items
+})
+
 function goToEdit() {
   router.push(`/invoices/${invoiceId.value}/edit`)
 }
@@ -388,120 +550,58 @@ function goToCreditNoteFor() {
     <!-- Invoice content -->
     <template v-else>
       <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <UButton
-            variant="ghost"
-            color="neutral"
-            icon="i-lucide-arrow-left"
-            @click="goBack"
-          >
-            {{ backLabel }}
-          </UButton>
-          <div>
-            <h1 class="text-display text-default flex items-center gap-3">
-              {{ currentInvoice.invoice_number || t('invoice.draftNoNumber') }}
-              <UBadge
-                :color="getStatusBadgeColor(currentInvoice.status)"
-                variant="subtle"
-              >
-                {{ t(`invoice.status.${currentInvoice.status}`) }}
-              </UBadge>
-              <UBadge
-                v-if="isOverdue()"
-                color="error"
-                variant="solid"
-              >
-                {{ t('invoice.overdue') }}
-              </UBadge>
-              <!--
-                Compliance modules surface a quick AEAT/factur-x/etc.
-                badge here. Renders nothing when there is no compliance
-                data for the active country.
-              -->
-              <ModuleSlot
-                name="invoice.detail.header.meta"
-                :ctx="{ invoice: currentInvoice, clinic: currentClinic }"
-              />
-            </h1>
-            <p
-              v-if="currentInvoice.patient"
-              class="text-caption text-subtle mt-1"
-            >
-              <NuxtLink
-                :to="`/patients/${currentInvoice.patient.id}`"
-                class="hover:text-primary-accent dark:hover:text-primary-400 hover:underline"
-              >
-                {{ currentInvoice.patient.first_name }} {{ currentInvoice.patient.last_name }}
-              </NuxtLink>
-            </p>
+      <DetailPageHeader
+        :title="currentInvoice.invoice_number || t('invoice.draftNoNumber')"
+        :back-to="{
+          to: comesFromPatient ? `/patients/${route.query.patientId}` : '/invoices',
+          label: backLabel
+        }"
+      >
+        <template #status>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <EntityStatusChips :chips="statusChips" />
+            <!--
+              Compliance modules surface AEAT/factur-x/etc. badges here.
+              Renders nothing when there is no compliance data for the
+              active country.
+            -->
+            <ModuleSlot
+              name="invoice.detail.header.meta"
+              :ctx="complianceSlotCtx"
+            />
           </div>
-        </div>
+        </template>
+        <template #subtitle>
+          <NuxtLink
+            v-if="currentInvoice.patient"
+            :to="`/patients/${currentInvoice.patient.id}`"
+            class="inline-block text-body text-primary-accent hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline"
+          >
+            {{ currentInvoice.patient.first_name }} {{ currentInvoice.patient.last_name }}
+          </NuxtLink>
+        </template>
+        <template #actions>
+          <EntityActionBar
+            :primary="primaryActions"
+            :overflow="overflowActions"
+          />
+        </template>
+      </DetailPageHeader>
 
-        <!-- Actions -->
-        <div class="flex items-center gap-2">
-          <UButton
-            v-if="canEdit(currentInvoice) && can('billing.write')"
-            variant="outline"
-            icon="i-lucide-pencil"
-            @click="goToEdit"
-          >
-            {{ t('common.edit') }}
-          </UButton>
-          <UButton
-            v-if="currentInvoice.status !== 'draft' && can('billing.read')"
-            variant="outline"
-            icon="i-lucide-download"
-            :loading="isDownloadingPdf"
-            @click="handleDownloadPDF"
-          >
-            {{ t('invoice.actions.downloadPdf') }}
-          </UButton>
-          <UButton
-            v-if="canSend(currentInvoice) && can('billing.write')"
-            variant="outline"
-            icon="i-lucide-mail"
-            @click="openSendModal"
-          >
-            {{ t('invoice.actions.sendEmail') }}
-          </UButton>
-          <UButton
-            v-if="canIssue(currentInvoice) && can('billing.write')"
-            color="primary"
-            icon="i-lucide-send"
-            @click="requestIssue"
-          >
-            {{ t('invoice.actions.issue') }}
-          </UButton>
-          <UButton
-            v-if="canRecordPayment(currentInvoice) && can('billing.write')"
-            color="success"
-            icon="i-lucide-credit-card"
-            @click="openPaymentModal"
-          >
-            {{ t('invoice.actions.recordPayment') }}
-          </UButton>
-          <UButton
-            v-if="canCreateCreditNote(currentInvoice) && can('billing.write')"
-            variant="outline"
-            color="warning"
-            icon="i-lucide-file-minus"
-            @click="openCreditNoteModal"
-          >
-            {{ t('invoice.actions.createCreditNote') }}
-          </UButton>
-          <UButton
-            v-if="canVoid(currentInvoice) && can('billing.admin')"
-            variant="outline"
-            color="error"
-            icon="i-lucide-ban"
-            :loading="isProcessing"
-            @click="handleVoid"
-          >
-            {{ t('invoice.actions.void') }}
-          </UButton>
-        </div>
-      </div>
+      <!-- Critical banner — AEAT rejection (or future compliance failures).
+           The header badge keeps the at-a-glance signal; this banner makes
+           the next action ("Corregir y reenviar") impossible to miss. -->
+      <EntityCriticalBanner
+        v-if="complianceRejection"
+        role="danger"
+        :title="t('invoice.criticalBanner.aeatRejected.title')"
+        :description="complianceRejection.message"
+        :cta="{
+          label: t('invoice.criticalBanner.aeatRejected.cta'),
+          icon: 'i-lucide-pencil',
+          onClick: scrollToCompliancePanel
+        }"
+      />
 
       <!-- Main content grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -530,7 +630,7 @@ function goToCreditNoteFor() {
                 </dt>
                 <dd
                   class="font-medium"
-                  :class="isOverdue() ? 'text-danger-accent' : 'text-default'"
+                  :class="isOverdue ? 'text-danger-accent' : 'text-default'"
                 >
                   {{ formatDate(currentInvoice.due_date) }}
                 </dd>
@@ -625,25 +725,28 @@ function goToCreditNoteFor() {
                 :key="item.id"
                 class="py-3 first:pt-0 last:pb-0"
               >
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <p class="font-medium text-default">
-                      {{ item.description }}
-                    </p>
+                <div class="flex justify-between items-start gap-4">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-medium text-default">{{ item.description }}</span>
+                      <span
+                        v-if="item.tooth_number"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded bg-[var(--ui-bg-elevated)] text-caption font-medium text-default"
+                      >
+                        #{{ item.tooth_number }}
+                        <span
+                          v-if="item.surfaces?.length"
+                          class="ml-1 text-subtle font-normal"
+                        >
+                          {{ item.surfaces.join(', ') }}
+                        </span>
+                      </span>
+                    </div>
                     <p
                       v-if="item.internal_code"
-                      class="text-caption text-subtle"
+                      class="text-caption text-subtle mt-1"
                     >
                       {{ item.internal_code }}
-                    </p>
-                    <p
-                      v-if="item.tooth_number"
-                      class="text-caption text-subtle"
-                    >
-                      {{ t('invoice.tooth') }} {{ item.tooth_number }}
-                      <span v-if="item.surfaces?.length">
-                        ({{ item.surfaces.join(', ') }})
-                      </span>
                     </p>
                   </div>
                   <div class="text-right">
@@ -698,58 +801,23 @@ function goToCreditNoteFor() {
           </UCard>
         </div>
 
-        <!-- Right column - Summary -->
+        <!-- Right column - Summary.
+             Order on desktop (lg ≥1024px) is the document order:
+             Totals → Info → Notes → Compliance.
+             On mobile the most operative question is "is it paid?",
+             so we want the compliance / totals block at the top — the
+             outer grid already places the sidebar below main on mobile,
+             but inside the sidebar we keep "money first". -->
         <div class="space-y-6">
-          <!-- Totals card -->
-          <UCard>
-            <template #header>
-              <h3 class="font-semibold text-default">
-                {{ t('invoice.summary') }}
-              </h3>
-            </template>
+          <EntityTotalsCard
+            :title="t('invoice.summary')"
+            :lines="totalsLines"
+          />
 
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-subtle">{{ t('invoice.subtotal') }}</span>
-                <span class="font-medium">{{ formatCurrency(currentInvoice.subtotal) }}</span>
-              </div>
-              <div
-                v-if="currentInvoice.total_discount > 0"
-                class="flex justify-between text-success-accent"
-              >
-                <span>{{ t('invoice.discount') }}</span>
-                <span>-{{ formatCurrency(currentInvoice.total_discount) }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-subtle">{{ t('invoice.tax') }}</span>
-                <span class="font-medium">{{ formatCurrency(currentInvoice.total_tax) }}</span>
-              </div>
-              <div class="flex justify-between pt-3 border-t border-default">
-                <span class="font-semibold text-default">{{ t('invoice.total') }}</span>
-                <span class="font-bold text-lg text-default">
-                  {{ formatCurrency(currentInvoice.total) }}
-                </span>
-              </div>
-              <div
-                v-if="currentInvoice.status !== 'draft'"
-                class="flex justify-between"
-              >
-                <span class="text-subtle">{{ t('invoice.paid') }}</span>
-                <span class="font-medium text-success-accent">
-                  {{ formatCurrency(currentInvoice.total_paid) }}
-                </span>
-              </div>
-              <div
-                v-if="currentInvoice.status !== 'draft' && currentInvoice.balance_due > 0"
-                class="flex justify-between pt-2 border-t border-default"
-              >
-                <span class="font-semibold text-warning-accent">{{ t('invoice.balanceDue') }}</span>
-                <span class="font-bold text-warning-accent">
-                  {{ formatCurrency(currentInvoice.balance_due) }}
-                </span>
-              </div>
-            </div>
-          </UCard>
+          <EntityInfoCard
+            v-if="infoItems.length"
+            :items="infoItems"
+          />
 
           <!-- Notes card -->
           <UCard v-if="currentInvoice.public_notes || currentInvoice.internal_notes">
@@ -782,12 +850,16 @@ function goToCreditNoteFor() {
           <!--
             Compliance modules (Verifactu-ES, factur-x-FR, ...) plug
             into this slot via `useModuleSlots`. Billing has no compile-
-            time dependency on any of them.
+            time dependency on any of them. The anchor id is used by
+            the EntityCriticalBanner CTA above to scroll the user
+            directly to the correction panel.
           -->
-          <ModuleSlot
-            name="invoice.detail.compliance"
-            :ctx="complianceSlotCtx"
-          />
+          <div id="invoice-compliance-panel">
+            <ModuleSlot
+              name="invoice.detail.compliance"
+              :ctx="complianceSlotCtx"
+            />
+          </div>
         </div>
       </div>
     </template>
@@ -839,71 +911,19 @@ function goToCreditNoteFor() {
       </template>
     </UModal>
 
-    <!-- Payment Modal -->
-    <UModal
+    <!-- Payment Modal — shared CollectAmountModal UX, identical to BudgetCollectModal. -->
+    <InvoiceCollectModal
+      v-if="currentInvoice"
       v-model:open="showPaymentModal"
-      :title="t('invoice.recordPayment')"
-    >
-      <template #body>
-        <div class="space-y-4 p-4">
-          <UFormField :label="t('invoice.paymentAmount')">
-            <UInput
-              v-model.number="paymentForm.amount"
-              type="number"
-              :min="0.01"
-              :max="currentInvoice?.balance_due"
-              step="0.01"
-            />
-          </UFormField>
-
-          <UFormField :label="t('invoice.paymentMethod')">
-            <USelectMenu
-              v-model="paymentForm.payment_method"
-              :items="paymentMethodOptions"
-            />
-          </UFormField>
-
-          <UFormField :label="t('invoice.paymentDate')">
-            <UInput
-              v-model="paymentForm.payment_date"
-              type="date"
-            />
-          </UFormField>
-
-          <UFormField :label="t('invoice.paymentReference')">
-            <UInput
-              v-model="paymentForm.reference"
-              :placeholder="t('invoice.paymentReferencePlaceholder')"
-            />
-          </UFormField>
-
-          <UFormField :label="t('invoice.paymentNotes')">
-            <UTextarea
-              v-model="paymentForm.notes"
-              :rows="2"
-            />
-          </UFormField>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton
-            variant="ghost"
-            color="neutral"
-            @click="showPaymentModal = false"
-          >
-            {{ t('common.cancel') }}
-          </UButton>
-          <UButton
-            color="primary"
-            :loading="isProcessing"
-            @click="handleRecordPayment"
-          >
-            {{ t('invoice.actions.recordPayment') }}
-          </UButton>
-        </div>
-      </template>
-    </UModal>
+      :invoice-id="invoiceId"
+      :invoice-number="currentInvoice.invoice_number"
+      :patient-name="currentInvoice.patient
+        ? `${currentInvoice.patient.first_name} ${currentInvoice.patient.last_name}`
+        : undefined"
+      :balance-due="currentInvoice.balance_due"
+      :total="currentInvoice.total"
+      @recorded="fetchInvoice(invoiceId)"
+    />
 
     <!-- Credit Note Modal -->
     <UModal
