@@ -57,6 +57,7 @@ class AllocationResponse(BaseModel):
     amount: Decimal
     created_at: datetime
     created_by: UUID
+    method: str | None = None
 
     class Config:
         from_attributes = True
@@ -70,6 +71,7 @@ class AllocationResponse(BaseModel):
             amount=alloc.amount,
             created_at=alloc.created_at,
             created_by=alloc.created_by,
+            method=alloc.payment.method if alloc.payment else None,
         )
 
 

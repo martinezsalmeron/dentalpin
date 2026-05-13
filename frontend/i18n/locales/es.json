@@ -1644,6 +1644,8 @@
       "remove": "Eliminar tratamiento",
       "edit": "Editar tratamiento",
       "empty": "No hay tratamientos en este presupuesto",
+      "singular": "tratamiento",
+      "plural": "tratamientos",
       "addFromCatalog": "Añadir del catálogo",
       "addFromOdontogram": "Añadir del odontograma",
       "treatment": "Tratamiento",

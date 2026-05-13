@@ -1622,6 +1622,8 @@
       "remove": "Remove treatment",
       "edit": "Edit treatment",
       "empty": "No treatments in this quote",
+      "singular": "treatment",
+      "plural": "treatments",
       "addFromCatalog": "Add from catalog",
       "addFromOdontogram": "Add from dental chart",
       "treatment": "Treatment",

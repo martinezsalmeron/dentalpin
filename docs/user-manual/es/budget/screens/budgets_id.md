@@ -36,7 +36,7 @@ related_permissions:
   - budget.accept_in_clinic
 related_paths:
   - backend/app/modules/budget/frontend/pages/budgets/[id].vue
-last_verified_commit: 0000000
+last_verified_commit: 0ba0a4a
 ---
 
 # /budgets/[id]
@@ -56,4 +56,18 @@ _Pantalla `/budgets/[id]` del módulo `budget`._
 ## Para qué sirve
 
 _Pendiente de documentar._
+
+## Layout del sidebar
+
+La columna derecha apila (de arriba a abajo):
+
+1. **Tarjeta de cobros** (montada vía el slot `budget.detail.sidebar`
+   desde el módulo `payments`): resumen compacto `Cobrado / Total` con
+   barra de progreso, estado de pendiente en una sola línea e
+   historial de cobros con icono de método y fecha relativa. El CTA
+   "Cobrar" vive en el header de la tarjeta y se oculta cuando el
+   presupuesto está saldado.
+2. **Tarjeta de totales**: subtotal, descuento, IVA y total.
+3. **Tarjeta de info**: número de presupuesto, versión, creador, fecha
+   y plan de tratamiento asociado.
 

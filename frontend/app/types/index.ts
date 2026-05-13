@@ -1315,6 +1315,7 @@ export interface PaymentAllocation {
   amount: number
   created_at: string
   created_by: string
+  method?: PaymentMethod
 }
 
 export interface PaymentAllocationCreate {

@@ -490,7 +490,7 @@ function getItemName(item: BudgetItem): string {
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main content -->
-        <div class="lg:col-span-2 space-y-6 lg:order-1">
+        <div class="lg:col-span-2 space-y-6">
           <!-- Budget details -->
           <UCard>
             <template #header>
@@ -645,62 +645,79 @@ function getItemName(item: BudgetItem): string {
               {{ t('budget.items.empty') }}
             </div>
 
-            <div
-              v-else
-              class="divide-y divide-[var(--color-border-subtle)]"
-            >
-              <div
-                v-for="item in currentBudget.items"
-                :key="item.id"
-                class="py-4 flex items-start gap-4"
-              >
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium">{{ getItemName(item) }}</span>
-                    <span
-                      v-if="item.tooth_number"
-                      class="text-caption text-subtle"
+            <div v-else>
+              <div class="divide-y divide-[var(--color-border-subtle)]">
+                <div
+                  v-for="item in currentBudget.items"
+                  :key="item.id"
+                  class="py-4 -mx-4 px-4 flex items-start gap-4 hover:bg-[var(--ui-bg-elevated)] transition-colors"
+                >
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-medium">{{ getItemName(item) }}</span>
+                      <span
+                        v-if="item.tooth_number"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded bg-[var(--ui-bg-elevated)] text-caption font-medium text-default"
+                      >
+                        #{{ item.tooth_number }}
+                        <span
+                          v-if="item.surfaces?.length"
+                          class="ml-1 text-subtle font-normal"
+                        >
+                          {{ item.surfaces.join(', ') }}
+                        </span>
+                      </span>
+                    </div>
+                    <div class="text-caption text-subtle mt-1 tabular-nums">
+                      {{ item.quantity }} × {{ formatMoney(item.unit_price) }}
+                      <span
+                        v-if="item.line_discount > 0"
+                        class="text-success-accent"
+                      >
+                        -{{ formatMoney(item.line_discount) }}
+                      </span>
+                    </div>
+                    <p
+                      v-if="item.notes"
+                      class="text-caption text-subtle mt-1"
                     >
-                      #{{ item.tooth_number }}
-                      <span v-if="item.surfaces?.length">({{ item.surfaces.join(', ') }})</span>
-                    </span>
+                      {{ item.notes }}
+                    </p>
                   </div>
-                  <div class="text-caption text-subtle mt-1">
-                    {{ item.quantity }} x {{ formatMoney(item.unit_price) }}
-                    <span
-                      v-if="item.line_discount > 0"
-                      class="text-success-accent"
-                    >
-                      -{{ formatMoney(item.line_discount) }}
-                    </span>
+                  <div class="text-right shrink-0">
+                    <p class="font-semibold tabular-nums">
+                      {{ formatMoney(item.line_total) }}
+                    </p>
                   </div>
-                  <p
-                    v-if="item.notes"
-                    class="text-caption text-subtle mt-1"
-                  >
-                    {{ item.notes }}
-                  </p>
+                  <UButton
+                    v-if="canEdit(currentBudget) && can('budget.write')"
+                    variant="ghost"
+                    color="error"
+                    icon="i-lucide-trash-2"
+                    size="sm"
+                    @click="handleRemoveItem(item)"
+                  />
                 </div>
-                <div class="text-right">
-                  <p class="font-semibold">
-                    {{ formatMoney(item.line_total) }}
-                  </p>
-                </div>
-                <UButton
-                  v-if="canEdit(currentBudget) && can('budget.write')"
-                  variant="ghost"
-                  color="error"
-                  icon="i-lucide-trash-2"
-                  size="sm"
-                  @click="handleRemoveItem(item)"
-                />
+              </div>
+
+              <div class="pt-3 mt-3 border-t border-default flex justify-between text-caption text-subtle">
+                <span>{{ currentBudget.items.length }} {{ currentBudget.items.length === 1 ? t('budget.items.singular') : t('budget.items.plural') }}</span>
+                <span class="tabular-nums">{{ t('budget.subtotal') }}: {{ formatMoney(currentBudget.subtotal) }}</span>
               </div>
             </div>
           </UCard>
         </div>
 
-        <!-- Sidebar -->
+        <!-- Sidebar — module-driven slot first (payments / signatures /
+             reminders), then native budget cards. Modules register via
+             ``registerSlot('budget.detail.sidebar', ...)``. Budget
+             never imports them; the registry is the only contract. -->
         <div class="space-y-6">
+          <ModuleSlot
+            name="budget.detail.sidebar"
+            :ctx="{ budget: currentBudget }"
+          />
+
           <!-- Totals -->
           <UCard>
             <template #header>
@@ -712,25 +729,25 @@ function getItemName(item: BudgetItem): string {
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-subtle">{{ t('budget.subtotal') }}</span>
-                <span>{{ formatMoney(currentBudget.subtotal) }}</span>
+                <span class="tabular-nums">{{ formatMoney(currentBudget.subtotal) }}</span>
               </div>
               <div
                 v-if="currentBudget.total_discount > 0"
                 class="flex justify-between text-success-accent"
               >
                 <span>{{ t('budget.totalDiscount') }}</span>
-                <span>-{{ formatMoney(currentBudget.total_discount) }}</span>
+                <span class="tabular-nums">-{{ formatMoney(currentBudget.total_discount) }}</span>
               </div>
               <div
                 v-if="currentBudget.total_tax > 0"
                 class="flex justify-between"
               >
                 <span class="text-subtle">{{ t('budget.totalTax') }}</span>
-                <span>{{ formatMoney(currentBudget.total_tax) }}</span>
+                <span class="tabular-nums">{{ formatMoney(currentBudget.total_tax) }}</span>
               </div>
-              <div class="border-t pt-3 flex justify-between font-bold text-lg">
-                <span>{{ t('budget.total') }}</span>
-                <span>{{ formatMoney(currentBudget.total) }}</span>
+              <div class="border-t border-default pt-3 flex justify-between items-baseline">
+                <span class="text-default font-semibold">{{ t('budget.total') }}</span>
+                <span class="text-h1 font-bold tabular-nums">{{ formatMoney(currentBudget.total) }}</span>
               </div>
             </div>
           </UCard>
@@ -779,19 +796,7 @@ function getItemName(item: BudgetItem): string {
               </div>
             </div>
           </UCard>
-
         </div>
-
-        <!-- Sidebar slot — module-driven extension point. Modules
-             (e.g. payments) register cards via
-             ``registerSlot('budget.detail.sidebar', ...)``. Budget
-             never imports them; the registry is the only contract. -->
-        <aside class="space-y-6 lg:order-2">
-          <ModuleSlot
-            name="budget.detail.sidebar"
-            :ctx="{ budget: currentBudget }"
-          />
-        </aside>
       </div>
     </template>
 
