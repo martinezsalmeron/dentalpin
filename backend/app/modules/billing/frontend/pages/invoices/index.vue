@@ -1,216 +1,268 @@
 <script setup lang="ts">
-import type { InvoiceListItem, InvoiceStatus } from '~~/app/types'
-import { roleToUiColor, type SemanticRole } from '~~/app/config/severity'
+import type { InvoiceListItem, InvoiceStatus, PaginatedResponse } from '~~/app/types'
+import { INVOICE_STATUS_ROLE, roleToUiColor } from '~~/app/config/severity'
 
-// Invoice status → semantic role (local mapping; `voided` is invoice-specific)
-const INVOICE_STATUS_ROLE: Record<InvoiceStatus, SemanticRole> = {
-  draft: 'neutral',
-  issued: 'info',
-  partial: 'warning',
-  paid: 'success',
-  cancelled: 'danger',
-  voided: 'neutral'
-}
-
-function getStatusBadgeColor(status: InvoiceStatus) {
-  return roleToUiColor(INVOICE_STATUS_ROLE[status] || 'neutral')
-}
+/**
+ * /invoices — list page.
+ *
+ * Preserves the existing compliance slots:
+ *   - ``invoice.list.toolbar.filters`` (compliance modules inject the
+ *     severity multi-select; billing only owns the param shape).
+ *   - ``invoice.list.row.meta`` (compliance modules inject the per-row
+ *     badge — verifactu / factur-x / etc).
+ *
+ * Adds date range to the main toolbar, server-side sort, and the
+ * shared DataListLayout shell with card view on mobile.
+ *
+ * Stays off-books safe: balance_due is per-invoice — never compared
+ * to payments-axis aggregates anywhere on this page.
+ */
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const toast = useToast()
+const api = useApi()
 const { can } = usePermissions()
 const { currentClinic } = useClinic()
+const { deleteInvoice, formatCurrency } = useInvoices()
+
+function getStatusBadgeColor(status: InvoiceStatus) {
+  return roleToUiColor(INVOICE_STATUS_ROLE[status] ?? 'neutral')
+}
+
+// --- Filters --------------------------------------------------------------
+interface InvoiceListFilters {
+  q: string
+  status: string[]
+  overdue: boolean
+  compliance_severity: string[]
+  date_from: string | null
+  date_to: string | null
+  is_credit_note: boolean
+}
+
+const defaults: InvoiceListFilters = {
+  q: '',
+  status: [],
+  overdue: false,
+  compliance_severity: [],
+  date_from: null,
+  date_to: null,
+  is_credit_note: false,
+}
+
+async function fetcher(q: {
+  filters: InvoiceListFilters
+  page: number
+  pageSize: number
+  sort: string
+}) {
+  const params = new URLSearchParams()
+  params.set('page', String(q.page))
+  params.set('page_size', String(q.pageSize))
+  if (q.filters.q) params.set('search', q.filters.q)
+  for (const s of q.filters.status) params.append('status', s)
+  if (q.filters.overdue) params.set('overdue', 'true')
+  for (const c of q.filters.compliance_severity) params.append('compliance_severity', c)
+  if (q.filters.date_from) params.set('date_from', q.filters.date_from)
+  if (q.filters.date_to) params.set('date_to', q.filters.date_to)
+  if (q.filters.is_credit_note) params.set('is_credit_note', 'true')
+  if (q.sort) params.set('sort', q.sort)
+
+  const response = await api.get<PaginatedResponse<InvoiceListItem>>(
+    `/api/v1/billing/invoices?${params.toString()}`,
+  )
+  return { data: response.data, total: response.total }
+}
+
 const {
-  invoices,
+  filters,
+  page,
+  pageSize,
+  sort,
+  rows: invoices,
   total,
+  totalPages,
   isLoading,
-  fetchInvoices,
-  deleteInvoice,
-  formatCurrency
-} = useInvoices()
-
-// Search and filter state
-const searchQuery = ref('')
-const selectedStatuses = ref<InvoiceStatus[]>([])
-const showOverdue = ref(false)
-// Generic compliance severity filter — owned and rendered by the
-// active compliance module via the ``invoice.list.toolbar.filters``
-// slot. Billing only knows about the param shape.
-const complianceSeverity = ref<string[]>([])
-const currentPage = ref(1)
-const pageSize = 20
-
-// Debounced search
-const debouncedSearch = ref('')
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
-
-watch(searchQuery, (val) => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    debouncedSearch.value = val
-    currentPage.value = 1
-  }, 300)
+  error,
+  setFilter,
+  resetFilters,
+} = useListQuery<InvoiceListFilters, InvoiceListItem>({
+  defaults,
+  pageSize: 20,
+  sortable: ['issue_date', 'due_date', 'total', 'created_at', 'invoice_number'],
+  defaultSort: 'created_at:desc',
+  searchKey: 'q',
+  fetcher,
 })
 
-// Status filter options
-const statusOptions = computed(() => [
+const statusItems = computed(() => [
   { label: t('invoice.status.draft'), value: 'draft' as InvoiceStatus },
   { label: t('invoice.status.issued'), value: 'issued' as InvoiceStatus },
   { label: t('invoice.status.partial'), value: 'partial' as InvoiceStatus },
   { label: t('invoice.status.paid'), value: 'paid' as InvoiceStatus },
   { label: t('invoice.status.cancelled'), value: 'cancelled' as InvoiceStatus },
-  { label: t('invoice.status.voided'), value: 'voided' as InvoiceStatus }
+  { label: t('invoice.status.voided'), value: 'voided' as InvoiceStatus },
 ])
 
-// Load invoices
-async function loadInvoices() {
-  await fetchInvoices({
-    page: currentPage.value,
-    page_size: pageSize,
-    search: debouncedSearch.value || undefined,
-    status: selectedStatuses.value.length > 0 ? selectedStatuses.value : undefined,
-    overdue: showOverdue.value || undefined,
-    compliance_severity: complianceSeverity.value.length > 0 ? complianceSeverity.value : undefined
-  })
-}
+const sortOptions = computed(() => [
+  { field: 'created_at', label: t('invoice.sortFields.created'), defaultDir: 'desc' as const },
+  { field: 'issue_date', label: t('invoice.sortFields.issueDate'), defaultDir: 'desc' as const },
+  { field: 'due_date', label: t('invoice.sortFields.dueDate'), defaultDir: 'asc' as const },
+  { field: 'total', label: t('invoice.sortFields.total'), defaultDir: 'desc' as const },
+])
 
-// Initial load
-onMounted(() => {
-  loadInvoices()
-})
-
-// Reload when filters change
-watch([currentPage, debouncedSearch, selectedStatuses, showOverdue, complianceSeverity], () => {
-  loadInvoices()
+const dateRange = computed({
+  get: () => ({ from: filters.value.date_from, to: filters.value.date_to }),
+  set: (v: { from: string | null; to: string | null }) => {
+    setFilter('date_from', v.from)
+    setFilter('date_to', v.to)
+  },
 })
 
 function applyComplianceSeverity(next: string[]) {
-  complianceSeverity.value = next
-  currentPage.value = 1
+  setFilter('compliance_severity', next)
 }
 
-const totalPages = computed(() => Math.ceil(total.value / pageSize))
+const activeFilterCount = computed(() => {
+  let n = 0
+  if (filters.value.status.length) n++
+  if (filters.value.overdue) n++
+  if (filters.value.compliance_severity.length) n++
+  if (filters.value.date_from || filters.value.date_to) n++
+  if (filters.value.is_credit_note) n++
+  return n
+})
 
-// Actions
+function formatDate(s: string | undefined | null): string {
+  if (!s) return '—'
+  return new Date(s).toLocaleDateString(locale.value)
+}
+
+function patientName(inv: InvoiceListItem): string {
+  if (!inv.patient) return '—'
+  return `${inv.patient.last_name}, ${inv.patient.first_name}`
+}
+
+function isOverdue(inv: InvoiceListItem): boolean {
+  if (!inv.due_date) return false
+  if (!['issued', 'partial'].includes(inv.status)) return false
+  return new Date(inv.due_date) < new Date()
+}
+
+function daysOverdue(inv: InvoiceListItem): number {
+  if (!inv.due_date) return 0
+  const ms = Date.now() - new Date(inv.due_date).getTime()
+  return Math.max(0, Math.floor(ms / (24 * 3600 * 1000)))
+}
+
 function createInvoice() {
   router.push('/invoices/new')
 }
 
-async function handleDelete(invoice: InvoiceListItem, event: Event) {
-  event.stopPropagation()
-  if (invoice.status !== 'draft') {
+async function handleDelete(inv: InvoiceListItem, ev: Event) {
+  ev.preventDefault()
+  ev.stopPropagation()
+  if (inv.status !== 'draft') {
     toast.add({
       title: t('common.error'),
       description: t('invoice.errors.canOnlyDeleteDraft'),
-      color: 'error'
+      color: 'error',
     })
     return
   }
   if (!confirm(t('invoice.confirmations.delete'))) return
-
   try {
-    await deleteInvoice(invoice.id)
-    toast.add({
-      title: t('common.success'),
-      description: t('invoice.messages.deleted'),
-      color: 'success'
-    })
+    await deleteInvoice(inv.id)
+    toast.add({ title: t('common.success'), description: t('invoice.messages.deleted'), color: 'success' })
   } catch {
-    toast.add({
-      title: t('common.error'),
-      description: t('invoice.errors.delete'),
-      color: 'error'
-    })
+    toast.add({ title: t('common.error'), description: t('invoice.errors.delete'), color: 'error' })
   }
-}
-
-// Format date
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString(locale.value)
-}
-
-// Get patient name
-function getPatientName(invoice: InvoiceListItem): string {
-  if (!invoice.patient) return '-'
-  return `${invoice.patient.last_name}, ${invoice.patient.first_name}`
-}
-
-// Check if overdue
-function isOverdue(invoice: InvoiceListItem): boolean {
-  if (!invoice.due_date) return false
-  if (!['issued', 'partial'].includes(invoice.status)) return false
-  return new Date(invoice.due_date) < new Date()
 }
 </script>
 
 <template>
-  <div>
-    <PageHeader :title="t('invoice.title')">
-      <template #actions>
-        <UButton
-          v-if="can('billing.write')"
-          color="primary"
-          variant="solid"
-          icon="i-lucide-plus"
-          @click="createInvoice"
-        >
-          {{ t('invoice.new') }}
-        </UButton>
-      </template>
-    </PageHeader>
-
-    <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-[var(--density-gap,0.75rem)] mb-[var(--density-gap,1rem)]">
-      <UInput
-        v-model="searchQuery"
-        :placeholder="t('invoice.searchPlaceholder')"
-        icon="i-lucide-search"
-        class="max-w-sm"
-      />
-      <USelectMenu
-        v-model="selectedStatuses"
-        :items="statusOptions"
-        value-key="value"
-        multiple
-        :placeholder="t('invoice.filters.allStatuses')"
-        class="w-64"
-      />
-      <UCheckbox
-        v-model="showOverdue"
-        :label="t('invoice.filters.overdueOnly')"
-      />
-      <!--
-        Compliance modules (verifactu-ES, factur-x-FR…) inject extra
-        toolbar filters here. Billing knows nothing about them — it
-        just owns the ``compliance_severity`` query param shape.
-      -->
-      <ModuleSlot
-        name="invoice.list.toolbar.filters"
-        :ctx="{ severity: complianceSeverity, onChange: applyComplianceSeverity, clinic: currentClinic }"
-      />
-    </div>
-
-    <UCard>
-      <div
-        v-if="isLoading"
-        class="space-y-3"
+  <DataListLayout
+    :title="t('invoice.title')"
+    :loading="isLoading"
+    :empty="!invoices.length"
+    :error="error"
+    :page="page"
+    :page-size="pageSize"
+    :total="total"
+    :total-pages="totalPages"
+    @update:page="(v) => (page = v)"
+  >
+    <template #actions>
+      <UButton
+        v-if="can('billing.write')"
+        color="primary"
+        variant="solid"
+        icon="i-lucide-plus"
+        @click="createInvoice"
       >
-        <USkeleton
-          v-for="i in 5"
-          :key="i"
-          class="h-16 w-full"
-        />
-      </div>
+        {{ t('invoice.new') }}
+      </UButton>
+    </template>
 
+    <template #toolbar>
+      <FilterBar
+        :active-count="activeFilterCount"
+        @reset="resetFilters"
+      >
+        <template #search>
+          <SearchBar
+            :model-value="filters.q"
+            :placeholder="t('invoice.searchPlaceholder')"
+            max-width="max-w-sm"
+            @update:model-value="(v) => setFilter('q', v)"
+          />
+        </template>
+
+        <FilterChipMulti
+          :model-value="filters.status"
+          :items="statusItems"
+          :label="t('invoice.filters.allStatuses')"
+          icon="i-lucide-circle-dot"
+          @update:model-value="(v) => setFilter('status', v)"
+        />
+
+        <FilterToggle
+          :model-value="filters.overdue"
+          :label="t('invoice.filters.overdueOnly')"
+          icon="i-lucide-clock-alert"
+          @update:model-value="(v) => setFilter('overdue', Boolean(v))"
+        />
+
+        <FilterDateRange v-model="dateRange" />
+
+        <!-- Compliance severity (verifactu, factur-x, …) -->
+        <ModuleSlot
+          name="invoice.list.toolbar.filters"
+          :ctx="{
+            severity: filters.compliance_severity,
+            onChange: applyComplianceSeverity,
+            clinic: currentClinic,
+          }"
+        />
+
+        <template #right>
+          <SortMenu
+            :model-value="sort"
+            :options="sortOptions"
+            @update:model-value="(v) => (sort = v)"
+          />
+        </template>
+      </FilterBar>
+    </template>
+
+    <template #empty>
       <EmptyState
-        v-else-if="invoices.length === 0"
         icon="i-lucide-receipt"
-        :title="debouncedSearch || selectedStatuses.length > 0 || showOverdue ? t('invoice.noItems') : t('invoice.empty')"
+        :title="activeFilterCount || filters.q ? t('invoice.noItems') : t('invoice.empty')"
       >
         <template
-          v-if="!debouncedSearch && selectedStatuses.length === 0 && !showOverdue && can('billing.write')"
+          v-if="!activeFilterCount && !filters.q && can('billing.write')"
           #actions
         >
           <UButton
@@ -223,47 +275,45 @@ function isOverdue(invoice: InvoiceListItem): boolean {
           </UButton>
         </template>
       </EmptyState>
+    </template>
 
-      <div
-        v-else
-        class="divide-y divide-[var(--color-border-subtle)]"
+    <template #rows>
+      <DataListItem
+        v-for="invoice in invoices"
+        :key="invoice.id"
+        :to="`/invoices/${invoice.id}`"
       >
-        <ListRow
-          v-for="invoice in invoices"
-          :key="invoice.id"
-          :to="`/invoices/${invoice.id}`"
-        >
-          <template #title>
-            <span class="tnum">{{ invoice.invoice_number || t('invoice.draftNoNumber') }}</span>
-            <UBadge
-              :color="getStatusBadgeColor(invoice.status)"
-              variant="subtle"
-              size="xs"
-            >
-              {{ t(`invoice.status.${invoice.status}`) }}
-            </UBadge>
-            <StatusBadge
-              v-if="isOverdue(invoice)"
-              role="danger"
-              :label="t('invoice.overdue')"
-              size="xs"
-              dot
-            />
-            <!--
-              Compliance badge slot (verifactu, factur-x…). Returns
-              nothing when the invoice has no compliance_data for the
-              active country — keeps non-ES clinics' rows untouched.
-            -->
-            <ModuleSlot
-              name="invoice.list.row.meta"
-              :ctx="{ invoice, clinic: currentClinic }"
-            />
-          </template>
-          <template #subtitle>
-            {{ getPatientName(invoice) }}
-          </template>
-          <template #meta>
-            <span class="hidden sm:inline text-caption text-subtle tnum">
+        <template #row>
+          <div class="flex-1 min-w-0 flex items-center gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="text-ui text-default flex items-center gap-2 flex-wrap">
+                <span class="tnum">{{ invoice.invoice_number || t('invoice.draftNoNumber') }}</span>
+                <UBadge
+                  :color="getStatusBadgeColor(invoice.status)"
+                  variant="subtle"
+                  size="xs"
+                >
+                  {{ t(`invoice.status.${invoice.status}`) }}
+                </UBadge>
+                <StatusBadge
+                  v-if="isOverdue(invoice)"
+                  role="danger"
+                  :label="t('invoice.overdue')"
+                  size="xs"
+                  dot
+                />
+                <ModuleSlot
+                  name="invoice.list.row.meta"
+                  :ctx="{ invoice, clinic: currentClinic }"
+                />
+              </div>
+              <div class="text-caption text-subtle truncate">
+                {{ patientName(invoice) }}
+              </div>
+            </div>
+          </div>
+          <div class="shrink-0 flex items-center gap-3 text-right">
+            <span class="hidden lg:inline text-caption text-subtle tnum">
               {{ formatDate(invoice.issue_date) }}
             </span>
             <span
@@ -284,12 +334,10 @@ function isOverdue(invoice: InvoiceListItem): boolean {
                 {{ t('invoice.balance') }}: {{ formatCurrency(invoice.balance_due) }}
               </div>
             </div>
-          </template>
-          <template
-            v-if="invoice.status === 'draft' && can('billing.admin')"
-            #actions
-          >
+          </div>
+          <div class="shrink-0 flex items-center gap-1">
             <UButton
+              v-if="invoice.status === 'draft' && can('billing.admin')"
               variant="ghost"
               color="error"
               icon="i-lucide-trash-2"
@@ -298,38 +346,62 @@ function isOverdue(invoice: InvoiceListItem): boolean {
               :title="t('invoice.delete')"
               @click="handleDelete(invoice, $event)"
             />
-          </template>
-        </ListRow>
-      </div>
+            <UIcon
+              name="i-lucide-chevron-right"
+              class="text-subtle"
+            />
+          </div>
+        </template>
 
-      <div
-        v-if="totalPages > 1"
-        class="flex items-center justify-between pt-4 mt-4 border-t border-subtle"
-      >
-        <span class="text-caption text-subtle tnum">
-          {{ t('common.page', { current: currentPage, total: totalPages }) }}
-        </span>
-        <div class="flex gap-2">
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            :disabled="currentPage <= 1"
-            @click="currentPage--"
-          >
-            {{ t('common.previous') }}
-          </UButton>
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            :disabled="currentPage >= totalPages"
-            @click="currentPage++"
-          >
-            {{ t('common.next') }}
-          </UButton>
-        </div>
-      </div>
-    </UCard>
-  </div>
+        <template #card>
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="font-medium text-default truncate flex items-center gap-2 flex-wrap">
+                <span class="tnum">{{ invoice.invoice_number || t('invoice.draftNoNumber') }}</span>
+                <UBadge
+                  :color="getStatusBadgeColor(invoice.status)"
+                  variant="subtle"
+                  size="xs"
+                >
+                  {{ t(`invoice.status.${invoice.status}`) }}
+                </UBadge>
+                <ModuleSlot
+                  name="invoice.list.row.meta"
+                  :ctx="{ invoice, clinic: currentClinic }"
+                />
+              </div>
+              <div class="text-caption text-subtle truncate">
+                {{ patientName(invoice) }}
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <Money
+                :value="invoice.total"
+                strong
+              />
+              <div
+                v-if="invoice.balance_due > 0 && invoice.status !== 'draft'"
+                class="text-caption text-warning tnum"
+              >
+                {{ t('invoice.balance') }}: {{ formatCurrency(invoice.balance_due) }}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2 text-caption text-subtle">
+            <span>
+              {{ formatDate(invoice.issue_date) }}
+            </span>
+            <span
+              v-if="invoice.due_date"
+              :class="isOverdue(invoice) ? 'text-danger font-medium' : ''"
+            >
+              {{ isOverdue(invoice)
+                ? t('invoice.overdueByDays', { days: daysOverdue(invoice) })
+                : formatDate(invoice.due_date) }}
+            </span>
+          </div>
+        </template>
+      </DataListItem>
+    </template>
+  </DataListLayout>
 </template>

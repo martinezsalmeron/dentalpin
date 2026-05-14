@@ -64,7 +64,6 @@ async def _setup(db: AsyncSession) -> tuple[Clinic, User, Patient, Invoice, Veri
         billing_tax_id="B12345678",  # bad NIF — will be the cause of rejection
         subtotal=Decimal("100"),
         total=Decimal("100"),
-        balance_due=Decimal("100"),
         created_by=user.id,
         issued_by=user.id,
     )
@@ -151,7 +150,6 @@ async def test_regenerate_after_party_change_noop_when_no_record(
         status="draft",
         subtotal=Decimal("0"),
         total=Decimal("0"),
-        balance_due=Decimal("0"),
         created_by=user.id,
     )
     db_session.add(invoice)

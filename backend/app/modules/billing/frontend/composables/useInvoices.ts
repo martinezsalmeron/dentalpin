@@ -21,9 +21,8 @@ import type {
   InvoiceUpdate,
   PaginatedResponse,
   PatientBillingSummary,
-  Payment,
-  PaymentCreate,
-  PaymentVoidRequest,
+  InvoicePayment,
+  InvoicePaymentApply,
   SeriesResetRequest
 } from '~~/app/types'
 
@@ -44,16 +43,6 @@ export interface InvoiceListParams {
   // error`. Backend matches any country in compliance_data whose
   // severity is in the list. Owned by compliance modules.
   compliance_severity?: string[]
-}
-
-// Status colors for badges
-const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  draft: 'gray',
-  issued: 'blue',
-  partial: 'amber',
-  paid: 'green',
-  cancelled: 'red',
-  voided: 'neutral'
 }
 
 // Payment method labels
@@ -403,11 +392,10 @@ export function useInvoices() {
   // Payment Operations
   // ============================================================================
 
-  async function fetchPayments(invoiceId: string, includeVoided: boolean = false): Promise<Payment[]> {
+  async function fetchPayments(invoiceId: string): Promise<InvoicePayment[]> {
     try {
-      const params = includeVoided ? '?include_voided=true' : ''
-      const response = await api.get<ApiResponse<Payment[]>>(
-        `/api/v1/billing/invoices/${invoiceId}/payments${params}`
+      const response = await api.get<ApiResponse<InvoicePayment[]>>(
+        `/api/v1/billing/invoices/${invoiceId}/payments`
       )
       return response.data
     } catch (e) {
@@ -416,41 +404,19 @@ export function useInvoices() {
     }
   }
 
-  async function recordPayment(invoiceId: string, data: PaymentCreate): Promise<Payment> {
-    const response = await api.post<ApiResponse<Payment>>(
+  // POST /api/v1/billing/invoices/{id}/payments — the "factura + cobro"
+  // orchestrator. Creates a Payment via the payments module under the
+  // hood, links it to this invoice, and recomputes status. For pure
+  // anticipos (no invoice), use /api/v1/payments directly.
+  async function recordPayment(invoiceId: string, data: InvoicePaymentApply): Promise<InvoicePayment> {
+    const response = await api.post<ApiResponse<InvoicePayment>>(
       `/api/v1/billing/invoices/${invoiceId}/payments`,
       data as unknown as Record<string, unknown>
     )
 
-    // Refetch invoice to get updated totals
+    // Refetch invoice to pick up the recomputed totals + status.
     if (currentInvoice.value?.id === invoiceId) {
       await fetchInvoice(invoiceId)
-    }
-
-    // Update list item
-    const invoice = invoices.value.find(i => i.id === invoiceId)
-    if (invoice) {
-      invoice.total_paid = (invoice.total_paid || 0) + data.amount
-      invoice.balance_due = invoice.total - invoice.total_paid
-      if (invoice.balance_due <= 0) {
-        invoice.status = 'paid'
-      } else {
-        invoice.status = 'partial'
-      }
-    }
-
-    return response.data
-  }
-
-  async function voidPayment(paymentId: string, data: PaymentVoidRequest): Promise<Payment> {
-    const response = await api.post<ApiResponse<Payment>>(
-      `/api/v1/billing/payments/${paymentId}/void`,
-      data as unknown as Record<string, unknown>
-    )
-
-    // Refetch current invoice if we have one
-    if (currentInvoice.value) {
-      await fetchInvoice(currentInvoice.value.id)
     }
 
     return response.data
@@ -558,10 +524,6 @@ export function useInvoices() {
   // Helpers
   // ============================================================================
 
-  function getStatusColor(status: InvoiceStatus): string {
-    return STATUS_COLORS[status] || 'gray'
-  }
-
   function getPaymentMethodLabel(method: string): string {
     return PAYMENT_METHOD_LABELS[method] || method
   }
@@ -639,10 +601,10 @@ export function useInvoices() {
     sendInvoice,
     createCreditNote,
 
-    // Payments
+    // Payments (links to ``InvoicePayment``). Refunds happen in the
+    // payments module — not exposed from this composable.
     fetchPayments,
     recordPayment,
-    voidPayment,
 
     // History
     fetchHistory,
@@ -659,7 +621,6 @@ export function useInvoices() {
     getPDFPreviewUrl,
 
     // Helpers
-    getStatusColor,
     getPaymentMethodLabel,
     canEdit,
     canIssue,

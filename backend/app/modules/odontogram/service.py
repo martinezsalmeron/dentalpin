@@ -1,6 +1,7 @@
 """Business logic service for odontogram module."""
 
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -846,6 +847,16 @@ class TreatmentService:
                 "performed_by": str(user_id),
                 "performed_at": now.isoformat(),
                 "previous_status": old_status,
+                # Snapshot price so subscribers (e.g. payments earned
+                # ledger) can attribute revenue without importing
+                # odontogram models. `Treatment.price_snapshot` is the
+                # frozen catalog price captured at treatment creation;
+                # multiply by tooth count for multi-tooth headers.
+                "unit_price": str(
+                    (treatment.price_snapshot or Decimal("0")) * (len(treatment.teeth) or 1)
+                )
+                if treatment.price_snapshot is not None
+                else None,
             },
         )
         return treatment

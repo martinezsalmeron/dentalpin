@@ -36,7 +36,7 @@ related_permissions:
   - budget.accept_in_clinic
 related_paths:
   - backend/app/modules/budget/frontend/pages/budgets/[id].vue
-last_verified_commit: 0000000
+last_verified_commit: 0ba0a4a
 ---
 
 # /budgets/[id]
@@ -56,4 +56,16 @@ _Screen `/budgets/[id]` of the `budget` module._
 ## What this screen does
 
 _Documentation pending._
+
+## Sidebar layout
+
+The right-hand sidebar stacks (top → bottom):
+
+1. **Payments card** (mounted via the `budget.detail.sidebar` slot from
+   the `payments` module): compact `Collected / Total` summary with a
+   progress bar, a one-line pending status, and a list of payment
+   allocations with method icon + relative date. The "Collect" CTA
+   lives in the card header and is hidden once the budget is settled.
+2. **Totals card**: subtotal, discount, tax, total.
+3. **Info card**: budget number, version, creator, date, linked plan.
 

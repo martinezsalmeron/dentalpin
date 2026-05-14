@@ -11,6 +11,8 @@ interface Props {
   dot?: boolean
   /** Optional icon name, rendered in accent colour */
   icon?: string
+  /** Optional trailing icon (e.g. external-link, chevron — signals clickable) */
+  trailingIcon?: string
   size?: 'xs' | 'sm' | 'md'
 }
 
@@ -55,5 +57,12 @@ const accentVar = computed(() => {
       :style="{ color: accentVar }"
     />
     {{ label }}
+    <UIcon
+      v-if="trailingIcon"
+      :name="trailingIcon"
+      class="w-3 h-3 shrink-0"
+      :style="{ color: accentVar }"
+      aria-hidden="true"
+    />
   </UBadge>
 </template>

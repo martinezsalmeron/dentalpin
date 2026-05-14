@@ -11,7 +11,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | Module | Version | Category | Depends | Install | Removable | Permissions | Emits | Consumes | FE layer |
 |--------|---------|----------|---------|---------|-----------|-------------|-------|----------|----------|
 | `agenda` | 0.4.0 | official | patients, catalog | auto | no | 4 | 5 | 0 | yes |
-| `billing` | 0.1.0 | official | patients, catalog, budget | auto | no | 3 | 3 | 0 | yes |
+| `billing` | 0.1.0 | official | patients, catalog, budget, payments | auto | no | 3 | 3 | 1 | yes |
 | `budget` | 0.1.0 | official | patients, catalog, odontogram | auto | no | 5 | 7 | 4 | yes |
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 0 | yes |
 | `clinical_notes` | 0.2.0 | official | patients, odontogram, treatment_plan, media | auto | no | 2 | 0 | 0 | yes |
@@ -21,8 +21,9 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 34 | yes |
 | `patients` | 0.1.0 | official | — | auto | no | 2 | 3 | 0 | yes |
 | `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 2 | 0 | yes |
+| `payments` | 0.1.0 | official | patients, budget | auto | no | 4 | 3 | 2 | yes |
 | `recalls` | 0.1.0 | official | patients, agenda | auto | yes | 3 | 4 | 5 | yes |
-| `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing | auto | no | 3 | 0 | 0 | yes |
+| `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing, payments | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
 | `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 21 | 5 | yes |
 | `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 1 | 1 | yes |
@@ -61,7 +62,7 @@ Invoices, payments, credit notes, PDF billing.
 - **License:** BSL-1.1
 - **Category:** official
 - **Install policy:** installable=True · auto_install=True · removable=False
-- **Depends:** `patients`, `catalog`, `budget`
+- **Depends:** `patients`, `catalog`, `budget`, `payments`
 - **Frontend layer:** `frontend`
 - **Permissions:**
   - `billing.admin`
@@ -71,7 +72,8 @@ Invoices, payments, credit notes, PDF billing.
   - `invoice.issued`
   - `invoice.paid`
   - `invoice.sent`
-- **Events consumed:** —
+- **Events consumed:**
+  - `payment.refunded`
 - **Module CLAUDE.md:** [`backend/app/modules/billing/CLAUDE.md`](../backend/app/modules/billing/CLAUDE.md)
 
 ### `budget` — v0.1.0
@@ -309,6 +311,30 @@ Normalized medical history, allergies, medications, emergency contacts.
 - **Events consumed:** —
 - **Module CLAUDE.md:** [`backend/app/modules/patients_clinical/CLAUDE.md`](../backend/app/modules/patients_clinical/CLAUDE.md)
 
+### `payments` — v0.1.0
+
+Patient-centric collections, allocations to budgets / on-account, refunds, patient ledger, and dental payment reports.
+
+- **Author:** DentalPin Core Team
+- **License:** BSL-1.1
+- **Category:** official
+- **Install policy:** installable=True · auto_install=True · removable=False
+- **Depends:** `patients`, `budget`
+- **Frontend layer:** `frontend`
+- **Permissions:**
+  - `payments.record.read`
+  - `payments.record.refund`
+  - `payments.record.write`
+  - `payments.reports.read`
+- **Events emitted:**
+  - `payment.allocated`
+  - `payment.recorded`
+  - `payment.refunded`
+- **Events consumed:**
+  - `odontogram.treatment.performed`
+  - `treatment_plan.treatment_completed`
+- **Module CLAUDE.md:** [`backend/app/modules/payments/CLAUDE.md`](../backend/app/modules/payments/CLAUDE.md)
+
 ### `recalls` — v0.1.0
 
 Patient recalls: schedule call-backs, work the monthly call list, log attempts, auto-link booked appointments.
@@ -344,7 +370,7 @@ Cross-module reporting: billing, budgets, scheduling.
 - **License:** BSL-1.1
 - **Category:** official
 - **Install policy:** installable=True · auto_install=True · removable=False
-- **Depends:** `patients`, `agenda`, `catalog`, `budget`, `billing`
+- **Depends:** `patients`, `agenda`, `catalog`, `budget`, `billing`, `payments`
 - **Frontend layer:** `frontend`
 - **Permissions:**
   - `reports.billing.read`

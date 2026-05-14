@@ -1,6 +1,6 @@
 """Billing report service."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.auth.models import User
-from app.modules.billing.models import Invoice, InvoiceItem, InvoiceSeries, Payment
+from app.modules.billing.models import Invoice, InvoiceItem, InvoicePayment, InvoiceSeries
 from app.modules.budget.models import Budget
 from app.modules.catalog.models import VatType
 
@@ -56,11 +56,12 @@ class BillingReportService:
         )
         budget_totals = budget_result.one()
 
-        # Invoice aggregation (only issued, partial, paid)
+        # Invoice aggregation (only issued, partial, paid). ``total_paid``
+        # comes from ``invoice_payments`` since the legacy cached column
+        # was removed when payments became its own module.
         invoice_result = await db.execute(
             select(
                 func.coalesce(func.sum(Invoice.total), Decimal("0")).label("total_invoiced"),
-                func.coalesce(func.sum(Invoice.total_paid), Decimal("0")).label("total_paid"),
             ).where(
                 Invoice.clinic_id == clinic_id,
                 Invoice.patient_id == patient_id,
@@ -70,8 +71,18 @@ class BillingReportService:
         )
         invoice_totals = invoice_result.one()
 
+        paid_result = await db.execute(
+            select(func.coalesce(func.sum(InvoicePayment.amount), Decimal("0")))
+            .join(Invoice, Invoice.id == InvoicePayment.invoice_id)
+            .where(
+                Invoice.clinic_id == clinic_id,
+                Invoice.patient_id == patient_id,
+                Invoice.status.in_(["issued", "partial", "paid"]),
+                Invoice.deleted_at.is_(None),
+            )
+        )
         total_invoiced = invoice_totals.total_invoiced
-        total_paid = invoice_totals.total_paid
+        total_paid: Decimal = paid_result.scalar_one()
         balance_pending = total_invoiced - total_paid
 
         return {
@@ -102,12 +113,12 @@ class BillingReportService:
             - overdue_count: Number of overdue invoices (all time)
             - vat_breakdown: VAT breakdown by rate
         """
-        # Get totals for issued invoices in the period
+        # Get totals for issued invoices in the period. ``total_pending``
+        # is the sum of invoice totals minus their imputed payments.
         result = await db.execute(
             select(
                 func.count(Invoice.id).label("invoice_count"),
                 func.coalesce(func.sum(Invoice.total), Decimal("0")).label("total_invoiced"),
-                func.coalesce(func.sum(Invoice.balance_due), Decimal("0")).label("total_pending"),
             ).where(
                 Invoice.clinic_id == clinic_id,
                 Invoice.status.notin_(["draft", "voided"]),
@@ -118,15 +129,41 @@ class BillingReportService:
         )
         totals = result.one()
 
-        # Get total payments received in the period (by payment_date)
+        # ``total_pending`` = Σ invoice.total − Σ imputed payments, across
+        # all outstanding invoices in the clinic. LEFT JOIN keeps invoices
+        # without any payment imputed.
+        pending_total = await db.execute(
+            select(func.coalesce(func.sum(Invoice.total), Decimal("0"))).where(
+                Invoice.clinic_id == clinic_id,
+                Invoice.status.in_(["issued", "partial"]),
+                Invoice.deleted_at.is_(None),
+            )
+        )
+        pending_paid = await db.execute(
+            select(func.coalesce(func.sum(InvoicePayment.amount), Decimal("0")))
+            .join(Invoice, Invoice.id == InvoicePayment.invoice_id)
+            .where(
+                Invoice.clinic_id == clinic_id,
+                Invoice.status.in_(["issued", "partial"]),
+                Invoice.deleted_at.is_(None),
+            )
+        )
+        total_pending = pending_total.scalar_one() - pending_paid.scalar_one()
+
+        # Total paid in period for billed invoices. Computed from the
+        # InvoicePayment link table — this represents the fiscal "cobrado
+        # via factura" view (legitimate, fiscal-axis report). The
+        # patient-centric "total collected" lives in the payments
+        # module's own reports.
         result = await db.execute(
             select(
-                func.coalesce(func.sum(Payment.amount), Decimal("0")).label("total_paid"),
+                func.coalesce(func.sum(InvoicePayment.amount), Decimal("0")).label("total_paid"),
             ).where(
-                Payment.clinic_id == clinic_id,
-                Payment.payment_date >= date_from,
-                Payment.payment_date <= date_to,
-                Payment.is_voided.is_(False),
+                InvoicePayment.clinic_id == clinic_id,
+                InvoicePayment.created_at
+                >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC),
+                InvoicePayment.created_at
+                <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC),
             )
         )
         payments_totals = result.one()
@@ -143,14 +180,14 @@ class BillingReportService:
         )
         paid_count = result.scalar() or 0
 
-        # Count overdue invoices
+        # Count overdue invoices. ``status in (issued, partial)`` implies
+        # balance > 0 — fully paid invoices transition to ``paid``.
         today = date.today()
         result = await db.execute(
             select(func.count(Invoice.id)).where(
                 Invoice.clinic_id == clinic_id,
                 Invoice.status.in_(["issued", "partial"]),
                 Invoice.due_date < today,
-                Invoice.balance_due > 0,
                 Invoice.deleted_at.is_(None),
             )
         )
@@ -166,7 +203,7 @@ class BillingReportService:
             "period_end": date_to,
             "total_invoiced": totals.total_invoiced,
             "total_paid": payments_totals.total_paid,
-            "total_pending": totals.total_pending,
+            "total_pending": total_pending,
             "invoice_count": totals.invoice_count,
             "paid_count": paid_count,
             "overdue_count": overdue_count,
@@ -237,7 +274,6 @@ class BillingReportService:
                 Invoice.clinic_id == clinic_id,
                 Invoice.status.in_(["issued", "partial"]),
                 Invoice.due_date < today,
-                Invoice.balance_due > 0,
                 Invoice.deleted_at.is_(None),
             )
             .options(joinedload(Invoice.patient))
@@ -245,6 +281,16 @@ class BillingReportService:
         )
 
         invoices = result.scalars().all()
+
+        invoice_ids = [i.id for i in invoices]
+        paid_by_inv: dict[UUID, Decimal] = {}
+        if invoice_ids:
+            paid_rows = await db.execute(
+                select(InvoicePayment.invoice_id, func.sum(InvoicePayment.amount))
+                .where(InvoicePayment.invoice_id.in_(invoice_ids))
+                .group_by(InvoicePayment.invoice_id)
+            )
+            paid_by_inv = {row[0]: row[1] or Decimal("0") for row in paid_rows.all()}
 
         return [
             {
@@ -256,7 +302,7 @@ class BillingReportService:
                 "issue_date": inv.issue_date,
                 "due_date": inv.due_date,
                 "days_overdue": (today - inv.due_date).days,
-                "balance_due": inv.balance_due,
+                "balance_due": inv.total - paid_by_inv.get(inv.id, Decimal("0")),
             }
             for inv in invoices
         ]
@@ -268,20 +314,27 @@ class BillingReportService:
         date_from: date,
         date_to: date,
     ) -> list[dict[str, Any]]:
-        """Get payments breakdown by payment method."""
+        """Get payments breakdown by payment method (invoice-imputed only).
+
+        Reads ``InvoicePayment`` joined with the payments module's
+        ``Payment.method``. Patient-level "all collected" is in the
+        payments module's own reports.
+        """
+        from app.modules.payments.models import Payment as PaymentModel
+
         result = await db.execute(
             select(
-                Payment.payment_method,
-                func.count(Payment.id).label("payment_count"),
-                func.coalesce(func.sum(Payment.amount), Decimal("0")).label("total_amount"),
+                PaymentModel.method.label("payment_method"),
+                func.count(InvoicePayment.id).label("payment_count"),
+                func.coalesce(func.sum(InvoicePayment.amount), Decimal("0")).label("total_amount"),
             )
+            .join(PaymentModel, PaymentModel.id == InvoicePayment.payment_id)
             .where(
-                Payment.clinic_id == clinic_id,
-                Payment.payment_date >= date_from,
-                Payment.payment_date <= date_to,
-                Payment.is_voided.is_(False),
+                InvoicePayment.clinic_id == clinic_id,
+                PaymentModel.payment_date >= date_from,
+                PaymentModel.payment_date <= date_to,
             )
-            .group_by(Payment.payment_method)
+            .group_by(PaymentModel.method)
             .order_by(desc("total_amount"))
         )
 

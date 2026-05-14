@@ -75,6 +75,17 @@ class EventType:
 
     # Payment events
     PAYMENT_RECORDED = "payment.recorded"
+    # Published whenever an allocation is created or moved (initial create
+    # of a Payment, reallocation across budget/on_account/invoice link).
+    # Payload carries (clinic_id, payment_id, target_type, target_id,
+    # amount, previous_target_type, previous_target_id) — previous_* are
+    # null on initial creation.
+    PAYMENT_ALLOCATED = "payment.allocated"
+    # Published when a Refund row is created (partial or full reversal of
+    # a Payment). Payload: (clinic_id, payment_id, refund_id, amount,
+    # reason_code). Replaces the legacy `is_voided` flag — a total reverso
+    # is just Refund(amount=Payment.amount).
+    PAYMENT_REFUNDED = "payment.refunded"
     PAYMENT_VOIDED = "payment.voided"
 
     # Credit note events

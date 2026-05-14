@@ -23,7 +23,6 @@ related_endpoints:
   - POST /api/v1/billing/invoices/{invoice_id}/payments
   - POST /api/v1/billing/invoices/{invoice_id}/send-email
   - POST /api/v1/billing/invoices/{invoice_id}/void
-  - POST /api/v1/billing/payments/{payment_id}/void
   - POST /api/v1/billing/series
   - POST /api/v1/billing/series/{series_id}/reset
   - PUT /api/v1/billing/invoices/{invoice_id}

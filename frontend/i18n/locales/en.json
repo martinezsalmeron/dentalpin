@@ -104,6 +104,24 @@
       "active": "Active",
       "archived": "Archived"
     },
+    "filters": {
+      "status": "Status",
+      "city": "City",
+      "withDebt": "With debt",
+      "doNotContact": "Do not contact",
+      "doNotContactOnly": "Only do-not-contact",
+      "doNotContactOnlyContactable": "Only contactable"
+    },
+    "columns": {
+      "city": "City",
+      "contact": "Contact",
+      "debt": "Debt"
+    },
+    "sort": {
+      "lastName": "Last name",
+      "firstName": "First name",
+      "createdAt": "Joined"
+    },
     "doNotContact": {
       "label": "Do not contact",
       "hint": "Patient will be excluded from the call list and automated outreach",
@@ -292,6 +310,7 @@
       "appointments": "Appointments",
       "budgets": "Budgets",
       "billing": "Billing",
+      "payments": "Payments",
       "documents": "Documents"
     },
     "historyPlaceholder": "Clinical notes available in future version",
@@ -1144,7 +1163,65 @@
     "today": "Today",
     "tomorrow": "Tomorrow",
     "yesterday": "Yesterday",
-    "copied": "Copied to clipboard"
+    "copied": "Copied to clipboard",
+    "copy": "Copy",
+    "copyFailed": "Could not copy"
+  },
+  "lists": {
+    "empty": {
+      "title": "No results",
+      "description": "Adjust the filters or clear them to see all records."
+    },
+    "resultCount": "{shown} of {total}",
+    "filter": {
+      "title": "Filters",
+      "more": "Filters",
+      "moreCount": "Filters ({count})",
+      "clear": "Clear",
+      "apply": "Apply",
+      "date": "Dates",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "searchPlaceholder": "Search...",
+      "noResults": "No matches",
+      "all": "All"
+    },
+    "sort": {
+      "label": "Sort",
+      "asc": "Ascending",
+      "desc": "Descending"
+    },
+    "datePreset": {
+      "today": "Today",
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "thisMonth": "This month",
+      "thisQuarter": "Quarter",
+      "thisYear": "Year",
+      "custom": "Custom"
+    },
+    "truncatedWarning": "Results truncated (>1000). Refine the filters."
+  },
+  "shared": {
+    "totals": "Totals",
+    "info": "Details",
+    "moreActions": "More actions",
+    "criticalBanner": {
+      "dismiss": "Dismiss alert"
+    },
+    "collect": {
+      "amountLabel": "Amount to collect",
+      "methodLabel": "Payment method",
+      "dateLabel": "Payment date",
+      "today": "Today",
+      "quickFull": "Full",
+      "optionalDetails": "Add reference or notes (optional)",
+      "referenceLabel": "Reference",
+      "referencePlaceholder": "e.g. POS transaction number",
+      "notesLabel": "Internal notes",
+      "submit": "Collect",
+      "cancel": "Cancel"
+    }
   },
   "validation": {
     "required": "This field is required",
@@ -1622,6 +1699,8 @@
       "remove": "Remove treatment",
       "edit": "Edit treatment",
       "empty": "No treatments in this quote",
+      "singular": "treatment",
+      "plural": "treatments",
       "addFromCatalog": "Add from catalog",
       "addFromOdontogram": "Add from dental chart",
       "treatment": "Treatment",
@@ -1736,11 +1815,29 @@
     },
     "filters": {
       "allStatuses": "All statuses",
+      "status": "Status",
+      "paymentStatus": "Status",
+      "professional": "Professional",
+      "validity": "Validity",
+      "validityValid": "Valid",
+      "validityExpiringSoon": "Expires in 7 days",
+      "validityExpired": "Expired",
       "dateFrom": "From",
       "dateTo": "To",
       "showExpired": "Show expired",
       "advanced": "Advanced filters",
       "clear": "Clear filters"
+    },
+    "sortFields": {
+      "createdAt": "Created",
+      "validUntil": "Valid until",
+      "total": "Total",
+      "status": "Status",
+      "budgetNumber": "Number"
+    },
+    "validity": {
+      "expired": "Expired",
+      "expiresIn": "Expires in {days}d"
     },
     "pdf": {
       "generating": "Generating PDF...",
@@ -2041,6 +2138,37 @@
     "balance": "Balance",
     "balanceDue": "Balance due",
     "overdue": "Overdue",
+    "overdueDays": "Overdue {n}d",
+    "info": {
+      "issueDate": "Issue date",
+      "dueDate": "Due date",
+      "issuedBy": "Issued by",
+      "createdBy": "Created by",
+      "createdAt": "Created",
+      "budget": "Budget",
+      "creditNoteFor": "Credit note for"
+    },
+    "criticalBanner": {
+      "aeatRejected": {
+        "title": "AEAT rejected this invoice",
+        "cta": "Fix and resubmit"
+      },
+      "billingIncomplete": {
+        "title": "Billing data incomplete",
+        "cta": "Complete data"
+      }
+    },
+    "collect": {
+      "title": "Collect invoice",
+      "submit": "Collect",
+      "noteAppliedToInvoice": "applied to this invoice.",
+      "notePendingAfter": "Remaining balance",
+      "noteFullySettled": "This payment fully settles the invoice.",
+      "noteToInvoice": "applied to this invoice and",
+      "noteExcessToOnAccount": "credited to the patient on-account.",
+      "noteInvoiceSettled": "This invoice is already paid.",
+      "noteToOnAccount": "will be credited to the patient on-account."
+    },
     "tooth": "Tooth",
     "vat": "VAT",
     "currency": "Currency",
@@ -2160,11 +2288,18 @@
       "credit_note": "Credit note"
     },
     "filters": {
-      "allStatuses": "All statuses",
-      "overdueOnly": "Overdue only",
+      "allStatuses": "Status",
+      "overdueOnly": "Overdue",
       "dateFrom": "From",
       "dateTo": "To"
     },
+    "sortFields": {
+      "created": "Created",
+      "issueDate": "Issue date",
+      "dueDate": "Due date",
+      "total": "Total"
+    },
+    "overdueByDays": "Overdue {days}d",
     "pdf": {
       "generating": "Generating PDF...",
       "downloadError": "Error downloading PDF"

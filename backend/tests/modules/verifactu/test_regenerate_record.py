@@ -111,7 +111,6 @@ async def _seed_invoice(
         subtotal=total,
         total_tax=Decimal("0.00"),
         total=total,
-        balance_due=total,
         created_by=user.id,
         issued_by=user.id,
     )

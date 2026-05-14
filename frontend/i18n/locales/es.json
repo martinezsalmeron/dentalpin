@@ -104,6 +104,24 @@
       "active": "Activo",
       "archived": "Archivado"
     },
+    "filters": {
+      "status": "Estado",
+      "city": "Ciudad",
+      "withDebt": "Con deuda",
+      "doNotContact": "No contactar",
+      "doNotContactOnly": "Sólo no contactar",
+      "doNotContactOnlyContactable": "Sólo contactables"
+    },
+    "columns": {
+      "city": "Ciudad",
+      "contact": "Contacto",
+      "debt": "Deuda"
+    },
+    "sort": {
+      "lastName": "Apellidos",
+      "firstName": "Nombre",
+      "createdAt": "Registro"
+    },
     "doNotContact": {
       "label": "No contactar",
       "hint": "El paciente no aparecerá en la lista de llamadas ni en envíos automatizados",
@@ -320,6 +338,7 @@
       "appointments": "Citas",
       "budgets": "Presupuestos",
       "billing": "Facturación",
+      "payments": "Pagos",
       "documents": "Documentos"
     },
     "historyPlaceholder": "Notas clínicas disponibles en futura versión",
@@ -1166,7 +1185,65 @@
     "today": "Hoy",
     "tomorrow": "Mañana",
     "yesterday": "Ayer",
-    "copied": "Copiado al portapapeles"
+    "copied": "Copiado al portapapeles",
+    "copy": "Copiar",
+    "copyFailed": "No se pudo copiar"
+  },
+  "lists": {
+    "empty": {
+      "title": "Sin resultados",
+      "description": "Ajusta los filtros o límpialos para ver todos los registros."
+    },
+    "resultCount": "{shown} de {total}",
+    "filter": {
+      "title": "Filtros",
+      "more": "Filtros",
+      "moreCount": "Filtros ({count})",
+      "clear": "Limpiar",
+      "apply": "Aplicar",
+      "date": "Fechas",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "searchPlaceholder": "Buscar...",
+      "noResults": "Sin coincidencias",
+      "all": "Todos"
+    },
+    "sort": {
+      "label": "Ordenar",
+      "asc": "Ascendente",
+      "desc": "Descendente"
+    },
+    "datePreset": {
+      "today": "Hoy",
+      "last7": "Últimos 7 días",
+      "last30": "Últimos 30 días",
+      "thisMonth": "Este mes",
+      "thisQuarter": "Trimestre",
+      "thisYear": "Año",
+      "custom": "Personalizado"
+    },
+    "truncatedWarning": "Resultados truncados (>1000). Refina los filtros."
+  },
+  "shared": {
+    "totals": "Totales",
+    "info": "Información",
+    "moreActions": "Más acciones",
+    "criticalBanner": {
+      "dismiss": "Cerrar aviso"
+    },
+    "collect": {
+      "amountLabel": "Importe a cobrar",
+      "methodLabel": "Método de pago",
+      "dateLabel": "Fecha del cobro",
+      "today": "Hoy",
+      "quickFull": "Completo",
+      "optionalDetails": "Añadir referencia o notas (opcional)",
+      "referenceLabel": "Referencia",
+      "referencePlaceholder": "Ej. número de operación TPV",
+      "notesLabel": "Notas internas",
+      "submit": "Cobrar",
+      "cancel": "Cancelar"
+    }
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -1644,6 +1721,8 @@
       "remove": "Eliminar tratamiento",
       "edit": "Editar tratamiento",
       "empty": "No hay tratamientos en este presupuesto",
+      "singular": "tratamiento",
+      "plural": "tratamientos",
       "addFromCatalog": "Añadir del catálogo",
       "addFromOdontogram": "Añadir del odontograma",
       "treatment": "Tratamiento",
@@ -1758,11 +1837,29 @@
     },
     "filters": {
       "allStatuses": "Todos los estados",
+      "status": "Estado",
+      "paymentStatus": "Cobro",
+      "professional": "Profesional",
+      "validity": "Vencimiento",
+      "validityValid": "Vigente",
+      "validityExpiringSoon": "Vence en 7 días",
+      "validityExpired": "Vencido",
       "dateFrom": "Desde",
       "dateTo": "Hasta",
       "showExpired": "Mostrar caducados",
       "advanced": "Filtros avanzados",
       "clear": "Limpiar filtros"
+    },
+    "sortFields": {
+      "createdAt": "Creación",
+      "validUntil": "Vencimiento",
+      "total": "Importe",
+      "status": "Estado",
+      "budgetNumber": "Número"
+    },
+    "validity": {
+      "expired": "Vencido",
+      "expiresIn": "Vence en {days}d"
     },
     "pdf": {
       "generating": "Generando PDF...",
@@ -1963,6 +2060,37 @@
     "balance": "Pendiente",
     "balanceDue": "Saldo pendiente",
     "overdue": "Vencida",
+    "overdueDays": "Vencida {n}d",
+    "info": {
+      "issueDate": "Fecha emisión",
+      "dueDate": "Vencimiento",
+      "issuedBy": "Emitida por",
+      "createdBy": "Creada por",
+      "createdAt": "Creada",
+      "budget": "Presupuesto",
+      "creditNoteFor": "Rectificativa de"
+    },
+    "criticalBanner": {
+      "aeatRejected": {
+        "title": "AEAT rechazó esta factura",
+        "cta": "Corregir y reenviar"
+      },
+      "billingIncomplete": {
+        "title": "Datos de facturación incompletos",
+        "cta": "Completar datos"
+      }
+    },
+    "collect": {
+      "title": "Cobrar factura",
+      "submit": "Cobrar",
+      "noteAppliedToInvoice": "se imputarán a la factura.",
+      "notePendingAfter": "Quedará pendiente",
+      "noteFullySettled": "Se cobra la factura completa. Queda saldada.",
+      "noteToInvoice": "se imputan a la factura y",
+      "noteExcessToOnAccount": "quedan a cuenta del paciente.",
+      "noteInvoiceSettled": "La factura ya está cobrada.",
+      "noteToOnAccount": "se ingresarán a cuenta del paciente."
+    },
     "tooth": "Diente",
     "vat": "IVA",
     "items": "Líneas de factura",
@@ -2129,11 +2257,18 @@
     },
     "newItemsPending": "Nuevas líneas pendientes de guardar",
     "filters": {
-      "allStatuses": "Todos los estados",
-      "overdueOnly": "Solo vencidas",
+      "allStatuses": "Estado",
+      "overdueOnly": "Vencidas",
       "dateFrom": "Desde",
       "dateTo": "Hasta"
     },
+    "sortFields": {
+      "created": "Creación",
+      "issueDate": "Emisión",
+      "dueDate": "Vencimiento",
+      "total": "Importe"
+    },
+    "overdueByDays": "Vencida {days}d",
     "pdf": {
       "generating": "Generando PDF...",
       "downloadError": "Error al descargar PDF"

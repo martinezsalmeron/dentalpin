@@ -35,8 +35,11 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-BACKEND_ROOT = REPO_ROOT / "backend"
+_default_repo_root = Path(__file__).resolve().parents[2]
+_env_repo_root = os.environ.get("DENTALPIN_REPO_ROOT")
+REPO_ROOT = Path(_env_repo_root).resolve() if _env_repo_root else _default_repo_root
+_env_backend_root = os.environ.get("DENTALPIN_BACKEND_ROOT")
+BACKEND_ROOT = Path(_env_backend_root).resolve() if _env_backend_root else REPO_ROOT / "backend"
 MODULES_ROOT = BACKEND_ROOT / "app" / "modules"
 DOCS_ROOT = REPO_ROOT / "docs"
 

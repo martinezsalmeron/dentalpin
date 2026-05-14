@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added (lists redesign, 2026-05-14)
+
+- `GET /api/v1/patients` accepts new params: `patient_ids[]`, `city`,
+  `do_not_contact`, `include_archived`, `sort=field:dir` (whitelist:
+  `last_name`, `first_name`, `created_at`).
+- New slots exposed on `/patients` list page: `patients.list.filter`
+  (toolbar chip injection) and `patients.list.row.financial` (per-row
+  cell injection). Payments module registers fillers for "Con deuda"
+  toggle + debt badge.
+- List page rewritten on `DataListLayout` + `FilterBar` +
+  `useListQuery`. Card view <md, URL-synced filters, sort dropdown,
+  status/city/do-not-contact filters.
+
 - **`do_not_contact: bool` flag** added to the patient model
   (issue #62, recalls). Operational opt-out — patients with this flag
   set are excluded from the recalls call list and any future
@@ -11,6 +24,14 @@
   `PatientSummaryHero` so sibling modules (e.g. `recalls`) can
   contribute action buttons to the patient summary without modifying
   the patients module UI.
+- New slot `patient.detail.administracion.payments` exposed inside
+  `AdministrationTab` (ctx: `{ patient, patientId }`). Optional
+  sub-mode "Pagos" appears in the segmented toggle only when the slot
+  has at least one provider visible to the user — the `payments`
+  module registers a panel here. Patients module stays free of any
+  payments imports; the contract is the slot name alone. URL
+  `?adminMode=payments` falls back to `budgets` when the slot is
+  empty.
 
 - Patient detail → Administración → Presupuestos: paginated (page_size=20).
   `AdministrationTab` now owns its own paginated fetch via the shared

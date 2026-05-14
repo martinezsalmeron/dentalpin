@@ -44,7 +44,6 @@ async def _make_invoice(
         billing_tax_id="A28000000",
         subtotal=Decimal("100"),
         total=Decimal("100"),
-        balance_due=Decimal("100"),
         compliance_data=cd,
         created_by=user_id,
         issued_by=user_id,

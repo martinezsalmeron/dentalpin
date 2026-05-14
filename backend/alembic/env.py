@@ -49,9 +49,9 @@ from app.modules.billing.models import (  # noqa: F401
     Invoice,
     InvoiceHistory,
     InvoiceItem,
+    InvoicePayment,
     InvoiceSeries,
     InvoiceSeriesHistory,
-    Payment,
 )
 from app.modules.budget.models import (  # noqa: F401
     Budget,
@@ -89,6 +89,13 @@ from app.modules.patients_clinical.models import (  # noqa: F401
     Medication,
     SurgicalHistory,
     SystemicDisease,
+)
+from app.modules.payments.models import (  # noqa: F401
+    PatientEarnedEntry,
+    Payment,
+    PaymentAllocation,
+    PaymentHistory,
+    Refund,
 )
 from app.modules.recalls.models import (  # noqa: F401
     Recall,

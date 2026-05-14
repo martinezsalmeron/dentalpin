@@ -54,6 +54,15 @@ Public subset (no staff auth, 2-factor verification — ADR 0006) under
 - `odontogram.treatment.performed` — mark line items done when the
   underlying tooth treatment is performed.
 
+## Frontend slots exposed
+
+| Slot | Ctx | Consumer |
+|---|---|---|
+| `budget.detail.sidebar` | `{ budget }` | `payments` registers `BudgetPaymentsCard` (cobrado vs pendiente, "Cobrar" action). Other modules may add follow-up reminders, signature blocks, etc. |
+
+Budget never imports its slot consumers — the registry is the only
+contract.
+
 ## Lifecycle
 
 - `removable=False`. Billing depends on accepted budgets.

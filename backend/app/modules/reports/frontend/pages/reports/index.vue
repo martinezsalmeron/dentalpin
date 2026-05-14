@@ -49,7 +49,10 @@ const visibleCategories = computed(() =>
       </p>
     </div>
 
-    <!-- Report Categories Grid -->
+    <!-- Report Categories Grid. Native categories render from the
+         hardcoded list. Additional modules (e.g. payments) inject
+         their own card via the ``reports.categories`` slot — the
+         registry is the only contract; reports never imports them. -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <UCard
         v-for="category in visibleCategories"
@@ -96,6 +99,8 @@ const visibleCategories = computed(() =>
           </UButton>
         </div>
       </UCard>
+
+      <ModuleSlot name="reports.categories" :ctx="{}" />
     </div>
 
     <!-- Empty state if no permissions -->

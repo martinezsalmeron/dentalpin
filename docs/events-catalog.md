@@ -56,13 +56,15 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `odontogram.tooth.updated` | `EventType.ODONTOGRAM_TOOTH_UPDATED` | — | — |
 | `odontogram.treatment.added` | `EventType.ODONTOGRAM_TREATMENT_ADDED` | `odontogram` | — |
 | `odontogram.treatment.deleted` | `EventType.ODONTOGRAM_TREATMENT_DELETED` | `odontogram` | — |
-| `odontogram.treatment.performed` | `EventType.ODONTOGRAM_TREATMENT_PERFORMED` | `odontogram` | `budget`, `patient_timeline`, `treatment_plan` |
+| `odontogram.treatment.performed` | `EventType.ODONTOGRAM_TREATMENT_PERFORMED` | `odontogram` | `budget`, `patient_timeline`, `payments`, `treatment_plan` |
 | `odontogram.treatment.status_changed` | `EventType.ODONTOGRAM_TREATMENT_STATUS_CHANGED` | `odontogram` | — |
 | `patient.archived` | `EventType.PATIENT_ARCHIVED` | `patients` | `media`, `recalls` |
 | `patient.created` | `EventType.PATIENT_CREATED` | `patients` | `notifications` |
 | `patient.medical_updated` | `EventType.PATIENT_MEDICAL_UPDATED` | `patients_clinical` | `patient_timeline` |
 | `patient.updated` | `EventType.PATIENT_UPDATED` | `patients` | — |
-| `payment.recorded` | `EventType.PAYMENT_RECORDED` | — | — |
+| `payment.allocated` | `EventType.PAYMENT_ALLOCATED` | `payments` | — |
+| `payment.recorded` | `EventType.PAYMENT_RECORDED` | `payments` | — |
+| `payment.refunded` | `EventType.PAYMENT_REFUNDED` | `payments` | `billing` |
 | `payment.voided` | `EventType.PAYMENT_VOIDED` | — | — |
 | `recall.cancelled` | `EventType.RECALL_CANCELLED` | `recalls` | — |
 | `recall.completed` | `EventType.RECALL_COMPLETED` | `recalls` | — |
@@ -79,7 +81,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `treatment_plan.reactivated` | `EventType.TREATMENT_PLAN_REACTIVATED` | `treatment_plan` | `patient_timeline` |
 | `treatment_plan.status_changed` | `EventType.TREATMENT_PLAN_STATUS_CHANGED` | `treatment_plan` | — |
 | `treatment_plan.treatment_added` | `EventType.TREATMENT_PLAN_TREATMENT_ADDED` | `treatment_plan` | `budget` |
-| `treatment_plan.treatment_completed` | `EventType.TREATMENT_PLAN_TREATMENT_COMPLETED` | `treatment_plan` | `patient_timeline`, `recalls` |
+| `treatment_plan.treatment_completed` | `EventType.TREATMENT_PLAN_TREATMENT_COMPLETED` | `treatment_plan` | `patient_timeline`, `payments`, `recalls` |
 | `treatment_plan.treatment_removed` | `EventType.TREATMENT_PLAN_TREATMENT_REMOVED` | `treatment_plan` | `budget` |
 | `verifactu.record.rejected` | `EventType.VERIFACTU_RECORD_REJECTED` | `verifactu` | — |
 
@@ -325,7 +327,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.INVOICE_ISSUED`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/workflow.py:278`
+  - `billing` — `backend/app/modules/billing/workflow.py:277`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -333,7 +335,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.INVOICE_PAID`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/workflow.py:488`
+  - `billing` — `backend/app/modules/billing/workflow.py:461`
 - **Subscribers:**
   - `patient_timeline`
   - `verifactu`
@@ -348,7 +350,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.INVOICE_SENT`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/router.py:659`
+  - `billing` — `backend/app/modules/billing/router.py:681`
 - **Subscribers:**
   - `notifications`
 
@@ -417,38 +419,39 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_ADDED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:726`
+  - `odontogram` — `backend/app/modules/odontogram/service.py:727`
 - **Subscribers:** —
 
 ### `odontogram.treatment.deleted`
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_DELETED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:872`
+  - `odontogram` — `backend/app/modules/odontogram/service.py:883`
 - **Subscribers:** —
 
 ### `odontogram.treatment.performed`
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_PERFORMED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:826`
+  - `odontogram` — `backend/app/modules/odontogram/service.py:827`
 - **Subscribers:**
   - `budget`
   - `patient_timeline`
+  - `payments`
   - `treatment_plan`
 
 ### `odontogram.treatment.status_changed`
 
 - **Constant:** `EventType.ODONTOGRAM_TREATMENT_STATUS_CHANGED`
 - **Publishers:**
-  - `odontogram` — `backend/app/modules/odontogram/service.py:770`
+  - `odontogram` — `backend/app/modules/odontogram/service.py:771`
 - **Subscribers:** —
 
 ### `patient.archived`
 
 - **Constant:** `EventType.PATIENT_ARCHIVED`
 - **Publishers:**
-  - `patients` — `backend/app/modules/patients/service.py:142`
+  - `patients` — `backend/app/modules/patients/service.py:178`
 - **Subscribers:**
   - `media`
   - `recalls`
@@ -457,7 +460,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.PATIENT_CREATED`
 - **Publishers:**
-  - `patients` — `backend/app/modules/patients/service.py:113`
+  - `patients` — `backend/app/modules/patients/service.py:149`
 - **Subscribers:**
   - `notifications`
 
@@ -474,14 +477,30 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.PATIENT_UPDATED`
 - **Publishers:**
-  - `patients` — `backend/app/modules/patients/service.py:131`
+  - `patients` — `backend/app/modules/patients/service.py:167`
+- **Subscribers:** —
+
+### `payment.allocated`
+
+- **Constant:** `EventType.PAYMENT_ALLOCATED`
+- **Publishers:**
+  - `payments` — `backend/app/modules/payments/workflow.py:72`
 - **Subscribers:** —
 
 ### `payment.recorded`
 
 - **Constant:** `EventType.PAYMENT_RECORDED`
-- **Publishers:** _none in tree — declared but unused_
+- **Publishers:**
+  - `payments` — `backend/app/modules/payments/workflow.py:168`
 - **Subscribers:** —
+
+### `payment.refunded`
+
+- **Constant:** `EventType.PAYMENT_REFUNDED`
+- **Publishers:**
+  - `payments` — `backend/app/modules/payments/workflow.py:324`
+- **Subscribers:**
+  - `billing`
 
 ### `payment.voided`
 
@@ -616,6 +635,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
   - `treatment_plan` — `backend/app/modules/treatment_plan/service.py:700`
 - **Subscribers:**
   - `patient_timeline`
+  - `payments`
   - `recalls`
 
 ### `treatment_plan.treatment_removed`

@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from app.core.plugins import BaseModule
 
-from .models import Invoice, InvoiceHistory, InvoiceItem, InvoiceSeries, Payment
+from .models import Invoice, InvoiceHistory, InvoiceItem, InvoicePayment, InvoiceSeries
 from .router import router
 
 
@@ -28,7 +28,7 @@ class BillingModule(BaseModule):
         "author": "DentalPin Core Team",
         "license": "BSL-1.1",
         "category": "official",
-        "depends": ["patients", "catalog", "budget"],
+        "depends": ["patients", "catalog", "budget", "payments"],
         "installable": True,
         "auto_install": True,
         "removable": False,
@@ -54,7 +54,7 @@ class BillingModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [InvoiceSeries, Invoice, InvoiceItem, Payment, InvoiceHistory]
+        return [InvoiceSeries, Invoice, InvoiceItem, InvoicePayment, InvoiceHistory]
 
     def get_router(self) -> APIRouter:
         return router
@@ -71,4 +71,13 @@ class BillingModule(BaseModule):
         # was orphaned. Removed alongside the ``BudgetWorkflowService.complete_budget``
         # path. Re-add a subscription here when invoices need to react
         # to budget lifecycle events again.
-        return {}
+        from app.core.events import EventType
+
+        from .events import on_payment_refunded
+
+        return {
+            # When a Payment is refunded, recompute affected invoices'
+            # status so paid → partial / partial → issued transitions
+            # happen without billing owning the payment row.
+            EventType.PAYMENT_REFUNDED: on_payment_refunded,
+        }

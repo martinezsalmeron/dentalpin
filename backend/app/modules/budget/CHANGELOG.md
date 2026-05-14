@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added (lists redesign, 2026-05-14)
+
+- `GET /api/v1/budget/budgets` accepts new params: `budget_ids[]`,
+  `assigned_professional_id`, `valid_until_before`, `valid_until_after`,
+  `sort=field:dir` (whitelist: `created_at`, `valid_until`, `total`,
+  `status`, `budget_number`).
+- New slots exposed on the /budgets list page: `budget.list.filter`
+  (toolbar) and `budget.list.row.payments` (per-row cell). Payments
+  module registers fillers for the "Cobro" multi-select chip and
+  the collected/pending mini-progress bar — no cross-module imports.
+- List page rewritten on `DataListLayout` + `FilterBar` +
+  `useListQuery`. Card view <md, URL-synced filters, sort dropdown,
+  filters for status, professional autocomplete, validity preset,
+  date range, and payment status (cross-module via slot).
+
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 
 ### Added (signed PDF, 2026-04-28)

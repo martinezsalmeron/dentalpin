@@ -2399,19 +2399,28 @@ def generate_invoice_series_data() -> list[dict]:
 def generate_invoices_data(catalog_items_map: dict[str, dict], budgets_result: dict) -> dict:
     """Build Invoice + InvoiceItem + Payment rows anchored to budgets.
 
-    Every invoice references its journey's budget, and every InvoiceItem links back
-    to the BudgetItem it invoices (budget_item_id). The generator also returns the
-    aggregate invoiced quantity per BudgetItem so callers can update
-    BudgetItem.invoiced_quantity in the database.
+    After the payments-module extraction (issue #53, ADR 0010) the
+    Payment model lives outside billing. Each invoice that records
+    payments now produces three correlated rows:
+
+    - ``Payment`` (patient-centric, currency snapshot, ``on_account``
+      allocation that the InvoicePayment immediately "consumes")
+    - ``PaymentAllocation(target='on_account')``
+    - ``InvoicePayment`` link row binding the payment to the invoice
 
     Returns dict with:
-      series, invoices, items, payments
+      series, invoices, items, payments, payment_allocations,
+      invoice_payments
       invoiced_quantity_by_budget_item: {budget_item_id: total_qty}
     """
+    import uuid
+
     patients_data = get_patients_data()
     invoices: list[dict] = []
     items: list[dict] = []
     payments: list[dict] = []
+    payment_allocations: list[dict] = []
+    invoice_payments: list[dict] = []
     invoiced_quantity: dict = {}
 
     invoice_idx = 0
@@ -2510,21 +2519,44 @@ def generate_invoices_data(catalog_items_map: dict[str, dict], budgets_result: d
             payment_idx += 1
             amount = (total * Decimal(str(payment_data["percent"]))) / 100
             total_paid += amount
+            pay_date = issue_date + timedelta(days=3) if issue_date else date.today()
             payments.append(
                 {
                     "id": payment_id,
                     "clinic_id": CLINIC_ID,
-                    "invoice_id": invoice_id,
+                    "patient_id": patient["id"],
                     "amount": amount,
-                    "payment_method": payment_data["method"],
-                    "payment_date": issue_date + timedelta(days=3) if issue_date else date.today(),
+                    "currency": "EUR",
+                    "method": payment_data["method"],
+                    "payment_date": pay_date,
                     "reference": f"REF-{payment_idx:04d}",
                     "notes": None,
                     "recorded_by": USER_RECEPTIONIST_ID,
-                    "is_voided": False,
-                    "voided_at": None,
-                    "voided_by": None,
-                    "void_reason": None,
+                }
+            )
+            # Each payment carries one on_account allocation so the
+            # invariant Σ allocation.amount == payment.amount holds.
+            # The InvoicePayment link rides on top — that's how billing
+            # imputes the cobro without payments knowing about invoices.
+            payment_allocations.append(
+                {
+                    "id": uuid.uuid4(),
+                    "clinic_id": CLINIC_ID,
+                    "payment_id": payment_id,
+                    "target_type": "on_account",
+                    "budget_id": None,
+                    "amount": amount,
+                    "created_by": USER_RECEPTIONIST_ID,
+                }
+            )
+            invoice_payments.append(
+                {
+                    "id": uuid.uuid4(),
+                    "clinic_id": CLINIC_ID,
+                    "invoice_id": invoice_id,
+                    "payment_id": payment_id,
+                    "amount": amount,
+                    "created_by": USER_RECEPTIONIST_ID,
                 }
             )
 
@@ -2550,8 +2582,6 @@ def generate_invoices_data(catalog_items_map: dict[str, dict], budgets_result: d
                 "total_discount": Decimal("0.00"),
                 "total_tax": total_tax,
                 "total": total,
-                "total_paid": total_paid,
-                "balance_due": total - total_paid,
                 "internal_notes": t(invoice_scenario["notes"])
                 if invoice_scenario.get("notes")
                 else None,
@@ -2571,5 +2601,7 @@ def generate_invoices_data(catalog_items_map: dict[str, dict], budgets_result: d
         "invoices": invoices,
         "items": items,
         "payments": payments,
+        "payment_allocations": payment_allocations,
+        "invoice_payments": invoice_payments,
         "invoiced_quantity_by_budget_item": invoiced_quantity,
     }

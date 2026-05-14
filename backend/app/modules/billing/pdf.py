@@ -44,6 +44,8 @@ class InvoicePDFService:
         is_preview: bool = False,
         locale: str = "es",
         extra_pdf_data: dict | None = None,
+        total_paid: Decimal | None = None,
+        balance_due: Decimal | None = None,
     ) -> bytes:
         """Generate PDF for an invoice.
 
@@ -62,9 +64,17 @@ class InvoicePDFService:
         Returns:
             PDF content as bytes
         """
-        # Generate HTML content
+        # Generate HTML content. ``total_paid`` / ``balance_due`` are
+        # computed by callers (billing service) since they are no longer
+        # stored on Invoice.
         html_content = InvoicePDFService._generate_html(
-            invoice, clinic, is_preview, locale, extra_pdf_data or {}
+            invoice,
+            clinic,
+            is_preview,
+            locale,
+            extra_pdf_data or {},
+            total_paid=total_paid or Decimal("0"),
+            balance_due=balance_due if balance_due is not None else invoice.total,
         )
 
         # Convert to PDF
@@ -84,6 +94,8 @@ class InvoicePDFService:
         is_preview: bool,
         locale: str,
         extra_pdf_data: dict | None = None,
+        total_paid: Decimal = Decimal("0"),
+        balance_due: Decimal | None = None,
     ) -> str:
         """Generate HTML content for the invoice."""
         extra = extra_pdf_data or {}
@@ -556,20 +568,20 @@ class InvoicePDFService:
             f'''
                         <tr>
                             <td class="label paid">{labels["total_paid"]}:</td>
-                            <td class="value paid">{format_currency(invoice.total_paid)}</td>
+                            <td class="value paid">{format_currency(total_paid)}</td>
                         </tr>
                         '''
-            if invoice.total_paid > 0
+            if total_paid > 0
             else ""
         }
                         {
             f'''
                         <tr>
                             <td class="label balance-due">{labels["balance_due"]}:</td>
-                            <td class="value balance-due">{format_currency(invoice.balance_due)}</td>
+                            <td class="value balance-due">{format_currency(balance_due if balance_due is not None else invoice.total)}</td>
                         </tr>
                         '''
-            if invoice.balance_due > 0
+            if (balance_due if balance_due is not None else invoice.total) > 0
             else ""
         }
                     </table>

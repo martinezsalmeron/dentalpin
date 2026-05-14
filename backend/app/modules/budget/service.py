@@ -8,9 +8,23 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.core.list_query import parse_sort
 from app.modules.catalog.models import TreatmentCatalogItem, VatType
 
 from .models import Budget, BudgetHistory, BudgetItem
+
+# Public sort field → SQL column. ``payment_status`` is intentionally
+# absent — that sort would require joining payments which violates
+# budget's depends list. The frontend handles it in two steps when
+# active.
+_SORT_ALLOW = {
+    "created_at": Budget.created_at,
+    "valid_until": Budget.valid_until,
+    "total": Budget.total,
+    "status": Budget.status,
+    "budget_number": Budget.budget_number,
+}
+_SORT_DEFAULT = "created_at:desc"
 
 
 def _serialize_for_json(data: dict | None) -> dict | None:
@@ -200,10 +214,25 @@ class BudgetService:
         date_to: date | None = None,
         expired: bool | None = None,
         search: str | None = None,
+        *,
+        budget_ids: list[UUID] | None = None,
+        assigned_professional_id: UUID | None = None,
+        valid_until_before: date | None = None,
+        valid_until_after: date | None = None,
+        sort: str | None = None,
     ) -> tuple[list[Budget], int]:
-        """List budgets with filtering and pagination."""
+        """List budgets with filtering and pagination.
+
+        ``budget_ids`` is the cross-module intersection vector (e.g. the
+        payments module returns the budget ids matching a payment-status
+        filter; we intersect here). Empty list short-circuits to zero.
+        """
         page_size = min(max(page_size, 1), 100)
         offset = (page - 1) * page_size
+
+        # Empty intersection set → no rows.
+        if budget_ids is not None and not budget_ids:
+            return [], 0
 
         # Base query with eager loading
         query = (
@@ -215,10 +244,14 @@ class BudgetService:
             .options(
                 joinedload(Budget.patient),
                 joinedload(Budget.creator),
+                joinedload(Budget.assigned_professional),
             )
         )
 
         # Apply filters
+        if budget_ids:
+            query = query.where(Budget.id.in_(budget_ids))
+
         if patient_id:
             query = query.where(Budget.patient_id == patient_id)
 
@@ -228,6 +261,9 @@ class BudgetService:
         if created_by:
             query = query.where(Budget.created_by == created_by)
 
+        if assigned_professional_id:
+            query = query.where(Budget.assigned_professional_id == assigned_professional_id)
+
         if date_from:
             query = query.where(
                 Budget.created_at >= datetime.combine(date_from, datetime.min.time())
@@ -235,6 +271,12 @@ class BudgetService:
 
         if date_to:
             query = query.where(Budget.created_at <= datetime.combine(date_to, datetime.max.time()))
+
+        if valid_until_before:
+            query = query.where(Budget.valid_until <= valid_until_before)
+
+        if valid_until_after:
+            query = query.where(Budget.valid_until >= valid_until_after)
 
         if expired is not None:
             today = date.today()
@@ -283,7 +325,11 @@ class BudgetService:
         total = (await db.execute(count_query)).scalar() or 0
 
         # Apply pagination and ordering
-        query = query.order_by(Budget.created_at.desc()).offset(offset).limit(page_size)
+        query = (
+            query.order_by(parse_sort(sort, _SORT_ALLOW, _SORT_DEFAULT))
+            .offset(offset)
+            .limit(page_size)
+        )
 
         result = await db.execute(query)
         budgets = result.unique().scalars().all()
