@@ -11,7 +11,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | Module | Version | Category | Depends | Install | Removable | Permissions | Emits | Consumes | FE layer |
 |--------|---------|----------|---------|---------|-----------|-------------|-------|----------|----------|
 | `agenda` | 0.4.0 | official | patients, catalog | auto | no | 4 | 5 | 0 | yes |
-| `billing` | 0.1.0 | official | patients, catalog, budget | auto | no | 3 | 3 | 0 | yes |
+| `billing` | 0.1.0 | official | patients, catalog, budget, payments | auto | no | 3 | 3 | 1 | yes |
 | `budget` | 0.1.0 | official | patients, catalog, odontogram | auto | no | 5 | 7 | 4 | yes |
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 0 | yes |
 | `clinical_notes` | 0.2.0 | official | patients, odontogram, treatment_plan, media | auto | no | 2 | 0 | 0 | yes |
@@ -21,8 +21,9 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 34 | yes |
 | `patients` | 0.1.0 | official | — | auto | no | 2 | 3 | 0 | yes |
 | `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 2 | 0 | yes |
+| `payments` | 0.1.0 | official | patients, budget | auto | no | 4 | 3 | 2 | yes |
 | `recalls` | 0.1.0 | official | patients, agenda | auto | yes | 3 | 4 | 5 | yes |
-| `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing | auto | no | 3 | 0 | 0 | yes |
+| `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing, payments | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
 | `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 21 | 5 | yes |
 | `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 1 | 1 | yes |
@@ -51,7 +52,7 @@ Appointments, scheduling, cabinets.
   - `appointment.status_changed`
   - `appointment.updated`
 - **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/agenda/CLAUDE.md`](../backend/app/modules/agenda/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/agenda/CLAUDE.md`](../app/modules/agenda/CLAUDE.md)
 
 ### `billing` — v0.1.0
 
@@ -61,7 +62,7 @@ Invoices, payments, credit notes, PDF billing.
 - **License:** BSL-1.1
 - **Category:** official
 - **Install policy:** installable=True · auto_install=True · removable=False
-- **Depends:** `patients`, `catalog`, `budget`
+- **Depends:** `patients`, `catalog`, `budget`, `payments`
 - **Frontend layer:** `frontend`
 - **Permissions:**
   - `billing.admin`
@@ -71,8 +72,9 @@ Invoices, payments, credit notes, PDF billing.
   - `invoice.issued`
   - `invoice.paid`
   - `invoice.sent`
-- **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/billing/CLAUDE.md`](../backend/app/modules/billing/CLAUDE.md)
+- **Events consumed:**
+  - `payment.refunded`
+- **Module CLAUDE.md:** [`app/modules/billing/CLAUDE.md`](../app/modules/billing/CLAUDE.md)
 
 ### `budget` — v0.1.0
 
@@ -103,7 +105,7 @@ Dental treatment quotes, versioning, signatures.
   - `treatment_plan.budget_sync_requested`
   - `treatment_plan.treatment_added`
   - `treatment_plan.treatment_removed`
-- **Module CLAUDE.md:** [`backend/app/modules/budget/CLAUDE.md`](../backend/app/modules/budget/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/budget/CLAUDE.md`](../app/modules/budget/CLAUDE.md)
 
 ### `catalog` — v0.1.0
 
@@ -121,7 +123,7 @@ Treatment catalog, categories, VAT types.
   - `catalog.write`
 - **Events emitted:** —
 - **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/catalog/CLAUDE.md`](../backend/app/modules/catalog/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/catalog/CLAUDE.md`](../app/modules/catalog/CLAUDE.md)
 
 ### `clinical_notes` — v0.2.0
 
@@ -138,7 +140,7 @@ Polymorphic clinical notes (administrative, diagnosis, treatment, treatment plan
   - `clinical_notes.notes.write`
 - **Events emitted:** —
 - **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/clinical_notes/CLAUDE.md`](../backend/app/modules/clinical_notes/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/clinical_notes/CLAUDE.md`](../app/modules/clinical_notes/CLAUDE.md)
 
 ### `media` — v0.2.0
 
@@ -165,7 +167,7 @@ Patient documents, photos, X-rays + polymorphic attachments.
   - `media.photo_uploaded`
 - **Events consumed:**
   - `patient.archived`
-- **Module CLAUDE.md:** [`backend/app/modules/media/CLAUDE.md`](../backend/app/modules/media/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/media/CLAUDE.md`](../app/modules/media/CLAUDE.md)
 
 ### `notifications` — v0.1.0
 
@@ -194,7 +196,7 @@ Email templates, preferences, SMTP, event-driven sending.
   - `budget.sent`
   - `invoice.sent`
   - `patient.created`
-- **Module CLAUDE.md:** [`backend/app/modules/notifications/CLAUDE.md`](../backend/app/modules/notifications/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/notifications/CLAUDE.md`](../app/modules/notifications/CLAUDE.md)
 
 ### `odontogram` — v0.3.0
 
@@ -217,7 +219,7 @@ Dental charting, tooth state, clinical treatments.
   - `odontogram.treatment.performed`
   - `odontogram.treatment.status_changed`
 - **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/odontogram/CLAUDE.md`](../backend/app/modules/odontogram/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/odontogram/CLAUDE.md`](../app/modules/odontogram/CLAUDE.md)
 
 ### `patient_timeline` — v0.1.0
 
@@ -267,7 +269,7 @@ Patient timeline — unified activity log.
   - `treatment_plan.item_completed_without_note`
   - `treatment_plan.reactivated`
   - `treatment_plan.treatment_completed`
-- **Module CLAUDE.md:** [`backend/app/modules/patient_timeline/CLAUDE.md`](../backend/app/modules/patient_timeline/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/patient_timeline/CLAUDE.md`](../app/modules/patient_timeline/CLAUDE.md)
 
 ### `patients` — v0.1.0
 
@@ -287,7 +289,7 @@ Patient identity: name, contact, demographics, status.
   - `patient.created`
   - `patient.updated`
 - **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/patients/CLAUDE.md`](../backend/app/modules/patients/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/patients/CLAUDE.md`](../app/modules/patients/CLAUDE.md)
 
 ### `patients_clinical` — v0.1.0
 
@@ -307,7 +309,31 @@ Normalized medical history, allergies, medications, emergency contacts.
 - **Events emitted:**
   - `patient.medical_updated`
 - **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/patients_clinical/CLAUDE.md`](../backend/app/modules/patients_clinical/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/patients_clinical/CLAUDE.md`](../app/modules/patients_clinical/CLAUDE.md)
+
+### `payments` — v0.1.0
+
+Patient-centric collections, allocations to budgets / on-account, refunds, patient ledger, and dental payment reports.
+
+- **Author:** DentalPin Core Team
+- **License:** BSL-1.1
+- **Category:** official
+- **Install policy:** installable=True · auto_install=True · removable=False
+- **Depends:** `patients`, `budget`
+- **Frontend layer:** `frontend`
+- **Permissions:**
+  - `payments.record.read`
+  - `payments.record.refund`
+  - `payments.record.write`
+  - `payments.reports.read`
+- **Events emitted:**
+  - `payment.allocated`
+  - `payment.recorded`
+  - `payment.refunded`
+- **Events consumed:**
+  - `odontogram.treatment.performed`
+  - `treatment_plan.treatment_completed`
+- **Module CLAUDE.md:** [`app/modules/payments/CLAUDE.md`](../app/modules/payments/CLAUDE.md)
 
 ### `recalls` — v0.1.0
 
@@ -334,7 +360,7 @@ Patient recalls: schedule call-backs, work the monthly call list, log attempts, 
   - `appointment.scheduled`
   - `patient.archived`
   - `treatment_plan.treatment_completed`
-- **Module CLAUDE.md:** [`backend/app/modules/recalls/CLAUDE.md`](../backend/app/modules/recalls/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/recalls/CLAUDE.md`](../app/modules/recalls/CLAUDE.md)
 
 ### `reports` — v0.1.0
 
@@ -344,7 +370,7 @@ Cross-module reporting: billing, budgets, scheduling.
 - **License:** BSL-1.1
 - **Category:** official
 - **Install policy:** installable=True · auto_install=True · removable=False
-- **Depends:** `patients`, `agenda`, `catalog`, `budget`, `billing`
+- **Depends:** `patients`, `agenda`, `catalog`, `budget`, `billing`, `payments`
 - **Frontend layer:** `frontend`
 - **Permissions:**
   - `reports.billing.read`
@@ -352,7 +378,7 @@ Cross-module reporting: billing, budgets, scheduling.
   - `reports.scheduling.read`
 - **Events emitted:** —
 - **Events consumed:** —
-- **Module CLAUDE.md:** [`backend/app/modules/reports/CLAUDE.md`](../backend/app/modules/reports/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/reports/CLAUDE.md`](../app/modules/reports/CLAUDE.md)
 
 ### `schedules` — v0.1.0
 
@@ -378,7 +404,7 @@ Clinic + professional operating hours, overrides, availability, and occupancy an
   - `appointment.cancelled`
   - `appointment.scheduled`
   - `appointment.updated`
-- **Module CLAUDE.md:** [`backend/app/modules/schedules/CLAUDE.md`](../backend/app/modules/schedules/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/schedules/CLAUDE.md`](../app/modules/schedules/CLAUDE.md)
 
 ### `treatment_plan` — v0.1.0
 
@@ -414,7 +440,7 @@ Patient treatment plans with budget + odontogram sync.
   - `budget.rejected`
   - `budget.renegotiated`
   - `odontogram.treatment.performed`
-- **Module CLAUDE.md:** [`backend/app/modules/treatment_plan/CLAUDE.md`](../backend/app/modules/treatment_plan/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/treatment_plan/CLAUDE.md`](../app/modules/treatment_plan/CLAUDE.md)
 
 ### `verifactu` — v0.1.0
 
@@ -436,4 +462,4 @@ Cumplimiento Veri*Factu (AEAT) para clínicas en España.
   - `verifactu.record.rejected`
 - **Events consumed:**
   - `invoice.paid`
-- **Module CLAUDE.md:** [`backend/app/modules/verifactu/CLAUDE.md`](../backend/app/modules/verifactu/CLAUDE.md)
+- **Module CLAUDE.md:** [`app/modules/verifactu/CLAUDE.md`](../app/modules/verifactu/CLAUDE.md)
