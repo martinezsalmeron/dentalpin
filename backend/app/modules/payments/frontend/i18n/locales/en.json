@@ -9,10 +9,35 @@
       "subtitle": "Patient payments, budget anticipos and on-account credit.",
       "empty": "No payments recorded.",
       "new": "New payment",
+      "searchPlaceholder": "Patient or reference",
       "filterDateFrom": "From",
       "filterDateTo": "To",
       "filterMethod": "Method",
       "filterPatient": "Patient",
+      "filter": {
+        "method": "Method",
+        "hasRefunds": "With refunds",
+        "hasUnallocated": "Unallocated",
+        "patient": "Patient",
+        "withDebt": "With debt",
+        "paymentStatus": "Status"
+      },
+      "sort": {
+        "paymentDate": "Date",
+        "amount": "Amount"
+      },
+      "budgetStatus": {
+        "paid": "Paid",
+        "partial": "Partial",
+        "unpaid": "Unpaid"
+      },
+      "row": {
+        "debtTooltip": "Patient outstanding balance",
+        "creditTooltip": "Patient credit balance",
+        "allocationsLabel": "Allocation",
+        "refundedLabel": "Refunded",
+        "noPatient": "No patient"
+      },
       "columnDate": "Date",
       "columnPatient": "Patient",
       "columnAmount": "Amount",
@@ -120,6 +145,54 @@
       "noteExcessToOnAccount": "to patient on-account credit.",
       "noteBudgetSettled": "Budget is already paid in full.",
       "noteToOnAccount": "go to patient on-account credit."
+    },
+    "patientPanel": {
+      "title": "Patient ledger",
+      "kpis": {
+        "totalPaid": "Total paid",
+        "debt": "Clinic receivable",
+        "onAccount": "On account"
+      },
+      "sidebar": {
+        "title": "Summary",
+        "credit": "Patient credit",
+        "lastPayment": "Last payment",
+        "noLastPayment": "No payments yet",
+        "totalEarned": "Treatment performed"
+      },
+      "banner": {
+        "debtTitle": "Owes {amount} to the clinic",
+        "debtDescription": "Total paid is below treatment performed.",
+        "creditTitle": "Has {amount} in credit",
+        "creditDescription": "Paid above treatment performed."
+      },
+      "cobrar": "Record payment",
+      "timeline": {
+        "title": "Movements",
+        "empty": "No movements recorded",
+        "emptyCta": "Record first payment",
+        "loadError": "Could not load patient ledger.",
+        "retry": "Retry",
+        "types": {
+          "payment": "Payment",
+          "refund": "Refund",
+          "earned": "Treatment performed"
+        },
+        "rowMenu": {
+          "detail": "View detail",
+          "refund": "Refund"
+        }
+      },
+      "refundModal": {
+        "title": "Refund payment",
+        "amount": "Refund amount",
+        "method": "Refund method",
+        "reason": "Reason",
+        "note": "Details (optional)",
+        "submit": "Confirm refund",
+        "cancel": "Cancel",
+        "errorGeneric": "Could not record the refund"
+      }
     },
     "reports": {
       "title": "Payment reports",

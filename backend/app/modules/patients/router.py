@@ -49,9 +49,30 @@ async def list_patients(
     search: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    patient_ids: list[UUID] | None = Query(default=None),
+    city: str | None = Query(default=None, max_length=100),
+    do_not_contact: bool | None = Query(default=None),
+    include_archived: bool = Query(default=False),
+    sort: str | None = Query(default=None, max_length=50),
 ) -> PaginatedApiResponse[PatientResponse]:
-    """List patients with optional search."""
-    patients, total = await PatientService.list_patients(db, ctx.clinic_id, search, page, page_size)
+    """List patients with optional search + filters.
+
+    ``patient_ids`` is the intersection vector used by cross-module
+    filters such as "with debt > 0" (resolved server-side by the
+    payments module, then passed in here).
+    """
+    patients, total = await PatientService.list_patients(
+        db,
+        ctx.clinic_id,
+        search,
+        page,
+        page_size,
+        patient_ids=patient_ids,
+        city=city,
+        do_not_contact=do_not_contact,
+        include_archived=include_archived,
+        sort=sort,
+    )
     return PaginatedApiResponse(
         data=[PatientResponse.model_validate(p) for p in patients],
         total=total,

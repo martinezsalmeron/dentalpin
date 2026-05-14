@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import desc, func, select
@@ -20,6 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.core.auth.models import User
+from app.core.list_query import parse_sort
+from app.modules.budget.models import Budget
 
 from .models import (
     PatientEarnedEntry,
@@ -30,15 +33,30 @@ from .models import (
 from .schemas import (
     AgingBucket,
     AgingBuckets,
+    BudgetSummaryByIds,
     LedgerEntry,
     MethodBreakdown,
     PatientLedger,
+    PatientSummaryByIds,
     PaymentsSummary,
     PaymentsTrends,
     ProfessionalBreakdown,
     RefundsReport,
     TrendPoint,
 )
+
+# Public sort fields for /payments list. amount + date are the two real
+# use cases; everything else is too noisy to be useful in a list.
+_PAYMENT_SORT_ALLOW = {
+    "payment_date": Payment.payment_date,
+    "amount": Payment.amount,
+    "created_at": Payment.created_at,
+}
+_PAYMENT_SORT_DEFAULT = "payment_date:desc"
+
+# Caps for the cross-module filter endpoints. Keep in sync with the
+# contract in docs/technical/payments/cross-module-summaries.md.
+_FILTER_IDS_CAP = 1000
 
 
 class PaymentService:
@@ -55,6 +73,11 @@ class PaymentService:
         patient_id: UUID | None = None,
         page: int = 1,
         page_size: int = 20,
+        has_refunds: bool | None = None,
+        has_unallocated: bool | None = None,
+        amount_min: Decimal | None = None,
+        amount_max: Decimal | None = None,
+        sort: str | None = None,
     ) -> tuple[list[Payment], int]:
         filters = [Payment.clinic_id == clinic_id]
         if date_from is not None:
@@ -65,6 +88,28 @@ class PaymentService:
             filters.append(Payment.method == method)
         if patient_id:
             filters.append(Payment.patient_id == patient_id)
+        if amount_min is not None:
+            filters.append(Payment.amount >= amount_min)
+        if amount_max is not None:
+            filters.append(Payment.amount <= amount_max)
+
+        if has_refunds is not None:
+            refund_exists = select(Refund.id).where(Refund.payment_id == Payment.id).exists()
+            filters.append(refund_exists if has_refunds else ~refund_exists)
+
+        if has_unallocated is not None:
+            # "unallocated" semantically means: at least one allocation
+            # targets ``on_account``. The on_account balance is
+            # reassignable, so it counts as not-yet-bound work.
+            on_account_exists = (
+                select(PaymentAllocation.id)
+                .where(
+                    PaymentAllocation.payment_id == Payment.id,
+                    PaymentAllocation.target_type == "on_account",
+                )
+                .exists()
+            )
+            filters.append(on_account_exists if has_unallocated else ~on_account_exists)
 
         total_result = await db.execute(select(func.count(Payment.id)).where(*filters))
         total = total_result.scalar() or 0
@@ -79,7 +124,10 @@ class PaymentService:
                 joinedload(Payment.recorder),
                 joinedload(Payment.patient),
             )
-            .order_by(desc(Payment.payment_date), desc(Payment.created_at))
+            .order_by(
+                parse_sort(sort, _PAYMENT_SORT_ALLOW, _PAYMENT_SORT_DEFAULT),
+                desc(Payment.created_at),
+            )
             .offset(offset)
             .limit(page_size)
         )
@@ -137,6 +185,284 @@ class PaymentReadService:
             )
         )
         return result.scalar_one()
+
+    # --- Cross-module bulk summaries (for /budgets and /patients lists) ---
+    #
+    # These are read-only, off-books-safe aggregates other modules' list
+    # pages consume via slot fillers. The hosting modules never import
+    # payments — they only know the slot name + the endpoint shape. See
+    # docs/technical/payments/cross-module-summaries.md for contract.
+
+    @staticmethod
+    async def summaries_by_budgets(
+        db: AsyncSession,
+        clinic_id: UUID,
+        budget_ids: list[UUID],
+    ) -> dict[UUID, BudgetSummaryByIds]:
+        """Bulk collected/pending/payment_status per budget id.
+
+        Pure payments axis: ``collected = Σ allocation.amount`` to this
+        budget; ``pending = max(0, budget.total - collected)``. Never
+        compared to invoiced totals (off-books safe).
+        """
+        if not budget_ids:
+            return {}
+
+        # Per-budget sum of allocations
+        alloc_rows = await db.execute(
+            select(
+                PaymentAllocation.budget_id,
+                func.coalesce(func.sum(PaymentAllocation.amount), Decimal("0")),
+            )
+            .where(
+                PaymentAllocation.clinic_id == clinic_id,
+                PaymentAllocation.target_type == "budget",
+                PaymentAllocation.budget_id.in_(budget_ids),
+            )
+            .group_by(PaymentAllocation.budget_id)
+        )
+        collected_per_budget: dict[UUID, Decimal] = {row[0]: row[1] for row in alloc_rows.all()}
+
+        # Per-budget total_with_tax. ``Budget.total`` is the post-discount
+        # tax-inclusive total in this codebase (see budget/models.py
+        # comment and PDF service). Reads from budgets table — legal
+        # because ``payments.depends`` includes ``budget``.
+        budget_rows = await db.execute(
+            select(Budget.id, Budget.total).where(
+                Budget.clinic_id == clinic_id,
+                Budget.id.in_(budget_ids),
+                Budget.deleted_at.is_(None),
+            )
+        )
+        out: dict[UUID, BudgetSummaryByIds] = {}
+        for budget_id, total in budget_rows.all():
+            total_dec = Decimal(total or 0)
+            collected = collected_per_budget.get(budget_id, Decimal("0"))
+            if collected <= 0:
+                status_: Literal["unpaid", "partial", "paid"] = "unpaid"
+            elif collected >= total_dec and total_dec > 0:
+                status_ = "paid"
+            else:
+                status_ = "partial"
+            pending = max(Decimal("0"), total_dec - collected)
+            out[budget_id] = BudgetSummaryByIds(
+                collected=collected,
+                pending=pending,
+                payment_status=status_,
+            )
+        return out
+
+    @staticmethod
+    async def summaries_by_patients(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_ids: list[UUID],
+    ) -> dict[UUID, PatientSummaryByIds]:
+        """Bulk total_paid/debt/on_account_balance per patient id.
+
+        Mirrors ``LedgerService.get_patient_ledger`` aggregation but in
+        bulk and without the timeline. ``debt = max(0, earned − net_paid)``
+        — never compared to invoiced totals.
+        """
+        if not patient_ids:
+            return {}
+
+        paid_rows = await db.execute(
+            select(
+                Payment.patient_id,
+                func.coalesce(func.sum(Payment.amount), Decimal("0")),
+            )
+            .where(Payment.clinic_id == clinic_id, Payment.patient_id.in_(patient_ids))
+            .group_by(Payment.patient_id)
+        )
+        paid_per_patient: dict[UUID, Decimal] = dict(paid_rows.all())
+
+        refunded_rows = await db.execute(
+            select(
+                Payment.patient_id,
+                func.coalesce(func.sum(Refund.amount), Decimal("0")),
+            )
+            .join(Refund, Refund.payment_id == Payment.id)
+            .where(Payment.clinic_id == clinic_id, Payment.patient_id.in_(patient_ids))
+            .group_by(Payment.patient_id)
+        )
+        refunded_per_patient: dict[UUID, Decimal] = dict(refunded_rows.all())
+
+        earned_rows = await db.execute(
+            select(
+                PatientEarnedEntry.patient_id,
+                func.coalesce(func.sum(PatientEarnedEntry.amount), Decimal("0")),
+            )
+            .where(
+                PatientEarnedEntry.clinic_id == clinic_id,
+                PatientEarnedEntry.patient_id.in_(patient_ids),
+            )
+            .group_by(PatientEarnedEntry.patient_id)
+        )
+        earned_per_patient: dict[UUID, Decimal] = dict(earned_rows.all())
+
+        on_account_rows = await db.execute(
+            select(
+                Payment.patient_id,
+                func.coalesce(func.sum(PaymentAllocation.amount), Decimal("0")),
+            )
+            .join(Payment, Payment.id == PaymentAllocation.payment_id)
+            .where(
+                Payment.clinic_id == clinic_id,
+                Payment.patient_id.in_(patient_ids),
+                PaymentAllocation.target_type == "on_account",
+            )
+            .group_by(Payment.patient_id)
+        )
+        on_account_per_patient: dict[UUID, Decimal] = dict(on_account_rows.all())
+
+        out: dict[UUID, PatientSummaryByIds] = {}
+        for pid in patient_ids:
+            paid = paid_per_patient.get(pid, Decimal("0"))
+            refunded = refunded_per_patient.get(pid, Decimal("0"))
+            earned = earned_per_patient.get(pid, Decimal("0"))
+            net_paid = paid - refunded
+            debt = max(Decimal("0"), earned - net_paid)
+            out[pid] = PatientSummaryByIds(
+                total_paid=net_paid,
+                debt=debt,
+                on_account_balance=on_account_per_patient.get(pid, Decimal("0")),
+            )
+        return out
+
+    @staticmethod
+    async def budget_ids_by_payment_status(
+        db: AsyncSession,
+        clinic_id: UUID,
+        statuses: list[Literal["unpaid", "partial", "paid"]],
+        *,
+        patient_id: UUID | None = None,
+        assigned_professional_id: UUID | None = None,
+        cap: int = _FILTER_IDS_CAP,
+    ) -> tuple[list[UUID], bool]:
+        """Return budget ids whose payment status is in ``statuses``.
+
+        Reads ``Budget.total`` (legal cross-read since budget ∈
+        payments.depends) and ``PaymentAllocation`` and combines them
+        per budget. Off-books safe: never touches invoice tables.
+        """
+        if not statuses:
+            return [], False
+
+        # Per-budget collected, joined to budgets for total + filters.
+        alloc_subq = (
+            select(
+                PaymentAllocation.budget_id.label("budget_id"),
+                func.coalesce(func.sum(PaymentAllocation.amount), Decimal("0")).label("collected"),
+            )
+            .where(
+                PaymentAllocation.clinic_id == clinic_id,
+                PaymentAllocation.target_type == "budget",
+                PaymentAllocation.budget_id.isnot(None),
+            )
+            .group_by(PaymentAllocation.budget_id)
+            .subquery()
+        )
+
+        query = (
+            select(Budget.id, Budget.total, alloc_subq.c.collected)
+            .outerjoin(alloc_subq, alloc_subq.c.budget_id == Budget.id)
+            .where(
+                Budget.clinic_id == clinic_id,
+                Budget.deleted_at.is_(None),
+            )
+            .order_by(Budget.created_at.desc())
+        )
+        if patient_id is not None:
+            query = query.where(Budget.patient_id == patient_id)
+        if assigned_professional_id is not None:
+            query = query.where(Budget.assigned_professional_id == assigned_professional_id)
+
+        # We over-fetch by cap+1 to know whether to set ``truncated``.
+        result = await db.execute(query.limit(cap + 1))
+
+        wanted = set(statuses)
+        ids: list[UUID] = []
+        truncated = False
+        for budget_id, total, collected in result.all():
+            collected = collected or Decimal("0")
+            total_dec = Decimal(total or 0)
+            if collected <= 0:
+                status_ = "unpaid"
+            elif collected >= total_dec and total_dec > 0:
+                status_ = "paid"
+            else:
+                status_ = "partial"
+            if status_ not in wanted:
+                continue
+            if len(ids) >= cap:
+                truncated = True
+                break
+            ids.append(budget_id)
+        return ids, truncated
+
+    @staticmethod
+    async def patient_ids_with_debt(
+        db: AsyncSession,
+        clinic_id: UUID,
+        min_debt: Decimal = Decimal("0.01"),
+        cap: int = _FILTER_IDS_CAP,
+    ) -> tuple[list[UUID], bool]:
+        """Return patient ids whose ``earned − net_paid >= min_debt``.
+
+        Off-books safe: debt is computed from the earned ledger and the
+        net-of-refunds payment sum, exactly like
+        ``LedgerService.get_patient_ledger.clinic_receivable``. Never
+        joined to invoice tables.
+        """
+        # Per-patient aggregates (one pass each, hash-joined in Python —
+        # same shape as PaymentReportsService._patient_totals).
+        paid_rows = await db.execute(
+            select(
+                Payment.patient_id,
+                func.coalesce(func.sum(Payment.amount), Decimal("0")),
+            )
+            .where(Payment.clinic_id == clinic_id)
+            .group_by(Payment.patient_id)
+        )
+        paid_per_patient: dict[UUID, Decimal] = dict(paid_rows.all())
+
+        refunded_rows = await db.execute(
+            select(
+                Payment.patient_id,
+                func.coalesce(func.sum(Refund.amount), Decimal("0")),
+            )
+            .join(Refund, Refund.payment_id == Payment.id)
+            .where(Payment.clinic_id == clinic_id)
+            .group_by(Payment.patient_id)
+        )
+        refunded_per_patient: dict[UUID, Decimal] = dict(refunded_rows.all())
+
+        earned_rows = await db.execute(
+            select(
+                PatientEarnedEntry.patient_id,
+                func.coalesce(func.sum(PatientEarnedEntry.amount), Decimal("0")),
+            )
+            .where(PatientEarnedEntry.clinic_id == clinic_id)
+            .group_by(PatientEarnedEntry.patient_id)
+        )
+        earned_per_patient: dict[UUID, Decimal] = dict(earned_rows.all())
+
+        ids: list[UUID] = []
+        truncated = False
+        # Patients with earned > 0 are the only ones that could possibly
+        # have debt (debt = max(0, earned - net_paid)).
+        for pid, earned in earned_per_patient.items():
+            net_paid = paid_per_patient.get(pid, Decimal("0")) - refunded_per_patient.get(
+                pid, Decimal("0")
+            )
+            debt = earned - net_paid
+            if debt >= min_debt:
+                if len(ids) >= cap:
+                    truncated = True
+                    break
+                ids.append(pid)
+        return ids, truncated
 
 
 # --- Ledger -----------------------------------------------------------

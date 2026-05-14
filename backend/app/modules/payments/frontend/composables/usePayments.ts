@@ -23,6 +23,32 @@ export interface PaymentListParams {
   date_to?: string
   method?: string
   patient_id?: string
+  has_refunds?: boolean
+  has_unallocated?: boolean
+  amount_min?: number
+  amount_max?: number
+  sort?: string
+}
+
+// Cross-module summary shapes. The hosting modules (/patients,
+// /budgets) consume these via slots — they never import the payments
+// composable directly. See docs/technical/payments/cross-module-summaries.md.
+export interface BudgetPaymentSummary {
+  collected: string
+  pending: string
+  payment_status: 'unpaid' | 'partial' | 'paid'
+}
+
+export interface PatientPaymentSummary {
+  total_paid: string
+  debt: string
+  on_account_balance: string
+}
+
+export interface FilterIdsResult {
+  budget_ids?: string[]
+  patient_ids?: string[]
+  truncated: boolean
 }
 
 export function usePayments() {
@@ -121,6 +147,70 @@ export function usePayments() {
     }
   }
 
+  // --- Cross-module bulk reads -------------------------------------------
+  //
+  // Used by /patients and /budgets list pages via slot fillers. The
+  // hosting pages call these from their page-level fetcher; the slot
+  // component just renders the value it receives via ctx.
+
+  async function fetchBudgetSummaries(ids: string[]): Promise<Record<string, BudgetPaymentSummary>> {
+    if (!ids.length) return {}
+    try {
+      const resp = await api.post<ApiResponse<{ summaries: Record<string, BudgetPaymentSummary> }>>(
+        '/api/v1/payments/summary/by-budgets',
+        { budget_ids: ids }
+      )
+      return resp.data.summaries
+    } catch {
+      return {}
+    }
+  }
+
+  async function fetchPatientDebtSummaries(ids: string[]): Promise<Record<string, PatientPaymentSummary>> {
+    if (!ids.length) return {}
+    try {
+      const resp = await api.post<ApiResponse<{ summaries: Record<string, PatientPaymentSummary> }>>(
+        '/api/v1/payments/summary/by-patients',
+        { patient_ids: ids }
+      )
+      return resp.data.summaries
+    } catch {
+      return {}
+    }
+  }
+
+  async function fetchBudgetIdsByPaymentStatus(
+    statuses: Array<'unpaid' | 'partial' | 'paid'>,
+    opts: { patient_id?: string; assigned_professional_id?: string } = {}
+  ): Promise<FilterIdsResult> {
+    if (!statuses.length) return { budget_ids: [], truncated: false }
+    const search = new URLSearchParams()
+    for (const s of statuses) search.append('status', s)
+    if (opts.patient_id) search.set('patient_id', opts.patient_id)
+    if (opts.assigned_professional_id) {
+      search.set('assigned_professional_id', opts.assigned_professional_id)
+    }
+    try {
+      const resp = await api.get<ApiResponse<FilterIdsResult>>(
+        `/api/v1/payments/filters/budgets-by-status?${search.toString()}`
+      )
+      return resp.data
+    } catch {
+      return { budget_ids: [], truncated: false }
+    }
+  }
+
+  async function fetchPatientIdsWithDebt(minDebt: number = 0.01): Promise<FilterIdsResult> {
+    try {
+      const resp = await api.get<ApiResponse<FilterIdsResult>>(
+        `/api/v1/payments/filters/patients-with-debt?min_debt=${minDebt}`
+      )
+      return resp.data
+    } catch {
+      return { patient_ids: [], truncated: false }
+    }
+  }
+
   return {
     payments,
     total,
@@ -133,7 +223,11 @@ export function usePayments() {
     refund,
     listRefunds,
     fetchPatientLedger,
-    fetchBudgetAllocations
+    fetchBudgetAllocations,
+    fetchBudgetSummaries,
+    fetchPatientDebtSummaries,
+    fetchBudgetIdsByPaymentStatus,
+    fetchPatientIdsWithDebt
   }
 }
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added (lists redesign, 2026-05-14)
+
+- `GET /api/v1/billing/invoices` accepts `sort=field:dir` (whitelist:
+  `issue_date`, `due_date`, `total`, `created_at`, `invoice_number`).
+- `/invoices` list page rewritten on `DataListLayout` + `FilterBar` +
+  `useListQuery`. Card view <md, URL-synced filters, sort dropdown,
+  date range filter in the main toolbar. Existing compliance slots
+  (`invoice.list.toolbar.filters`, `invoice.list.row.meta`)
+  preserved.
+
 - **Payment domain extracted to its own `payments` module (issue #53, ADR 0010).**
   - Billing no longer owns the `Payment` model, `PaymentService`, or
     `InvoiceWorkflowService.record_payment` / `void_payment`. Those move

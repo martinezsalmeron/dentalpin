@@ -66,10 +66,12 @@ gotchas below.
 |---|---|---|
 | `budget.detail.sidebar` | `BudgetPaymentsCard` (cobrado / pendiente / allocations + "Cobrar" CTA) | `payments.record.read` |
 | `reports.categories` | `PaymentsReportEntry` (card on `/reports` linking to `/reports/payments`) | `payments.reports.read` |
+| `patient.detail.administracion.payments` | `PatientPaymentsPanel` (patient ledger inside the Administración tab — KPIs + timeline + refund row menu) | `payments.record.read` |
 
-Registered in `frontend/plugins/slots.client.ts`. The card receives
-`ctx = { budget }` from the host page and never imports anything from
-`budget`'s code — only the public allocations endpoint.
+Registered in `frontend/plugins/slots.client.ts`. Cards receive `ctx`
+from the host page (`{ budget }`, `{ patient, patientId }`) and never
+import anything from the host module's code — only the slot name and
+the public endpoints.
 
 ## Lifecycle
 

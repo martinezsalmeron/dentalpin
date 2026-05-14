@@ -8,6 +8,7 @@ from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.core.list_query import parse_sort
 from app.modules.payments.models import Payment as PaymentModel
 from app.modules.payments.models import Refund as RefundModel
 
@@ -19,6 +20,18 @@ from .models import (
     InvoiceSeries,
     InvoiceSeriesHistory,
 )
+
+# Public sort field → SQL column. balance_due is computed (not stored),
+# so it's not in this list; the frontend handles balance ordering
+# client-side over the current page when needed.
+_INVOICE_SORT_ALLOW = {
+    "issue_date": Invoice.issue_date,
+    "due_date": Invoice.due_date,
+    "total": Invoice.total,
+    "created_at": Invoice.created_at,
+    "invoice_number": Invoice.invoice_number,
+}
+_INVOICE_SORT_DEFAULT = "created_at:desc"
 
 # --- Invoice ↔ Payment computed summary -----------------------------------
 
@@ -615,6 +628,8 @@ class InvoiceService:
         budget_id: UUID | None = None,
         is_credit_note: bool | None = None,
         compliance_severity: list[str] | None = None,
+        *,
+        sort: str | None = None,
     ) -> tuple[list[Invoice], int]:
         """List invoices with filtering and pagination."""
         query = (
@@ -706,8 +721,8 @@ class InvoiceService:
         total_result = await db.execute(count_query)
         total = total_result.scalar() or 0
 
-        # Apply pagination
-        query = query.order_by(desc(Invoice.created_at))
+        # Apply pagination + sort
+        query = query.order_by(parse_sort(sort, _INVOICE_SORT_ALLOW, _INVOICE_SORT_DEFAULT))
         query = query.offset((page - 1) * page_size).limit(page_size)
 
         result = await db.execute(query)

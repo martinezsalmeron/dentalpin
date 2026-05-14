@@ -58,8 +58,18 @@ async def list_budgets(
     date_to: date | None = Query(default=None),
     expired: bool | None = Query(default=None),
     search: str | None = Query(default=None, max_length=100),
+    budget_ids: list[UUID] | None = Query(default=None),
+    assigned_professional_id: UUID | None = Query(default=None),
+    valid_until_before: date | None = Query(default=None),
+    valid_until_after: date | None = Query(default=None),
+    sort: str | None = Query(default=None, max_length=50),
 ) -> PaginatedApiResponse[BudgetListResponse]:
-    """List budgets with filtering and pagination."""
+    """List budgets with filtering and pagination.
+
+    ``budget_ids`` is the intersection vector for cross-module filters
+    such as "payment status = unpaid" — resolved server-side by the
+    payments module then passed in here.
+    """
     budgets, total = await BudgetService.list_budgets(
         db,
         ctx.clinic_id,
@@ -72,6 +82,11 @@ async def list_budgets(
         date_to=date_to,
         expired=expired,
         search=search,
+        budget_ids=budget_ids,
+        assigned_professional_id=assigned_professional_id,
+        valid_until_before=valid_until_before,
+        valid_until_after=valid_until_after,
+        sort=sort,
     )
     return PaginatedApiResponse(
         data=[BudgetListResponse.model_validate(b) for b in budgets],

@@ -1,29 +1,54 @@
 <script setup lang="ts">
 /**
- * AdministrationTab - Main administration tab with two modes
+ * AdministrationTab - Main administration tab with multiple sub-modes.
  *
- * Modes:
+ * Built-in modes (this module):
  * - budgets: View and manage patient budgets
  * - billing: View invoices and billing summary
+ * - documents: Patient documents gallery
+ *
+ * Slot-driven modes (other modules):
+ * - payments: Patient ledger panel contributed by the `payments` module
+ *   via slot `patient.detail.administracion.payments`. Renders only when
+ *   the slot has providers; URL `adminMode=payments` falls back to the
+ *   default when unavailable.
  */
 
 import type { AdministrationMode } from './AdministrationModeToggle.vue'
-import type { BudgetListItem, PaginatedResponse } from '~~/app/types'
+import type { BudgetListItem, PaginatedResponse, PatientExtended } from '~~/app/types'
 import { PERMISSIONS } from '~~/app/config/permissions'
+import { useModuleSlots } from '~~/app/composables/useModuleSlots'
 
 interface Props {
   patientId: string
+  patient?: PatientExtended | null
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  patient: null
+})
 const { t, locale } = useI18n()
 const { can } = usePermissions()
+const { resolve } = useModuleSlots()
 const api = useApi()
 const router = useRouter()
 const route = useRoute()
 
 // Current mode (default to budgets)
 const currentMode = ref<AdministrationMode>('budgets')
+
+// Slot availability for the optional `payments` mode. Reactive against
+// the slot registry so HMR / late module registration is picked up.
+const paymentsAvailable = computed(() =>
+  resolve('patient.detail.administracion.payments', {}).length > 0
+)
+
+const availableModes = computed<AdministrationMode[]>(() => {
+  const modes: AdministrationMode[] = ['budgets', 'billing']
+  if (paymentsAvailable.value) modes.push('payments')
+  modes.push('documents')
+  return modes
+})
 
 // Budgets list (paginated)
 const budgets = ref<BudgetListItem[]>([])
@@ -73,11 +98,21 @@ watch(currentMode, (mode) => {
   })
 })
 
-// Initialize from URL on mount
+// Initialize from URL on mount — validate against the modes actually
+// available right now so a stale `adminMode=payments` link falls back
+// gracefully when the slot has no providers.
 onMounted(() => {
   const queryMode = route.query.adminMode as AdministrationMode
-  if (queryMode && ['budgets', 'billing', 'documents'].includes(queryMode)) {
+  if (queryMode && availableModes.value.includes(queryMode)) {
     currentMode.value = queryMode
+  }
+})
+
+// If the active mode disappears at runtime (e.g. permission revoked,
+// late slot registration races), drop back to the default.
+watch(availableModes, (modes) => {
+  if (!modes.includes(currentMode.value)) {
+    currentMode.value = 'budgets'
   }
 })
 
@@ -243,6 +278,16 @@ const { format: formatCurrency } = useCurrency()
     <!-- Billing Mode -->
     <div v-else-if="currentMode === 'billing' && can(PERMISSIONS.billing.read)">
       <PatientBillingSummary :patient-id="patientId" />
+    </div>
+
+    <!-- Payments Mode — contributed by the `payments` module via the
+         `patient.detail.administracion.payments` slot. The patients
+         module never imports payments code; the slot is the contract. -->
+    <div v-else-if="currentMode === 'payments'">
+      <ModuleSlot
+        name="patient.detail.administracion.payments"
+        :ctx="{ patient, patientId }"
+      />
     </div>
 
     <!-- Documents Mode -->

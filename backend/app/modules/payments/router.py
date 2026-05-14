@@ -9,6 +9,7 @@ should not be cross-joined against invoice data.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -22,8 +23,13 @@ from app.database import get_db
 from .schemas import (
     AgingBuckets,
     AllocationResponse,
+    BudgetIdsRequest,
+    BudgetSummariesByIds,
+    FilterIdsResponse,
     MethodBreakdown,
+    PatientIdsRequest,
     PatientLedger,
+    PatientSummariesByIds,
     PaymentCreate,
     PaymentReallocate,
     PaymentResponse,
@@ -68,6 +74,11 @@ async def list_payments(
     date_to: date | None = None,
     method: str | None = None,
     patient_id: UUID | None = None,
+    has_refunds: bool | None = Query(default=None),
+    has_unallocated: bool | None = Query(default=None),
+    amount_min: Decimal | None = Query(default=None, ge=Decimal("0")),
+    amount_max: Decimal | None = Query(default=None, ge=Decimal("0")),
+    sort: str | None = Query(default=None, max_length=50),
 ) -> PaginatedApiResponse[PaymentResponse]:
     items, total = await PaymentService.list(
         db,
@@ -78,6 +89,11 @@ async def list_payments(
         patient_id=patient_id,
         page=page,
         page_size=page_size,
+        has_refunds=has_refunds,
+        has_unallocated=has_unallocated,
+        amount_min=amount_min,
+        amount_max=amount_max,
+        sort=sort,
     )
     return PaginatedApiResponse(
         data=[PaymentResponse.from_model(p) for p in items],
@@ -227,6 +243,102 @@ async def allocations_for_budget(
 ) -> ApiResponse[list[AllocationResponse]]:
     rows = await PaymentReadService.get_allocations_for_budget(db, ctx.clinic_id, budget_id)
     return ApiResponse(data=[AllocationResponse.from_model(r) for r in rows])
+
+
+# --- Cross-module summary + filter endpoints --------------------------
+#
+# Power the /budgets and /patients list pages (other modules) without
+# forcing those modules to depend on payments. The contract lives in
+# docs/technical/payments/cross-module-summaries.md.
+
+
+@router.post(
+    "/summary/by-budgets",
+    response_model=ApiResponse[BudgetSummariesByIds],
+)
+async def summary_by_budgets(
+    payload: BudgetIdsRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("payments.record.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[BudgetSummariesByIds]:
+    """Bulk per-budget collected/pending/payment_status.
+
+    Cap 100 ids — sized for one page of a list. Off-books safe: never
+    touches invoice totals.
+    """
+    summaries = await PaymentReadService.summaries_by_budgets(db, ctx.clinic_id, payload.budget_ids)
+    return ApiResponse(data=BudgetSummariesByIds(summaries=summaries))
+
+
+@router.post(
+    "/summary/by-patients",
+    response_model=ApiResponse[PatientSummariesByIds],
+)
+async def summary_by_patients(
+    payload: PatientIdsRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("payments.record.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[PatientSummariesByIds]:
+    """Bulk per-patient total_paid/debt/on_account_balance.
+
+    Cap 100 ids. debt is computed strictly from earned − net_paid (off
+    -books safe).
+    """
+    summaries = await PaymentReadService.summaries_by_patients(
+        db, ctx.clinic_id, payload.patient_ids
+    )
+    return ApiResponse(data=PatientSummariesByIds(summaries=summaries))
+
+
+@router.get(
+    "/filters/budgets-by-status",
+    response_model=ApiResponse[FilterIdsResponse],
+)
+async def filter_budgets_by_status(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("payments.record.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status: list[Literal["unpaid", "partial", "paid"]] = Query(..., min_length=1),
+    patient_id: UUID | None = Query(default=None),
+    assigned_professional_id: UUID | None = Query(default=None),
+) -> ApiResponse[FilterIdsResponse]:
+    """Return the clinic's budget ids whose payment status matches.
+
+    Used by the /budgets page to intersect with its native list when
+    the "Cobro" filter is active. Cap 1000 ids — frontend shows a
+    toast when ``truncated=true``.
+    """
+    ids, truncated = await PaymentReadService.budget_ids_by_payment_status(
+        db,
+        ctx.clinic_id,
+        list(status),
+        patient_id=patient_id,
+        assigned_professional_id=assigned_professional_id,
+    )
+    return ApiResponse(data=FilterIdsResponse(budget_ids=ids, truncated=truncated))
+
+
+@router.get(
+    "/filters/patients-with-debt",
+    response_model=ApiResponse[FilterIdsResponse],
+)
+async def filter_patients_with_debt(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("payments.record.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    min_debt: Decimal = Query(default=Decimal("0.01"), ge=Decimal("0")),
+) -> ApiResponse[FilterIdsResponse]:
+    """Return the clinic's patient ids with debt >= ``min_debt``.
+
+    Used by the /patients page when the "Con deuda" filter is active.
+    Cap 1000 ids. Off-books safe: debt = earned − net_paid.
+    """
+    ids, truncated = await PaymentReadService.patient_ids_with_debt(
+        db, ctx.clinic_id, min_debt=min_debt
+    )
+    return ApiResponse(data=FilterIdsResponse(patient_ids=ids, truncated=truncated))
 
 
 # --- Reports ----------------------------------------------------------

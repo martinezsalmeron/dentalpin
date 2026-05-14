@@ -203,6 +203,7 @@ async def list_invoices(
             "ok, warning, pending, error. Whitelist-validated."
         ),
     ),
+    sort: str | None = Query(default=None, max_length=50),
 ) -> PaginatedApiResponse[InvoiceListResponse]:
     """List invoices with filtering and pagination."""
     if compliance_severity:
@@ -228,6 +229,7 @@ async def list_invoices(
         budget_id=budget_id,
         is_credit_note=is_credit_note,
         compliance_severity=compliance_severity,
+        sort=sort,
     )
     items = [InvoiceListResponse.model_validate(i) for i in invoices]
     summaries = await compute_paid_summaries_for_invoices(

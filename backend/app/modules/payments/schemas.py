@@ -273,3 +273,63 @@ class PaymentsTrends(BaseModel):
     granularity: Literal["day", "week", "month", "year"]
     currency: str
     points: list[TrendPoint]
+
+
+# --- Cross-module summary + filter endpoints ------------------------------
+#
+# These power the `/patients` and `/budgets` list pages without forcing
+# those modules to depend on payments. See
+# `docs/technical/payments/cross-module-summaries.md` for the contract
+# and the off-books invariants the reviewer must verify.
+
+
+BudgetPaymentStatus = Literal["unpaid", "partial", "paid"]
+
+
+class BudgetSummaryByIds(BaseModel):
+    """Per-budget payment summary (cell rendering on /budgets)."""
+
+    collected: Decimal
+    pending: Decimal
+    payment_status: BudgetPaymentStatus
+
+
+class BudgetSummariesByIds(BaseModel):
+    summaries: dict[UUID, BudgetSummaryByIds]
+
+
+class PatientSummaryByIds(BaseModel):
+    """Per-patient summary (cell rendering on /patients).
+
+    ``debt`` is computed strictly from ``earned − net_paid`` — pure
+    payments axis. Never compared to invoiced totals.
+    """
+
+    total_paid: Decimal
+    debt: Decimal
+    on_account_balance: Decimal
+
+
+class PatientSummariesByIds(BaseModel):
+    summaries: dict[UUID, PatientSummaryByIds]
+
+
+class BudgetIdsRequest(BaseModel):
+    budget_ids: list[UUID] = Field(min_length=1, max_length=100)
+
+
+class PatientIdsRequest(BaseModel):
+    patient_ids: list[UUID] = Field(min_length=1, max_length=100)
+
+
+class FilterIdsResponse(BaseModel):
+    """Result of a cross-module filter resolution.
+
+    Either ``budget_ids`` or ``patient_ids`` is populated depending on
+    the endpoint. ``truncated`` is True when the candidate set exceeded
+    the cap and the frontend should surface a warning.
+    """
+
+    budget_ids: list[UUID] | None = None
+    patient_ids: list[UUID] | None = None
+    truncated: bool = False

@@ -11,8 +11,18 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import EventType, event_bus
+from app.core.list_query import parse_sort
 
 from .models import Patient
+
+# Public field name → SQL column. Decouples the URL from internal naming
+# and prevents callers from sorting by arbitrary columns.
+_SORT_ALLOW = {
+    "last_name": Patient.last_name,
+    "first_name": Patient.first_name,
+    "created_at": Patient.created_at,
+}
+_SORT_DEFAULT = "last_name:asc"
 
 
 class PatientService:
@@ -66,16 +76,41 @@ class PatientService:
         search: str | None = None,
         page: int = 1,
         page_size: int = 20,
+        *,
+        patient_ids: list[UUID] | None = None,
+        city: str | None = None,
+        do_not_contact: bool | None = None,
+        include_archived: bool = False,
+        sort: str | None = None,
     ) -> tuple[list[Patient], int]:
-        """List patients with optional search + pagination."""
+        """List patients with optional search + filters + sort.
+
+        ``patient_ids`` is used by cross-module intersections (e.g.
+        "Patients with debt > 0" comes from the payments module). Empty
+        list short-circuits to an empty result so callers can pass the
+        payments-side result without extra branching.
+        """
         page_size = min(max(page_size, 1), 100)
         page = max(page, 1)
         offset = (page - 1) * page_size
 
-        query = select(Patient).where(
-            Patient.clinic_id == clinic_id,
-            Patient.status != "archived",
-        )
+        # Empty intersection set → no rows. Don't query.
+        if patient_ids is not None and not patient_ids:
+            return [], 0
+
+        query = select(Patient).where(Patient.clinic_id == clinic_id)
+        if not include_archived:
+            query = query.where(Patient.status != "archived")
+
+        if patient_ids:
+            query = query.where(Patient.id.in_(patient_ids))
+
+        if city:
+            # JSONB ->> 'city' ilike. address may be null.
+            query = query.where(Patient.address["city"].astext.ilike(f"%{city}%"))
+
+        if do_not_contact is not None:
+            query = query.where(Patient.do_not_contact.is_(do_not_contact))
 
         if search:
             like = f"%{search}%"
@@ -84,12 +119,13 @@ class PatientService:
                     Patient.first_name.ilike(like),
                     Patient.last_name.ilike(like),
                     Patient.phone.ilike(like),
+                    Patient.email.ilike(like),
                 )
             )
 
         total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
 
-        query = query.order_by(Patient.last_name, Patient.first_name)
+        query = query.order_by(parse_sort(sort, _SORT_ALLOW, _SORT_DEFAULT), Patient.first_name)
         query = query.offset(offset).limit(page_size)
         result = await db.execute(query)
         return list(result.scalars().all()), total

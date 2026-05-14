@@ -427,10 +427,13 @@ const isMinor = computed(() => {
             </div>
           </template>
 
-          <!-- Administration tab content (Budgets + Billing) -->
+          <!-- Administration tab content (Budgets + Billing + Payments) -->
           <template #administration>
             <div class="mt-4">
-              <AdministrationTab :patient-id="patientId" />
+              <AdministrationTab
+                :patient-id="patientId"
+                :patient="patient"
+              />
             </div>
           </template>
 

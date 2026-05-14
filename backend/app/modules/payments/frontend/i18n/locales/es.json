@@ -9,10 +9,35 @@
       "subtitle": "Pagos del paciente, anticipos sobre presupuesto y a cuenta.",
       "empty": "Sin cobros registrados.",
       "new": "Nuevo cobro",
+      "searchPlaceholder": "Paciente o referencia",
       "filterDateFrom": "Desde",
       "filterDateTo": "Hasta",
       "filterMethod": "Método",
       "filterPatient": "Paciente",
+      "filter": {
+        "method": "Método",
+        "hasRefunds": "Con reembolsos",
+        "hasUnallocated": "Sin asignar",
+        "patient": "Paciente",
+        "withDebt": "Con deuda",
+        "paymentStatus": "Cobro"
+      },
+      "sort": {
+        "paymentDate": "Fecha",
+        "amount": "Importe"
+      },
+      "budgetStatus": {
+        "paid": "Cobrado",
+        "partial": "Parcial",
+        "unpaid": "Sin cobro"
+      },
+      "row": {
+        "debtTooltip": "Saldo pendiente del paciente",
+        "creditTooltip": "Saldo a favor del paciente",
+        "allocationsLabel": "Asignación",
+        "refundedLabel": "Devuelto",
+        "noPatient": "Sin paciente"
+      },
       "columnDate": "Fecha",
       "columnPatient": "Paciente",
       "columnAmount": "Importe",
@@ -120,6 +145,54 @@
       "noteExcessToOnAccount": "quedan a cuenta del paciente.",
       "noteBudgetSettled": "El presupuesto ya está cobrado.",
       "noteToOnAccount": "se ingresarán a cuenta del paciente."
+    },
+    "patientPanel": {
+      "title": "Estado de cuenta",
+      "kpis": {
+        "totalPaid": "Total pagado",
+        "debt": "Adeudado a clínica",
+        "onAccount": "A cuenta"
+      },
+      "sidebar": {
+        "title": "Resumen",
+        "credit": "Saldo a favor",
+        "lastPayment": "Último pago",
+        "noLastPayment": "Sin pagos aún",
+        "totalEarned": "Tratamiento ejecutado"
+      },
+      "banner": {
+        "debtTitle": "Adeuda {amount} a la clínica",
+        "debtDescription": "Total cobrado menor que el tratamiento ejecutado.",
+        "creditTitle": "Tiene {amount} a su favor",
+        "creditDescription": "Saldo cobrado por encima del tratamiento ejecutado."
+      },
+      "cobrar": "Registrar pago",
+      "timeline": {
+        "title": "Movimientos",
+        "empty": "Sin movimientos registrados",
+        "emptyCta": "Registrar primer pago",
+        "loadError": "No se pudo cargar el estado de cuenta.",
+        "retry": "Reintentar",
+        "types": {
+          "payment": "Pago",
+          "refund": "Devolución",
+          "earned": "Tratamiento realizado"
+        },
+        "rowMenu": {
+          "detail": "Ver detalle",
+          "refund": "Reembolsar"
+        }
+      },
+      "refundModal": {
+        "title": "Reembolsar pago",
+        "amount": "Importe a devolver",
+        "method": "Método de devolución",
+        "reason": "Motivo",
+        "note": "Detalles (opcional)",
+        "submit": "Confirmar reembolso",
+        "cancel": "Cancelar",
+        "errorGeneric": "No se pudo registrar el reembolso"
+      }
     },
     "reports": {
       "title": "Informe de cobros",
