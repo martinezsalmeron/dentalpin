@@ -93,6 +93,12 @@ export const PERMISSIONS = {
   admin: {
     clinicRead: 'admin.clinic.read',
     clinicWrite: 'admin.clinic.write'
+  },
+  migrationImport: {
+    jobRead: 'migration_import.job.read',
+    jobWrite: 'migration_import.job.write',
+    jobExecute: 'migration_import.job.execute',
+    binaryWrite: 'migration_import.binary.write'
   }
 } as const
 
@@ -110,7 +116,8 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/reports': PERMISSIONS.reports.billingRead,
   '/reports/billing': PERMISSIONS.reports.billingRead,
   '/reports/budgets': PERMISSIONS.reports.budgetsRead,
-  '/reports/scheduling': PERMISSIONS.reports.schedulingRead
+  '/reports/scheduling': PERMISSIONS.reports.schedulingRead,
+  '/settings/data-migration': PERMISSIONS.migrationImport.jobRead
 }
 
 // Helper to get permission for a resource action

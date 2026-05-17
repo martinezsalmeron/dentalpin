@@ -1,0 +1,54 @@
+{
+  "migrationImport": {
+    "settingsCard": {
+      "title": "Data migration (dental-bridge)",
+      "description": "Import a DPMF file produced by dental-bridge (patients, appointments, budgets, payments, documents)."
+    },
+    "page": {
+      "title": "Data migration",
+      "subtitle": "Import data extracted by dental-bridge into this clinic."
+    },
+    "upload": {
+      "dropFile": "Drop the .dpm file here, or click to choose one",
+      "passphrase": "Passphrase (encrypted files only)",
+      "passphraseHelp": "Only required for .dpm.enc / .dpm.zst.enc",
+      "submit": "Upload and validate",
+      "uploading": "Uploading…",
+      "error": "Upload failed"
+    },
+    "validate": {
+      "running": "Verifying file…",
+      "ok": "File is valid",
+      "failed": "Validation failed"
+    },
+    "preview": {
+      "title": "Preview",
+      "entities": "Entities",
+      "samples": "Samples",
+      "warnings": "Warnings",
+      "files": "Attached files",
+      "filesTotal": "Total",
+      "filesWithSha": "With sha256",
+      "filesWithoutSha": "Without sha256",
+      "verifactuCheckbox": "Import Verifactu legal data",
+      "verifactuHelp": "Preserves legal hashes (Verifactu) on invoices. Only available when the Verifactu module is installed and the file contains that data.",
+      "confirm": "Confirm and import",
+      "warning": "This action cannot be undone. Review the data before confirming."
+    },
+    "execute": {
+      "running": "Importing…",
+      "progress": "{processed} of {total} entities",
+      "ok": "Import completed",
+      "failed": "Import failed"
+    },
+    "status": {
+      "uploaded": "Uploaded",
+      "validating": "Validating",
+      "validated": "Validated",
+      "previewing": "Preview",
+      "executing": "Importing",
+      "completed": "Completed",
+      "failed": "Failed"
+    }
+  }
+}

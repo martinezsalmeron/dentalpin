@@ -163,6 +163,15 @@ class EventType:
     # Verifactu compliance events
     VERIFACTU_RECORD_REJECTED = "verifactu.record.rejected"
 
+    # Migration import events (migration_import module — DPMF importer, issue #78)
+    # Job lifecycle:
+    MIGRATION_JOB_STARTED = "migration.job.started"
+    MIGRATION_JOB_COMPLETED = "migration.job.completed"
+    MIGRATION_JOB_FAILED = "migration.job.failed"
+    # Sync agent uploaded a binary that matched a `_files` staging row.
+    # Payload: (job_id, staging_id, document_id).
+    MIGRATION_BINARY_RESOLVED = "migration.binary.resolved"
+
     # Recalls events (recalls module — patient call-back workflow, issue #62)
     # Foundation for a future outreach module that will subscribe to react
     # with WhatsApp/SMS/email automation. Recalls itself never sends.

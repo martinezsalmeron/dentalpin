@@ -40,6 +40,10 @@ dependencies = [
     # Image processing for media module: thumbnail generation + EXIF
     # extraction on upload. Drives the photo gallery UX.
     "Pillow>=10.0.0",
+    # migration_import module: zstd unwrap for DPMF files (.dpm.zst /
+    # .dpm.zst.enc). cryptography (already above) handles AES-256-GCM
+    # + scrypt for the DPME envelope.
+    "zstandard>=0.22.0",
 ]
 
 [project.optional-dependencies]
@@ -66,6 +70,7 @@ reports = "app.modules.reports:ReportsModule"
 schedules = "app.modules.schedules:SchedulesModule"
 recalls = "app.modules.recalls:RecallsModule"
 verifactu = "app.modules.verifactu:VerifactuModule"
+migration_import = "app.modules.migration_import:MigrationImportModule"
 
 [tool.setuptools.packages.find]
 where = ["."]
