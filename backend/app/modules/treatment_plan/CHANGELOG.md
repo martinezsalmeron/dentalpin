@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- perf(list): collapse the duplicated ``items → treatment`` eager-load
+  chain in ``TreatmentPlanService.list`` into a single chain that
+  attaches both ``Treatment.teeth`` and ``Treatment.catalog_item``
+  through ``.options(...)``. Halves the SQLAlchemy batch queries
+  per page.
+- perf(cron): ``auto_close_expired_plans`` processes clinics
+  concurrently behind an ``asyncio.Semaphore(5)`` instead of
+  serially, so a slow clinic does not delay the rest of the run.
+- chore(events): all publishers in this module now ``await
+  event_bus.publish(...)`` — bus is async-first as of core sprint 3.
 - docs(user-manual): reescribir pantallas con guía operativa (ES + EN).
 - **0.2.0 (issue #55)** — `TreatmentMedia` model + `treatment_media`
   table dropped (migration `tp_0004`, depends on `med_0002`). Existing

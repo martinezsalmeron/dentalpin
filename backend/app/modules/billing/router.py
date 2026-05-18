@@ -678,7 +678,7 @@ async def send_invoice_email(
     # Publish event for notifications module
     from app.core.events import EventType, event_bus
 
-    event_bus.publish(
+    await event_bus.publish(
         EventType.INVOICE_SENT,
         {
             "clinic_id": str(ctx.clinic_id),

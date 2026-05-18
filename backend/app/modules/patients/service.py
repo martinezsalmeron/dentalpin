@@ -166,7 +166,7 @@ class PatientService:
         db.add(patient)
         await db.flush()
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.PATIENT_CREATED,
             {"patient_id": str(patient.id), "clinic_id": str(clinic_id)},
         )
@@ -184,7 +184,7 @@ class PatientService:
 
         await db.flush()
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.PATIENT_UPDATED,
             {"patient_id": str(patient.id), "changes": list(data.keys())},
         )
@@ -195,7 +195,7 @@ class PatientService:
         patient.status = "archived"
         await db.flush()
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.PATIENT_ARCHIVED,
             {"patient_id": str(patient.id)},
         )

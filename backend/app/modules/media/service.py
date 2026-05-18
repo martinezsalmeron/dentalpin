@@ -165,7 +165,7 @@ class DocumentService:
                 other.paired_document_id = document.id
                 await db.flush()
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.DOCUMENT_UPLOADED,
             {
                 "document_id": str(document.id),
@@ -179,7 +179,7 @@ class DocumentService:
             },
         )
         if is_image_kind:
-            event_bus.publish(
+            await event_bus.publish(
                 EventType.PHOTO_UPLOADED,
                 {
                     "document_id": str(document.id),
@@ -216,7 +216,7 @@ class DocumentService:
     ) -> None:
         document.status = "archived"
         await db.flush()
-        event_bus.publish(
+        await event_bus.publish(
             EventType.DOCUMENT_DELETED,
             {
                 "document_id": str(document.id),
@@ -382,7 +382,7 @@ class PhotoService:
         a.paired_document_id = b.id
         b.paired_document_id = a.id
         await db.flush()
-        event_bus.publish(
+        await event_bus.publish(
             EventType.PAIR_CREATED,
             {
                 "clinic_id": str(clinic_id),
@@ -406,7 +406,7 @@ class PhotoService:
                 partner.paired_document_id = None
         await db.flush()
         if partner_id:
-            event_bus.publish(
+            await event_bus.publish(
                 EventType.PAIR_REMOVED,
                 {
                     "clinic_id": str(clinic_id),
@@ -510,7 +510,7 @@ class AttachmentService:
         await db.flush()
         await db.refresh(attachment, ["document"])
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.ATTACHMENT_LINKED,
             {
                 "attachment_id": str(attachment.id),
@@ -546,7 +546,7 @@ class AttachmentService:
         document_id = attachment.document_id
         await db.delete(attachment)
         await db.flush()
-        event_bus.publish(
+        await event_bus.publish(
             EventType.ATTACHMENT_UNLINKED,
             {
                 "attachment_id": str(attachment_id),

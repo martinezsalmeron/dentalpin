@@ -61,7 +61,7 @@ def _allocations_sum(allocations: list[dict]) -> Decimal:
     return sum((Decimal(str(a["amount"])) for a in allocations), Decimal("0"))
 
 
-def _publish_allocated(
+async def _publish_allocated(
     *,
     clinic_id: UUID,
     payment_id: UUID,
@@ -69,7 +69,7 @@ def _publish_allocated(
     previous_target_type: str | None = None,
     previous_target_id: UUID | None = None,
 ) -> None:
-    event_bus.publish(
+    await event_bus.publish(
         EventType.PAYMENT_ALLOCATED,
         {
             "clinic_id": str(clinic_id),
@@ -165,7 +165,7 @@ async def record_payment(
 
     await db.flush()
 
-    event_bus.publish(
+    await event_bus.publish(
         EventType.PAYMENT_RECORDED,
         {
             "clinic_id": str(clinic_id),
@@ -179,7 +179,7 @@ async def record_payment(
         },
     )
     for alloc in created_allocations:
-        _publish_allocated(clinic_id=clinic_id, payment_id=payment.id, allocation=alloc)
+        await _publish_allocated(clinic_id=clinic_id, payment_id=payment.id, allocation=alloc)
 
     return payment
 
@@ -258,7 +258,7 @@ async def reallocate_payment(
     await db.flush()
 
     for alloc in created_allocations:
-        _publish_allocated(clinic_id=clinic_id, payment_id=payment.id, allocation=alloc)
+        await _publish_allocated(clinic_id=clinic_id, payment_id=payment.id, allocation=alloc)
 
     return payment
 
@@ -321,7 +321,7 @@ async def refund_payment(
 
     await db.flush()
 
-    event_bus.publish(
+    await event_bus.publish(
         EventType.PAYMENT_REFUNDED,
         {
             "clinic_id": str(clinic_id),

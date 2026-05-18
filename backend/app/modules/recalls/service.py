@@ -273,7 +273,7 @@ class RecallService:
         )
         db.add(recall)
         await db.flush()
-        event_bus.publish(EventType.RECALL_CREATED, _build_event_payload(recall))
+        await event_bus.publish(EventType.RECALL_CREATED, _build_event_payload(recall))
         return recall, True
 
     @staticmethod
@@ -331,7 +331,7 @@ class RecallService:
         await db.flush()
         payload = _build_event_payload(recall)
         payload["snoozed_months"] = months
-        event_bus.publish(EventType.RECALL_SNOOZED, payload)
+        await event_bus.publish(EventType.RECALL_SNOOZED, payload)
         return recall
 
     @staticmethod
@@ -351,7 +351,7 @@ class RecallService:
                 recall.reason_note + "\n" if recall.reason_note else ""
             ) + f"cancelled: {note}"
         await db.flush()
-        event_bus.publish(EventType.RECALL_CANCELLED, _build_event_payload(recall))
+        await event_bus.publish(EventType.RECALL_CANCELLED, _build_event_payload(recall))
         return recall
 
     @staticmethod
@@ -368,7 +368,7 @@ class RecallService:
         recall.status = "done"
         recall.completed_at = datetime.now(UTC)
         await db.flush()
-        event_bus.publish(EventType.RECALL_COMPLETED, _build_event_payload(recall))
+        await event_bus.publish(EventType.RECALL_COMPLETED, _build_event_payload(recall))
         return recall
 
     @staticmethod

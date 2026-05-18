@@ -13,7 +13,6 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -374,15 +373,10 @@ async def test_event_bus_dispatch_reaches_handler(
         "treatment_type": "Revisión",
         "end_time": datetime.now(UTC).isoformat(),
     }
-    event_bus.publish(EventType.APPOINTMENT_COMPLETED, payload)
+    await event_bus.publish(EventType.APPOINTMENT_COMPLETED, payload)
 
-    # Async handlers are scheduled as tasks; give the loop a chance to run.
-    for _ in range(20):
-        await asyncio.sleep(0.05)
-        entries = await _entries_for(db_session, test_patient.id)
-        if entries:
-            break
-
+    # ``publish`` awaits every subscriber inline, so the timeline row
+    # is already written by the time we get here.
     entries = await _entries_for(db_session, test_patient.id)
     assert len(entries) >= 1
     assert entries[0].event_type == EventType.APPOINTMENT_COMPLETED

@@ -170,7 +170,7 @@ class OdontogramService:
                         changed_at=now,
                     )
                 )
-                event_bus.publish(
+                await event_bus.publish(
                     OdontogramEventType.CONDITION_CHANGED,
                     {
                         "clinic_id": str(clinic_id),
@@ -204,7 +204,7 @@ class OdontogramService:
                                 changed_at=now,
                             )
                         )
-                        event_bus.publish(
+                        await event_bus.publish(
                             OdontogramEventType.SURFACE_UPDATED,
                             {
                                 "clinic_id": str(clinic_id),
@@ -272,7 +272,7 @@ class OdontogramService:
                     changed_at=now,
                 )
             )
-            event_bus.publish(
+            await event_bus.publish(
                 OdontogramEventType.TOOTH_UPDATED,
                 {
                     "clinic_id": str(clinic_id),
@@ -724,7 +724,7 @@ class TreatmentService:
         await db.flush()
 
         # 7. Emit single event for the Treatment.
-        event_bus.publish(
+        await event_bus.publish(
             EventType.ODONTOGRAM_TREATMENT_ADDED,
             {
                 "clinic_id": str(clinic_id),
@@ -768,7 +768,7 @@ class TreatmentService:
             if status == TreatmentStatus.PERFORMED.value:
                 treatment.performed_at = now
                 treatment.performed_by = user_id
-            event_bus.publish(
+            await event_bus.publish(
                 EventType.ODONTOGRAM_TREATMENT_STATUS_CHANGED,
                 {
                     "clinic_id": str(clinic_id),
@@ -824,7 +824,7 @@ class TreatmentService:
             treatment.notes = notes
         await db.flush()
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.ODONTOGRAM_TREATMENT_PERFORMED,
             {
                 "clinic_id": str(clinic_id),
@@ -880,5 +880,5 @@ class TreatmentService:
         }
         treatment.deleted_at = datetime.now(UTC)
         await db.flush()
-        event_bus.publish(EventType.ODONTOGRAM_TREATMENT_DELETED, event_data)
+        await event_bus.publish(EventType.ODONTOGRAM_TREATMENT_DELETED, event_data)
         return True

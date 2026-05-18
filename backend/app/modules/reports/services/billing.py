@@ -264,8 +264,15 @@ class BillingReportService:
     async def get_overdue_invoices(
         db: AsyncSession,
         clinic_id: UUID,
+        limit: int = 200,
     ) -> list[dict[str, Any]]:
-        """Get list of overdue invoices."""
+        """Get list of overdue invoices, oldest due-date first.
+
+        ``limit`` caps the result so a clinic with years of unpaid
+        balances does not blow up the response. Default is enough to
+        cover the action board; callers that need the full list should
+        paginate (no usage today, surface added when needed).
+        """
         today = date.today()
 
         result = await db.execute(
@@ -278,6 +285,7 @@ class BillingReportService:
             )
             .options(joinedload(Invoice.patient))
             .order_by(Invoice.due_date)
+            .limit(limit)
         )
 
         invoices = result.scalars().all()

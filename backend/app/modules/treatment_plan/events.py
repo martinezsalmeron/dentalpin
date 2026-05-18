@@ -84,7 +84,7 @@ async def on_appointment_completed(data: dict[str, Any]) -> None:
                         item.completed_without_appointment = False
 
                         category_key = await _resolve_treatment_category_key(db, item.treatment_id)
-                        event_bus.publish(
+                        await event_bus.publish(
                             "treatment_plan.treatment_completed",
                             {
                                 "plan_id": str(item.treatment_plan_id),
@@ -224,7 +224,7 @@ async def on_treatment_performed(data: dict[str, Any]) -> None:
                 item.completed_without_appointment = True
 
                 category_key = await _resolve_treatment_category_key(db, item.treatment_id)
-                event_bus.publish(
+                await event_bus.publish(
                     "treatment_plan.treatment_completed",
                     {
                         "plan_id": str(item.treatment_plan_id),

@@ -547,7 +547,7 @@ class NotificationService:
         # Broadcast to the event bus so the patient_timeline (and any other
         # listener) can record the communication without querying email_logs.
         bus_event = EventType.EMAIL_SENT if log.status == "sent" else EventType.EMAIL_FAILED
-        event_bus.publish(
+        await event_bus.publish(
             bus_event,
             {
                 "clinic_id": str(log.clinic_id),

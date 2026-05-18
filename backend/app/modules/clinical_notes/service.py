@@ -230,7 +230,7 @@ class NoteService:
         await db.flush()
 
         event_name = _NOTE_TYPE_TO_EVENT[note_type]
-        event_bus.publish(
+        await event_bus.publish(
             event_name,
             {
                 "clinic_id": str(clinic_id),

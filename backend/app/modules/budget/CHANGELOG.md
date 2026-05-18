@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- perf(cron): ``expire_budgets`` and ``send_budget_reminders`` now
+  process clinics concurrently behind an ``asyncio.Semaphore(5)``
+  instead of serially. A slow clinic no longer delays the rest of
+  the cycle, so a heavy multi-clinic install keeps hitting its
+  scheduled windows.
+- chore(events): all publishers in this module now ``await
+  event_bus.publish(...)`` — bus is async-first as of core sprint 3.
 - perf(budgets-list): switch to direct ``COUNT(Budget.id)`` over the
   shared filter set; the previous ``select_from(query.subquery())``
   pattern materialised joined patient/creator data just to count.

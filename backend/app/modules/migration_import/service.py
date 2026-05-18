@@ -294,7 +294,7 @@ class ImportJobService:
                 job.error = None
                 await session.commit()
 
-                publish_job_started(job.id, job.clinic_id)
+                await publish_job_started(job.id, job.clinic_id)
                 await ImportJobService._run_pipeline(session, job, passphrase=passphrase)
 
                 job.status = "completed"
@@ -307,7 +307,7 @@ class ImportJobService:
                         )
                     )
                 ).scalar() or 0
-                publish_job_completed(
+                await publish_job_completed(
                     job.id, job.clinic_id, job.total_entities, int(warnings_count)
                 )
             except Exception as exc:
@@ -319,7 +319,7 @@ class ImportJobService:
                         job.status = "failed"
                         job.error = str(exc)
                         await failure_session.commit()
-                        publish_job_failed(job.id, job.clinic_id, str(exc))
+                        await publish_job_failed(job.id, job.clinic_id, str(exc))
 
     @staticmethod
     async def get_job_unscoped(db: AsyncSession, job_id: UUID) -> ImportJob | None:
@@ -373,7 +373,7 @@ class ImportJobService:
                             source_id=source_id,
                             source_system=source_system,
                         )
-                        publish_entity_persisted(job.id, entity_type)
+                        await publish_entity_persisted(job.id, entity_type)
                     except Exception as exc:
                         # One entity blowing up does not fail the whole job —
                         # we surface it as a warning and continue. The op

@@ -15,7 +15,11 @@ class EventBus:
     """Event bus with async handler support.
 
     Modules can subscribe to events and publish events.
-    Supports both sync and async handlers. Errors are logged but don't propagate.
+    Supports both sync and async handlers. Handlers run inline — a
+    publisher that ``await``s ``publish()`` is guaranteed every
+    subscriber has finished before the call returns. Handler
+    exceptions are caught and logged so one broken subscriber cannot
+    fail another, but the publisher sees a clean return.
     """
 
     def __init__(self) -> None:
@@ -36,41 +40,54 @@ class EventBus:
             except ValueError:
                 pass
 
-    def publish(self, event_type: str, data: dict[str, Any]) -> None:
-        """Publish an event to all subscribed handlers.
+    async def publish(self, event_type: str, data: dict[str, Any]) -> None:
+        """Publish an event and await every subscriber to completion.
 
-        Supports both sync and async handlers. Async handlers are scheduled
-        as background tasks. Errors are logged but don't propagate.
+        Sync handlers run inline; async handlers are awaited in order.
+        Handler exceptions are caught and logged — one failing
+        subscriber does not abort the rest, and the publisher sees a
+        clean return. The contract is: "after ``await``, every handler
+        has finished (or failed)."
+
+        Handlers that need fire-and-forget (e.g. an SMTP call that
+        should not block the request) are responsible for scheduling
+        their own background task internally.
         """
         logger.info(f"Event published: {event_type}", extra={"event_data": data})
 
-        handlers = self._handlers.get(event_type, [])
-        for handler in handlers:
+        for handler in self._handlers.get(event_type, []):
             try:
                 result = handler(data)
-                # Handle async handlers
                 if inspect.iscoroutine(result):
-                    try:
-                        loop = asyncio.get_running_loop()
-                        loop.create_task(self._run_async_handler(event_type, result))
-                    except RuntimeError:
-                        # No running loop, run synchronously
-                        asyncio.run(result)
-            except Exception as e:
-                logger.error(
-                    f"Error in event handler for {event_type}: {e}",
-                    exc_info=True,
+                    await result
+            except Exception:
+                logger.exception(
+                    "Event handler %s failed for %s",
+                    getattr(handler, "__qualname__", handler.__name__),
+                    event_type,
+                    extra={
+                        "event_type": event_type,
+                        "clinic_id": data.get("clinic_id"),
+                    },
                 )
 
-    async def _run_async_handler(self, event_type: str, coro: Any) -> None:
-        """Run an async handler and log errors."""
+    def publish_sync(self, event_type: str, data: dict[str, Any]) -> None:
+        """Sync entry point for non-async callers (scripts, REPL).
+
+        Avoid in production code — it spins up a fresh loop with
+        ``asyncio.run`` and will fail inside an already-running loop.
+        Always prefer ``await event_bus.publish(...)`` from async
+        contexts.
+        """
         try:
-            await coro
-        except Exception as e:
-            logger.error(
-                f"Error in async event handler for {event_type}: {e}",
-                exc_info=True,
-            )
+            asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self.publish(event_type, data))
+            return
+        raise RuntimeError(
+            "publish_sync called from a running event loop — use "
+            "'await event_bus.publish(...)' instead."
+        )
 
     def clear(self) -> None:
         """Remove all handlers. Useful for testing."""

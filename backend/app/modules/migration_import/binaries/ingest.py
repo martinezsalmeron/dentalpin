@@ -101,7 +101,7 @@ async def ingest_binary(
     staging.received_at = datetime.now(UTC)
     await db.flush()
 
-    publish_binary_resolved(job.id, staging.id, document.id)
+    await publish_binary_resolved(job.id, staging.id, document.id)
 
     return {
         "staging_id": str(staging.id),

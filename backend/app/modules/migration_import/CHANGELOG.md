@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- chore(events): publisher helpers (``publish_job_started``,
+  ``publish_job_completed``, ``publish_job_failed``,
+  ``publish_binary_resolved``, ``publish_entity_persisted``) are now
+  ``async`` and await the bus inline. Callers in the mapper pipeline
+  and binary ingest endpoint were updated to ``await``.
 - chore(events): subscribe to ``migration.entity.persisted`` via
   ``EventType.MIGRATION_ENTITY_PERSISTED`` instead of a string
   literal.

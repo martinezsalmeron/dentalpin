@@ -27,17 +27,17 @@ from .models import ImportJob
 logger = logging.getLogger(__name__)
 
 
-def publish_job_started(job_id: UUID, clinic_id: UUID) -> None:
-    event_bus.publish(
+async def publish_job_started(job_id: UUID, clinic_id: UUID) -> None:
+    await event_bus.publish(
         EventType.MIGRATION_JOB_STARTED,
         {"job_id": str(job_id), "clinic_id": str(clinic_id)},
     )
 
 
-def publish_job_completed(
+async def publish_job_completed(
     job_id: UUID, clinic_id: UUID, total_entities: int, warnings_count: int
 ) -> None:
-    event_bus.publish(
+    await event_bus.publish(
         EventType.MIGRATION_JOB_COMPLETED,
         {
             "job_id": str(job_id),
@@ -48,15 +48,15 @@ def publish_job_completed(
     )
 
 
-def publish_job_failed(job_id: UUID, clinic_id: UUID, error: str) -> None:
-    event_bus.publish(
+async def publish_job_failed(job_id: UUID, clinic_id: UUID, error: str) -> None:
+    await event_bus.publish(
         EventType.MIGRATION_JOB_FAILED,
         {"job_id": str(job_id), "clinic_id": str(clinic_id), "error": error},
     )
 
 
-def publish_binary_resolved(job_id: UUID, staging_id: UUID, document_id: UUID) -> None:
-    event_bus.publish(
+async def publish_binary_resolved(job_id: UUID, staging_id: UUID, document_id: UUID) -> None:
+    await event_bus.publish(
         EventType.MIGRATION_BINARY_RESOLVED,
         {
             "job_id": str(job_id),
@@ -66,8 +66,8 @@ def publish_binary_resolved(job_id: UUID, staging_id: UUID, document_id: UUID) -
     )
 
 
-def publish_entity_persisted(job_id: UUID, entity_type: str, count: int = 1) -> None:
-    event_bus.publish(
+async def publish_entity_persisted(job_id: UUID, entity_type: str, count: int = 1) -> None:
+    await event_bus.publish(
         EventType.MIGRATION_ENTITY_PERSISTED,
         {"job_id": str(job_id), "entity_type": entity_type, "count": count},
     )

@@ -264,11 +264,11 @@ async def process_clinic(db: AsyncSession, clinic_id) -> int:
     await db.commit()
 
     # Notify subscribers (email handler in tasks.py) AFTER commit so the
-    # rejected state is durable when handlers query the DB. The bus
-    # itself runs handlers as background tasks and swallows errors.
+    # rejected state is durable when handlers query the DB. ``publish``
+    # awaits every subscriber to completion and swallows their errors.
     for r in newly_rejected:
         friendly = error_messages.friendly_error(r.aeat_codigo_error, r.aeat_descripcion_error)
-        event_bus.publish(
+        await event_bus.publish(
             EventType.VERIFACTU_RECORD_REJECTED,
             {
                 "clinic_id": str(r.clinic_id),

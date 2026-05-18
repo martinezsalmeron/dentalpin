@@ -68,12 +68,14 @@ async def get_overdue_invoices(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
     _: Annotated[None, Depends(require_permission("reports.billing.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=200, ge=1, le=1000),
 ) -> ApiResponse[list[OverdueInvoice]]:
-    """Get list of overdue invoices.
+    """Get list of overdue invoices, oldest due-date first.
 
-    Returns invoices that are past due date and have outstanding balance.
+    ``limit`` caps the result at 1000 so a clinic with years of unpaid
+    balances doesn't return an unbounded set.
     """
-    data = await BillingReportService.get_overdue_invoices(db, ctx.clinic_id)
+    data = await BillingReportService.get_overdue_invoices(db, ctx.clinic_id, limit=limit)
     return ApiResponse(data=[OverdueInvoice(**item) for item in data])
 
 

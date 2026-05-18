@@ -468,7 +468,7 @@ class AppointmentService:
                 db.add(treatment)
             await db.flush()
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.APPOINTMENT_SCHEDULED,
             {
                 "appointment_id": str(appointment.id),
@@ -593,7 +593,7 @@ class AppointmentService:
                 db, appointment, requested_status, changed_by=changed_by
             )
         else:
-            event_bus.publish(
+            await event_bus.publish(
                 EventType.APPOINTMENT_UPDATED,
                 {
                     "appointment_id": str(appointment.id),
@@ -693,7 +693,7 @@ class AppointmentService:
 
         # Always publish the generic transition event — the recommended
         # subscription for new consumers.
-        event_bus.publish(EventType.APPOINTMENT_STATUS_CHANGED, payload)
+        await event_bus.publish(EventType.APPOINTMENT_STATUS_CHANGED, payload)
 
         # Specific events are kept for backward compatibility with existing
         # subscribers (patient_timeline, billing hooks, etc.).
@@ -706,7 +706,7 @@ class AppointmentService:
             "no_show": EventType.APPOINTMENT_NO_SHOW,
         }.get(to_status)
         if specific is not None:
-            event_bus.publish(specific, payload)
+            await event_bus.publish(specific, payload)
 
         return appointment
 
@@ -764,7 +764,7 @@ class AppointmentService:
             await db.rollback()
             raise
 
-        event_bus.publish(
+        await event_bus.publish(
             EventType.APPOINTMENT_CABINET_CHANGED,
             {
                 "appointment_id": str(appointment.id),
@@ -827,7 +827,7 @@ class AppointmentService:
 
         if notes is not None:
             excerpt = _plain_excerpt(notes)
-            event_bus.publish(
+            await event_bus.publish(
                 EventType.AGENDA_VISIT_NOTE_UPDATED,
                 {
                     "clinic_id": str(clinic_id),
