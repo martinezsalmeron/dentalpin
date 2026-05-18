@@ -13,9 +13,15 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "vfy_0001"
-down_revision: str | None = "tp_0002"
+# Verifactu is ``removable=True``; chain off the core init so the
+# branch is truly independent. ``depends_on`` declares the cross-
+# module table requirement (``invoices`` created by ``bil_0001``)
+# without putting verifactu in billing's main upgrade chain — that
+# way ``alembic downgrade verifactu@base`` walks only verifactu
+# revisions during uninstall.
+down_revision: str | None = "0001"
 branch_labels: str | Sequence[str] | None = ("verifactu",)
-depends_on: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = "bil_0001"
 
 
 def upgrade() -> None:

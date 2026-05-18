@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- chore(migrations): isolate ``vfy_0001`` from the main upgrade
+  chain — ``down_revision`` switches from ``tp_0002`` to ``0001``
+  (core init) and a new ``depends_on="bil_0001"`` enforces the
+  cross-module dependency on the ``invoices`` table declaratively.
+  Verifactu is ``removable=True``; with this in place
+  ``alembic downgrade verifactu@base`` walks only verifactu
+  revisions during uninstall, no other branches affected. The
+  ``branch_labels=("verifactu",)`` was already in place.
 - perf(records-list): ``/verifactu/records`` counts directly via
   ``COUNT(VerifactuRecord.id)`` instead of materialising the filter
   query as a subquery.
