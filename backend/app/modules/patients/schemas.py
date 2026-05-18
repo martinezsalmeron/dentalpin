@@ -8,7 +8,7 @@ shapes live in ``app.modules.patients_clinical.schemas``.
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # --- Billing -------------------------------------------------------------
 
@@ -72,8 +72,7 @@ class PatientResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PatientBrief(BaseModel):
@@ -85,8 +84,7 @@ class PatientBrief(BaseModel):
     phone: str | None
     email: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Extended demographics ----------------------------------------------

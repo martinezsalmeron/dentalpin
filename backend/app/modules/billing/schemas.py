@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ============================================================================
 # Invoice Status and Payment Types
@@ -43,8 +43,7 @@ class PatientBrief(BaseModel):
     billing_email: str | None = None
     has_complete_billing_info: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserBrief(BaseModel):
@@ -54,8 +53,7 @@ class UserBrief(BaseModel):
     first_name: str
     last_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BudgetBrief(BaseModel):
@@ -66,8 +64,7 @@ class BudgetBrief(BaseModel):
     status: str
     total: Decimal
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CatalogItemBrief(BaseModel):
@@ -78,8 +75,7 @@ class CatalogItemBrief(BaseModel):
     names: dict[str, str]
     default_price: Decimal | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VatTypeBrief(BaseModel):
@@ -89,8 +85,7 @@ class VatTypeBrief(BaseModel):
     names: dict[str, str]
     rate: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceBrief(BaseModel):
@@ -102,8 +97,7 @@ class InvoiceBrief(BaseModel):
     total: Decimal
     issue_date: date | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -153,8 +147,7 @@ class InvoiceSeriesResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -262,8 +255,7 @@ class InvoiceItemResponse(BaseModel):
     catalog_item: CatalogItemBrief | None = None
     vat_type: VatTypeBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -306,8 +298,7 @@ class InvoicePaymentResponse(BaseModel):
     created_by: UUID
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -330,8 +321,7 @@ class InvoiceHistoryResponse(BaseModel):
     # Related
     user: UserBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -490,8 +480,7 @@ class InvoiceResponse(BaseModel):
     budget: BudgetBrief | None = None
     credit_note_for: InvoiceBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceDetailResponse(InvoiceResponse):
@@ -500,8 +489,7 @@ class InvoiceDetailResponse(InvoiceResponse):
     items: list[InvoiceItemResponse] = []
     invoice_payments: list[InvoicePaymentResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceListResponse(BaseModel):
@@ -528,8 +516,7 @@ class InvoiceListResponse(BaseModel):
     patient: PatientBrief | None = None
     creator: UserBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

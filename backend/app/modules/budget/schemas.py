@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ============================================================================
 # Budget Status Types (Simplified)
@@ -44,8 +44,7 @@ class PatientBrief(BaseModel):
     email: str | None = None
     phone: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserBrief(BaseModel):
@@ -55,8 +54,7 @@ class UserBrief(BaseModel):
     first_name: str
     last_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CatalogItemBrief(BaseModel):
@@ -67,8 +65,7 @@ class CatalogItemBrief(BaseModel):
     names: dict[str, str]
     default_price: Decimal | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VatTypeBrief(BaseModel):
@@ -78,8 +75,7 @@ class VatTypeBrief(BaseModel):
     names: dict[str, str]
     rate: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TreatmentPlanBrief(BaseModel):
@@ -90,8 +86,7 @@ class TreatmentPlanBrief(BaseModel):
     title: str | None
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -190,8 +185,7 @@ class BudgetItemResponse(BaseModel):
     catalog_item: CatalogItemBrief | None = None
     vat_type: VatTypeBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -240,8 +234,7 @@ class SignatureResponse(BaseModel):
 
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SignatureMetaResponse(BaseModel):
@@ -263,8 +256,7 @@ class SignatureMetaResponse(BaseModel):
     document_hash: str | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -287,8 +279,7 @@ class BudgetHistoryResponse(BaseModel):
     # Related
     user: UserBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -394,8 +385,7 @@ class BudgetResponse(BaseModel):
     creator: UserBrief | None = None
     assigned_professional: UserBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BudgetDetailResponse(BudgetResponse):
@@ -405,8 +395,7 @@ class BudgetDetailResponse(BudgetResponse):
     signatures: list[SignatureResponse] = []
     treatment_plan: TreatmentPlanBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BudgetListResponse(BaseModel):
@@ -425,8 +414,7 @@ class BudgetListResponse(BaseModel):
     patient: PatientBrief | None = None
     creator: UserBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -475,8 +463,7 @@ class BudgetVersionResponse(BaseModel):
     created_at: datetime
     is_current: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BudgetVersionListResponse(BaseModel):

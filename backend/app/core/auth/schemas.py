@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserRegister(BaseModel):
@@ -45,8 +45,7 @@ class UserResponse(BaseModel):
     professional_id: str | None = None
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClinicResponse(BaseModel):
@@ -56,8 +55,7 @@ class ClinicResponse(BaseModel):
     name: str
     role: str  # User's role in this clinic
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Clinic metadata admin (moved from clinical module in B.5) ---------
@@ -114,8 +112,7 @@ class _ClinicCabinetBrief(BaseModel):
     display_order: int = 0
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClinicMetadataResponse(BaseModel):
@@ -133,8 +130,7 @@ class ClinicMetadataResponse(BaseModel):
     settings: dict
     cabinets: list[_ClinicCabinetBrief]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MeResponse(BaseModel):
@@ -179,8 +175,7 @@ class UserWithRoleResponse(BaseModel):
     role: str
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdate(BaseModel):
@@ -204,5 +199,4 @@ class ProfessionalResponse(BaseModel):
     last_name: str
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

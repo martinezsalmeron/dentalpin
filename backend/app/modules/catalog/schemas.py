@@ -42,8 +42,7 @@ class VatTypeResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VatTypeBrief(BaseModel):
@@ -56,8 +55,7 @@ class VatTypeBrief(BaseModel):
     is_active: bool
     is_system: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -104,8 +102,7 @@ class CategoryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryTreeResponse(CategoryResponse):
@@ -113,8 +110,7 @@ class CategoryTreeResponse(CategoryResponse):
 
     children: list["CategoryTreeResponse"] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -275,8 +271,7 @@ class CatalogItemResponse(BaseModel):
     category: CategoryResponse | None = None
     odontogram_mapping: OdontogramMappingResponse | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CatalogItemBrief(BaseModel):
@@ -289,8 +284,7 @@ class CatalogItemBrief(BaseModel):
     default_duration_minutes: int | None
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

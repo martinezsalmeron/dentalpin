@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # --- Enum literals (mirrors ``models.REASONS`` etc.) ----------------------
 
@@ -102,8 +102,7 @@ class PatientBriefForRecall(BaseModel):
     do_not_contact: bool = False
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AttemptResponse(BaseModel):
@@ -115,8 +114,7 @@ class AttemptResponse(BaseModel):
     outcome: Outcome
     note: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecallResponse(BaseModel):
@@ -141,8 +139,7 @@ class RecallResponse(BaseModel):
     updated_at: datetime
     patient: PatientBriefForRecall | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecallDetailResponse(RecallResponse):
@@ -180,8 +177,7 @@ class RecallSettingsResponse(BaseModel):
     auto_link_on_appointment_scheduled: bool
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecallSettingsUpdate(BaseModel):

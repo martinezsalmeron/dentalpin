@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 PaymentMethod = Literal["cash", "card", "bank_transfer", "direct_debit", "insurance", "other"]
 AllocationTarget = Literal["budget", "on_account"]
@@ -20,8 +20,7 @@ class UserBrief(BaseModel):
     first_name: str
     last_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PatientBrief(BaseModel):
@@ -29,8 +28,7 @@ class PatientBrief(BaseModel):
     first_name: str
     last_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Allocation ----------------------------------------------------------
@@ -59,8 +57,7 @@ class AllocationResponse(BaseModel):
     created_by: UUID
     method: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_model(cls, alloc) -> "AllocationResponse":
@@ -127,8 +124,7 @@ class PaymentResponse(BaseModel):
     recorder: UserBrief | None = None
     patient: PatientBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_model(cls, payment) -> "PaymentResponse":
@@ -183,8 +179,7 @@ class RefundResponse(BaseModel):
     refunded_by: UUID
     refunder: UserBrief | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Ledger --------------------------------------------------------------

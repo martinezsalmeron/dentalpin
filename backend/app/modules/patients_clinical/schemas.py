@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # --- Medical context -----------------------------------------------------
 
@@ -36,8 +36,7 @@ class MedicalContextResponse(MedicalContextBase):
     last_updated_at: datetime | None = None
     last_updated_by: UUID | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Allergy ------------------------------------------------------------
@@ -62,8 +61,7 @@ class AllergyUpdate(BaseModel):
 class AllergyResponse(AllergyCreate):
     id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Medication ---------------------------------------------------------
@@ -88,8 +86,7 @@ class MedicationUpdate(BaseModel):
 class MedicationResponse(MedicationCreate):
     id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Systemic disease ---------------------------------------------------
@@ -118,8 +115,7 @@ class SystemicDiseaseUpdate(BaseModel):
 class SystemicDiseaseResponse(SystemicDiseaseCreate):
     id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Surgical history ---------------------------------------------------
@@ -142,8 +138,7 @@ class SurgicalHistoryUpdate(BaseModel):
 class SurgicalHistoryResponse(SurgicalHistoryCreate):
     id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Emergency contact --------------------------------------------------
@@ -162,8 +157,7 @@ class EmergencyContactUpsert(EmergencyContactBase):
 
 
 class EmergencyContactResponse(EmergencyContactBase):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Legal guardian -----------------------------------------------------
@@ -184,8 +178,7 @@ class LegalGuardianUpsert(LegalGuardianBase):
 
 
 class LegalGuardianResponse(LegalGuardianBase):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Aggregate medical history (legacy-shaped payload for the form) -----

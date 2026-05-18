@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.patients.schemas import PatientBrief
 
@@ -32,8 +32,7 @@ class ProfessionalBrief(BaseModel):
     first_name: str
     last_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AppointmentTreatmentNoteUpdate(BaseModel):
@@ -55,8 +54,7 @@ class AppointmentTreatmentResponse(BaseModel):
     notes: str | None = None
     created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Treatment brief ----------------------------------------------------
@@ -221,8 +219,7 @@ class AppointmentCabinetEventResponse(BaseModel):
             }
         return data
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AppointmentStatusEventResponse(BaseModel):
@@ -255,8 +252,7 @@ class AppointmentStatusEventResponse(BaseModel):
             }
         return data
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AppointmentResponse(BaseModel):
@@ -324,8 +320,7 @@ class AppointmentResponse(BaseModel):
             }
         return data
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Cabinets ----------------------------------------------------------
@@ -356,8 +351,7 @@ class CabinetResponse(CabinetBase):
     display_order: int = 0
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Kanban day (issue #51) --------------------------------------------
