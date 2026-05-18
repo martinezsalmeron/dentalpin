@@ -278,7 +278,7 @@ class BudgetWorkflowService:
                     )
                 ).scalar_one_or_none()
                 if hydrated is not None:
-                    pdf_bytes = BudgetPDFService.generate_pdf(
+                    pdf_bytes = await BudgetPDFService.generate_pdf(
                         hydrated,
                         clinic,  # type: ignore[arg-type]
                         is_preview=False,

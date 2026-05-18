@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- perf(budgets-list): switch to direct ``COUNT(Budget.id)`` over the
+  shared filter set; the previous ``select_from(query.subquery())``
+  pattern materialised joined patient/creator data just to count.
+- perf(pdf): ``BudgetPDFService.generate_pdf`` is now ``async`` and
+  offloads the WeasyPrint render to ``asyncio.to_thread`` so the
+  event loop keeps serving other requests while a budget PDF
+  renders. All call sites updated.
 - docs(user-manual): reescribir pantallas con guía operativa (ES + EN).
 
 ### Added (lists redesign, 2026-05-14)

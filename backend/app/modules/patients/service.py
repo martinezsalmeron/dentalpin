@@ -98,23 +98,23 @@ class PatientService:
         if patient_ids is not None and not patient_ids:
             return [], 0
 
-        query = select(Patient).where(Patient.clinic_id == clinic_id)
+        conditions = [Patient.clinic_id == clinic_id]
         if not include_archived:
-            query = query.where(Patient.status != "archived")
+            conditions.append(Patient.status != "archived")
 
         if patient_ids:
-            query = query.where(Patient.id.in_(patient_ids))
+            conditions.append(Patient.id.in_(patient_ids))
 
         if city:
             # JSONB ->> 'city' ilike. address may be null.
-            query = query.where(Patient.address["city"].astext.ilike(f"%{city}%"))
+            conditions.append(Patient.address["city"].astext.ilike(f"%{city}%"))
 
         if do_not_contact is not None:
-            query = query.where(Patient.do_not_contact.is_(do_not_contact))
+            conditions.append(Patient.do_not_contact.is_(do_not_contact))
 
         if search:
             like = f"%{search}%"
-            query = query.where(
+            conditions.append(
                 or_(
                     Patient.first_name.ilike(like),
                     Patient.last_name.ilike(like),
@@ -123,10 +123,15 @@ class PatientService:
                 )
             )
 
-        total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
+        total = (await db.execute(select(func.count(Patient.id)).where(*conditions))).scalar() or 0
 
-        query = query.order_by(parse_sort(sort, _SORT_ALLOW, _SORT_DEFAULT), Patient.first_name)
-        query = query.offset(offset).limit(page_size)
+        query = (
+            select(Patient)
+            .where(*conditions)
+            .order_by(parse_sort(sort, _SORT_ALLOW, _SORT_DEFAULT), Patient.first_name)
+            .offset(offset)
+            .limit(page_size)
+        )
         result = await db.execute(query)
         return list(result.scalars().all()), total
 

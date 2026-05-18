@@ -197,8 +197,22 @@ class AppointmentService:
         if status:
             query = query.where(Appointment.status == status)
 
-        count_query = select(func.count()).select_from(query.subquery())
-        total = (await db.execute(count_query)).scalar() or 0
+        count_filters = [Appointment.clinic_id == clinic_id]
+        if start_date:
+            count_filters.append(Appointment.start_time >= start_date)
+        if end_date:
+            count_filters.append(Appointment.start_time <= end_date)
+        if cabinet:
+            count_filters.append(Appointment.cabinet == cabinet)
+        if professional_id:
+            count_filters.append(Appointment.professional_id == professional_id)
+        if patient_id:
+            count_filters.append(Appointment.patient_id == patient_id)
+        if status:
+            count_filters.append(Appointment.status == status)
+        total = (
+            await db.execute(select(func.count(Appointment.id)).where(*count_filters))
+        ).scalar() or 0
 
         query = query.order_by(Appointment.start_time)
         query = query.offset(offset).limit(page_size)

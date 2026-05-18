@@ -1,5 +1,6 @@
 """Invoice PDF generation service."""
 
+import asyncio
 import hashlib
 from datetime import date
 from decimal import Decimal
@@ -38,7 +39,7 @@ class InvoicePDFService:
         return ", ".join(parts)
 
     @staticmethod
-    def generate_pdf(
+    async def generate_pdf(
         invoice: Invoice,
         clinic: "Clinic",
         is_preview: bool = False,
@@ -77,10 +78,9 @@ class InvoicePDFService:
             balance_due=balance_due if balance_due is not None else invoice.total,
         )
 
-        # Convert to PDF
-        pdf_bytes = InvoicePDFService._html_to_pdf(html_content)
-
-        return pdf_bytes
+        # WeasyPrint is CPU-bound; offload to a thread so the event
+        # loop keeps serving other requests while it renders.
+        return await asyncio.to_thread(InvoicePDFService._html_to_pdf, html_content)
 
     @staticmethod
     def generate_pdf_hash(pdf_bytes: bytes) -> str:

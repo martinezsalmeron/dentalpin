@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- perf(list): rewrite ``RecallService.list`` to count via a direct
+  ``COUNT(Recall.id)`` over the joined ``recalls × patients`` filter
+  set instead of materialising the data query as a subquery. Pairs
+  with the new ``patients`` indices on ``status`` /
+  ``do_not_contact`` to keep the monthly call-list page sub-second.
 - docs(user-manual): reescribir pantallas con guía operativa (ES + EN).
 - Initial release. Patient call-back workflow (issue #62).
 - Tables: `recalls`, `recall_contact_attempts`, `recall_settings`

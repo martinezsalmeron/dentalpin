@@ -24,6 +24,7 @@ Key invariants:
 
 from fastapi import APIRouter
 
+from app.core.events.types import EventType
 from app.core.plugins import BaseModule
 
 from .events import (
@@ -99,7 +100,7 @@ class MigrationImportModule(BaseModule):
         # pipeline can update ImportJob.processed_entities without
         # circular imports across the mappers.
         return {
-            "migration.entity.persisted": on_appointment_created_for_progress,
+            EventType.MIGRATION_ENTITY_PERSISTED: on_appointment_created_for_progress,
         }
 
     async def install(self, ctx) -> None:  # noqa: D401 — lifecycle hook

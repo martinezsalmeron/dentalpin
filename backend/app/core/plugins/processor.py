@@ -332,12 +332,20 @@ class PendingProcessor:
 
         try:
             with target.open("w") as fh:
-                subprocess.run(args, stdout=fh, check=True)
+                # 5 min cap so a locked / oversized table can't hang
+                # lifespan startup or an admin-triggered uninstall.
+                subprocess.run(args, stdout=fh, check=True, timeout=300)
         except FileNotFoundError as exc:
             target.unlink(missing_ok=True)
             raise RuntimeError(
                 f"pg_dump not available; cannot back up module {module_name}. "
                 "Install postgresql-client in the runtime image."
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            target.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"pg_dump timed out backing up module {module_name} after "
+                f"{exc.timeout}s. Retry once the table is free or grow the cap."
             ) from exc
 
         if target.stat().st_size == 0:
@@ -435,15 +443,21 @@ def _alembic_cmd(args: list[str]) -> str | None:
     backend_root = cfg_path.parent
 
     try:
+        # 5 min cap per Alembic step. Modules with very long migrations
+        # should raise this explicitly rather than silently hanging the
+        # lifespan startup.
         subprocess.run(
             ["alembic", "-c", str(cfg_path), *args],
             cwd=str(backend_root),
             check=True,
+            timeout=300,
         )
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
             f"alembic {' '.join(args)} failed with exit code {exc.returncode}"
         ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"alembic {' '.join(args)} timed out after {exc.timeout}s") from exc
 
     # Resolve the caller's targeted head. Using ``get_current_head`` would
     # raise ``MultipleHeads`` now that schedules has its own branch, so

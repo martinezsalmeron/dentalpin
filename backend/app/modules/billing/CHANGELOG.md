@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- perf(pdf): ``InvoicePDFService.generate_pdf`` is now ``async`` and
+  offloads the WeasyPrint render to ``asyncio.to_thread`` so a slow
+  PDF (compliance QR, long invoices) no longer stalls the event
+  loop. All call sites updated.
 - docs(user-manual): reescribir pantallas con guía operativa (ES + EN).
 
 ### Added (lists redesign, 2026-05-14)

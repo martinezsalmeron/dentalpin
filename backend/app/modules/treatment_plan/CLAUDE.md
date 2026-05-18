@@ -71,9 +71,9 @@ the `clinical_notes` module since issue #60.
 
 Clinical-note created events (`clinical_notes.{administrative,diagnosis,treatment,plan}_created`) live in the `clinical_notes` module.
 
-> One literal — `treatment_plan.items_reordered` — is still string-only.
-> Adding it to `EventType` is a TODO; the events catalog surfaces it
-> under "missing from EventType enum".
+> All events above are declared in `EventType` and published via the
+> constants. ``items_reordered`` used to be a string-only literal —
+> it now lives at `EventType.TREATMENT_PLAN_ITEMS_REORDERED`.
 
 ## Events consumed
 

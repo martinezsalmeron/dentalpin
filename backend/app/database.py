@@ -9,17 +9,29 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.config import settings
 
-# Create async engine with connection pool settings
+# Create async engine with connection pool settings.
+#
+# ``pool_pre_ping`` issues a cheap ``SELECT 1`` before checking out a
+# connection so stale sockets (DB restart, NAT/firewall idle drop) are
+# transparently recycled instead of failing the next request with a
+# generic "connection lost". ``pool_recycle=3600`` ages connections out
+# proactively so we don't accumulate idle ones a proxy might silently
+# close.
 engine = create_async_engine(
     settings.DATABASE_URL,
     pool_size=10,
     max_overflow=20,
     pool_timeout=30,
-    pool_recycle=1800,
+    pool_recycle=3600,
+    pool_pre_ping=True,
     echo=settings.ENVIRONMENT == "development",
 )
 
-# Session factory
+# ``expire_on_commit=False`` keeps ORM objects hydrated after a commit
+# so the router can serialise the response without an extra refresh
+# round-trip. Anything streaming or kept across awaits (long-lived
+# tasks, websockets) must re-fetch explicitly — but the request-scoped
+# pattern that dominates the codebase relies on this.
 async_session_maker = async_sessionmaker(
     engine,
     class_=AsyncSession,

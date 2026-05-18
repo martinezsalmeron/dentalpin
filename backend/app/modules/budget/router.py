@@ -734,7 +734,7 @@ async def download_budget_pdf(
 
     clinic = await db.get(Clinic, ctx.clinic_id)
 
-    pdf_bytes = BudgetPDFService.generate_pdf(
+    pdf_bytes = await BudgetPDFService.generate_pdf(
         budget,
         clinic,
         is_preview=False,
@@ -787,7 +787,7 @@ async def download_signed_budget_pdf(
     from app.core.auth.models import Clinic
 
     clinic = await db.get(Clinic, ctx.clinic_id)
-    pdf_bytes = BudgetPDFService.generate_pdf(
+    pdf_bytes = await BudgetPDFService.generate_pdf(
         budget,
         clinic,
         is_preview=False,
@@ -861,7 +861,7 @@ async def preview_budget_pdf(
 
     clinic = await db.get(Clinic, ctx.clinic_id)
 
-    pdf_bytes = BudgetPDFService.generate_pdf(
+    pdf_bytes = await BudgetPDFService.generate_pdf(
         budget,
         clinic,
         is_preview=True,

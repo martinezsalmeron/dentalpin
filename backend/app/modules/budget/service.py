@@ -234,59 +234,45 @@ class BudgetService:
         if budget_ids is not None and not budget_ids:
             return [], 0
 
-        # Base query with eager loading
-        query = (
-            select(Budget)
-            .where(
-                Budget.clinic_id == clinic_id,
-                Budget.deleted_at.is_(None),
-            )
-            .options(
-                joinedload(Budget.patient),
-                joinedload(Budget.creator),
-                joinedload(Budget.assigned_professional),
-            )
-        )
+        conditions = [
+            Budget.clinic_id == clinic_id,
+            Budget.deleted_at.is_(None),
+        ]
 
-        # Apply filters
         if budget_ids:
-            query = query.where(Budget.id.in_(budget_ids))
+            conditions.append(Budget.id.in_(budget_ids))
 
         if patient_id:
-            query = query.where(Budget.patient_id == patient_id)
+            conditions.append(Budget.patient_id == patient_id)
 
         if status:
-            query = query.where(Budget.status.in_(status))
+            conditions.append(Budget.status.in_(status))
 
         if created_by:
-            query = query.where(Budget.created_by == created_by)
+            conditions.append(Budget.created_by == created_by)
 
         if assigned_professional_id:
-            query = query.where(Budget.assigned_professional_id == assigned_professional_id)
+            conditions.append(Budget.assigned_professional_id == assigned_professional_id)
 
         if date_from:
-            query = query.where(
-                Budget.created_at >= datetime.combine(date_from, datetime.min.time())
-            )
+            conditions.append(Budget.created_at >= datetime.combine(date_from, datetime.min.time()))
 
         if date_to:
-            query = query.where(Budget.created_at <= datetime.combine(date_to, datetime.max.time()))
+            conditions.append(Budget.created_at <= datetime.combine(date_to, datetime.max.time()))
 
         if valid_until_before:
-            query = query.where(Budget.valid_until <= valid_until_before)
+            conditions.append(Budget.valid_until <= valid_until_before)
 
         if valid_until_after:
-            query = query.where(Budget.valid_until >= valid_until_after)
+            conditions.append(Budget.valid_until >= valid_until_after)
 
         if expired is not None:
             today = date.today()
             if expired:
-                query = query.where(
-                    Budget.valid_until.isnot(None),
-                    Budget.valid_until < today,
-                )
+                conditions.append(Budget.valid_until.isnot(None))
+                conditions.append(Budget.valid_until < today)
             else:
-                query = query.where(
+                conditions.append(
                     or_(
                         Budget.valid_until.is_(None),
                         Budget.valid_until >= today,
@@ -313,20 +299,24 @@ class BudgetService:
                 .scalar_subquery()
             )
 
-            query = query.where(
+            conditions.append(
                 or_(
                     Budget.budget_number.ilike(search_pattern),
                     Budget.patient_id.in_(patient_subq),
                 )
             )
 
-        # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
-        total = (await db.execute(count_query)).scalar() or 0
+        total = (await db.execute(select(func.count(Budget.id)).where(*conditions))).scalar() or 0
 
-        # Apply pagination and ordering
         query = (
-            query.order_by(parse_sort(sort, _SORT_ALLOW, _SORT_DEFAULT))
+            select(Budget)
+            .where(*conditions)
+            .options(
+                joinedload(Budget.patient),
+                joinedload(Budget.creator),
+                joinedload(Budget.assigned_professional),
+            )
+            .order_by(parse_sort(sort, _SORT_ALLOW, _SORT_DEFAULT))
             .offset(offset)
             .limit(page_size)
         )

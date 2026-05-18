@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- chore(events): subscribe to ``migration.entity.persisted`` via
+  ``EventType.MIGRATION_ENTITY_PERSISTED`` instead of a string
+  literal.
 - Initial version of the DPMF importer (issue #78).
   - Accepts `.dpm`, `.dpm.zst`, `.dpm.enc`, `.dpm.zst.enc`.
   - Parses 32 canonical entity types per DPMF v0.1 spec.

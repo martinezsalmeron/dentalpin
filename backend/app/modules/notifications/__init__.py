@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.core.events.types import EventType
 from app.core.plugins import BaseModule
 
 from .models import (
@@ -76,10 +77,10 @@ class NotificationsModule(BaseModule):
         from .handlers import NotificationHandlers
 
         return {
-            "appointment.scheduled": NotificationHandlers.on_appointment_scheduled,
-            "appointment.cancelled": NotificationHandlers.on_appointment_cancelled,
-            "patient.created": NotificationHandlers.on_patient_created,
-            "budget.sent": NotificationHandlers.on_budget_sent,
-            "budget.accepted": NotificationHandlers.on_budget_accepted,
-            "invoice.sent": NotificationHandlers.on_invoice_sent,
+            EventType.APPOINTMENT_SCHEDULED: NotificationHandlers.on_appointment_scheduled,
+            EventType.APPOINTMENT_CANCELLED: NotificationHandlers.on_appointment_cancelled,
+            EventType.PATIENT_CREATED: NotificationHandlers.on_patient_created,
+            EventType.BUDGET_SENT: NotificationHandlers.on_budget_sent,
+            EventType.BUDGET_ACCEPTED: NotificationHandlers.on_budget_accepted,
+            EventType.INVOICE_SENT: NotificationHandlers.on_invoice_sent,
         }

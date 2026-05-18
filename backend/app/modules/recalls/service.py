@@ -98,44 +98,49 @@ class RecallService:
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[Recall], int]:
-        stmt = (
-            select(Recall, Patient)
-            .join(Patient, Patient.id == Recall.patient_id)
-            .where(Recall.clinic_id == clinic_id)
-        )
+        conditions = [Recall.clinic_id == clinic_id]
 
         if not filters.include_archived_patients:
-            stmt = stmt.where(Patient.status != "archived")
+            conditions.append(Patient.status != "archived")
         if not filters.include_do_not_contact:
-            stmt = stmt.where(Patient.do_not_contact.is_(False))
+            conditions.append(Patient.do_not_contact.is_(False))
 
         if filters.month:
             month = _normalize_due_month(filters.month)
-            stmt = stmt.where(Recall.due_month == month)
+            conditions.append(Recall.due_month == month)
 
         if filters.reason:
-            stmt = stmt.where(Recall.reason == filters.reason)
+            conditions.append(Recall.reason == filters.reason)
         if filters.priority:
-            stmt = stmt.where(Recall.priority == filters.priority)
+            conditions.append(Recall.priority == filters.priority)
         if filters.professional_id:
-            stmt = stmt.where(Recall.assigned_professional_id == filters.professional_id)
+            conditions.append(Recall.assigned_professional_id == filters.professional_id)
         if filters.patient_id:
-            stmt = stmt.where(Recall.patient_id == filters.patient_id)
+            conditions.append(Recall.patient_id == filters.patient_id)
         if filters.status:
-            stmt = stmt.where(Recall.status == filters.status)
+            conditions.append(Recall.status == filters.status)
         if filters.overdue:
             current_month = _normalize_due_month(date.today())
-            stmt = stmt.where(
+            conditions.append(
                 and_(
                     Recall.due_month < current_month,
                     Recall.status.in_(ACTIVE_STATUSES),
                 )
             )
 
-        # Total count over the same filters.
-        count_stmt = select(func.count()).select_from(stmt.subquery())
-        total_result = await db.execute(count_stmt)
-        total = int(total_result.scalar_one() or 0)
+        count_stmt = (
+            select(func.count(Recall.id))
+            .select_from(Recall)
+            .join(Patient, Patient.id == Recall.patient_id)
+            .where(*conditions)
+        )
+        total = int((await db.execute(count_stmt)).scalar_one() or 0)
+
+        stmt = (
+            select(Recall, Patient)
+            .join(Patient, Patient.id == Recall.patient_id)
+            .where(*conditions)
+        )
 
         priority_order = case(
             (Recall.priority == "high", 0),

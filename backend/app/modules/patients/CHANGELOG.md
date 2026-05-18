@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- perf(list): drop subquery-count anti-pattern; count uses
+  ``COUNT(Patient.id)`` over the same filter set as the data query.
+- perf(indexes): new migration ``pat_0003_recall_filter_indices`` adds
+  ``(clinic_id, status)`` and a partial ``(clinic_id)`` where
+  ``do_not_contact = false`` so recalls / outreach list builders
+  stop falling back to a full table scan once a clinic accumulates
+  patients.
+
 ### Added (lists redesign, 2026-05-14)
 
 - `GET /api/v1/patients` accepts new params: `patient_ids[]`, `city`,

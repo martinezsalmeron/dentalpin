@@ -446,7 +446,7 @@ async def download_public_signed_budget_pdf(
     ) or {}
     locale = str(clinic_settings.get("communication_language") or "es")
 
-    pdf_bytes = BudgetPDFService.generate_pdf(
+    pdf_bytes = await BudgetPDFService.generate_pdf(
         full_budget,
         clinic_row,
         is_preview=False,

@@ -959,7 +959,7 @@ async def download_invoice_pdf(
     extra_pdf_data = hook.enhance_pdf_data({}, invoice) if hook else None
 
     total_paid, balance_due = await compute_paid_summary(db, ctx.clinic_id, invoice.id)
-    pdf_bytes = InvoicePDFService.generate_pdf(
+    pdf_bytes = await InvoicePDFService.generate_pdf(
         invoice,
         clinic,
         is_preview=False,
@@ -1009,7 +1009,7 @@ async def preview_invoice_pdf(
     extra_pdf_data = hook.enhance_pdf_data({}, invoice) if hook else None
 
     total_paid, balance_due = await compute_paid_summary(db, ctx.clinic_id, invoice.id)
-    pdf_bytes = InvoicePDFService.generate_pdf(
+    pdf_bytes = await InvoicePDFService.generate_pdf(
         invoice,
         clinic,
         is_preview=True,

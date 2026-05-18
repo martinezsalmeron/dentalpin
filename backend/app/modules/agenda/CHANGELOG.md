@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- perf(appointments-list): count query now hits the same indexed
+  filters directly instead of materialising a subquery — drops the
+  list endpoint from O(rows × eager-load tree) to O(rows) once a
+  clinic crosses ~10k appointments.
 - docs(user-manual): reescribir pantallas con guía operativa (ES + EN).
 - **Slot uniqueness now ignores terminal statuses.** Migration
   `ag_0004` rebuilds the partial unique index
