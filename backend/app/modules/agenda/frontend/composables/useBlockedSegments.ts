@@ -96,13 +96,17 @@ export function useBlockedSegments(opts: {
       return rangesToSegments(payload.ranges, null)
     }
 
+    const payloads = await Promise.all(
+      args.professionals.map(prof =>
+        fetchAvailability({
+          start: isoStart,
+          end: isoEnd,
+          professional_id: prof.id
+        }).then(p => ({ prof, payload: p }))
+      )
+    )
     const out: BlockedSegment[] = []
-    for (const prof of args.professionals) {
-      const payload = await fetchAvailability({
-        start: isoStart,
-        end: isoEnd,
-        professional_id: prof.id
-      })
+    for (const { prof, payload } of payloads) {
       if (!payload) continue
       out.push(...rangesToSegments(payload.ranges, prof.id))
     }

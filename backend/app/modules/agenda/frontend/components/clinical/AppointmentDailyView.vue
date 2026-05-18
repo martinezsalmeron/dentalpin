@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Appointment, Professional } from '~~/app/types'
 import type { BlockedSegment } from '../../composables/useBlockedSegments'
+import { calculateOverlapGroups } from '../../composables/calculateOverlapGroups'
 
 interface ProfessionalWithColor extends Professional {
   color: string
@@ -201,14 +202,6 @@ function getAppointmentStyle(appointment: Appointment): Record<string, string> {
     height: `${height}px`,
     minHeight: `${getSlotHeight()}px`
   }
-}
-
-// Get professional index for appointment (considering drag)
-function getAppointmentProfessionalIndex(appointment: Appointment): number {
-  if (dragState.value?.appointmentId === appointment.id && dragState.value.type === 'move') {
-    return dragState.value.currentProfessionalIndex
-  }
-  return props.professionals.findIndex(p => p.id === appointment.professional_id)
 }
 
 // Tint + rail for an appointment block (DESIGN §7.3): fill alpha 0.12, left border 3 px.
@@ -416,108 +409,41 @@ function handleDragEnd() {
   dragState.value = null
 }
 
-// Check if two appointments overlap in time
-function appointmentsOverlap(apt1: Appointment, apt2: Appointment): boolean {
-  const start1 = new Date(apt1.start_time).getTime()
-  const end1 = new Date(apt1.end_time).getTime()
-  const start2 = new Date(apt2.start_time).getTime()
-  const end2 = new Date(apt2.end_time).getTime()
-
-  return start1 < end2 && end1 > start2
-}
-
-// Group overlapping appointments and calculate their positions
-function calculateOverlapGroups(profAppointments: Appointment[]): Map<string, { index: number, total: number }> {
-  const result = new Map<string, { index: number, total: number }>()
-
-  if (profAppointments.length === 0) return result
-
-  const sorted = [...profAppointments].sort((a, b) =>
-    new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-  )
-
-  const groups: Appointment[][] = []
-
-  for (const apt of sorted) {
-    let addedToGroup = false
-
-    for (const group of groups) {
-      const overlapsWithGroup = group.some(existing => appointmentsOverlap(apt, existing))
-
-      if (overlapsWithGroup) {
-        group.push(apt)
-        addedToGroup = true
-        break
-      }
-    }
-
-    if (!addedToGroup) {
-      groups.push([apt])
-    }
+// Pre-bucket the current day's appointments by professional id. One pass over
+// props.appointments instead of N (one per professional column).
+const appointmentsByProfId = computed(() => {
+  const dateStr = formatLocalDate(props.currentDate)
+  const map = new Map<string, Appointment[]>()
+  for (const apt of props.appointments) {
+    if (apt.status === 'cancelled') continue
+    if (apt.start_time.split('T')[0] !== dateStr) continue
+    const profId = apt.professional_id
+    if (!profId) continue
+    let bucket = map.get(profId)
+    if (!bucket) { bucket = []; map.set(profId, bucket) }
+    bucket.push(apt)
   }
+  return map
+})
 
-  // Merge groups that have overlapping appointments
-  let merged = true
-  while (merged) {
-    merged = false
-    for (let i = 0; i < groups.length; i++) {
-      for (let j = i + 1; j < groups.length; j++) {
-        const shouldMerge = groups[i]!.some(apt1 =>
-          groups[j]!.some(apt2 => appointmentsOverlap(apt1, apt2))
-        )
-
-        if (shouldMerge) {
-          groups[i]!.push(...groups[j]!)
-          groups.splice(j, 1)
-          merged = true
-          break
-        }
-      }
-      if (merged) break
-    }
-  }
-
-  for (const group of groups) {
-    const total = group.length
-    group.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-
-    group.forEach((apt, index) => {
-      result.set(apt.id, { index, total })
-    })
-  }
-
-  return result
-}
-
-// Computed overlap positions for each professional
+// Per-id overlap position {index,total}. Independent of drag state so it does
+// not recompute on every mousemove.
 const overlapPositions = computed(() => {
   const positions = new Map<string, { index: number, total: number }>()
-  const dateStr = formatLocalDate(props.currentDate)
-
-  for (const prof of props.professionals) {
-    const profAppointments = props.appointments.filter((apt) => {
-      if (apt.status === 'cancelled') return false
-      const aptDate = apt.start_time.split('T')[0]
-      return aptDate === dateStr && apt.professional_id === prof.id
-    })
-
-    const profPositions = calculateOverlapGroups(profAppointments)
+  for (const bucket of appointmentsByProfId.value.values()) {
+    const profPositions = calculateOverlapGroups(bucket)
     profPositions.forEach((pos, id) => positions.set(id, pos))
   }
-
   return positions
 })
 
-// Get overlap style for an appointment
 function getOverlapStyle(appointment: Appointment): Record<string, string> {
   const pos = overlapPositions.value.get(appointment.id)
   if (!pos || pos.total <= 1) {
     return { left: '2px', right: '2px' }
   }
-
   const widthPercent = 100 / pos.total
   const leftPercent = pos.index * widthPercent
-
   return {
     left: `calc(${leftPercent}% + 1px)`,
     width: `calc(${widthPercent}% - 2px)`,
@@ -525,19 +451,34 @@ function getOverlapStyle(appointment: Appointment): Record<string, string> {
   }
 }
 
-// All appointments for current date
-const allAppointmentsWithProfIndex = computed(() => {
-  const dateStr = formatLocalDate(props.currentDate)
-  return props.appointments
-    .filter((apt) => {
-      const aptDate = apt.start_time.split('T')[0]
-      return aptDate === dateStr && apt.status !== 'cancelled'
-    })
-    .map(apt => ({
-      appointment: apt,
-      profIndex: getAppointmentProfessionalIndex(apt)
-    }))
-    .filter(item => item.profIndex >= 0)
+// Day's appointments keyed by the column index the template iterates. Splits
+// the dragged appointment into its current column so the template still finds
+// it; no per-column .filter() in the v-for.
+const appointmentsByProfIndex = computed(() => {
+  const map = new Map<number, Appointment[]>()
+  const dragId = dragState.value?.appointmentId
+  const dragType = dragState.value?.type
+  const dragProfIdx = dragState.value?.currentProfessionalIndex
+  for (let i = 0; i < props.professionals.length; i++) {
+    const profId = props.professionals[i]!.id
+    map.set(i, appointmentsByProfId.value.get(profId)?.slice() ?? [])
+  }
+  if (dragId && dragType === 'move' && typeof dragProfIdx === 'number') {
+    const dragged = props.appointments.find(a => a.id === dragId)
+    if (dragged) {
+      const originalIdx = props.professionals.findIndex(p => p.id === dragged.professional_id)
+      if (originalIdx !== dragProfIdx) {
+        const fromBucket = map.get(originalIdx)
+        if (fromBucket) {
+          const idx = fromBucket.findIndex(a => a.id === dragId)
+          if (idx >= 0) fromBucket.splice(idx, 1)
+        }
+        const toBucket = map.get(dragProfIdx)
+        if (toBucket) toBucket.push(dragged)
+      }
+    }
+  }
+  return map
 })
 </script>
 
@@ -701,8 +642,17 @@ const allAppointmentsWithProfIndex = computed(() => {
                 </div>
 
                 <div
-                  v-for="{ appointment } in allAppointmentsWithProfIndex.filter(a => a.profIndex === profIndex)"
+                  v-for="appointment in (appointmentsByProfIndex.get(profIndex) ?? [])"
                   :key="appointment.id"
+                  v-memo="[
+                    appointment.id,
+                    appointment.start_time,
+                    appointment.end_time,
+                    appointment.status,
+                    dragState?.appointmentId === appointment.id,
+                    highlightedAppointmentId === appointment.id,
+                    prof.color
+                  ]"
                   class="group absolute rounded overflow-hidden pointer-events-auto select-none shadow-sm border-l-4"
                   :class="[
                     getStatusClass(appointment.status),

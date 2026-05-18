@@ -162,12 +162,8 @@ export function useListQuery<F extends FiltersBag, R>(
     router.replace({ query: next })
   }
 
-  // Debounce for search field
+  // Debounce timer for the searchKey (cleared in scheduleResetAndPush below).
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  function scheduleUrl() {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(pushUrl, debounceMs)
-  }
 
   onBeforeUnmount(() => {
     if (debounceTimer) clearTimeout(debounceTimer)
@@ -201,32 +197,51 @@ export function useListQuery<F extends FiltersBag, R>(
   }
 
   // ---- Reactivity wiring ----------------------------------------------
-  // Page changes do not reset filters. Filter changes reset page to 1.
-  watch(
-    () => JSON.stringify(filters.value),
-    (next, prev) => {
-      if (next === prev) return
-      page.value = 1
-      if (searchKey) {
-        scheduleUrl()
-      } else {
-        pushUrl()
-      }
-    }
-  )
-  watch(page, pushUrl)
-  watch(sort, () => {
+  // Single fetch coordinator: only the route.query watcher calls refresh().
+  // State watchers push URL changes; refresh follows from the URL update.
+  //
+  // Filter changes reset to page 1 — but the reset is deferred into the
+  // debounced URL push so a fast typist produces one URL change / fetch,
+  // not one per keystroke.
+  function resetPageAndPush() {
     page.value = 1
     pushUrl()
-  })
+  }
+  function scheduleResetAndPush() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(resetPageAndPush, debounceMs)
+  }
+  watch(
+    filters,
+    () => { searchKey ? scheduleResetAndPush() : resetPageAndPush() },
+    { deep: true }
+  )
+  watch(page, pushUrl)
+  watch(sort, resetPageAndPush)
 
-  // React to URL changes from outside (back/forward, link paste)
+  // React to URL changes (push from state above, or external nav).
+  function shallowEqualFilters(a: F, b: F): boolean {
+    const ka = Object.keys(a as Record<string, unknown>)
+    const kb = Object.keys(b as Record<string, unknown>)
+    if (ka.length !== kb.length) return false
+    for (const k of ka) {
+      const va = (a as Record<string, unknown>)[k]
+      const vb = (b as Record<string, unknown>)[k]
+      if (Array.isArray(va) && Array.isArray(vb)) {
+        if (va.length !== vb.length) return false
+        for (let i = 0; i < va.length; i++) if (va[i] !== vb[i]) return false
+      } else if (va !== vb) {
+        return false
+      }
+    }
+    return true
+  }
+
   watch(
     () => route.query,
     (q) => {
       const parsed = parseInto(cfg.defaults, q as Record<string, string | string[]>)
-      const same = JSON.stringify(parsed) === JSON.stringify(filters.value)
-      if (!same) filters.value = parsed
+      if (!shallowEqualFilters(parsed, filters.value)) filters.value = parsed
       const nextPage = Number(q.page) > 0 ? Number(q.page) : 1
       if (nextPage !== page.value) page.value = nextPage
       const nextSort = (q.sort as string) || cfg.defaultSort
@@ -241,7 +256,7 @@ export function useListQuery<F extends FiltersBag, R>(
     { deep: true }
   )
 
-  // First load
+  // First load (route.query watcher does not fire on setup).
   refresh()
 
   return {
