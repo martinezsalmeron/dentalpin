@@ -125,28 +125,28 @@ export function useBudgets() {
     }
   }
 
+  function toListItem(b: BudgetDetail): BudgetListItem {
+    return {
+      id: b.id,
+      budget_number: b.budget_number,
+      version: b.version,
+      status: b.status,
+      valid_from: b.valid_from,
+      valid_until: b.valid_until,
+      total: b.total,
+      created_at: b.created_at,
+      patient: b.patient,
+      creator: b.creator,
+    }
+  }
+
   async function createBudget(data: BudgetCreate): Promise<BudgetDetail> {
     const response = await api.post<ApiResponse<BudgetDetail>>(
       '/api/v1/budget/budgets',
       data as unknown as Record<string, unknown>
     )
-
-    // Add to local list
-    const listItem: BudgetListItem = {
-      id: response.data.id,
-      budget_number: response.data.budget_number,
-      version: response.data.version,
-      status: response.data.status,
-      valid_from: response.data.valid_from,
-      valid_until: response.data.valid_until,
-      total: response.data.total,
-      created_at: response.data.created_at,
-      patient: response.data.patient,
-      creator: response.data.creator
-    }
-    budgets.value = [listItem, ...budgets.value]
+    budgets.value = [toListItem(response.data), ...budgets.value]
     currentBudget.value = response.data
-
     return response.data
   }
 
@@ -287,22 +287,7 @@ export function useBudgets() {
       `/api/v1/budget/budgets/${id}/duplicate`,
       {}
     )
-
-    // Add new version to list
-    const listItem: BudgetListItem = {
-      id: response.data.id,
-      budget_number: response.data.budget_number,
-      version: response.data.version,
-      status: response.data.status,
-      valid_from: response.data.valid_from,
-      valid_until: response.data.valid_until,
-      total: response.data.total,
-      created_at: response.data.created_at,
-      patient: response.data.patient,
-      creator: response.data.creator
-    }
-    budgets.value = [listItem, ...budgets.value]
-
+    budgets.value = [toListItem(response.data), ...budgets.value]
     return response.data
   }
 

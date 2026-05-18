@@ -2186,6 +2186,7 @@
         "card": "Tarjeta",
         "bank_transfer": "Transferencia",
         "direct_debit": "Domiciliación",
+        "insurance": "Aseguradora",
         "other": "Otro"
       }
     },

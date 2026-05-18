@@ -1,5 +1,15 @@
 <script setup lang="ts">
 import type { Appointment } from '~~/app/types'
+import { defineAsyncComponent } from 'vue'
+import { formatLocalDate } from '../../utils/date'
+
+// Mode-specific scheduler views are heavy (drag grids, overlap math, mobile
+// timeline). Lazy-load each so the initial /agenda payload only ships the
+// active mode for the current viewport.
+const AppointmentCalendar = defineAsyncComponent(() => import('../../components/clinical/AppointmentCalendar.vue'))
+const AppointmentDailyView = defineAsyncComponent(() => import('../../components/clinical/AppointmentDailyView.vue'))
+const AppointmentKanbanView = defineAsyncComponent(() => import('../../components/clinical/AppointmentKanbanView.vue'))
+const AppointmentMobileDayView = defineAsyncComponent(() => import('../../components/clinical/AppointmentMobileDayView.vue'))
 
 const { t } = useI18n()
 const toast = useToast()
@@ -351,14 +361,6 @@ async function handleDailyAppointmentResize(appointmentId: string, newEndTime: s
     }
     await loadDayAppointments()
   }
-}
-
-// Format date for daily view
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
 
 // Check for overlaps and show warning toast

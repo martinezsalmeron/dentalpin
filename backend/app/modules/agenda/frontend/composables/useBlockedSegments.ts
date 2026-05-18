@@ -8,6 +8,7 @@
  */
 import type { Ref } from 'vue'
 import { useScheduleAvailability } from './useScheduleAvailability'
+import { formatLocalDate } from '../utils/date'
 
 export interface BlockedSegment {
   dateKey: string
@@ -19,13 +20,6 @@ export interface BlockedSegment {
 }
 
 interface ProfessionalLike { id: string }
-
-function formatLocalDate(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
 
 export function useBlockedSegments(opts: {
   startHour: Ref<number>
@@ -113,5 +107,5 @@ export function useBlockedSegments(opts: {
     return out
   }
 
-  return { compute, formatLocalDate }
+  return { compute }
 }

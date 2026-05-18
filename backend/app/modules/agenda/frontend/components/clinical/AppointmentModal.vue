@@ -6,6 +6,7 @@ import type {
   PlannedTreatmentItem,
   Surface
 } from '~~/app/types'
+import { formatLocalDate } from '../../utils/date'
 
 const props = defineProps<{
   open: boolean
@@ -37,14 +38,6 @@ const { professionals, fetchProfessionals, getProfessionalColor } = useProfessio
 const { fetchSettings, getAutoSendStatus } = useNotificationSettings()
 const { sendConfirmation, sendReminder, isSending: isSendingEmail } = useNotificationSend()
 const scheduleAvailability = useScheduleAvailability()
-
-// Format date as YYYY-MM-DD in local timezone (not UTC)
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 // Sentinel value for the "assign later" cabinet option. Reka UI's
 // SelectItem rejects empty strings (it reserves them for the

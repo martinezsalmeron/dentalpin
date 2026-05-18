@@ -2257,6 +2257,7 @@
         "card": "Card",
         "bank_transfer": "Bank transfer",
         "direct_debit": "Direct debit",
+        "insurance": "Insurance",
         "other": "Other"
       }
     },

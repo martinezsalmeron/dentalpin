@@ -7,6 +7,7 @@ import type {
   VatSummaryItem,
   NumberingGap
 } from '~~/app/types'
+import { paymentMethodLabel } from '~~/app/utils/paymentMethod'
 
 // Budget report types
 export interface BudgetSummary {
@@ -514,14 +515,7 @@ export function useReports() {
   }
 
   function getPaymentMethodLabel(method: string): string {
-    const labels: Record<string, string> = {
-      cash: t('invoice.paymentMethods.cash'),
-      card: t('invoice.paymentMethods.card'),
-      bank_transfer: t('invoice.paymentMethods.bank_transfer'),
-      direct_debit: t('invoice.paymentMethods.direct_debit'),
-      other: t('invoice.paymentMethods.other')
-    }
-    return labels[method] || method
+    return paymentMethodLabel(t, method)
   }
 
   return {

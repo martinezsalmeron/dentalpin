@@ -25,6 +25,7 @@ import type {
   InvoicePaymentApply,
   SeriesResetRequest
 } from '~~/app/types'
+import { paymentMethodLabel } from '~~/app/utils/paymentMethod'
 
 export interface InvoiceListParams {
   page?: number
@@ -45,19 +46,11 @@ export interface InvoiceListParams {
   compliance_severity?: string[]
 }
 
-// Payment method labels
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  card: 'Tarjeta',
-  bank_transfer: 'Transferencia',
-  direct_debit: 'Domiciliación',
-  other: 'Otro'
-}
-
 export function useInvoices() {
   const api = useApi()
   const config = useRuntimeConfig()
   const auth = useAuth()
+  const { t } = useI18n()
 
   // State
   const invoices = useState<InvoiceListItem[]>('invoices:list', () => [])
@@ -174,28 +167,28 @@ export function useInvoices() {
     }
   }
 
+  function toListItem(inv: Invoice): InvoiceListItem {
+    return {
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      status: inv.status,
+      issue_date: inv.issue_date,
+      due_date: inv.due_date,
+      total: inv.total,
+      total_paid: inv.total_paid,
+      balance_due: inv.balance_due,
+      created_at: inv.created_at,
+      patient: inv.patient,
+      creator: inv.creator,
+    }
+  }
+
   async function createInvoice(data: InvoiceCreate): Promise<Invoice> {
     const response = await api.post<ApiResponse<Invoice>>(
       '/api/v1/billing/invoices',
       data as unknown as Record<string, unknown>
     )
-
-    // Add to local list
-    const listItem: InvoiceListItem = {
-      id: response.data.id,
-      invoice_number: response.data.invoice_number,
-      status: response.data.status,
-      issue_date: response.data.issue_date,
-      due_date: response.data.due_date,
-      total: response.data.total,
-      total_paid: response.data.total_paid,
-      balance_due: response.data.balance_due,
-      created_at: response.data.created_at,
-      patient: response.data.patient,
-      creator: response.data.creator
-    }
-    invoices.value = [listItem, ...invoices.value]
-
+    invoices.value = [toListItem(response.data), ...invoices.value]
     return response.data
   }
 
@@ -204,23 +197,7 @@ export function useInvoices() {
       `/api/v1/billing/invoices/from-budget/${budgetId}`,
       data as unknown as Record<string, unknown>
     )
-
-    // Add to local list
-    const listItem: InvoiceListItem = {
-      id: response.data.id,
-      invoice_number: response.data.invoice_number,
-      status: response.data.status,
-      issue_date: response.data.issue_date,
-      due_date: response.data.due_date,
-      total: response.data.total,
-      total_paid: response.data.total_paid,
-      balance_due: response.data.balance_due,
-      created_at: response.data.created_at,
-      patient: response.data.patient,
-      creator: response.data.creator
-    }
-    invoices.value = [listItem, ...invoices.value]
-
+    invoices.value = [toListItem(response.data), ...invoices.value]
     return response.data
   }
 
@@ -365,26 +342,8 @@ export function useInvoices() {
       `/api/v1/billing/invoices/${id}/credit-note`,
       data as unknown as Record<string, unknown>
     )
-
-    // Add credit note to list
-    const listItem: InvoiceListItem = {
-      id: response.data.id,
-      invoice_number: response.data.invoice_number,
-      status: response.data.status,
-      issue_date: response.data.issue_date,
-      due_date: response.data.due_date,
-      total: response.data.total,
-      total_paid: response.data.total_paid,
-      balance_due: response.data.balance_due,
-      created_at: response.data.created_at,
-      patient: response.data.patient,
-      creator: response.data.creator
-    }
-    invoices.value = [listItem, ...invoices.value]
-
-    // Update original invoice status
+    invoices.value = [toListItem(response.data), ...invoices.value]
     updateInvoiceStatus(id, 'cancelled')
-
     return response.data
   }
 
@@ -525,7 +484,7 @@ export function useInvoices() {
   // ============================================================================
 
   function getPaymentMethodLabel(method: string): string {
-    return PAYMENT_METHOD_LABELS[method] || method
+    return paymentMethodLabel(t, method)
   }
 
   function canEdit(invoice: Invoice | InvoiceDetail | InvoiceListItem): boolean {

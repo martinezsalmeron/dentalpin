@@ -2,6 +2,7 @@
 import type { Appointment, Professional } from '~~/app/types'
 import type { BlockedSegment } from '../../composables/useBlockedSegments'
 import { calculateOverlapGroups } from '../../composables/calculateOverlapGroups'
+import { formatLocalDate } from '../../utils/date'
 
 interface ProfessionalWithColor extends Professional {
   color: string
@@ -35,14 +36,6 @@ watch(() => props.highlightedAppointmentId, (newId) => {
 }, { immediate: true })
 
 const { t, locale } = useI18n()
-
-// Format date as YYYY-MM-DD in local timezone
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 // Time slots configuration. Narrowed to actual clinic hours via
 // schedules module; 8–21 fallback when that module is uninstalled.
