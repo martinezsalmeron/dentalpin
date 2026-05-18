@@ -108,8 +108,6 @@ KNOWN_VIOLATIONS: set[tuple[str, str, str]] = {
     ("agenda", "service.py", "treatment_plan"),
     ("agenda", "kanban_service.py", "schedules"),
     ("billing", "router.py", "reports"),
-    ("catalog", "service.py", "billing"),
-    ("catalog", "service.py", "budget"),
     ("clinical_notes", "service.py", "agenda"),
     ("notifications", "handlers.py", "catalog"),
     ("notifications", "router.py", "catalog"),
@@ -118,7 +116,6 @@ KNOWN_VIOLATIONS: set[tuple[str, str, str]] = {
     ("patient_timeline", "seed.py", "budget"),
     ("patient_timeline", "seed.py", "odontogram"),
     ("patient_timeline", "seed.py", "treatment_plan"),
-    ("patients", "service.py", "agenda"),
 }
 
 

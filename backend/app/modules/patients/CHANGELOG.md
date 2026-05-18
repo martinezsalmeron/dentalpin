@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- fix(isolation): drop the cross-module ORM coupling to ``agenda`` and
+  ``patient_timeline``. ``Patient`` no longer declares
+  ``relationship(back_populates=...)`` to ``Appointment`` /
+  ``PatientTimeline`` (the foundational module cannot point at
+  consumers) — the sibling side keeps a one-directional reference.
+  ``get_recent_patients`` no longer lazily imports
+  ``agenda.models.Appointment``; it reads ``appointments`` through a
+  raw SQL fragment with the same fallback semantics.
 - perf(list): drop subquery-count anti-pattern; count uses
   ``COUNT(Patient.id)`` over the same filter set as the data query.
 - perf(indexes): new migration ``pat_0003_recall_filter_indices`` adds

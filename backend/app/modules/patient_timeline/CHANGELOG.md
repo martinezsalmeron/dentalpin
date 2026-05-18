@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- fix(isolation): ``PatientTimeline.patient`` no longer uses
+  ``back_populates="timeline_entries"`` — that attribute was removed
+  from the foundational ``patients`` module so it would stop pointing
+  at this consumer. Relationship stays one-directional.
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 
 ### Added (plan/budget workflow rework, 2026-04-29)

@@ -111,7 +111,10 @@ class Appointment(Base, TimestampMixin):
     color: Mapped[str | None] = mapped_column(String(7))
 
     clinic: Mapped[Clinic] = relationship(back_populates="appointments")
-    patient: Mapped[Patient | None] = relationship(back_populates="appointments")
+    # No ``back_populates`` — patients is foundational and cannot
+    # reference consumer modules. The relationship stays
+    # one-directional (Appointment → Patient).
+    patient: Mapped[Patient | None] = relationship()
     professional: Mapped[User] = relationship(foreign_keys=[professional_id])
     cabinet_assigner: Mapped[User | None] = relationship(foreign_keys=[cabinet_assigned_by])
     cabinet_ref: Mapped[Cabinet | None] = relationship()

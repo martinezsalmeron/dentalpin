@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- fix(isolation): ``Appointment.patient`` no longer uses
+  ``back_populates="appointments"`` — the matching attribute was
+  removed from the foundational ``patients`` module. The
+  relationship stays one-directional (Appointment → Patient); code
+  that needs the reverse side queries agenda directly.
 - perf(appointments-list): count query now hits the same indexed
   filters directly instead of materialising a subquery — drops the
   list endpoint from O(rows × eager-load tree) to O(rows) once a

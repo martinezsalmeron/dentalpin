@@ -42,7 +42,10 @@ class PatientTimeline(Base):
     created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
 
     clinic: Mapped[Clinic] = relationship()
-    patient: Mapped[Patient] = relationship(back_populates="timeline_entries")
+    # No ``back_populates`` — patients is foundational and cannot
+    # reference consumer modules. The relationship stays
+    # one-directional (PatientTimeline → Patient).
+    patient: Mapped[Patient] = relationship()
     created_by_user: Mapped[User | None] = relationship()
 
     __table_args__ = (

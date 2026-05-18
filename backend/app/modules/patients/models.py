@@ -21,8 +21,6 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.core.auth.models import Clinic
-    from app.modules.agenda.models import Appointment
-    from app.modules.patient_timeline.models import PatientTimeline
 
 
 class Patient(Base, TimestampMixin):
@@ -61,9 +59,14 @@ class Patient(Base, TimestampMixin):
     billing_email: Mapped[str | None] = mapped_column(String(255), default=None)
 
     # Relationships
+    #
+    # ``patients`` is foundational (``manifest.depends = []``) so it
+    # cannot point at consumer modules (``agenda``,
+    # ``patient_timeline``, etc.) without inverting the DAG. Sibling
+    # modules declare their own ``patient`` relationship without
+    # ``back_populates`` — callers that need ``patient.appointments``
+    # must query agenda explicitly.
     clinic: Mapped[Clinic] = relationship(back_populates="patients")
-    appointments: Mapped[list[Appointment]] = relationship(back_populates="patient")
-    timeline_entries: Mapped[list[PatientTimeline]] = relationship(back_populates="patient")
 
     @property
     def full_name(self) -> str:

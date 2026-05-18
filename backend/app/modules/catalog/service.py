@@ -2,12 +2,9 @@
 
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-
-from app.modules.billing.models import InvoiceItem
-from app.modules.budget.models import BudgetItem
 
 from .models import TreatmentCatalogItem, TreatmentCategory, TreatmentOdontogramMapping, VatType
 
@@ -521,39 +518,68 @@ class CatalogService:
         clinic_id: UUID,
         limit: int = 8,
     ) -> list[TreatmentCatalogItem]:
-        """Get popular catalog items by usage count in budgets and invoices."""
-        # Count usage in budget_items
-        budget_count = (
-            select(
-                BudgetItem.catalog_item_id,
-                func.count(BudgetItem.id).label("budget_count"),
-            )
-            .where(BudgetItem.clinic_id == clinic_id)
-            .group_by(BudgetItem.catalog_item_id)
-            .subquery()
-        )
+        """Get popular catalog items by usage count in budgets and invoices.
 
-        # Count usage in invoice_items
-        invoice_count = (
-            select(
-                InvoiceItem.catalog_item_id,
-                func.count(InvoiceItem.id).label("invoice_count"),
+        Usage counts come from sibling modules (``budget_items``,
+        ``invoice_items``) that depend on catalog — not the other way
+        round. To avoid pulling their ORM models into the foundational
+        catalog module (which would invert the DAG and block uninstall
+        of billing/budget) we read their tables through a raw
+        ``UNION ALL`` SQL fragment. Table names are the only contract;
+        a rename in either module must be coordinated here (same
+        coupling as the previous import, now expressed as a SQL
+        string and free of cross-module Python imports).
+        """
+        usage_rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT catalog_item_id, COUNT(*) AS n
+                    FROM (
+                        SELECT catalog_item_id FROM budget_items
+                        WHERE clinic_id = :clinic_id
+                          AND catalog_item_id IS NOT NULL
+                        UNION ALL
+                        SELECT catalog_item_id FROM invoice_items
+                        WHERE clinic_id = :clinic_id
+                          AND catalog_item_id IS NOT NULL
+                    ) AS usage
+                    GROUP BY catalog_item_id
+                    ORDER BY n DESC
+                    LIMIT :limit
+                    """
+                ),
+                {"clinic_id": clinic_id, "limit": limit},
             )
-            .where(
-                InvoiceItem.clinic_id == clinic_id,
-                InvoiceItem.catalog_item_id.isnot(None),
-            )
-            .group_by(InvoiceItem.catalog_item_id)
-            .subquery()
-        )
+        ).all()
 
-        # Join and sum counts
-        query = (
+        ranked_ids: list[UUID] = [row.catalog_item_id for row in usage_rows]
+
+        if not ranked_ids:
+            # Cold-start clinic with no budgets/invoices yet — fall
+            # back to the most recently created active items so the UI
+            # still has something to render.
+            result = await db.execute(
+                select(TreatmentCatalogItem)
+                .where(
+                    TreatmentCatalogItem.clinic_id == clinic_id,
+                    TreatmentCatalogItem.is_active.is_(True),
+                    TreatmentCatalogItem.deleted_at.is_(None),
+                )
+                .options(
+                    joinedload(TreatmentCatalogItem.category),
+                    joinedload(TreatmentCatalogItem.vat_type_rel),
+                )
+                .order_by(TreatmentCatalogItem.created_at.desc())
+                .limit(limit)
+            )
+            return list(result.unique().scalars().all())
+
+        result = await db.execute(
             select(TreatmentCatalogItem)
-            .outerjoin(budget_count, TreatmentCatalogItem.id == budget_count.c.catalog_item_id)
-            .outerjoin(invoice_count, TreatmentCatalogItem.id == invoice_count.c.catalog_item_id)
             .where(
                 TreatmentCatalogItem.clinic_id == clinic_id,
+                TreatmentCatalogItem.id.in_(ranked_ids),
                 TreatmentCatalogItem.is_active.is_(True),
                 TreatmentCatalogItem.deleted_at.is_(None),
             )
@@ -561,18 +587,10 @@ class CatalogService:
                 joinedload(TreatmentCatalogItem.category),
                 joinedload(TreatmentCatalogItem.vat_type_rel),
             )
-            .order_by(
-                (
-                    func.coalesce(budget_count.c.budget_count, 0)
-                    + func.coalesce(invoice_count.c.invoice_count, 0)
-                ).desc(),
-                TreatmentCatalogItem.internal_code,
-            )
-            .limit(limit)
         )
-
-        result = await db.execute(query)
-        return list(result.unique().scalars().all())
+        items_by_id = {item.id: item for item in result.unique().scalars().all()}
+        # Preserve the count-ordered ranking from the raw query.
+        return [items_by_id[i] for i in ranked_ids if i in items_by_id]
 
 
 class OdontogramCatalogService:

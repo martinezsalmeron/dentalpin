@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import EventType, event_bus
@@ -34,40 +34,55 @@ class PatientService:
         clinic_id: UUID,
         limit: int = 8,
     ) -> list[Patient]:
-        """Patients ordered by last visit, falling back to newest created."""
-        # Lazy import to avoid a circular path between
-        # ``patients.service`` and ``agenda.models``.
-        from app.modules.agenda.models import Appointment
+        """Patients ordered by last visit, falling back to newest created.
 
-        subquery = (
-            select(
-                Appointment.patient_id,
-                func.max(Appointment.start_time).label("last_visit"),
+        ``last_visit`` lives in the consumer ``agenda.appointments``
+        table. ``patients`` is foundational (``depends=[]``) so we
+        cannot import the ``Appointment`` model — instead we read the
+        table through a raw SQL fragment. The table name is the only
+        contract; agenda renames must be coordinated here.
+        """
+        last_visit_rows = (
+            await db.execute(
+                text(
+                    """
+                    SELECT patient_id, MAX(start_time) AS last_visit
+                    FROM appointments
+                    WHERE clinic_id = :clinic_id
+                      AND patient_id IS NOT NULL
+                    GROUP BY patient_id
+                    ORDER BY last_visit DESC
+                    LIMIT :limit
+                    """
+                ),
+                {"clinic_id": clinic_id, "limit": limit},
             )
-            .where(
-                Appointment.clinic_id == clinic_id,
-                Appointment.patient_id.isnot(None),
-            )
-            .group_by(Appointment.patient_id)
-            .subquery()
-        )
+        ).all()
 
-        query = (
-            select(Patient)
-            .outerjoin(subquery, Patient.id == subquery.c.patient_id)
-            .where(
+        ordered_ids: list[UUID] = [row.patient_id for row in last_visit_rows]
+
+        if not ordered_ids:
+            result = await db.execute(
+                select(Patient)
+                .where(
+                    Patient.clinic_id == clinic_id,
+                    Patient.status != "archived",
+                )
+                .order_by(Patient.created_at.desc())
+                .limit(limit)
+            )
+            return list(result.scalars().all())
+
+        result = await db.execute(
+            select(Patient).where(
                 Patient.clinic_id == clinic_id,
+                Patient.id.in_(ordered_ids),
                 Patient.status != "archived",
             )
-            .order_by(
-                subquery.c.last_visit.desc().nulls_last(),
-                Patient.created_at.desc(),
-            )
-            .limit(limit)
         )
-
-        result = await db.execute(query)
-        return list(result.scalars().all())
+        by_id = {p.id: p for p in result.scalars().all()}
+        # Preserve the visit-ordered ranking from the raw query.
+        return [by_id[i] for i in ordered_ids if i in by_id]
 
     @staticmethod
     async def list_patients(
