@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { InvoiceListItem, InvoiceStatus, PaginatedResponse } from '~~/app/types'
 import { INVOICE_STATUS_ROLE, roleToUiColor } from '~~/app/config/severity'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 /**
  * /invoices — list page.
@@ -195,7 +196,7 @@ async function handleDelete(inv: InvoiceListItem, ev: Event) {
   >
     <template #actions>
       <UButton
-        v-if="can('billing.write')"
+        v-if="can(PERMISSIONS.billing.write)"
         color="primary"
         variant="solid"
         icon="i-lucide-plus"
@@ -262,7 +263,7 @@ async function handleDelete(inv: InvoiceListItem, ev: Event) {
         :title="activeFilterCount || filters.q ? t('invoice.noItems') : t('invoice.empty')"
       >
         <template
-          v-if="!activeFilterCount && !filters.q && can('billing.write')"
+          v-if="!activeFilterCount && !filters.q && can(PERMISSIONS.billing.write)"
           #actions
         >
           <UButton
@@ -337,7 +338,7 @@ async function handleDelete(inv: InvoiceListItem, ev: Event) {
           </div>
           <div class="shrink-0 flex items-center gap-1">
             <UButton
-              v-if="invoice.status === 'draft' && can('billing.admin')"
+              v-if="invoice.status === 'draft' && can(PERMISSIONS.billing.admin)"
               variant="ghost"
               color="error"
               icon="i-lucide-trash-2"

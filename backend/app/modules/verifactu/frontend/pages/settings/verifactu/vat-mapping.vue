@@ -6,13 +6,15 @@
 // override. When no override is set, the verifactu hook falls back to
 // the rate-based heuristic.
 import type { VatClassificationItem } from '~/composables/useVerifactu'
+import { PERMISSIONS } from '~~/app/config/permissions'
+import { errorMessage } from '~~/app/utils/error'
 
 const { t } = useI18n()
 const toast = useToast?.()
 const { listVatMapping, upsertVatMapping } = useVerifactu()
 const { can } = usePermissions()
 
-const canManage = computed(() => can('verifactu.settings.configure'))
+const canManage = computed(() => can(PERMISSIONS.verifactu.settingsConfigure))
 
 const items = ref<VatClassificationItem[]>([])
 const loading = ref(true)
@@ -98,10 +100,8 @@ async function save(row: Row) {
     }
     row.dirty = false
     toast?.add({ title: t('verifactu.vatMapping.saved'), color: 'green' })
-  } catch (e: any) {
-    const data = e?.data ?? e?.response?._data ?? {}
-    const detail = data.message || data.detail || data.errors?.[0] || null
-    toast?.add({ title: detail || t('verifactu.vatMapping.saveFailed'), color: 'red' })
+  } catch (e: unknown) {
+    toast?.add({ title: errorMessage(e, t('verifactu.vatMapping.saveFailed')), color: 'red' })
   } finally {
     saving.value = null
   }

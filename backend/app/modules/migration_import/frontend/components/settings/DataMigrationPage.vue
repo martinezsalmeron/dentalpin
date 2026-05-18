@@ -4,6 +4,8 @@
 // status, progress and error fields stay current without push.
 
 import { computed, onUnmounted, ref } from 'vue'
+import { PERMISSIONS } from '~~/app/config/permissions'
+import { errorMessage } from '~~/app/utils/error'
 
 const { t } = useI18n()
 const api = useApi()
@@ -56,7 +58,7 @@ const preview = ref<PreviewResponse | null>(null)
 const importFiscal = ref(false)
 let pollHandle: ReturnType<typeof setInterval> | null = null
 
-const canExecute = computed(() => can('migration_import.job.execute'))
+const canExecute = computed(() => can(PERMISSIONS.migrationImport.jobExecute))
 const verifactuOptInVisible = computed(
   () => !!preview.value?.verifactu_data_detected && !!preview.value?.verifactu_module_installed
 )
@@ -76,8 +78,8 @@ async function startUpload() {
     const res = await api.post<{ data: ImportJob }>('/api/v1/migration-import/jobs', formData)
     job.value = res.data
     await runValidate()
-  } catch (err: any) {
-    uploadError.value = err?.message ?? t('migrationImport.upload.error')
+  } catch (err: unknown) {
+    uploadError.value = errorMessage(err, t('migrationImport.upload.error'))
   } finally {
     uploading.value = false
   }

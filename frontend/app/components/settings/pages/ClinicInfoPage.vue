@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ClinicAddress, ClinicUpdate } from '~/types'
 import { SUPPORTED_CURRENCIES } from '~/constants/currencies'
+import { PERMISSIONS } from '~/config/permissions'
 
 const { t } = useI18n()
 const clinic = useClinic()
 const { can } = usePermissions()
-const canEdit = computed(() => can('admin.clinic.write'))
+const canEdit = computed(() => can(PERMISSIONS.admin.clinicWrite))
 
 const COUNTRY_CODES = [
   'AD', 'AE', 'AF', 'AG', 'AL', 'AM', 'AO', 'AR', 'AT', 'AU', 'AZ',

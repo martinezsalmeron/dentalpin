@@ -10,6 +10,7 @@
  */
 
 import type { PaymentAllocation, PaymentMethod } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 interface BudgetCtx {
   budget: {
@@ -109,7 +110,7 @@ function handleCreated() {
           {{ t('payments.budgetCard.title') }}
         </h3>
         <UButton
-          v-if="pending > 0 && can('payments.record.write')"
+          v-if="pending > 0 && can(PERMISSIONS.payments.recordWrite)"
           icon="i-lucide-wallet"
           size="sm"
           @click="showCreate = true"

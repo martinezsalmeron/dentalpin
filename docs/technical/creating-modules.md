@@ -768,17 +768,16 @@ Backend:
 _: Annotated[None, Depends(require_permission("inventory.items.read"))],
 ```
 
-Frontend:
-
-```vue
-<ActionButton resource="inventory.items" action="write" ...>
-```
-
-Or programmatically:
+Frontend (gate with `PERMISSIONS` + `usePermissions`):
 
 ```ts
+import { PERMISSIONS } from '~/config/permissions'
 const { can } = usePermissions()
-if (can('inventory.items.read')) { /* ... */ }
+if (can(PERMISSIONS.inventory.read)) { /* ... */ }
+```
+
+```vue
+<UButton v-if="can(PERMISSIONS.inventory.write)" ...>Add item</UButton>
 ```
 
 ---

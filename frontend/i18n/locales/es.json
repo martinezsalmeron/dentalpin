@@ -1189,6 +1189,23 @@
     "copy": "Copiar",
     "copyFailed": "No se pudo copiar"
   },
+  "cabinet": {
+    "toast": {
+      "created": "Gabinete creado correctamente",
+      "updated": "Gabinete actualizado correctamente",
+      "deleted": "Gabinete eliminado correctamente",
+      "duplicateName": "Ya existe un gabinete con ese nombre",
+      "notFound": "Gabinete no encontrado",
+      "createFailed": "Error al crear gabinete",
+      "updateFailed": "Error al actualizar gabinete",
+      "deleteFailed": "Error al eliminar gabinete"
+    }
+  },
+  "professionals": {
+    "toast": {
+      "loadFailed": "Error al cargar profesionales"
+    }
+  },
   "lists": {
     "empty": {
       "title": "Sin resultados",

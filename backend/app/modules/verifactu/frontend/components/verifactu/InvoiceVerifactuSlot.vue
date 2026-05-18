@@ -5,6 +5,7 @@
 // dependency on verifactu; this file lives in the verifactu module and
 // is loaded only when the clinic country is ES.
 import InvoiceVerifactuPanel from './InvoiceVerifactuPanel.vue'
+import { errorMessage, errorStatus } from '~~/app/utils/error'
 
 interface InvoiceCtx {
   invoice?: {
@@ -136,12 +137,10 @@ async function save() {
     editOpen.value = false
     await fetchInvoice(invoice.value.id)
     await fetchLiveRecord()
-  } catch (e: any) {
-    const status = e?.response?.status
-    const msg =
-      status === 409
-        ? t('verifactu.billingParty.concurrentEdit')
-        : e?.data?.detail || t('verifactu.billingParty.saveFailed')
+  } catch (e: unknown) {
+    const msg = errorStatus(e) === 409
+      ? t('verifactu.billingParty.concurrentEdit')
+      : errorMessage(e, t('verifactu.billingParty.saveFailed'))
     toast?.add({ title: msg, color: 'red' })
   } finally {
     saving.value = false
@@ -158,8 +157,8 @@ async function regenerate() {
     toast?.add({ title: t('verifactu.queue.regeneratedToast'), color: 'green' })
     if (invoice.value?.id) await fetchInvoice(invoice.value.id)
     await fetchLiveRecord()
-  } catch (e: any) {
-    toast?.add({ title: e?.data?.detail || t('verifactu.billingParty.saveFailed'), color: 'red' })
+  } catch (e: unknown) {
+    toast?.add({ title: errorMessage(e, t('verifactu.billingParty.saveFailed')), color: 'red' })
   } finally {
     regenerating.value = false
   }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreatmentPlan, TreatmentPlanStatus } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 const props = defineProps<{
   q: string
@@ -126,7 +127,7 @@ function getItemCount(plan: TreatmentPlan): number {
         :title="props.q || selectedStatuses.length > 0 ? t('treatmentPlans.noItems') : t('treatmentPlans.empty')"
       >
         <template
-          v-if="!props.q && selectedStatuses.length === 0 && can('treatment_plan.plans.write')"
+          v-if="!props.q && selectedStatuses.length === 0 && can(PERMISSIONS.treatmentPlans.write)"
           #actions
         >
           <UButton
@@ -168,7 +169,7 @@ function getItemCount(plan: TreatmentPlan): number {
             </span>
           </template>
           <template
-            v-if="can('treatment_plan.plans.write') && plan.status === 'draft'"
+            v-if="can(PERMISSIONS.treatmentPlans.write) && plan.status === 'draft'"
             #actions
           >
             <UButton

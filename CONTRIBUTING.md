@@ -284,16 +284,22 @@ async def create_patient(
     ...
 ```
 
-On the frontend, use permission-aware components:
+On the frontend, gate UI with the `PERMISSIONS` const + `usePermissions().can()`:
 
 ```vue
-<ActionButton
-  resource="patients"
-  action="write"
-  @click="createPatient"
->
-  {{ t('patients.create') }}
-</ActionButton>
+<script setup lang="ts">
+import { PERMISSIONS } from '~/config/permissions'
+const { can } = usePermissions()
+</script>
+
+<template>
+  <UButton
+    v-if="can(PERMISSIONS.patients.write)"
+    @click="createPatient"
+  >
+    {{ t('patients.create') }}
+  </UButton>
+</template>
 ```
 
 ---

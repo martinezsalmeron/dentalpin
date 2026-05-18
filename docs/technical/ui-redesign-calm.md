@@ -231,7 +231,8 @@ Criterio de salida: la app se renderiza con la nueva paleta, fuente y densidad s
 
 Refactor visual sin cambios de API:
 
-- `components/shared/ActionButton.vue` — alinear `variant`, `size`, espaciado a tokens.
+<!-- ActionButton removed: use `UButton` with `v-if="can(PERMISSIONS.x.y)"`. -->
+
 - `layouts/default.vue` — sidebar:
   - Fondo `--color-surface-muted`, sin borde derecho (separación por color, no por línea).
   - Items activos: pill blando, sin background pleno saturado (`bg-primary-50` → tinte `primary soft`).
@@ -317,7 +318,6 @@ Las variables CSS del odontograma ya existen en `main.css`. Re-armonizarlas con 
 | `frontend/app/components/shared/EmptyState.vue` | **NEW** |
 | `frontend/app/layouts/default.vue` | Refactor sidebar/header a tokens, integrar `DensityToggle` |
 | `frontend/app/layouts/guest.vue` | Refactor a tokens |
-| `frontend/app/components/shared/ActionButton.vue` | Defaults a tokens |
 | `frontend/app/pages/index.vue` | `PageHeader`, cards a tokens, `tnum` en KPI |
 | `frontend/app/pages/patients/**` | `PageHeader`, `EmptyState`, tabla a tokens |
 | `frontend/app/pages/appointments/index.vue` | `PageHeader`, `EmptyState` |

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { VerifactuQueueItem, VerifactuRecordAttempt } from '../../../composables/useVerifactu'
+import { PERMISSIONS } from '~~/app/config/permissions'
+import { errorMessage } from '~~/app/utils/error'
 
 const { t } = useI18n()
 const {
@@ -41,9 +43,9 @@ async function retry(item: VerifactuQueueItem) {
       color: 'green',
     })
     await refresh()
-  } catch (e: any) {
+  } catch (e: unknown) {
     toast?.add({
-      title: e?.data?.detail || e?.message || 'Error',
+      title: errorMessage(e, 'Error'),
       color: 'red',
     })
   } finally {
@@ -138,7 +140,7 @@ onMounted(refresh)
       </div>
       <div class="flex flex-wrap gap-2">
         <UButton
-          v-if="tab === 'rejected' && can('verifactu.queue.manage') && items.length > 1"
+          v-if="tab === 'rejected' && can(PERMISSIONS.verifactu.queueManage) && items.length > 1"
           :loading="retryingAll"
           color="primary"
           variant="soft"
@@ -148,7 +150,7 @@ onMounted(refresh)
           {{ t('verifactu.queue.retryAll') }}
         </UButton>
         <UButton
-          v-if="can('verifactu.queue.manage')"
+          v-if="can(PERMISSIONS.verifactu.queueManage)"
           :loading="processing"
           variant="soft"
           @click="process"
@@ -228,7 +230,7 @@ onMounted(refresh)
             {{ t('verifactu.queue.viewInvoice') }}
           </UButton>
           <UButton
-            v-if="can('verifactu.records.read') && item.submission_attempt > 0"
+            v-if="can(PERMISSIONS.verifactu.recordsRead) && item.submission_attempt > 0"
             variant="ghost"
             size="sm"
             icon="i-lucide-history"
@@ -238,7 +240,7 @@ onMounted(refresh)
           </UButton>
           <UButton
             v-if="
-              can('verifactu.queue.manage') &&
+              can(PERMISSIONS.verifactu.queueManage) &&
               ['rejected', 'failed_transient', 'failed_validation'].includes(item.state)
             "
             color="primary"

@@ -16,6 +16,7 @@
 import type { PatientExtended, PatientLedger, PatientLedgerEntry, PaymentMethod } from '~~/app/types'
 import type { TotalLine } from '~~/app/components/shared/EntityTotalsCard.vue'
 import type { SemanticRole } from '~~/app/config/severity'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 interface PatientPaymentsCtx {
   patient: PatientExtended | null
@@ -36,8 +37,8 @@ const showCobrar = ref(false)
 const showRefund = ref(false)
 const refundTarget = ref<{ id: string, amount: number, method: PaymentMethod } | null>(null)
 
-const canCollect = computed(() => can('payments.record.write'))
-const canRefund = computed(() => can('payments.record.refund'))
+const canCollect = computed(() => can(PERMISSIONS.payments.recordWrite))
+const canRefund = computed(() => can(PERMISSIONS.payments.recordRefund))
 
 const totalPaid = computed(() => Number(ledger.value?.total_paid ?? 0))
 const debt = computed(() => Number(ledger.value?.clinic_receivable ?? 0))

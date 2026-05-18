@@ -7,6 +7,8 @@
 //    inspección AEAT (RD 1007/2023 art. 13).
 // 3. Descarga el PDF firmado para archivo / distribución a clínicas.
 import type { ProducerInfoUpdate, VerifactuSettings, ProducerDefaults } from '~/composables/useVerifactu'
+import { PERMISSIONS } from '~~/app/config/permissions'
+import { errorMessage } from '~~/app/utils/error'
 
 const { t } = useI18n()
 const { getSettings, getProducerDefaults, updateProducer, revokeDeclaration } = useVerifactu()
@@ -15,7 +17,7 @@ const toast = useToast?.()
 const showRevokeConfirm = ref(false)
 const revoking = ref(false)
 
-const canManage = computed(() => can('verifactu.settings.configure'))
+const canManage = computed(() => can(PERMISSIONS.verifactu.settingsConfigure))
 
 const settings = ref<VerifactuSettings | null>(null)
 const defaults = ref<ProducerDefaults | null>(null)
@@ -79,8 +81,8 @@ async function saveDraft() {
   try {
     settings.value = await updateProducer({ ...form.value, sign_declaracion: false })
     toast?.add({ title: t('verifactu.producer.draftSaved'), color: 'green' })
-  } catch (e: any) {
-    error.value = e?.data?.detail ?? e?.message ?? t('verifactu.producer.saveFailed')
+  } catch (e: unknown) {
+    error.value = errorMessage(e, t('verifactu.producer.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -95,8 +97,8 @@ async function revokeNow() {
     showRevokeConfirm.value = false
     acceptedDeclaration.value = false
     toast?.add({ title: t('verifactu.producer.revokedToast'), color: 'amber' })
-  } catch (e: any) {
-    error.value = e?.data?.message ?? e?.data?.detail ?? e?.message ?? t('verifactu.producer.saveFailed')
+  } catch (e: unknown) {
+    error.value = errorMessage(e, t('verifactu.producer.saveFailed'))
   } finally {
     revoking.value = false
   }
@@ -110,8 +112,8 @@ async function signNow() {
     settings.value = await updateProducer({ ...form.value, sign_declaracion: true })
     acceptedDeclaration.value = false
     toast?.add({ title: t('verifactu.producer.signedToast'), color: 'green' })
-  } catch (e: any) {
-    error.value = e?.data?.detail ?? e?.message ?? t('verifactu.producer.saveFailed')
+  } catch (e: unknown) {
+    error.value = errorMessage(e, t('verifactu.producer.saveFailed'))
   } finally {
     saving.value = false
   }

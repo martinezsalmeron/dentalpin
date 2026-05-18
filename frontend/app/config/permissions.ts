@@ -99,43 +99,31 @@ export const PERMISSIONS = {
     jobWrite: 'migration_import.job.write',
     jobExecute: 'migration_import.job.execute',
     binaryWrite: 'migration_import.binary.write'
+  },
+  payments: {
+    recordRead: 'payments.record.read',
+    recordWrite: 'payments.record.write',
+    recordRefund: 'payments.record.refund',
+    reportsRead: 'payments.reports.read'
+  },
+  verifactu: {
+    settingsRead: 'verifactu.settings.read',
+    settingsConfigure: 'verifactu.settings.configure',
+    queueManage: 'verifactu.queue.manage',
+    recordsRead: 'verifactu.records.read',
+    environmentPromote: 'verifactu.environment.promote'
+  },
+  recalls: {
+    read: 'recalls.read',
+    write: 'recalls.write',
+    delete: 'recalls.delete'
+  },
+  schedules: {
+    clinicHoursRead: 'schedules.clinic_hours.read',
+    clinicHoursWrite: 'schedules.clinic_hours.write',
+    professionalRead: 'schedules.professional.read',
+    professionalWrite: 'schedules.professional.write',
+    professionalOwnRead: 'schedules.professional.own.read',
+    professionalOwnWrite: 'schedules.professional.own.write'
   }
 } as const
-
-// Route permission mapping (path -> required permission)
-export const ROUTE_PERMISSIONS: Record<string, string> = {
-  '/patients': PERMISSIONS.patients.read,
-  '/appointments': PERMISSIONS.appointments.read,
-  '/settings/users': PERMISSIONS.users.write,
-  '/settings/modules': PERMISSIONS.admin.clinicRead,
-  '/settings/notifications': PERMISSIONS.notifications.settingsRead,
-  '/treatment-plans': PERMISSIONS.treatmentPlans.read,
-  '/budgets': PERMISSIONS.budget.read,
-  '/settings/budgets': PERMISSIONS.admin.clinicRead,
-  '/invoices': PERMISSIONS.billing.read,
-  '/reports': PERMISSIONS.reports.billingRead,
-  '/reports/billing': PERMISSIONS.reports.billingRead,
-  '/reports/budgets': PERMISSIONS.reports.budgetsRead,
-  '/reports/scheduling': PERMISSIONS.reports.schedulingRead,
-  '/settings/data-migration': PERMISSIONS.migrationImport.jobRead
-}
-
-// Helper to get permission for a resource action
-export function getPermission(resource: keyof typeof PERMISSIONS, action: 'read' | 'write'): string {
-  return PERMISSIONS[resource]?.[action] ?? ''
-}
-
-// Helper to check if a route requires permission
-export function getRoutePermission(path: string): string | undefined {
-  // Check exact match first
-  if (ROUTE_PERMISSIONS[path]) {
-    return ROUTE_PERMISSIONS[path]
-  }
-  // Check prefix match for nested routes
-  for (const [route, permission] of Object.entries(ROUTE_PERMISSIONS)) {
-    if (path.startsWith(route + '/')) {
-      return permission
-    }
-  }
-  return undefined
-}

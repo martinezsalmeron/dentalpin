@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Appointment } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 defineProps<{ ctx?: unknown }>()
 
@@ -15,7 +16,7 @@ const { transition } = useAppointments()
 const toast = useToast()
 
 const pending = computed(() => !tomorrowLoaded.value)
-const canWrite = computed(() => can('agenda.appointments.write'))
+const canWrite = computed(() => can(PERMISSIONS.appointments.write))
 const busyIds = ref<Set<string>>(new Set())
 
 onMounted(() => {

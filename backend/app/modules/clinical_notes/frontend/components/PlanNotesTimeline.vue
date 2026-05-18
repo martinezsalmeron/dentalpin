@@ -13,6 +13,7 @@
  */
 
 import type { ClinicalNoteEntry, PlannedTreatmentItem, NoteType } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 const props = defineProps<{
   planId: string
@@ -80,7 +81,7 @@ const visibleEntries = computed(() =>
     : entries.value.filter(e => activeSources.value.has(e.source))
 )
 
-const canWrite = computed(() => !props.readonly && can('clinical_notes.notes.write'))
+const canWrite = computed(() => !props.readonly && can(PERMISSIONS.clinicalNotes.write))
 
 const itemByTreatmentId = computed(() => {
   const map = new Map<string, PlannedTreatmentItem>()

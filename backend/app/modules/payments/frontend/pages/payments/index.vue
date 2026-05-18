@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PaymentMethod, PaymentRecord, PaginatedResponse } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 /**
  * /payments — list page.
@@ -235,7 +236,7 @@ function formatDate(s: string | undefined): string {
   >
     <template #actions>
       <UButton
-        v-if="can('payments.record.write')"
+        v-if="can(PERMISSIONS.payments.recordWrite)"
         color="primary"
         icon="i-lucide-plus"
         @click="showCreate = true"
@@ -307,7 +308,7 @@ function formatDate(s: string | undefined): string {
         :title="t('payments.list.empty')"
       >
         <template
-          v-if="!activeFilterCount && !filters.q && can('payments.record.write')"
+          v-if="!activeFilterCount && !filters.q && can(PERMISSIONS.payments.recordWrite)"
           #actions
         >
           <UButton
@@ -375,7 +376,7 @@ function formatDate(s: string | undefined): string {
             </div>
           </div>
           <UButton
-            v-if="can('payments.record.refund') && Number(p.net_amount) > 0"
+            v-if="can(PERMISSIONS.payments.recordRefund) && Number(p.net_amount) > 0"
             variant="soft"
             color="warning"
             size="xs"
@@ -428,7 +429,7 @@ function formatDate(s: string | undefined): string {
             </UBadge>
           </div>
           <div
-            v-if="can('payments.record.refund') && Number(p.net_amount) > 0"
+            v-if="can(PERMISSIONS.payments.recordRefund) && Number(p.net_amount) > 0"
             class="flex justify-end"
           >
             <UButton

@@ -1167,6 +1167,23 @@
     "copy": "Copy",
     "copyFailed": "Could not copy"
   },
+  "cabinet": {
+    "toast": {
+      "created": "Cabinet created",
+      "updated": "Cabinet updated",
+      "deleted": "Cabinet deleted",
+      "duplicateName": "A cabinet with this name already exists",
+      "notFound": "Cabinet not found",
+      "createFailed": "Failed to create cabinet",
+      "updateFailed": "Failed to update cabinet",
+      "deleteFailed": "Failed to delete cabinet"
+    }
+  },
+  "professionals": {
+    "toast": {
+      "loadFailed": "Failed to load professionals"
+    }
+  },
   "lists": {
     "empty": {
       "title": "No results",

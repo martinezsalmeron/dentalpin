@@ -9,6 +9,7 @@
  */
 
 import type { NoteType, RecentNoteEntry, ClinicalNoteLinked } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 const props = defineProps<{
   ctx: { patient: { id: string } }
@@ -38,8 +39,8 @@ const editingId = ref<string | null>(null)
 const composerBody = ref('')
 const saving = ref(false)
 
-const canRead = computed(() => can('clinical_notes.notes.read'))
-const canWrite = computed(() => can('clinical_notes.notes.write'))
+const canRead = computed(() => can(PERMISSIONS.clinicalNotes.read))
+const canWrite = computed(() => can(PERMISSIONS.clinicalNotes.write))
 
 const patientId = computed(() => props.ctx?.patient?.id)
 

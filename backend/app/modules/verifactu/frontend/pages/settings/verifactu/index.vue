@@ -5,6 +5,9 @@
 // active-test → active-prod). Configuration cards below are read-only
 // summaries that link to their dedicated pages. The environment switch
 // lives only in the hero so there is no conflicting control elsewhere.
+import { PERMISSIONS } from '~~/app/config/permissions'
+import { errorMessage as resolveErrorMessage } from '~~/app/utils/error'
+
 const { t } = useI18n()
 const { health, getSettings, updateSettings } = useVerifactu()
 const { can } = usePermissions()
@@ -17,8 +20,8 @@ const switchingEnv = ref(false)
 const showProdConfirm = ref(false)
 const errorMessage = ref<string | null>(null)
 
-const canManage = computed(() => can('verifactu.settings.configure'))
-const canPromoteToProd = computed(() => can('verifactu.environment.promote'))
+const canManage = computed(() => can(PERMISSIONS.verifactu.settingsConfigure))
+const canPromoteToProd = computed(() => can(PERMISSIONS.verifactu.environmentPromote))
 
 async function refresh() {
   loading.value = true
@@ -121,8 +124,8 @@ async function toggleEnabled() {
   try {
     settings.value = await updateSettings({ enabled: !settings.value.enabled })
     summary.value = await health()
-  } catch (e: any) {
-    errorMessage.value = e?.data?.detail ?? e?.message ?? 'Error'
+  } catch (e: unknown) {
+    errorMessage.value = resolveErrorMessage(e, 'Error')
   } finally {
     saving.value = false
   }

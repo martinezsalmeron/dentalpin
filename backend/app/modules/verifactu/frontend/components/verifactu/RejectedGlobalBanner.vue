@@ -3,6 +3,8 @@
 // Verifactu record is rejected. Polls /verifactu/health every 60 s
 // (cheap query) so the user sees the warning even on screens that
 // don't otherwise touch verifactu data.
+import { PERMISSIONS } from '~~/app/config/permissions'
+
 const { t } = useI18n()
 const { health } = useVerifactu()
 const { can } = usePermissions()
@@ -12,7 +14,7 @@ const showing = computed(() => rejectedCount.value > 0)
 let timer: ReturnType<typeof setInterval> | null = null
 
 async function refresh() {
-  if (!can('verifactu.queue.manage') && !can('verifactu.records.read')) return
+  if (!can(PERMISSIONS.verifactu.queueManage) && !can(PERMISSIONS.verifactu.recordsRead)) return
   try {
     const h = await health()
     rejectedCount.value = h.rejected_count ?? 0

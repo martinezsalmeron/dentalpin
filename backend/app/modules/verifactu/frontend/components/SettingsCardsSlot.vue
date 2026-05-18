@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { PERMISSIONS } from '~~/app/config/permissions'
+
 const { t } = useI18n()
 const { can } = usePermissions()
 
-const canRead = computed(() => can('verifactu.settings.read'))
+const canRead = computed(() => can(PERMISSIONS.verifactu.settingsRead))
 </script>
 
 <template>

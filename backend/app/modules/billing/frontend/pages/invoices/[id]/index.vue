@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { INVOICE_STATUS_ROLE } from '~~/app/config/severity'
+import { PERMISSIONS } from '~~/app/config/permissions'
+import { errorMessage } from '~~/app/utils/error'
 import type { EntityChip } from '~~/app/components/shared/EntityStatusChips.vue'
 import type { EntityAction } from '~~/app/components/shared/EntityActionBar.vue'
 import type { TotalLine } from '~~/app/components/shared/EntityTotalsCard.vue'
@@ -143,12 +145,10 @@ async function handleIssue() {
     })
     showIssueConfirm.value = false
     await fetchInvoice(invoiceId.value)
-  } catch (e: any) {
-    const data = e?.data ?? e?.response?._data ?? {}
-    const detail = data.message || data.detail || data.errors?.[0] || null
+  } catch (e: unknown) {
     toast.add({
       title: t('common.error'),
-      description: detail || t('invoice.errors.issue'),
+      description: errorMessage(e, t('invoice.errors.issue')),
       color: 'error'
     })
   } finally {
@@ -330,7 +330,7 @@ const primaryActions = computed<EntityAction[]>(() => {
   if (!inv) return []
   const actions: EntityAction[] = []
 
-  if (canRecordPayment(inv) && can('billing.write')) {
+  if (canRecordPayment(inv) && can(PERMISSIONS.billing.write)) {
     actions.push({
       key: 'recordPayment',
       label: t('invoice.actions.recordPayment'),
@@ -340,7 +340,7 @@ const primaryActions = computed<EntityAction[]>(() => {
     })
   }
 
-  if (canIssue(inv) && can('billing.write')) {
+  if (canIssue(inv) && can(PERMISSIONS.billing.write)) {
     actions.push({
       key: 'issue',
       label: t('invoice.actions.issue'),
@@ -350,7 +350,7 @@ const primaryActions = computed<EntityAction[]>(() => {
     })
   }
 
-  if (canSend(inv) && can('billing.write')) {
+  if (canSend(inv) && can(PERMISSIONS.billing.write)) {
     actions.push({
       key: 'sendEmail',
       label: t('invoice.actions.sendEmail'),
@@ -360,7 +360,7 @@ const primaryActions = computed<EntityAction[]>(() => {
     })
   }
 
-  if (canEdit(inv) && can('billing.write')) {
+  if (canEdit(inv) && can(PERMISSIONS.billing.write)) {
     actions.push({
       key: 'edit',
       label: t('common.edit'),
@@ -378,7 +378,7 @@ const overflowActions = computed<EntityAction[]>(() => {
   if (!inv) return []
   const actions: EntityAction[] = []
 
-  if (inv.status !== 'draft' && can('billing.read')) {
+  if (inv.status !== 'draft' && can(PERMISSIONS.billing.read)) {
     actions.push({
       key: 'downloadPdf',
       label: t('invoice.actions.downloadPdf'),
@@ -388,7 +388,7 @@ const overflowActions = computed<EntityAction[]>(() => {
     })
   }
 
-  if (canCreateCreditNote(inv) && can('billing.write')) {
+  if (canCreateCreditNote(inv) && can(PERMISSIONS.billing.write)) {
     actions.push({
       key: 'createCreditNote',
       label: t('invoice.actions.createCreditNote'),
@@ -397,7 +397,7 @@ const overflowActions = computed<EntityAction[]>(() => {
     })
   }
 
-  if (canVoid(inv) && can('billing.admin')) {
+  if (canVoid(inv) && can(PERMISSIONS.billing.admin)) {
     actions.push({
       key: 'void',
       label: t('invoice.actions.void'),

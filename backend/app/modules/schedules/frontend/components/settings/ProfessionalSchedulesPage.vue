@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ProfessionalHours, ProfessionalOverride, ProfessionalOverridePayload, WeekdayShifts } from '../../composables/useProfessionalHours'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -17,11 +18,11 @@ const {
 
 const selectedProfessional = ref<string | null>(null)
 
-const isAdmin = computed(() => can('schedules.professional.read') || can('schedules.professional.write'))
+const isAdmin = computed(() => can(PERMISSIONS.schedules.professionalRead) || can(PERMISSIONS.schedules.professionalWrite))
 const canWrite = computed(() => {
   if (!selectedProfessional.value) return false
-  if (can('schedules.professional.write')) return true
-  if (selectedProfessional.value === auth.user.value?.id && can('schedules.professional.own.write')) return true
+  if (can(PERMISSIONS.schedules.professionalWrite)) return true
+  if (selectedProfessional.value === auth.user.value?.id && can(PERMISSIONS.schedules.professionalOwnWrite)) return true
   return false
 })
 

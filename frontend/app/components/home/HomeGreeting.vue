@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { PERMISSIONS } from '~/config/permissions'
+
 const { t, locale } = useI18n()
 const { user } = useAuth()
 const { can } = usePermissions()
@@ -43,8 +45,8 @@ const formattedDate = computed(() =>
   })
 )
 
-const canWriteAppointments = computed(() => can('agenda.appointments.write'))
-const canWritePatients = computed(() => can('patients.write'))
+const canWriteAppointments = computed(() => can(PERMISSIONS.appointments.write))
+const canWritePatients = computed(() => can(PERMISSIONS.patients.write))
 </script>
 
 <template>

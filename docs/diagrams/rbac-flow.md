@@ -18,7 +18,7 @@ graph LR
     subgraph "Frontend"
         PERMS[usePermissions()]
         CAN[can() / canAny()]
-        BTN[ActionButton]
+        UI[v-if gated UI]
         NAV[Navigation]
     end
 
@@ -26,7 +26,7 @@ graph LR
     EXPAND --> ME
     ME --> PERMS
     PERMS --> CAN
-    CAN --> BTN
+    CAN --> UI
     CAN --> NAV
 ```
 
@@ -105,25 +105,24 @@ sequenceDiagram
     COMP->>COMP: Render edit button
 ```
 
-## ActionButton Component
+## Permission-gated UI
 
 ```vue
-<!-- Only renders if user has permission -->
-<ActionButton
-  resource="patients"
-  action="write"
-  @click="edit"
->
-  Edit
-</ActionButton>
+<script setup lang="ts">
+import { PERMISSIONS } from '~/config/permissions'
+const { can } = usePermissions()
+</script>
+
+<template>
+  <UButton v-if="can(PERMISSIONS.patients.write)" @click="edit">Edit</UButton>
+</template>
 ```
 
 ```mermaid
 graph LR
-    PROPS[resource="patients"<br/>action="write"] --> LOOKUP
-    LOOKUP[PERMISSIONS.patients.write] --> CHECK
-    CHECK["can('clinical.patients.write')"] --> RENDER
+    REF[PERMISSIONS.patients.write] --> CHECK
+    CHECK["can('patients.write')"] --> RENDER
     RENDER{has permission?}
     RENDER --> |yes| SHOW[Render button]
-    RENDER --> |no| HIDE[Don't render]
+    RENDER --> |no| HIDE[Skip]
 ```

@@ -240,7 +240,7 @@ Components in DentalPin are built on **Nuxt UI 4** (Radix Vue under the hood). C
 - Focus: 2 px ring in `--color-primary`, 2 px offset.
 - Loading: spinner replaces leading icon, button stays the same width (no layout shift).
 
-`ActionButton` (permission-aware) inherits these defaults.
+Permission-gated buttons follow the same defaults — gate with `v-if="can(PERMISSIONS.x.y)"` on a plain `UButton`.
 
 ### 6.2 Cards (`UCard`)
 

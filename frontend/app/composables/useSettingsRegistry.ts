@@ -14,6 +14,7 @@
  */
 
 import type { Component } from 'vue'
+import { STORAGE_KEYS } from '~/constants/storage'
 
 export type SettingsCategoryId
   = | 'general'
@@ -187,8 +188,6 @@ function useDismissedState() {
   return useState<Record<string, boolean>>('settings:onboarding-dismissed', () => ({}))
 }
 
-const STORAGE_KEY_PREFIX = 'dentalpin.settings.onboarding.dismissed:'
-
 function bumpVersion(): void {
   // Only bump on client — on server `useState` is per-request, so calling
   // it inside a plugin-time register is fine; on client the bump triggers
@@ -341,7 +340,7 @@ export function useSettingsRegistry() {
 
   function dismissalKey(): string {
     const clinicId = clinic.currentClinic.value?.id ?? auth.user.value?.id ?? 'unknown'
-    return `${STORAGE_KEY_PREFIX}${clinicId}`
+    return STORAGE_KEYS.onboardingDismissed(clinicId)
   }
 
   function loadDismissed(): boolean {

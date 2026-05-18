@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PipelineTab } from '~/composables/usePipeline'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 type ActiveTab = PipelineTab | 'listado'
 
@@ -66,7 +67,7 @@ function createPlan() {
     >
       <template #actions>
         <UButton
-          v-if="can('treatment_plan.plans.write')"
+          v-if="can(PERMISSIONS.treatmentPlans.write)"
           color="primary"
           variant="soft"
           icon="i-lucide-plus"

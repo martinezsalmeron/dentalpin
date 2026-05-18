@@ -17,6 +17,8 @@ const emit = defineEmits<{
   saved: [notes: string]
 }>()
 
+import { PERMISSIONS } from '~~/app/config/permissions'
+
 const { t } = useI18n()
 const { can } = usePermissions()
 const api = useApi()
@@ -25,7 +27,7 @@ const toast = useToast()
 const body = ref(props.initialNotes ?? '')
 const saving = ref(false)
 
-const canWrite = computed(() => !props.readonly && can('clinical_notes.notes.write'))
+const canWrite = computed(() => !props.readonly && can(PERMISSIONS.clinicalNotes.write))
 
 watch(
   () => props.initialNotes,

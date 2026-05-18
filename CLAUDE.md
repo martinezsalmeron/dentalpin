@@ -142,17 +142,22 @@ async def list_patients(
 **Frontend — single source of truth:** `frontend/app/config/permissions.ts`. Always reference `PERMISSIONS.resource.action`, never hardcode strings.
 
 ```typescript
+import { PERMISSIONS } from '~/config/permissions'
 const { can, canAny, isAdmin } = usePermissions()
-if (can('clinical.patients.write')) { /* ... */ }
+if (can(PERMISSIONS.patients.write)) { /* ... */ }
 ```
 
 ```vue
-<ActionButton resource="patients" action="write" icon="i-lucide-plus" @click="...">
-  New Patient
-</ActionButton>
+<UButton
+  v-if="can(PERMISSIONS.patients.write)"
+  icon="i-lucide-plus"
+  @click="..."
+>
+  {{ t('patients.create') }}
+</UButton>
 ```
 
-Adding a permission: add to role mapping → module `get_permissions()` → `require_permission()` on endpoint → `config/permissions.ts` → use via `ActionButton`/`usePermissions`.
+Adding a permission: add to role mapping → module `get_permissions()` → `require_permission()` on endpoint → `config/permissions.ts` → use via `usePermissions().can(PERMISSIONS.x.y)`.
 
 ---
 

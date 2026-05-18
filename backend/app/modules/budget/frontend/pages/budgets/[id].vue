@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BudgetItem, InvoiceListItem, PaginatedResponse, SignatureCreate } from '~~/app/types'
 import { BUDGET_STATUS_ROLE } from '~~/app/config/severity'
+import { PERMISSIONS } from '~~/app/config/permissions'
 import type { EntityChip } from '~~/app/components/shared/EntityStatusChips.vue'
 import type { EntityAction } from '~~/app/components/shared/EntityActionBar.vue'
 import type { TotalLine } from '~~/app/components/shared/EntityTotalsCard.vue'
@@ -82,7 +83,7 @@ async function loadBudget() {
     router.push('/budgets')
     return
   }
-  if (can('billing.read')) {
+  if (can(PERMISSIONS.billing.read)) {
     await checkActiveInvoice(budget.id)
   }
 }
@@ -351,7 +352,7 @@ const primaryActions = computed<EntityAction[]>(() => {
   if (!budget) return []
   const actions: EntityAction[] = []
 
-  if (canSend(budget) && can('budget.write')) {
+  if (canSend(budget) && can(PERMISSIONS.budget.write)) {
     actions.push({
       key: 'send',
       label: t('budget.actions.send'),
@@ -380,7 +381,7 @@ const primaryActions = computed<EntityAction[]>(() => {
     })
   }
 
-  if (canAccept(budget) && can('budget.write')) {
+  if (canAccept(budget) && can(PERMISSIONS.budget.write)) {
     actions.push({
       key: 'reject',
       label: t('budget.actions.reject'),
@@ -398,7 +399,7 @@ const primaryActions = computed<EntityAction[]>(() => {
     })
   }
 
-  if (canInvoice() && can('billing.write')) {
+  if (canInvoice() && can(PERMISSIONS.billing.write)) {
     actions.push({
       key: 'createInvoice',
       label: t('invoice.createFromBudget'),
@@ -421,7 +422,7 @@ const overflowActions = computed<EntityAction[]>(() => {
       onClick: handleDownloadPDF
     }
   ]
-  if (can('budget.write')) {
+  if (can(PERMISSIONS.budget.write)) {
     actions.push({
       key: 'duplicate',
       label: t('budget.actions.duplicate'),
@@ -429,7 +430,7 @@ const overflowActions = computed<EntityAction[]>(() => {
       onClick: handleDuplicate
     })
   }
-  if (canCancel(budget) && can('budget.write')) {
+  if (canCancel(budget) && can(PERMISSIONS.budget.write)) {
     actions.push({
       key: 'cancel',
       label: t('budget.actions.cancel'),
@@ -564,7 +565,7 @@ function getItemName(item: BudgetItem): string {
                   {{ t('budget.view') }}
                 </h2>
                 <UButton
-                  v-if="canEdit(currentBudget) && can('budget.write') && !isEditing"
+                  v-if="canEdit(currentBudget) && can(PERMISSIONS.budget.write) && !isEditing"
                   variant="ghost"
                   color="neutral"
                   icon="i-lucide-pencil"
@@ -693,7 +694,7 @@ function getItemName(item: BudgetItem): string {
                   {{ t('budget.items.title') }}
                 </h2>
                 <UButton
-                  v-if="canEdit(currentBudget) && can('budget.write')"
+                  v-if="canEdit(currentBudget) && can(PERMISSIONS.budget.write)"
                   icon="i-lucide-plus"
                   size="sm"
                   @click="isAddItemModalOpen = true"
@@ -755,7 +756,7 @@ function getItemName(item: BudgetItem): string {
                     </p>
                   </div>
                   <UButton
-                    v-if="canEdit(currentBudget) && can('budget.write')"
+                    v-if="canEdit(currentBudget) && can(PERMISSIONS.budget.write)"
                     variant="ghost"
                     color="error"
                     icon="i-lucide-trash-2"

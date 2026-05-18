@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BudgetListItem, BudgetStatus, ApiResponse, PaginatedResponse } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 /**
  * /budgets — list page.
@@ -128,7 +129,7 @@ async function fetcher(q: {
   )
 
   // Step 3: bulk summaries enrichment.
-  if (can('payments.record.read') && response.data.length) {
+  if (can(PERMISSIONS.payments.recordRead) && response.data.length) {
     try {
       const summaryRes = await api.post<ApiResponse<{ summaries: Record<string, BudgetPaymentSummary> }>>(
         '/api/v1/payments/summary/by-budgets',
@@ -314,7 +315,7 @@ async function handleDelete(b: BudgetListItem, ev: Event) {
   >
     <template #actions>
       <UButton
-        v-if="can('budget.write')"
+        v-if="can(PERMISSIONS.budget.write)"
         color="primary"
         variant="soft"
         icon="i-lucide-plus"
@@ -386,7 +387,7 @@ async function handleDelete(b: BudgetListItem, ev: Event) {
         :title="activeFilterCount || filters.q ? t('budget.noItems') : t('budget.empty')"
       >
         <template
-          v-if="!activeFilterCount && !filters.q && can('budget.write')"
+          v-if="!activeFilterCount && !filters.q && can(PERMISSIONS.budget.write)"
           #actions
         >
           <UButton
@@ -453,7 +454,7 @@ async function handleDelete(b: BudgetListItem, ev: Event) {
               @click="handleDownloadPDF(b, $event)"
             />
             <UButton
-              v-if="can('budget.admin')"
+              v-if="can(PERMISSIONS.budget.admin)"
               variant="ghost"
               color="error"
               icon="i-lucide-trash-2"

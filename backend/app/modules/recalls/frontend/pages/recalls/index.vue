@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import type { Recall, RecallStatus, RecallReason, RecallPriority } from '../../composables/useRecalls'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 definePageMeta({ middleware: ['auth'] })
 
@@ -10,7 +11,7 @@ const router = useRouter()
 const recallsApi = useRecalls()
 const { can } = usePermissions()
 
-if (!can('recalls.read')) {
+if (!can(PERMISSIONS.recalls.read)) {
   await navigateTo('/')
 }
 

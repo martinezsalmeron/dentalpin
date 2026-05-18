@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Patient, BudgetCreate } from '~~/app/types'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,7 +22,7 @@ function goBack() {
 }
 
 // Check permission
-if (!can('budget.write')) {
+if (!can(PERMISSIONS.budget.write)) {
   router.push('/budgets')
 }
 

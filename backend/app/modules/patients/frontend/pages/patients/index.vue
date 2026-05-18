@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Patient, PatientCreate, PaginatedResponse, ApiResponse } from '~~/app/types'
 import { PATIENT_STATUS_ROLE, type PatientStatus } from '~~/app/config/severity'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 /**
  * /patients — list page.
@@ -105,7 +106,7 @@ async function fetcher(q: {
   // Step 3: bulk-fetch payment summaries for the page rows (when the
   // user has permission). The slot renders nothing for ids missing
   // from the map.
-  if (can('payments.record.read') && response.data.length) {
+  if (can(PERMISSIONS.payments.recordRead) && response.data.length) {
     try {
       const summaryRes = await api.post<ApiResponse<{ summaries: Record<string, PatientDebtSummary> }>>(
         '/api/v1/payments/summary/by-patients',

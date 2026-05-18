@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ClinicHours, ClinicOverride, ClinicOverridePayload, WeekdayShifts } from '../../composables/useClinicHours'
+import { PERMISSIONS } from '~~/app/config/permissions'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -13,7 +14,7 @@ const {
   deleteOverride
 } = useClinicHours()
 
-const canWrite = computed(() => can('schedules.clinic_hours.write'))
+const canWrite = computed(() => can(PERMISSIONS.schedules.clinicHoursWrite))
 
 const hours = ref<ClinicHours | null>(null)
 const overrides = ref<ClinicOverride[]>([])

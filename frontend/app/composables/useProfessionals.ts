@@ -1,6 +1,5 @@
 import type { Professional, PaginatedResponse } from '~/types'
 
-// Predefined color palette for professionals
 const PROFESSIONAL_COLORS = [
   '#3B82F6', // blue
   '#10B981', // emerald
@@ -14,12 +13,12 @@ const PROFESSIONAL_COLORS = [
 
 export function useProfessionals() {
   const api = useApi()
+  const { t } = useI18n()
 
   const professionals = ref<Professional[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  // Map professional ID to assigned color
   const professionalColors = ref<Map<string, string>>(new Map())
 
   async function fetchProfessionals(): Promise<void> {
@@ -30,7 +29,6 @@ export function useProfessionals() {
       const response = await api.get<PaginatedResponse<Professional>>('/api/v1/auth/professionals')
       professionals.value = response.data
 
-      // Assign colors to professionals
       professionalColors.value = new Map()
       response.data.forEach((prof, index) => {
         const color = PROFESSIONAL_COLORS[index % PROFESSIONAL_COLORS.length]
@@ -39,7 +37,7 @@ export function useProfessionals() {
         }
       })
     } catch (e) {
-      error.value = 'Error al cargar profesionales'
+      error.value = t('professionals.toast.loadFailed')
       console.error('Failed to fetch professionals:', e)
     } finally {
       isLoading.value = false

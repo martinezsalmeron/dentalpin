@@ -5,6 +5,9 @@
 //   1. Active certificate status — expiry countdown, validity range.
 //   2. Upload form — prominent dropzone (drag & drop or click) + password.
 //   3. History — every uploaded certificate, active one badge-marked.
+import { PERMISSIONS } from '~~/app/config/permissions'
+import { errorMessage } from '~~/app/utils/error'
+
 const { t } = useI18n()
 const toast = useToast?.()
 const {
@@ -14,7 +17,7 @@ const {
 } = useVerifactu()
 const { can } = usePermissions()
 
-const canManage = computed(() => can('verifactu.settings.configure'))
+const canManage = computed(() => can(PERMISSIONS.verifactu.settingsConfigure))
 
 const active = ref<Awaited<ReturnType<typeof getActiveCertificate>> | null>(null)
 const history = ref<Awaited<ReturnType<typeof getCertificateHistory>>>([])
@@ -84,8 +87,8 @@ async function submit() {
     password.value = ''
     toast?.add({ title: t('verifactu.certificate.uploaded'), color: 'green' })
     await refresh()
-  } catch (e: any) {
-    error.value = e?.data?.detail ?? e?.message ?? t('verifactu.certificate.uploadFailed')
+  } catch (e: unknown) {
+    error.value = errorMessage(e, t('verifactu.certificate.uploadFailed'))
   } finally {
     uploading.value = false
   }
