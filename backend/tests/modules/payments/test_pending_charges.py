@@ -85,14 +85,22 @@ async def test_unique_constraint_per_treatment_session(
     s1, s2 = str(uuid4()), str(uuid4())
 
     await _add_earned(
-        db_session, clinic_id=ctx["clinic_id"], patient_id=ctx["patient_id"],
-        treatment_id=treatment_id, session_id=s1, amount="200.00",
+        db_session,
+        clinic_id=ctx["clinic_id"],
+        patient_id=ctx["patient_id"],
+        treatment_id=treatment_id,
+        session_id=s1,
+        amount="200.00",
         description="Toma de medidas",
         performed_at=datetime(2026, 5, 1, 10, 0, tzinfo=UTC),
     )
     await _add_earned(
-        db_session, clinic_id=ctx["clinic_id"], patient_id=ctx["patient_id"],
-        treatment_id=treatment_id, session_id=s2, amount="600.00",
+        db_session,
+        clinic_id=ctx["clinic_id"],
+        patient_id=ctx["patient_id"],
+        treatment_id=treatment_id,
+        session_id=s2,
+        amount="600.00",
         description="Colocación",
         performed_at=datetime(2026, 5, 2, 10, 0, tzinfo=UTC),
     )
@@ -100,10 +108,14 @@ async def test_unique_constraint_per_treatment_session(
     from sqlalchemy import select
 
     rows = (
-        await db_session.execute(
-            select(PatientEarnedEntry).where(PatientEarnedEntry.treatment_id == treatment_id)
+        (
+            await db_session.execute(
+                select(PatientEarnedEntry).where(PatientEarnedEntry.treatment_id == treatment_id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 2
     assert sum(r.amount for r in rows) == Decimal("800.00")
 
@@ -112,8 +124,12 @@ async def test_unique_constraint_per_treatment_session(
 
     with pytest.raises(IntegrityError):
         await _add_earned(
-            db_session, clinic_id=ctx["clinic_id"], patient_id=ctx["patient_id"],
-            treatment_id=treatment_id, session_id=s1, amount="200.00",
+            db_session,
+            clinic_id=ctx["clinic_id"],
+            patient_id=ctx["patient_id"],
+            treatment_id=treatment_id,
+            session_id=s1,
+            amount="200.00",
             description="dup",
             performed_at=datetime.now(UTC),
         )
@@ -127,14 +143,24 @@ async def test_pending_charges_fifo_partial(
     ctx = await _setup_clinic(db_session, auth_headers, client)
     treatment_id = str(uuid4())
     await _add_earned(
-        db_session, clinic_id=ctx["clinic_id"], patient_id=ctx["patient_id"],
-        treatment_id=treatment_id, session_id=str(uuid4()), amount="200.00",
-        description="S1", performed_at=datetime(2026, 5, 1, 10, 0, tzinfo=UTC),
+        db_session,
+        clinic_id=ctx["clinic_id"],
+        patient_id=ctx["patient_id"],
+        treatment_id=treatment_id,
+        session_id=str(uuid4()),
+        amount="200.00",
+        description="S1",
+        performed_at=datetime(2026, 5, 1, 10, 0, tzinfo=UTC),
     )
     await _add_earned(
-        db_session, clinic_id=ctx["clinic_id"], patient_id=ctx["patient_id"],
-        treatment_id=treatment_id, session_id=str(uuid4()), amount="600.00",
-        description="S2", performed_at=datetime(2026, 5, 2, 10, 0, tzinfo=UTC),
+        db_session,
+        clinic_id=ctx["clinic_id"],
+        patient_id=ctx["patient_id"],
+        treatment_id=treatment_id,
+        session_id=str(uuid4()),
+        amount="600.00",
+        description="S2",
+        performed_at=datetime(2026, 5, 2, 10, 0, tzinfo=UTC),
     )
 
     # No payment yet → both sessions pending
@@ -156,9 +182,7 @@ async def test_pending_charges_fifo_partial(
             "amount": "250.00",
             "method": "cash",
             "payment_date": "2026-05-03",
-            "allocations": [
-                {"target_type": "on_account", "amount": "250.00"}
-            ],
+            "allocations": [{"target_type": "on_account", "amount": "250.00"}],
         },
     )
     assert pay.status_code == 201, pay.text
@@ -180,9 +204,14 @@ async def test_pending_charges_empty_when_fully_paid(
     ctx = await _setup_clinic(db_session, auth_headers, client)
     treatment_id = str(uuid4())
     await _add_earned(
-        db_session, clinic_id=ctx["clinic_id"], patient_id=ctx["patient_id"],
-        treatment_id=treatment_id, session_id=str(uuid4()), amount="300.00",
-        description="Only", performed_at=datetime.now(UTC),
+        db_session,
+        clinic_id=ctx["clinic_id"],
+        patient_id=ctx["patient_id"],
+        treatment_id=treatment_id,
+        session_id=str(uuid4()),
+        amount="300.00",
+        description="Only",
+        performed_at=datetime.now(UTC),
     )
     pay = await client.post(
         f"/api/v1/payments?clinic_id={ctx['clinic_id']}",

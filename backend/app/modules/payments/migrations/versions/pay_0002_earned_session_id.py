@@ -64,9 +64,7 @@ def upgrade() -> None:
         """
     )
 
-    op.drop_constraint(
-        "uq_earned_treatment", "patient_earned_entries", type_="unique"
-    )
+    op.drop_constraint("uq_earned_treatment", "patient_earned_entries", type_="unique")
     op.create_unique_constraint(
         "uq_earned_treatment_session",
         "patient_earned_entries",
@@ -75,12 +73,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "uq_earned_treatment_session", "patient_earned_entries", type_="unique"
-    )
-    op.create_unique_constraint(
-        "uq_earned_treatment", "patient_earned_entries", ["treatment_id"]
-    )
+    op.drop_constraint("uq_earned_treatment_session", "patient_earned_entries", type_="unique")
+    op.create_unique_constraint("uq_earned_treatment", "patient_earned_entries", ["treatment_id"])
     op.drop_index(
         "ix_patient_earned_entries_source_session_id",
         table_name="patient_earned_entries",

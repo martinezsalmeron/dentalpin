@@ -230,9 +230,7 @@ class PatientEarnedEntry(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint("amount >= 0", name="ck_earned_amount_nonneg"),
-        UniqueConstraint(
-            "treatment_id", "source_session_id", name="uq_earned_treatment_session"
-        ),
+        UniqueConstraint("treatment_id", "source_session_id", name="uq_earned_treatment_session"),
         Index("idx_earned_clinic_patient", "clinic_id", "patient_id"),
         Index("idx_earned_clinic_performed", "clinic_id", "performed_at"),
     )

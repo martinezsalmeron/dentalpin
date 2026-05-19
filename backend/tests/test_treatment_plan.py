@@ -948,20 +948,14 @@ async def test_change_doctor_rejected_on_completed_item(
 # ---------------------------------------------------------------------------
 
 
-async def _seed_catalog_crown_with_sessions(
-    db_session: AsyncSession, clinic_id
-) -> str:
+async def _seed_catalog_crown_with_sessions(db_session: AsyncSession, clinic_id) -> str:
     """Seed a catalog item with a 2-session template (200€ + 600€ = 800€)."""
     from app.modules.catalog.models import CatalogItemSession
 
-    vat = VatType(
-        clinic_id=clinic_id, names={"es": "Exento"}, rate=0.0, is_default=True
-    )
+    vat = VatType(clinic_id=clinic_id, names={"es": "Exento"}, rate=0.0, is_default=True)
     db_session.add(vat)
     await db_session.flush()
-    cat = TreatmentCategory(
-        clinic_id=clinic_id, key="restMS", names={"es": "R"}, is_system=True
-    )
+    cat = TreatmentCategory(clinic_id=clinic_id, key="restMS", names={"es": "R"}, is_system=True)
     db_session.add(cat)
     await db_session.flush()
     crown = TreatmentCatalogItem(
@@ -1011,9 +1005,7 @@ async def setup_multi_session(
     db_session: AsyncSession, auth_headers: dict[str, str], client: AsyncClient
 ) -> dict:
     ctx = await _ensure_clinic_and_patient(db_session, client, auth_headers)
-    ctx["crown_ms_id"] = await _seed_catalog_crown_with_sessions(
-        db_session, ctx["clinic_id"]
-    )
+    ctx["crown_ms_id"] = await _seed_catalog_crown_with_sessions(db_session, ctx["clinic_id"])
     return ctx
 
 
@@ -1052,9 +1044,7 @@ async def test_add_item_snapshots_catalog_sessions(
     client: AsyncClient, auth_headers: dict, setup_multi_session: dict
 ):
     """Catalog template with 2 sessions creates 2 plan item sessions."""
-    _, _, sessions = await _add_multi_session_item(
-        client, auth_headers, setup_multi_session
-    )
+    _, _, sessions = await _add_multi_session_item(client, auth_headers, setup_multi_session)
     assert len(sessions) == 2
     assert [s["sequence"] for s in sessions] == [1, 2]
     assert sessions[0]["label"] == "Toma de medidas"

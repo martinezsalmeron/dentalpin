@@ -39,15 +39,14 @@ def validate_session_template(
     if not sessions:
         return
     if item_total is None:
-        raise SessionTemplateError(
-            "Cannot define sessions when the item has no default_price"
-        )
+        raise SessionTemplateError("Cannot define sessions when the item has no default_price")
     key = "default_price" if "default_price" in sessions[0] else "amount"
     total = sum((Decimal(str(s[key])) for s in sessions), Decimal("0"))
     if abs(total - Decimal(str(item_total))) > SESSION_SUM_TOLERANCE:
         raise SessionTemplateError(
             f"Sum of session prices ({total}) must equal item total ({item_total})"
         )
+
 
 # Default VAT types to seed for new clinics
 DEFAULT_VAT_TYPES = [

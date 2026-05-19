@@ -849,9 +849,7 @@ class TreatmentPlanService:
         ``completed``, the Treatment is performed, and the existing
         ``treatment_plan.treatment_completed`` audit/recall path runs.
         """
-        item = await TreatmentPlanService._load_item_with_sessions(
-            db, clinic_id, plan_id, item_id
-        )
+        item = await TreatmentPlanService._load_item_with_sessions(db, clinic_id, plan_id, item_id)
         if not item:
             return None
 
@@ -1001,9 +999,7 @@ class TreatmentPlanService:
         multi-session items it advances one session per call — callers
         targeting a specific session should use ``complete_session``.
         """
-        item = await TreatmentPlanService._load_item_with_sessions(
-            db, clinic_id, plan_id, item_id
-        )
+        item = await TreatmentPlanService._load_item_with_sessions(db, clinic_id, plan_id, item_id)
         if not item:
             return None
         if item.status == "completed":
@@ -1038,9 +1034,7 @@ class TreatmentPlanService:
         notes: str | None = None,
     ) -> PlannedTreatmentItem | None:
         """Mark a pending session as cancelled (no earned entry generated)."""
-        item = await TreatmentPlanService._load_item_with_sessions(
-            db, clinic_id, plan_id, item_id
-        )
+        item = await TreatmentPlanService._load_item_with_sessions(db, clinic_id, plan_id, item_id)
         if not item:
             return None
         session = next((s for s in item.sessions if s.id == session_id), None)
@@ -1083,9 +1077,7 @@ class TreatmentPlanService:
         data: dict,
     ) -> PlannedTreatmentItem | None:
         """Edit a pending session's label/amount/notes."""
-        item = await TreatmentPlanService._load_item_with_sessions(
-            db, clinic_id, plan_id, item_id
-        )
+        item = await TreatmentPlanService._load_item_with_sessions(db, clinic_id, plan_id, item_id)
         if not item:
             return None
         session = next((s for s in item.sessions if s.id == session_id), None)
@@ -1111,9 +1103,7 @@ class TreatmentPlanService:
         data: dict,
     ) -> PlannedTreatmentItem | None:
         """Append a new session row at the next sequence number."""
-        item = await TreatmentPlanService._load_item_with_sessions(
-            db, clinic_id, plan_id, item_id
-        )
+        item = await TreatmentPlanService._load_item_with_sessions(db, clinic_id, plan_id, item_id)
         if not item:
             return None
         next_seq = (max((s.sequence for s in item.sessions), default=0)) + 1
@@ -1139,9 +1129,7 @@ class TreatmentPlanService:
         session_id: UUID,
     ) -> PlannedTreatmentItem | None:
         """Remove a pending session. Refuses on completed/cancelled sessions."""
-        item = await TreatmentPlanService._load_item_with_sessions(
-            db, clinic_id, plan_id, item_id
-        )
+        item = await TreatmentPlanService._load_item_with_sessions(db, clinic_id, plan_id, item_id)
         if not item:
             return None
         session = next((s for s in item.sessions if s.id == session_id), None)
@@ -1149,7 +1137,10 @@ class TreatmentPlanService:
             raise ValueError("Session not found")
         if session.status != "pending":
             raise ValueError("Cannot delete a non-pending session")
-        if len([s for s in item.sessions if s.status == "pending"]) <= 1 and len(item.sessions) == 1:
+        if (
+            len([s for s in item.sessions if s.status == "pending"]) <= 1
+            and len(item.sessions) == 1
+        ):
             raise ValueError("Cannot delete the only session of an item")
         item.sessions.remove(session)
         await db.flush()

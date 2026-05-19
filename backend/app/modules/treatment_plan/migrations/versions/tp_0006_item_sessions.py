@@ -63,9 +63,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.UniqueConstraint(
-            "plan_item_id", "sequence", name="uq_plan_item_session_sequence"
-        ),
+        sa.UniqueConstraint("plan_item_id", "sequence", name="uq_plan_item_session_sequence"),
     )
     op.create_index(
         "idx_pti_session_plan_item",

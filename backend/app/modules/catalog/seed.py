@@ -482,8 +482,14 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "visualization_rules": [pattern_fill("diagonal_stripes", "#F59E0B")],
             "visualization_config": {"color": "#F59E0B"},
             "sessions": [
-                {"labels": {"es": "Toma de medidas", "en": "Impressions"}, "default_price": Decimal("150.00")},
-                {"labels": {"es": "Colocación", "en": "Placement"}, "default_price": Decimal("250.00")},
+                {
+                    "labels": {"es": "Toma de medidas", "en": "Impressions"},
+                    "default_price": Decimal("150.00"),
+                },
+                {
+                    "labels": {"es": "Colocación", "en": "Placement"},
+                    "default_price": Decimal("250.00"),
+                },
             ],
         },
         {
@@ -498,8 +504,14 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "visualization_rules": [pattern_fill("diagonal_stripes", "#FBBF24")],
             "visualization_config": {"color": "#FBBF24"},
             "sessions": [
-                {"labels": {"es": "Toma de medidas", "en": "Impressions"}, "default_price": Decimal("200.00")},
-                {"labels": {"es": "Colocación", "en": "Placement"}, "default_price": Decimal("350.00")},
+                {
+                    "labels": {"es": "Toma de medidas", "en": "Impressions"},
+                    "default_price": Decimal("200.00"),
+                },
+                {
+                    "labels": {"es": "Colocación", "en": "Placement"},
+                    "default_price": Decimal("350.00"),
+                },
             ],
         },
         {
@@ -514,8 +526,14 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "visualization_rules": [pattern_fill("diagonal_stripes", "#FDE68A")],
             "visualization_config": {"color": "#FDE68A"},
             "sessions": [
-                {"labels": {"es": "Toma de medidas", "en": "Impressions"}, "default_price": Decimal("250.00")},
-                {"labels": {"es": "Colocación", "en": "Placement"}, "default_price": Decimal("400.00")},
+                {
+                    "labels": {"es": "Toma de medidas", "en": "Impressions"},
+                    "default_price": Decimal("250.00"),
+                },
+                {
+                    "labels": {"es": "Colocación", "en": "Placement"},
+                    "default_price": Decimal("400.00"),
+                },
             ],
         },
         {
@@ -649,9 +667,18 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "visualization_rules": [pulp_fill("#7C3AED", "full")],
             "visualization_config": {"color": "#7C3AED"},
             "sessions": [
-                {"labels": {"es": "Apertura y conductometría", "en": "Access and length"}, "default_price": Decimal("130.00")},
-                {"labels": {"es": "Limpieza y conformación", "en": "Cleaning and shaping"}, "default_price": Decimal("130.00")},
-                {"labels": {"es": "Obturación", "en": "Obturation"}, "default_price": Decimal("120.00")},
+                {
+                    "labels": {"es": "Apertura y conductometría", "en": "Access and length"},
+                    "default_price": Decimal("130.00"),
+                },
+                {
+                    "labels": {"es": "Limpieza y conformación", "en": "Cleaning and shaping"},
+                    "default_price": Decimal("130.00"),
+                },
+                {
+                    "labels": {"es": "Obturación", "en": "Obturation"},
+                    "default_price": Decimal("120.00"),
+                },
             ],
         },
         {
@@ -816,9 +843,18 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "visualization_rules": [lateral_icon("implant", "#10B981")],
             "visualization_config": {"color": "#10B981"},
             "sessions": [
-                {"labels": {"es": "Cirugía de implante", "en": "Implant surgery"}, "default_price": Decimal("700.00")},
-                {"labels": {"es": "Pilar de cicatrización", "en": "Healing abutment"}, "default_price": Decimal("150.00")},
-                {"labels": {"es": "Colocación de corona", "en": "Crown placement"}, "default_price": Decimal("250.00")},
+                {
+                    "labels": {"es": "Cirugía de implante", "en": "Implant surgery"},
+                    "default_price": Decimal("700.00"),
+                },
+                {
+                    "labels": {"es": "Pilar de cicatrización", "en": "Healing abutment"},
+                    "default_price": Decimal("150.00"),
+                },
+                {
+                    "labels": {"es": "Colocación de corona", "en": "Crown placement"},
+                    "default_price": Decimal("250.00"),
+                },
             ],
         },
         {

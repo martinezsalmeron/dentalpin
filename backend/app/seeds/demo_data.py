@@ -1276,12 +1276,8 @@ TREATMENT_PLAN_IDS = [UUID(f"fe00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in
 PLAN_TREATMENT_IDS = [UUID(f"fa00bc99-9c0b-4ef8-bb6d-6bb9bd381{i:03x}") for i in range(200)]
 PLANNED_ITEM_IDS = [UUID(f"ff00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(200)]
 # Pre-allocated UUIDs for per-item sessions (up to 10 sessions per planned item).
-PLAN_ITEM_SESSION_IDS = [
-    UUID(f"f100bc99-9c0b-4ef8-bb6d-6bb9bd38{i:04x}") for i in range(2000)
-]
-PATIENT_EARNED_ENTRY_IDS = [
-    UUID(f"f200bc99-9c0b-4ef8-bb6d-6bb9bd38{i:04x}") for i in range(2000)
-]
+PLAN_ITEM_SESSION_IDS = [UUID(f"f100bc99-9c0b-4ef8-bb6d-6bb9bd38{i:04x}") for i in range(2000)]
+PATIENT_EARNED_ENTRY_IDS = [UUID(f"f200bc99-9c0b-4ef8-bb6d-6bb9bd38{i:04x}") for i in range(2000)]
 
 BUDGET_IDS = [UUID(f"aa00bc99-9c0b-4ef8-bb6d-6bb9bd380b{i:02x}") for i in range(10)]
 BUDGET_ITEM_IDS = [UUID(f"bb00bc99-9c0b-4ef8-bb6d-6bb9bd380c{i:02x}") for i in range(50)]
@@ -1999,9 +1995,7 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
             # to the hygienist instead so the demo plans visibly show a mix
             # of professionals — that's the whole point of the per-item field.
             is_hygiene_code = catalog_code in ("PREV-CLEAN", "PERIO-RAR")
-            assigned_professional_id = (
-                USER_HYGIENIST_ID if is_hygiene_code else USER_DENTIST_ID
-            )
+            assigned_professional_id = USER_HYGIENIST_ID if is_hygiene_code else USER_DENTIST_ID
 
             planned_items.append(
                 {
@@ -2013,9 +2007,7 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
                     "status": "completed" if is_completed else "pending",
                     "completed_without_appointment": is_completed,
                     "completed_at": datetime.now() - timedelta(days=10) if is_completed else None,
-                    "completed_by": (
-                        assigned_professional_id if is_completed else None
-                    ),
+                    "completed_by": (assigned_professional_id if is_completed else None),
                     "assigned_professional_id": assigned_professional_id,
                     "notes": None,
                 }
@@ -2029,9 +2021,7 @@ def generate_treatment_plans_data(catalog_items_map: dict[str, dict]) -> dict:
             catalog_sessions = catalog_item.get("sessions") or []
             if not catalog_sessions:
                 fallback_amount = catalog_item.get("default_price") or Decimal("0")
-                snapshot_sessions = [
-                    {"sequence": 1, "label": None, "amount": fallback_amount}
-                ]
+                snapshot_sessions = [{"sequence": 1, "label": None, "amount": fallback_amount}]
             else:
                 snapshot_sessions = [
                     {
