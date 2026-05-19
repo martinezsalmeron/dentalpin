@@ -22,9 +22,10 @@ const router = useRouter()
 const patientId = computed(() => props.ctx.patient.id)
 
 function newAppointment() {
-  // `new=1` triggers the create modal on mount; `patient_id` pre-selects
-  // the patient inside the modal via the agenda page's initialPatientId.
-  router.push(`/appointments?patient_id=${patientId.value}&new=1`)
+  // Send the user to the agenda with `patient_id` in the URL. When they
+  // pick a free slot, the create modal seeds the patient picker from
+  // `initialPatientId` automatically.
+  router.push(`/appointments?patient_id=${patientId.value}`)
 }
 
 function newBudget() {

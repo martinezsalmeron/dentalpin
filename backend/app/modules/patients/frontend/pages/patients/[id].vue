@@ -263,9 +263,11 @@ function openEditPatient() {
 }
 
 function newAppointment() {
-  // Agenda page reads `patient_id` to seed the patient picker and
-  // `new=1` to auto-open the create modal on mount.
-  router.push(`/appointments?patient_id=${patientId}&new=1`)
+  // Send the user to the agenda with `patient_id` in the URL. The agenda
+  // reads it into `initialPatientId` and forwards it to the create modal
+  // when the user picks a slot. No auto-open — the slot decides the
+  // date / time / cabinet.
+  router.push(`/appointments?patient_id=${patientId}`)
 }
 
 function newNote() {
