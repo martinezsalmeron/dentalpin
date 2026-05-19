@@ -28,6 +28,13 @@ const isSearching = ref(false)
 const isLoadingRecent = ref(false)
 const selectedPatient = ref<Patient | null>(props.modelValue || null)
 const newlyCreatedId = ref<string | null>(null)
+const activeSearchQuery = ref('')
+
+const emptyLabel = computed(() =>
+  activeSearchQuery.value
+    ? t('selector.noMatches')
+    : t('selector.noRecentPatients')
+)
 
 // Create-mode state.
 const form = reactive({
@@ -78,6 +85,7 @@ async function loadRecentPatients() {
 }
 
 async function handleSearch(query: string) {
+  activeSearchQuery.value = query
   if (!query || query.length < 2) {
     searchResults.value = []
     return
@@ -254,7 +262,7 @@ async function submitCreate() {
       :search-results="searchResults"
       :is-searching="isSearching || isLoadingRecent"
       :placeholder="placeholder || t('patients.searchPlaceholder')"
-      :empty-label="t('selector.noRecentPatients')"
+      :empty-label="emptyLabel"
       :grid-cols="2"
       :in-modal="inModal"
       @update:model-value="handleSelect"

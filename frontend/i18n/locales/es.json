@@ -1150,6 +1150,7 @@
     "commonTreatments": "Tratamientos frecuentes",
     "noRecentPatients": "No hay pacientes recientes",
     "noCommonTreatments": "No hay tratamientos frecuentes",
+    "noMatches": "Sin coincidencias",
     "typeToSearch": "Escribe para buscar..."
   },
   "patientSelector": {
