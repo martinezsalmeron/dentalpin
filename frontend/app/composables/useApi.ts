@@ -10,6 +10,9 @@ interface UseApiOptions {
   body?: object | null
   headers?: Record<string, string>
   skipAuth?: boolean
+  // Optional AbortSignal so callers can cancel in-flight requests
+  // (debounced lookups, component unmount, etc.).
+  signal?: AbortSignal
 }
 
 export function useApi() {
@@ -27,7 +30,7 @@ export function useApi() {
     path: string,
     options: UseApiOptions = {}
   ): Promise<T> {
-    const { skipAuth, method, body, headers: optionHeaders } = options
+    const { skipAuth, method, body, headers: optionHeaders, signal } = options
 
     const headers: Record<string, string> = {
       ...(optionHeaders || {})
@@ -44,7 +47,8 @@ export function useApi() {
         timeout: 10000, // 10 seconds
         method,
         body,
-        headers
+        headers,
+        signal
       })
     } catch (error: unknown) {
       const fetchError = error as { statusCode?: number, data?: { message?: string } }

@@ -1131,6 +1131,24 @@
     "noCommonTreatments": "No common treatments",
     "typeToSearch": "Type to search..."
   },
+  "patientSelector": {
+    "createOption": "Create patient \"{query}\"",
+    "createOptionEmpty": "Create new patient",
+    "newBadge": "New",
+    "duplicateWarning": "{name} already exists with this phone",
+    "useExisting": "Use this patient",
+    "createForm": {
+      "title": "New patient",
+      "back": "Back to search",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phone": "Phone",
+      "phoneHint": "You can add it later on the patient record.",
+      "submit": "Create and select",
+      "cancel": "Cancel",
+      "errorGeneric": "Couldn't create the patient. Retry."
+    }
+  },
   "common": {
     "save": "Save",
     "add": "Add",

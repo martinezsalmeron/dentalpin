@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [item: T | null]
   'search': [query: string]
+  'footer-enter': [query: string]
 }>()
 
 const { t } = useI18n()
@@ -98,12 +99,13 @@ function handleBlur() {
 
 // Keyboard navigation
 function handleKeydown(event: KeyboardEvent) {
-  if (!isOpen.value || displayItems.value.length === 0) {
+  if (!isOpen.value) {
     return
   }
 
   switch (event.key) {
     case 'ArrowDown':
+      if (displayItems.value.length === 0) return
       event.preventDefault()
       highlightedIndex.value = Math.min(
         highlightedIndex.value + 1,
@@ -111,14 +113,19 @@ function handleKeydown(event: KeyboardEvent) {
       )
       break
     case 'ArrowUp':
+      if (displayItems.value.length === 0) return
       event.preventDefault()
       highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0)
       break
     case 'Enter': {
-      event.preventDefault()
       const item = displayItems.value[highlightedIndex.value]
       if (highlightedIndex.value >= 0 && item) {
+        event.preventDefault()
         selectItem(item)
+      } else if (searchQuery.value.trim().length >= 2) {
+        // No item to select — give the parent a chance to handle (e.g. inline create).
+        event.preventDefault()
+        emit('footer-enter', searchQuery.value.trim())
       }
       break
     }
@@ -228,6 +235,22 @@ defineExpose({
               />
             </div>
           </div>
+        </div>
+
+        <!-- Optional footer (e.g. inline "+ create" action). -->
+        <!-- Rendered regardless of grid/empty/loading state so consumers -->
+        <!-- can offer the action when there are no results. -->
+        <div
+          v-if="$slots.footer"
+          class="border-t border-default"
+          @mousedown.prevent.stop
+        >
+          <slot
+            name="footer"
+            :query="searchQuery.trim()"
+            :has-results="displayItems.length > 0"
+            :is-searching="isSearching"
+          />
         </div>
       </div>
     </Teleport>

@@ -1152,6 +1152,24 @@
     "noCommonTreatments": "No hay tratamientos frecuentes",
     "typeToSearch": "Escribe para buscar..."
   },
+  "patientSelector": {
+    "createOption": "Crear paciente \"{query}\"",
+    "createOptionEmpty": "Crear nuevo paciente",
+    "newBadge": "Nuevo",
+    "duplicateWarning": "Ya existe {name} con este teléfono",
+    "useExisting": "Usar este paciente",
+    "createForm": {
+      "title": "Nuevo paciente",
+      "back": "Volver a búsqueda",
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "phone": "Teléfono",
+      "phoneHint": "Lo puedes añadir después en la ficha del paciente.",
+      "submit": "Crear y seleccionar",
+      "cancel": "Cancelar",
+      "errorGeneric": "No se pudo crear el paciente. Reintentar."
+    }
+  },
   "common": {
     "default": "Predeterminado",
     "save": "Guardar",

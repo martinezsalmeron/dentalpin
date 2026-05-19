@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat(ux): ``PatientVisualSelector`` (shared) gains an inline "create patient" mode. When the typed query has no match and the user has ``patients.write``, a footer row in the search dropdown opens a 3-field mini-form (nombre, apellidos, teléfono). Submitting POSTs ``/api/v1/patients`` and emits the selection upward. Includes soft-duplicate phone lookup (debounced + ``AbortController``-cancelled) reusing ``GET /patients?search=``. No backend changes — feeds into the agenda's *Nueva cita* flow. See ``docs/features/agenda-quick-patient-create.md``.
 - feat(ux): redesigned patient detail as a dashboard-first IA. The
   Resumen tab is now a grid of slot-driven smart cards (Plan, Próxima
   cita, Saldo, Diagnósticos, Historial médico, Acciones rápidas) plus
