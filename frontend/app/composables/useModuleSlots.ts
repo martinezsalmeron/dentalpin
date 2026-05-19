@@ -18,6 +18,7 @@
  * same map.
  */
 
+import { markRaw } from 'vue'
 import type { Component } from 'vue'
 import type { SettingsCategoryId } from './useSettingsRegistry'
 
@@ -70,9 +71,15 @@ export function registerSlot(name: string, entry: SlotEntry): void {
   const current = state.value[name] || []
   // Replace any existing entry with the same id — keeps HMR idempotent.
   const deduped = current.filter(e => e.id !== entry.id)
+  // Mark the component raw so Vue stops wrapping it in a reactive
+  // proxy when the slot map updates. Components are immutable
+  // references — making them reactive triggers a noisy "Vue received
+  // a Component that was made a reactive object" warning every time
+  // the entry hits an `<component :is>` render.
+  const sealed: SlotEntry = { ...entry, component: markRaw(entry.component) }
   state.value = {
     ...state.value,
-    [name]: [...deduped, entry]
+    [name]: [...deduped, sealed]
   }
 }
 
