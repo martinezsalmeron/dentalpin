@@ -66,11 +66,11 @@ const interactive = computed(() => !!props.to)
 </script>
 
 <template>
-  <component
-    :is="interactive ? 'NuxtLink' : 'div'"
+  <NuxtLink
+    v-if="interactive"
     :to="to"
-    class="summary-card relative flex flex-col rounded-token-lg border border-default bg-surface overflow-hidden transition-colors before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1"
-    :class="[severityStripe, interactive ? 'hover:bg-surface-muted cursor-pointer' : '']"
+    class="summary-card relative flex flex-col rounded-token-lg border border-default bg-surface overflow-hidden transition-colors hover:bg-surface-muted cursor-pointer before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1"
+    :class="severityStripe"
   >
     <header class="flex items-center gap-2 px-4 pt-3 pb-1">
       <UIcon
@@ -109,10 +109,53 @@ const interactive = computed(() => !!props.to)
     >
       <slot name="footer" />
       <UIcon
-        v-if="interactive"
         name="i-lucide-arrow-right"
         class="w-4 h-4 shrink-0"
       />
     </footer>
-  </component>
+  </NuxtLink>
+
+  <div
+    v-else
+    class="summary-card relative flex flex-col rounded-token-lg border border-default bg-surface overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1"
+    :class="severityStripe"
+  >
+    <header class="flex items-center gap-2 px-4 pt-3 pb-1">
+      <UIcon
+        v-if="icon"
+        :name="icon"
+        class="w-4 h-4 shrink-0"
+        :class="iconColor"
+      />
+      <span class="text-caption uppercase tracking-wide text-muted">
+        {{ title }}
+      </span>
+      <slot name="header-trailing" />
+    </header>
+
+    <div class="flex-1 px-4 pb-3 min-w-0">
+      <div
+        v-if="loading"
+        class="space-y-2"
+      >
+        <USkeleton class="h-5 w-3/4" />
+        <USkeleton class="h-3 w-full" />
+        <USkeleton class="h-3 w-1/2" />
+      </div>
+      <div
+        v-else-if="empty"
+        class="text-body text-muted"
+      >
+        <slot name="empty" />
+      </div>
+      <slot v-else />
+    </div>
+
+    <footer
+      v-if="$slots.footer && !loading"
+      class="px-4 py-2 border-t border-default text-caption text-muted flex items-center gap-2 bg-surface-muted/40"
+    >
+      <slot name="footer" />
+    </footer>
+  </div>
 </template>
