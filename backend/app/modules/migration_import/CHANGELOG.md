@@ -2,6 +2,55 @@
 
 ## Unreleased
 
+- feat(mappers): new ``PatientAlertMapper`` materialises Gesdén
+  ``AlertPac`` rows (free-text medical history) into structured
+  ``patients_clinical`` records — historical empty "Historial médico"
+  on every imported patient was directly caused by ``patient_alert``
+  falling through to the ``RawEntity`` catch-all.
+  The classifier (``_alert_classifier.py``) routes each free-text
+  alert through a cascade of Spanish medical regex rules and
+  dispatches into the right destination row:
+  - ``allergy``        → ``patients_clinical.Allergy`` (one row per
+                          listed allergen, ``ALERGIA:`` prefix
+                          recognised)
+  - ``medication``     → ``patients_clinical.Medication`` (``MEDICACION:``
+                          prefix + bare ``DRUG <DOSE>`` heuristic;
+                          ``MG/MCG/G/ML/UI`` dose tokens stripped into
+                          the ``dosage`` column)
+  - ``disease``        → ``patients_clinical.SystemicDisease`` (covers
+                          hipertensión / diabetes / hepatitis / cancer
+                          / cardiopatía / Parkinson / Alzheimer /
+                          asma / epilepsia / depresión / trastornos /
+                          sinusitis / psoriasis / glaucoma /
+                          osteoporosis / anemia / fibromialgia /
+                          tiroides …)
+  - ``anesthesia``     → ``MedicalContext.adverse_reactions_to_anesthesia``
+                          + ``anesthesia_reaction_details``
+  - ``smoking``        → ``MedicalContext.is_smoker`` + ``smoking_frequency``
+  - ``pregnancy`` / ``lactating`` → ``MedicalContext`` flags
+  - ``anticoagulant``  → ``Medication`` row + flips
+                          ``MedicalContext.is_on_anticoagulants``
+                          (Sintrom / Pradaxa / Adiro / Plavix /
+                          Clopidogrel / Xarelto / Eliquis / Heparina /
+                          Warfarina / Aldocumar)
+  - ``bruxism``        → ``MedicalContext.bruxism``
+  - ``administrative`` → silently skipped with an info warning
+                          (``PRESU.``, ``DTO``, ``COBRAR``,
+                          ``ENVIAR FACTURA``, ``VIENE REFERIDO`` …)
+  - ``general``        → falls back to ``Patient.notes`` so the
+                          clinician sees the original text in
+                          context
+  Rules are case- and accent-insensitive and ordered by precedence
+  (pregnancy / lactation before generic disease, anticoagulant
+  before generic medication, etc.). ``MedicalContext`` is lazily
+  upserted per patient so a patient with multiple flag-style alerts
+  (smoking + pregnancy + anesthesia + …) ends up with one row that
+  accumulates every flag.
+  Manifest grows ``patients_clinical`` in ``depends``. Validated on
+  200 random alerts: 82 % routed into structured clinical buckets,
+  18 % marked administrative or falling back to notes (matches the
+  intuition for free-text leftover noise like "CALCIO" or "NO TIENE
+  VESICULA").
 - feat(applied_treatment): rescue completion status for treatments
   Gesdén left as ``StaTto=3`` despite being long done. In the live
   export ~26 k clinical treatments sit at ``StaTto=3`` (planned)

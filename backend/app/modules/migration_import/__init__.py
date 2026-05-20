@@ -56,6 +56,7 @@ class MigrationImportModule(BaseModule):
         # without Spanish compliance can still import.
         "depends": [
             "patients",
+            "patients_clinical",
             "agenda",
             "schedules",
             "catalog",
