@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- fix(budget): stamp the source ``FecPresup`` onto ``Budget.created_at``
+  and ``Budget.updated_at`` so the UI shows the real budget date
+  rather than the import-run timestamp. ``TimestampMixin`` was
+  seeding both columns from ``func.now()`` because the mapper never
+  overwrote them, so every migrated budget read "creado hoy" on the
+  patient page regardless of whether it was quoted in 2017 or 2024.
+  ``updated_at`` advances to the latest lifecycle event
+  (``rejected_date`` > ``accepted_date`` > ``quote_date``) so the
+  budget pipeline UI keeps sorting recently-updated entries on top
+  as before.
 - fix(budget): rescue ``Budget.status`` from the
   ``PresuTto.IdTtoMedOrig`` back-reference. Gesdén keeps a Presu↔TtosMed
   double link (forward in ``TtosMed.IdPresuTto``, backward in

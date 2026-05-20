@@ -99,6 +99,22 @@ class BudgetMapper:
                 budget.rejection_reason = "other"
                 budget.rejection_note = payload.get("rejection_observations")
 
+        # Stamp the source's ``FecPresup`` as ``created_at`` so the UI
+        # shows the real budget date instead of "today's import run".
+        # ``TimestampMixin`` only seeds these columns from the
+        # server-side ``func.now()`` default when the instance has no
+        # value — overwriting after creation is safe and survives the
+        # commit. ``updated_at`` follows the latest lifecycle event
+        # (acceptance / rejection / quote).
+        quote_dt = datetime(
+            quote_date.year, quote_date.month, quote_date.day, tzinfo=UTC
+        )
+        budget.created_at = quote_dt
+        latest = _parse_date(payload.get("rejected_date")) or _parse_date(
+            payload.get("accepted_date")
+        ) or quote_date
+        budget.updated_at = datetime(latest.year, latest.month, latest.day, tzinfo=UTC)
+
         await ctx.resolver.set(
             entity_type="budget",
             canonical_uuid=canonical_uuid,
