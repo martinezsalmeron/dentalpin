@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- fix(routing): correct the route prefix used by the frontend wizard and
+  by the inline docs/CLAUDE.md/user-manual frontmatter. FastAPI mounts
+  the router under ``/api/v1/migration_import/`` (the manifest name,
+  with the underscore), but the Vue page, the docstrings and the
+  ``related_endpoints`` frontmatter referenced
+  ``/api/v1/migration-import/``. The settings wizard was therefore
+  silently 404'ing on every step; only ``curl`` against the real path
+  worked. All five callers in ``DataMigrationPage.vue`` plus
+  ``binaries/ingest.py``, ``router.py``, ``CLAUDE.md`` and both locale
+  user-manual files are now aligned.
+- fix(lifecycle): default ``_staging_root()`` to
+  ``{STORAGE_LOCAL_PATH}/migration-import`` instead of
+  ``/var/lib/dentalpin/migration-import``. The previous hardcoded path
+  was outside any volume the backend container can write to (running
+  as ``appuser``), so installing the module failed with ``[Errno 13]
+  Permission denied`` on a stock docker-compose setup. The
+  ``MIGRATION_IMPORT_STAGING_DIR`` override is unchanged.
 - refactor(perms): migrate hardcoded ``can('migration_import.job.execute')`` in ``DataMigrationPage`` to ``PERMISSIONS.migrationImport.jobExecute``.
 - refactor(errors): switch ``catch (err: any)`` to ``catch (err: unknown)`` + shared ``errorMessage`` helper in the upload flow.
 - perf(lists): drop the ``select_from(query.subquery())`` count

@@ -1,6 +1,6 @@
 """FastAPI router for the migration_import module.
 
-Eight endpoints behind ``/api/v1/migration-import/``:
+Eight endpoints behind ``/api/v1/migration_import/``:
 
 - ``POST   /jobs``                  upload, returns the ImportJob row
 - ``POST   /jobs/{id}/validate``    decrypt/decompress/verify hash

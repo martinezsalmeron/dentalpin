@@ -10,6 +10,7 @@
     "/module_layers/media/frontend",
     "/module_layers/schedules/frontend",
     "/module_layers/treatment_plan/frontend",
+    "/module_layers/migration_import/frontend",
     "/module_layers/notifications/frontend",
     "/module_layers/patient_timeline/frontend",
     "/module_layers/patients_clinical/frontend",
@@ -57,6 +58,10 @@
     {
       "name": "treatment_plan",
       "path": "/module_layers/treatment_plan/frontend"
+    },
+    {
+      "name": "migration_import",
+      "path": "/module_layers/migration_import/frontend"
     },
     {
       "name": "notifications",

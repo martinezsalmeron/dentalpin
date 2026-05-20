@@ -108,9 +108,11 @@ still mid-pipeline).
 ## File staging on disk
 
 Uploaded `.dpm` files live under
-`/var/lib/dentalpin/migration-import/<clinic_id>/<job_id>.dpm` by
-default (override via `MIGRATION_IMPORT_STAGING_DIR`). Wiped on
-module uninstall.
+`{STORAGE_LOCAL_PATH}/migration-import/<clinic_id>/<job_id>.dpm` by
+default — i.e. a sibling of `media`'s storage root, which docker-compose
+mounts as the `storage_data` volume owned by `appuser`. Override via
+`MIGRATION_IMPORT_STAGING_DIR` when DPMF binaries should live on a
+separate disk. Wiped on module uninstall.
 
 ## Not in scope today
 

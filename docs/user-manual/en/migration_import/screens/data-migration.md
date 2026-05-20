@@ -5,12 +5,12 @@ locale: en
 screen: data-migration
 path: /settings/workspace/data-migration
 related_endpoints:
-  - POST /api/v1/migration-import/jobs
-  - POST /api/v1/migration-import/jobs/{id}/validate
-  - POST /api/v1/migration-import/jobs/{id}/preview
-  - POST /api/v1/migration-import/jobs/{id}/execute
-  - GET  /api/v1/migration-import/jobs/{id}
-  - POST /api/v1/migration-import/jobs/{id}/binaries
+  - POST /api/v1/migration_import/jobs
+  - POST /api/v1/migration_import/jobs/{id}/validate
+  - POST /api/v1/migration_import/jobs/{id}/preview
+  - POST /api/v1/migration_import/jobs/{id}/execute
+  - GET  /api/v1/migration_import/jobs/{id}
+  - POST /api/v1/migration_import/jobs/{id}/binaries
 permissions:
   - migration_import.job.read
   - migration_import.job.write

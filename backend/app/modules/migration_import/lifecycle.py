@@ -18,11 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 def _staging_root() -> Path:
-    """Filesystem root where uploaded DPMF files are staged."""
+    """Filesystem root where uploaded DPMF files are staged.
+
+    Defaults to a ``migration-import`` subdirectory of the configured
+    storage backend (``STORAGE_LOCAL_PATH``), which docker-compose mounts
+    as a writable volume owned by ``appuser``. Override with
+    ``MIGRATION_IMPORT_STAGING_DIR`` when DPMF binaries should live on a
+    separate disk from media uploads.
+    """
     base = getattr(settings, "MIGRATION_IMPORT_STAGING_DIR", None)
     if base:
         return Path(base)
-    return Path("/var/lib/dentalpin/migration-import")
+    return Path(settings.STORAGE_LOCAL_PATH) / "migration-import"
 
 
 async def install(ctx: ModuleContext) -> None:

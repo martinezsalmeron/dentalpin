@@ -8,7 +8,7 @@ hydrates the current clinic by calling each target module's service.
 
 ## Public API
 
-Routes mounted at `/api/v1/migration-import/`.
+Routes mounted at `/api/v1/migration_import/`.
 
 - `POST   /jobs`                       — `migration_import.job.write`. Upload `.dpm`.
 - `POST   /jobs/{id}/validate`         — `migration_import.job.write`. Decrypt/decompress/verify hash.
@@ -21,7 +21,7 @@ Routes mounted at `/api/v1/migration-import/`.
 
 ## Dependencies
 
-`manifest.depends = ["patients", "schedules", "treatment_plan", "billing", "payments", "media"]`.
+`manifest.depends = ["patients", "agenda", "schedules", "treatment_plan", "billing", "payments", "media"]`.
 
 **`verifactu` is intentionally NOT in `depends`.** Portuguese/French
 clinics import without it. The fiscal-document mapper detects it at

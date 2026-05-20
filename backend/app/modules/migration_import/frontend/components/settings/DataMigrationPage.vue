@@ -75,7 +75,7 @@ async function startUpload() {
   try {
     const formData = new FormData()
     formData.append('file', file.value)
-    const res = await api.post<{ data: ImportJob }>('/api/v1/migration-import/jobs', formData)
+    const res = await api.post<{ data: ImportJob }>('/api/v1/migration_import/jobs', formData)
     job.value = res.data
     await runValidate()
   } catch (err: unknown) {
@@ -88,7 +88,7 @@ async function startUpload() {
 async function runValidate() {
   if (!job.value) return
   const res = await api.post<{ data: ImportJob }>(
-    `/api/v1/migration-import/jobs/${job.value.id}/validate`,
+    `/api/v1/migration_import/jobs/${job.value.id}/validate`,
     { passphrase: passphrase.value || null }
   )
   job.value = res.data
@@ -98,7 +98,7 @@ async function runValidate() {
 async function loadPreview() {
   if (!job.value) return
   const res = await api.post<{ data: PreviewResponse }>(
-    `/api/v1/migration-import/jobs/${job.value.id}/preview`,
+    `/api/v1/migration_import/jobs/${job.value.id}/preview`,
     { passphrase: passphrase.value || null }
   )
   preview.value = res.data
@@ -107,7 +107,7 @@ async function loadPreview() {
 
 async function execute() {
   if (!job.value || !canExecute.value) return
-  await api.post(`/api/v1/migration-import/jobs/${job.value.id}/execute`, {
+  await api.post(`/api/v1/migration_import/jobs/${job.value.id}/execute`, {
     import_fiscal_compliance: importFiscal.value,
     passphrase: passphrase.value || null
   })
@@ -118,7 +118,7 @@ function startPolling() {
   if (pollHandle) clearInterval(pollHandle)
   pollHandle = setInterval(async () => {
     if (!job.value) return
-    const res = await api.get<{ data: ImportJob }>(`/api/v1/migration-import/jobs/${job.value.id}`)
+    const res = await api.get<{ data: ImportJob }>(`/api/v1/migration_import/jobs/${job.value.id}`)
     job.value = res.data
     if (job.value.status === 'completed' || job.value.status === 'failed') {
       if (pollHandle) {

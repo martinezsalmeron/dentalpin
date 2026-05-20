@@ -2,7 +2,7 @@
 
 The external agent (lives in dental-bridge) walks the clinic's image
 root, computes sha256 for each file, and POSTs every binary to
-``/api/v1/migration-import/jobs/{id}/binaries`` along with the sha256
+``/api/v1/migration_import/jobs/{id}/binaries`` along with the sha256
 in a form field. We:
 
 1. Read the uploaded body and verify its sha256 matches the claim
