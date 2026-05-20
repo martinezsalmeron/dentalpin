@@ -51,7 +51,14 @@ export function useApi() {
         signal
       })
     } catch (error: unknown) {
-      const fetchError = error as { statusCode?: number, data?: { message?: string } }
+      const fetchError = error as { name?: string, statusCode?: number, data?: { message?: string } }
+
+      // Caller-initiated cancellation: don't toast, just rethrow so the
+      // caller can no-op. AbortController is used by orchestrators
+      // (e.g. dashboard) to cancel stale parallel fetches.
+      if (fetchError.name === 'AbortError' || signal?.aborted) {
+        throw error
+      }
 
       // Handle specific error codes
       if (fetchError.statusCode === 401) {
