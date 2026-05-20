@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- perf(pipeline): batch the ``processed_entities`` counter update.
+  Previously every persisted entity emitted
+  ``migration.entity.persisted``, which a subscriber consumed in a
+  *fresh* DB session — that meant a separate ``BEGIN ... UPDATE ...
+  COMMIT`` round-trip per row (~25 ms each on local Postgres), so a
+  1.27 M-row import projected to ~9 h. The counter is now bumped on
+  the main session once per ``_COMMIT_BATCH`` (every 500 entities),
+  alongside the checkpoint write and the natural batch commit. The
+  ``MIGRATION_ENTITY_PERSISTED`` event is still emitted once per
+  batch (now carrying the batch ``count``) for any external
+  subscriber that wants progress signals; the importer itself no
+  longer subscribes. Benchmarked locally: 10 000-entity RawEntity
+  slice goes from ~5 min to ~4 s (~2 600 ent/s), projecting a full
+  1.27 M run to ~8 min instead of ~9 h.
 - feat(mappers): new ``AppliedTreatmentMapper`` materialises DPMF
   ``applied_treatment`` into a three-table cascade — one lazy
   ``treatment_plan.TreatmentPlan`` per patient (titled

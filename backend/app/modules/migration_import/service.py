@@ -379,7 +379,6 @@ class ImportJobService:
                             source_id=source_id,
                             source_system=source_system,
                         )
-                        await publish_entity_persisted(job.id, entity_type)
                     except Exception as exc:
                         # One entity blowing up does not fail the whole job —
                         # we surface it as a warning and continue. The op
@@ -403,14 +402,36 @@ class ImportJobService:
 
                     processed_in_batch += 1
                     if processed_in_batch >= _COMMIT_BATCH:
+                        # Counter bump + checkpoint + commit happen
+                        # together, once per batch, in the main session.
+                        # The "relaxed counter" semantics in the original
+                        # design exploded into 1 fresh-session COMMIT per
+                        # entity (~25 ms each) — ~9 h for 1.27 M rows.
+                        # Batching lifts throughput to ~200-500 ent/s.
+                        job.processed_entities = (
+                            job.processed_entities + processed_in_batch
+                        )
                         job.last_checkpoint = {
                             "entity_type": entity_type,
                             "after_canonical_uuid": canonical_uuid,
                         }
                         await db.commit()
+                        await publish_entity_persisted(
+                            job.id, entity_type, processed_in_batch
+                        )
                         processed_in_batch = 0
-                # End-of-entity commit.
+                # End-of-entity flush: persist the remaining tail counter
+                # alongside the natural commit boundary, then emit one
+                # progress event covering the trailing rows.
+                if processed_in_batch:
+                    job.processed_entities = (
+                        job.processed_entities + processed_in_batch
+                    )
                 await db.commit()
+                if processed_in_batch:
+                    await publish_entity_persisted(
+                        job.id, entity_type, processed_in_batch
+                    )
 
             # Ingest the DPMF's own _files manifest into our staging table.
             # The document mapper already created one staging row per

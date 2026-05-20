@@ -24,12 +24,8 @@ Key invariants:
 
 from fastapi import APIRouter
 
-from app.core.events.types import EventType
 from app.core.plugins import BaseModule
 
-from .events import (
-    on_appointment_created_for_progress,
-)
 from .lifecycle import install, uninstall
 from .models import (
     EntityMapping,
@@ -100,12 +96,13 @@ class MigrationImportModule(BaseModule):
         ]
 
     def get_event_handlers(self) -> dict:
-        # Subscribe to our own progress signal so the BackgroundTask
-        # pipeline can update ImportJob.processed_entities without
-        # circular imports across the mappers.
-        return {
-            EventType.MIGRATION_ENTITY_PERSISTED: on_appointment_created_for_progress,
-        }
+        # No internal subscriptions: the progress counter is now bumped
+        # in the same session+commit boundary as the entity inserts (see
+        # ``service._run_pipeline``). The
+        # ``MIGRATION_ENTITY_PERSISTED`` event is still emitted once per
+        # batch for external consumers that want to react to migration
+        # progress.
+        return {}
 
     async def install(self, ctx) -> None:  # noqa: D401 — lifecycle hook
         await install(ctx)

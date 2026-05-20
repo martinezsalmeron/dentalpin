@@ -1,28 +1,23 @@
-"""Event publishers + internal progress handler.
+"""Event publishers.
 
 External (cross-module) events are published via :func:`publish_*`
 helpers from the service layer so consumers reading
 ``docs/technical/migration_import/events.md`` find a single source of
 truth.
 
-The internal ``migration.entity.persisted`` event is used by the
-mapper runner to bump :attr:`ImportJob.processed_entities` without
-holding the orchestrator state across mapper boundaries.
+``migration.entity.persisted`` is now emitted once per commit batch
+(not once per entity) — see ``service._run_pipeline``. External
+modules can subscribe for progress updates; the importer itself no
+longer needs to because the counter bump happens inline.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
 from uuid import UUID
-
-from sqlalchemy import update
 
 from app.core.events import event_bus
 from app.core.events.types import EventType
-from app.database import async_session_maker
-
-from .models import ImportJob
 
 logger = logging.getLogger(__name__)
 
@@ -71,28 +66,3 @@ async def publish_entity_persisted(job_id: UUID, entity_type: str, count: int = 
         EventType.MIGRATION_ENTITY_PERSISTED,
         {"job_id": str(job_id), "entity_type": entity_type, "count": count},
     )
-
-
-async def on_appointment_created_for_progress(data: dict[str, Any]) -> None:
-    """Increment ``processed_entities`` on each persisted entity.
-
-    Runs in a fresh session because the mapper's session is mid-tx.
-    The +1 update is a relaxed counter, not a strict invariant —
-    progress is for UI feedback only, the source of truth for "what
-    got created" is the ``entity_mappings`` table.
-    """
-    job_id_raw = data.get("job_id")
-    count = int(data.get("count", 1))
-    if not job_id_raw:
-        return
-    try:
-        job_id = UUID(job_id_raw)
-    except (ValueError, TypeError):
-        return
-    async with async_session_maker() as session:
-        await session.execute(
-            update(ImportJob)
-            .where(ImportJob.id == job_id)
-            .values(processed_entities=ImportJob.processed_entities + count)
-        )
-        await session.commit()
