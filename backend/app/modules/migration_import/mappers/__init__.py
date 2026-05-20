@@ -18,6 +18,7 @@ Adding a new mapper:
 
 from __future__ import annotations
 
+from .appointment import AppointmentMapper
 from .base import MapperContext, MappingResolver
 from .document import DocumentMapper
 from .fiscal_document import FiscalDocumentMapper
@@ -31,6 +32,7 @@ ProfessionalMapperInst = ProfessionalMapper()
 DocumentMapperInst = DocumentMapper()
 PaymentMapperInst = PaymentMapper()
 FiscalDocumentMapperInst = FiscalDocumentMapper()
+AppointmentMapperInst = AppointmentMapper()
 FALLBACK_MAPPER = RawEntityMapper()
 
 MAPPERS: dict[str, object] = {
@@ -39,6 +41,7 @@ MAPPERS: dict[str, object] = {
     "patient_document": DocumentMapperInst,
     "payment": PaymentMapperInst,
     "fiscal_document": FiscalDocumentMapperInst,
+    "appointment": AppointmentMapperInst,
 }
 
 __all__ = [

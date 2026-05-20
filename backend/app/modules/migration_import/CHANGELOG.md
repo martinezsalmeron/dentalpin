@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- feat(mappers): new ``AppointmentMapper`` materialises DPMF
+  ``appointment`` entities into ``agenda.Appointment`` rows. Resolves
+  ``patient_uuid``/``professional_uuid`` via the
+  :class:`MappingResolver`, combines ``scheduled_date`` +
+  ``scheduled_time`` into a UTC ``start_time`` (computes ``end_time``
+  from ``duration_minutes``, default 30), maps ``coarse_status`` →
+  DentalPin's 7-state status enum, and emits warnings under
+  ``appointment.{missing_actor,unmapped_actor,no_schedule,unparseable_datetime}``
+  when an entity has to be skipped instead of silently dropped. Chair
+  resolution is deferred until a ``catalog_item`` mapper exists.
+- chore(manifest): add ``agenda`` to ``depends`` (used by the new
+  appointment mapper). ``schedules`` stays as a forward-compat
+  declaration even though no mapper touches it yet.
 - fix(routing): correct the route prefix used by the frontend wizard and
   by the inline docs/CLAUDE.md/user-manual frontmatter. FastAPI mounts
   the router under ``/api/v1/migration_import/`` (the manifest name,
