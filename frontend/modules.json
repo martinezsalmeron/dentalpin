@@ -8,15 +8,15 @@
     "/module_layers/payments/frontend",
     "/module_layers/billing/frontend",
     "/module_layers/media/frontend",
-    "/module_layers/schedules/frontend",
+    "/module_layers/patients_clinical/frontend",
     "/module_layers/treatment_plan/frontend",
+    "/module_layers/clinical_notes/frontend",
+    "/module_layers/schedules/frontend",
     "/module_layers/migration_import/frontend",
     "/module_layers/notifications/frontend",
     "/module_layers/patient_timeline/frontend",
-    "/module_layers/patients_clinical/frontend",
     "/module_layers/recalls/frontend",
-    "/module_layers/reports/frontend",
-    "/module_layers/clinical_notes/frontend"
+    "/module_layers/reports/frontend"
   ],
   "modules": [
     {
@@ -52,12 +52,20 @@
       "path": "/module_layers/media/frontend"
     },
     {
-      "name": "schedules",
-      "path": "/module_layers/schedules/frontend"
+      "name": "patients_clinical",
+      "path": "/module_layers/patients_clinical/frontend"
     },
     {
       "name": "treatment_plan",
       "path": "/module_layers/treatment_plan/frontend"
+    },
+    {
+      "name": "clinical_notes",
+      "path": "/module_layers/clinical_notes/frontend"
+    },
+    {
+      "name": "schedules",
+      "path": "/module_layers/schedules/frontend"
     },
     {
       "name": "migration_import",
@@ -72,20 +80,12 @@
       "path": "/module_layers/patient_timeline/frontend"
     },
     {
-      "name": "patients_clinical",
-      "path": "/module_layers/patients_clinical/frontend"
-    },
-    {
       "name": "recalls",
       "path": "/module_layers/recalls/frontend"
     },
     {
       "name": "reports",
       "path": "/module_layers/reports/frontend"
-    },
-    {
-      "name": "clinical_notes",
-      "path": "/module_layers/clinical_notes/frontend"
     }
   ],
   "version": 1
