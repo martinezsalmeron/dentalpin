@@ -355,12 +355,19 @@ class AppliedTreatmentMapper:
         # payments. Migration writes via the model directly to skip
         # the event chain (we don't want spurious notifications for
         # historic data) but we *must* still create the row, otherwise
-        # the balance shows "patient has a huge credit" because the
         # completed treatments don't count against the payments
-        # received. ``source_session_id`` stays NULL — the per-session
-        # ledger path expects non-zero session amounts and our
-        # migrated sessions don't carry a price split.
-        if is_realised and amount is not None and amount > 0:
+        # received and the balance reads "patient has a huge credit".
+        #
+        # **Only formal-done treatments count toward earnings.** The
+        # heuristic above (age / notes) promotes ``is_realised`` so
+        # the UI shows old planned treatments as completed, but
+        # promoting them in the financial ledger would invent revenue
+        # the clinic hasn't necessarily earned. Patients who paid
+        # up-front for an implant plan typically have legitimate
+        # credit until each piece is actually performed; counting the
+        # whole plan as earned the moment we import would erase that
+        # credit.
+        if formal_done and amount is not None and amount > 0:
             ctx.db.add(
                 PatientEarnedEntry(
                     clinic_id=ctx.clinic_id,

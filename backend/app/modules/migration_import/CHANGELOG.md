@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- fix(applied_treatment): only formal-done treatments enter the
+  patient earned ledger. The first ledger pass counted every
+  ``is_realised`` treatment (including the ones rescued by the
+  age/notes heuristic), which silently inflated the clinic's
+  apparent revenue and erased legitimate patient credit on
+  in-progress plans. The earned ledger now gates strictly on
+  ``formal_done`` (Gesdén ``StaTto ∈ {5, 6}`` or ``FecFin`` set in
+  the source); heuristic-promoted treatments continue to surface as
+  "completed" in the UI plan list so the clinician can review them,
+  but they don't generate revenue. Validated against la paciente de ejemplo
+  three-way: 16,135 € paid · 14,305 € earned-formal · 14,090 € sum
+  of accepted budgets → 1,830 € patient credit, matching the
+  expected up-front payment for the in-progress implant plan.
 - fix(applied_treatment): write the patient earned-ledger entry
   directly. The patient balance UI reads from
   ``patient_earned_entries`` (treatments performed → money the
