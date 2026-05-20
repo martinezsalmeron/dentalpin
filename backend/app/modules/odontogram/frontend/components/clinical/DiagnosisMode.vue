@@ -44,9 +44,18 @@ const sidebarOpen = ref(false)
 // Computed
 // ============================================================================
 
-// Filter only diagnostic conditions (status = 'existing')
+// Filter only diagnostic conditions (status = 'existing'). Migrated
+// historical treatments are hidden from this panel — bulk-importing a
+// patient's entire chart history floods the diagnosis tab and makes
+// the active workflow ("what am I diagnosing today?") unusable.
+// The artefacts they leave (missing tooth, crown, implant…) are still
+// reflected in the odontogram via ``ToothRecord.general_condition``,
+// and the full historical record stays accessible from the History
+// tab and the treatment plans created by the importer.
 const conditions = computed(() =>
-  treatments.value.filter(t => t.status === 'existing')
+  treatments.value.filter(
+    t => t.status === 'existing' && t.source_module !== 'migration_import'
+  )
 )
 
 // Draft plans for contextual CTA

@@ -109,6 +109,53 @@ _TIPO_ODG_TO_CLINICAL_TYPE: dict[int, str] = {
     46: "implant",  # Reposición Implante
 }
 
+# Once a treatment is realised, its DentalPin ``clinical_type`` often
+# implies an observable artefact on the tooth (missing, crown,
+# implant…). Without this mapping the imported odontogram looks
+# uniformly ``healthy`` even for patients with decades of restorative
+# history, because we only created the per-event ``Treatment`` rows
+# and never touched ``ToothRecord.general_condition``. The chart reads
+# that column, so the migrated mouth appeared empty.
+#
+# Values intentionally mirror the ``ToothCondition`` enum in
+# ``odontogram/constants.py`` (importing it here would push that
+# module into the import graph and isn't worth the coupling).
+_CLINICAL_TYPE_TO_TOOTH_CONDITION: dict[str, str] = {
+    "extraction": "missing",
+    "implant": "implant",
+    "crown": "crown",
+    "bridge": "crown",  # bridges show as crowned on each abutment/pontic
+    "veneer": "crown",
+    "post": "crown",  # post-and-core; visible artefact is the crown
+    "filling_composite": "filling",
+    "filling_amalgam": "filling",
+    "filling_temporary": "filling",
+    "inlay": "filling",
+    "overlay": "filling",
+    "sealant": "sealant",
+    "root_canal_full": "root_canal",
+    "root_canal_two_thirds": "root_canal",
+    "root_canal_half": "root_canal",
+    "root_canal_overfill": "root_canal",
+}
+
+# Precedence used to break ties when two treatments on the same tooth
+# carry the same effective date. Higher wins. Implant beats missing
+# (a tooth was extracted and later implanted — final state is
+# implant). Restorations beat the "treated" hints (root canal). The
+# tie-breaker only kicks in when chronology is genuinely identical;
+# normally we compare on ``effective_date`` and keep the latest.
+_CONDITION_PRECEDENCE: dict[str, int] = {
+    "healthy": 0,
+    "missing": 1,
+    "sealant": 2,
+    "filling": 3,
+    "root_canal": 4,
+    "crown": 5,
+    "implant": 6,
+}
+
+
 # Gesdén ``IdTipoOdg`` codes that aren't tooth-level clinical
 # treatments — they're audit / non-clinical entries Gesdén lets the
 # clinic park on the treatment timeline. Importing them as
@@ -156,6 +203,15 @@ class AppliedTreatmentMapper:
         # source can attach hundreds of applied_treatments to the same
         # budget so the cache pays for itself quickly.
         self._budget_for_item: dict[UUID, UUID] = {}
+        # (clinic_id, patient_id, tooth_number) ->
+        #   (current_condition, effective_date). We process applied
+        # treatments in DPMF iteration order (not strictly
+        # chronological), so a chronologically-later treatment can
+        # arrive before an earlier one. Keep the chosen state in
+        # memory and only overwrite the ToothRecord row when the new
+        # treatment's effective date is later (or equal date but
+        # higher precedence).
+        self._tooth_state: dict[tuple[UUID, UUID, int], tuple[str, datetime]] = {}
 
     async def apply(
         self,
@@ -174,12 +230,16 @@ class AppliedTreatmentMapper:
 
         patient_uuid = payload.get("patient_uuid")
         if not patient_uuid:
-            await _warn(ctx, source_id, "applied_treatment.no_patient", "Tratamiento omitido: sin paciente.")
+            await _warn(
+                ctx, source_id, "applied_treatment.no_patient", "Tratamiento omitido: sin paciente."
+            )
             return None
         patient_id = await ctx.resolver.get("patient", str(patient_uuid))
         if patient_id is None:
             await _warn(
-                ctx, source_id, "applied_treatment.unmapped_patient",
+                ctx,
+                source_id,
+                "applied_treatment.unmapped_patient",
                 "Tratamiento omitido: paciente no mapeado previamente.",
             )
             return None
@@ -207,9 +267,7 @@ class AppliedTreatmentMapper:
         catalog_item_id: UUID | None = None
         variant_uuid = payload.get("treatment_variant_uuid")
         if variant_uuid:
-            catalog_item_id = await ctx.resolver.get(
-                "treatment_catalog_variant", str(variant_uuid)
-            )
+            catalog_item_id = await ctx.resolver.get("treatment_catalog_variant", str(variant_uuid))
 
         # Resolve clinical_type from Gesdén's ``IdTipoOdg`` so the UI
         # surfaces real labels ("filling_composite", "implant", "crown"
@@ -287,12 +345,8 @@ class AppliedTreatmentMapper:
         # treatment, fall back to a per-year bucket so a patient with
         # 20 years of history doesn't end up with one mega-plan.
         budget_id = await self._budget_for_applied_treatment(ctx, payload)
-        year_for_grouping = (
-            start_dt.year if budget_id is None and start_dt else None
-        )
-        plan_id = await self._get_or_create_plan(
-            ctx, patient_id, budget_id, year=year_for_grouping
-        )
+        year_for_grouping = start_dt.year if budget_id is None and start_dt else None
+        plan_id = await self._get_or_create_plan(ctx, patient_id, budget_id, year=year_for_grouping)
 
         # 1) odontogram.Treatment header — clinical record.
         treatment = Treatment(
@@ -317,17 +371,31 @@ class AppliedTreatmentMapper:
         # bit-mask decode). Surfaces remain ``None`` until the
         # ``ZonasPieza`` encoding is field-validated.
         teeth = payload.get("teeth") or []
+        artefact_condition = (
+            _CLINICAL_TYPE_TO_TOOTH_CONDITION.get(clinical_type) if is_realised else None
+        )
+        effective_state_date = end_dt or start_dt
         for tooth_number in teeth:
+            tn = int(tooth_number)
             tooth_record_id = await self._tooth_record_id(
-                ctx, patient_id=patient_id, tooth_number=int(tooth_number)
+                ctx, patient_id=patient_id, tooth_number=tn
             )
             ctx.db.add(
                 TreatmentTooth(
                     treatment_id=treatment.id,
                     tooth_record_id=tooth_record_id,
-                    tooth_number=int(tooth_number),
+                    tooth_number=tn,
                 )
             )
+            if artefact_condition is not None:
+                await self._update_tooth_condition(
+                    ctx,
+                    patient_id=patient_id,
+                    tooth_number=tn,
+                    tooth_record_id=tooth_record_id,
+                    new_condition=artefact_condition,
+                    effective_date=effective_state_date,
+                )
         if teeth:
             await ctx.db.flush()
 
@@ -391,6 +459,42 @@ class AppliedTreatmentMapper:
             dentalpin_id=item.id,
         )
         return item.id
+
+    async def _update_tooth_condition(
+        self,
+        ctx: MapperContext,
+        *,
+        patient_id: UUID,
+        tooth_number: int,
+        tooth_record_id: UUID,
+        new_condition: str,
+        effective_date: datetime,
+    ) -> None:
+        """Last-write-wins by effective_date; precedence breaks ties.
+
+        We do not overwrite a state that came from a chronologically
+        later treatment, which can happen because the DPMF rows are
+        not sorted by date. When the dates match exactly, the higher
+        precedence wins (e.g. an implant placed the same day a tooth
+        was extracted keeps the implant as final state).
+        """
+        key = (ctx.clinic_id, patient_id, tooth_number)
+        current = self._tooth_state.get(key)
+        if current is not None:
+            current_condition, current_date = current
+            if effective_date < current_date:
+                return
+            if effective_date == current_date and (
+                _CONDITION_PRECEDENCE.get(new_condition, 0)
+                <= _CONDITION_PRECEDENCE.get(current_condition, 0)
+            ):
+                return
+        self._tooth_state[key] = (new_condition, effective_date)
+        await ctx.db.execute(
+            ToothRecord.__table__.update()
+            .where(ToothRecord.id == tooth_record_id)
+            .values(general_condition=new_condition)
+        )
 
     async def _tooth_record_id(
         self, ctx: MapperContext, *, patient_id: UUID, tooth_number: int

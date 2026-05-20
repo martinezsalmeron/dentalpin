@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- fix(DiagnosisMode): hide treatments whose
+  ``source_module === 'migration_import'`` from the Diagnóstico panel.
+  Migrated patients arrived with their entire chart history (often
+  decades of crowns, fillings and extractions) flooding the active
+  diagnosis workflow. The artefacts remain visible on the odontogram
+  via ``ToothRecord.general_condition``, and the historical record
+  stays in the History tab + the auto-generated treatment plans.
 - refactor(types): drop the ``as unknown as Record<string, unknown>`` cast in ``useTreatments`` now that ``useApi`` accepts ``object`` payloads.
 - Added per-module `CLAUDE.md` for AI-agent context (2026-04-27).
 - Issue #60: `DiagnosisMode.vue` exposes a right-rail

@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- fix(applied_treatment): set ``ToothRecord.general_condition`` for
+  realised treatments that leave an observable artefact
+  (extraction → missing, crown/bridge/veneer/post → crown,
+  implant → implant, fillings/inlays/overlays → filling,
+  root canals → root_canal, sealant → sealant). Last write by
+  ``end_date`` (or ``start_date`` if absent) wins; ties broken by
+  precedence so an implant beats a prior extraction on the same
+  tooth. Without this, the imported odontogram chart rendered
+  uniformly ``healthy`` even for patients with decades of restorative
+  history. Paired with the frontend filter below, the Diagnóstico
+  panel stays clear and the chart actually reflects the mouth.
+- fix(applied_treatment): hide migrated treatments from the
+  Diagnóstico tab. Bulk-importing a patient's full history flooded
+  the active diagnosis panel with hundreds of historical artefacts,
+  making the "what am I diagnosing today?" workflow unusable.
+  ``DiagnosisMode`` now filters
+  ``source_module !== 'migration_import'``; the migrated record stays
+  visible in the History tab and as PlannedTreatmentItems on the
+  imported plans.
 - fix(professional): map canonical role ``doctor`` → DentalPin
   ``dentist`` (was silently falling through to ``assistant``, so every
   Gesdén dentist landed as auxiliar), and create the imported User
