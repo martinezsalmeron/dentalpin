@@ -347,6 +347,10 @@ class ImportJobService:
         )
 
         with open_dpmf(Path(job.file_path), passphrase=passphrase) as handle:
+            # Expose the handle to mappers that need a sibling-row
+            # pre-pass (e.g. the applied_treatment shadow-pairing
+            # logic). Mappers that don't care simply ignore it.
+            ctx.handle = handle
             entity_types = ordered_entity_types(list(handle.entity_counts().keys()))
 
             for entity_type in entity_types:
@@ -408,30 +412,22 @@ class ImportJobService:
                         # design exploded into 1 fresh-session COMMIT per
                         # entity (~25 ms each) — ~9 h for 1.27 M rows.
                         # Batching lifts throughput to ~200-500 ent/s.
-                        job.processed_entities = (
-                            job.processed_entities + processed_in_batch
-                        )
+                        job.processed_entities = job.processed_entities + processed_in_batch
                         job.last_checkpoint = {
                             "entity_type": entity_type,
                             "after_canonical_uuid": canonical_uuid,
                         }
                         await db.commit()
-                        await publish_entity_persisted(
-                            job.id, entity_type, processed_in_batch
-                        )
+                        await publish_entity_persisted(job.id, entity_type, processed_in_batch)
                         processed_in_batch = 0
                 # End-of-entity flush: persist the remaining tail counter
                 # alongside the natural commit boundary, then emit one
                 # progress event covering the trailing rows.
                 if processed_in_batch:
-                    job.processed_entities = (
-                        job.processed_entities + processed_in_batch
-                    )
+                    job.processed_entities = job.processed_entities + processed_in_batch
                 await db.commit()
                 if processed_in_batch:
-                    await publish_entity_persisted(
-                        job.id, entity_type, processed_in_batch
-                    )
+                    await publish_entity_persisted(job.id, entity_type, processed_in_batch)
 
             # Ingest the DPMF's own _files manifest into our staging table.
             # The document mapper already created one staging row per

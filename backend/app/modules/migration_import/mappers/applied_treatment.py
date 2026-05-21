@@ -28,6 +28,8 @@ The ``applied_treatment_phase`` mapper attaches sessions to the
 
 from __future__ import annotations
 
+import json
+from collections import defaultdict
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -70,6 +72,13 @@ _NOTES_LIKELY_PERFORMED_MIN_CHARS = 40
 #   length acts as the second corroborating signal.
 _OLD_TREATMENT_AGE_DAYS = 365 * 5
 _MID_TREATMENT_AGE_DAYS = 365 * 2
+
+# Maximum gap (days) between a planned line and its performed twin
+# before we stop treating them as the same intervention. Presupuestos
+# typically execute within 3-18 months; 24 months is conservative
+# enough to catch slow clinics while rejecting the case where a
+# treatment is genuinely repeated years later on the same tooth.
+_SHADOW_WINDOW_DAYS = 365 * 2
 
 # Plan status to write for every migrated plan. Gesdén plans are by
 # definition already-accepted historical records — leaving them in
@@ -213,6 +222,20 @@ class AppliedTreatmentMapper:
         # treatment's effective date is later (or equal date but
         # higher precedence).
         self._tooth_state: dict[tuple[UUID, UUID, int], tuple[str, datetime]] = {}
+        # Shadow-pairing index. Gesdén creates a *new* TtosMed row at
+        # StaTto=5 when a budgeted line (StaTto=3) is performed, leaving
+        # the original planned row untouched. We detect those shadow
+        # pairs in a single DPMF pre-pass and drop the planned twin so
+        # the odontogram doesn't display obvious duplicates.
+        #   planned_canonical_uuid -> performed_canonical_uuid
+        self._shadow_index: dict[str, str] | None = None
+        #   performed_canonical_uuid -> PlannedTreatmentItem.id
+        # Filled by apply() as performed rows are processed.
+        self._performed_item_id: dict[str, UUID] = {}
+        #   performed_canonical_uuid -> [planned_canonical_uuid, ...]
+        # Shadows whose performed twin hasn't been seen yet — we'll
+        # redirect their resolver mapping once the twin lands.
+        self._pending_shadow_links: dict[str, list[str]] = defaultdict(list)
 
     async def apply(
         self,
@@ -243,6 +266,33 @@ class AppliedTreatmentMapper:
                 "applied_treatment.unmapped_patient",
                 "Tratamiento omitido: paciente no mapeado previamente.",
             )
+            return None
+
+        # Budget-shadow check. If this row was identified as the
+        # planned twin of a performed sibling during the pre-pass,
+        # drop it and let any FK references resolve to the performed
+        # counterpart instead.
+        shadow_index = self._ensure_shadow_index(ctx)
+        twin_uuid = shadow_index.get(canonical_uuid)
+        if twin_uuid is not None:
+            await _warn(
+                ctx,
+                source_id,
+                "applied_treatment.shadow_planned",
+                f"Línea presupuesto omitida: existe acto realizado coincidente "
+                f"(canonical_uuid={twin_uuid}).",
+            )
+            twin_item_id = self._performed_item_id.get(twin_uuid)
+            if twin_item_id is not None:
+                await ctx.resolver.set(
+                    entity_type="applied_treatment",
+                    canonical_uuid=canonical_uuid,
+                    source_system=source_system,
+                    dentalpin_table="planned_treatment_items",
+                    dentalpin_id=twin_item_id,
+                )
+            else:
+                self._pending_shadow_links[twin_uuid].append(canonical_uuid)
             return None
 
         # Drop non-clinical Gesdén entries (notes, panoramic X-rays,
@@ -486,7 +536,113 @@ class AppliedTreatmentMapper:
             dentalpin_table="planned_treatment_items",
             dentalpin_id=item.id,
         )
+
+        # Drain shadows that arrived before this performed twin: now
+        # that the performed has a ``PlannedTreatmentItem``, redirect
+        # each pending planned canonical_uuid at it so any
+        # ``applied_treatment_phase`` / ``budget_line`` still
+        # resolves cleanly.
+        self._performed_item_id[canonical_uuid] = item.id
+        pending = self._pending_shadow_links.pop(canonical_uuid, None)
+        if pending:
+            for planned_uuid in pending:
+                await ctx.resolver.set(
+                    entity_type="applied_treatment",
+                    canonical_uuid=planned_uuid,
+                    source_system=source_system,
+                    dentalpin_table="planned_treatment_items",
+                    dentalpin_id=item.id,
+                )
+
         return item.id
+
+    def _ensure_shadow_index(self, ctx: MapperContext) -> dict[str, str]:
+        """One-pass scan over every ``applied_treatment`` row in the
+        DPMF, building the planned→performed shadow map.
+
+        Pairing key: ``(patient_uuid, IdTto, IdTipoOdg, sorted_teeth)``.
+        Within a group we match each performed row with the closest
+        earlier planned that no other performed has claimed yet, as
+        long as it falls inside the 24-month window. Rows missing any
+        component of the key (typically global-mouth procedures with
+        no IdTto) are still grouped — they only collide with other
+        same-key rows, which is the intended semantics.
+
+        Lazy: built on first call, returns ``{}`` when the DPMF
+        handle isn't available (test paths, programmatic use).
+        """
+        if self._shadow_index is not None:
+            return self._shadow_index
+        if ctx.handle is None:
+            self._shadow_index = {}
+            return self._shadow_index
+
+        groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
+        for row in ctx.handle.entity_iter("applied_treatment"):
+            cu, _src_id, _src_sys, payload_json, raw_json, _ts = row
+            try:
+                payload = json.loads(payload_json)
+                raw = json.loads(raw_json)
+            except json.JSONDecodeError:
+                continue
+            patient_uuid = payload.get("patient_uuid")
+            if not patient_uuid:
+                continue
+            id_tto = _coerce_int(raw.get("IdTto"))
+            id_tipo_odg = _coerce_int(raw.get("IdTipoOdg"))
+            if id_tto is None or id_tipo_odg is None:
+                continue
+            teeth = payload.get("teeth") or []
+            teeth_key = tuple(sorted(int(t) for t in teeth))
+            start_dt = _parse_datetime(payload.get("start_date"))
+            end_dt = _parse_datetime(payload.get("end_date"))
+            status_code = _coerce_int(payload.get("status_code"))
+            performed = status_code in _REALISED_CODES or end_dt is not None
+            key = (str(patient_uuid), id_tto, id_tipo_odg, teeth_key)
+            groups[key].append(
+                {
+                    "canonical_uuid": cu,
+                    "performed": performed,
+                    "start_dt": start_dt,
+                    "end_dt": end_dt,
+                }
+            )
+
+        window = _SHADOW_WINDOW_DAYS
+        shadow: dict[str, str] = {}
+        for rows in groups.values():
+            if len(rows) < 2:
+                continue
+            performed_rows = [r for r in rows if r["performed"] and (r["end_dt"] or r["start_dt"])]
+            planned_rows = [r for r in rows if not r["performed"] and r["start_dt"]]
+            if not performed_rows or not planned_rows:
+                continue
+            # Sort performed by effective date (ascending) so the
+            # earliest performed claims the earliest matching planned.
+            performed_rows.sort(key=lambda r: r["end_dt"] or r["start_dt"])
+            planned_rows.sort(key=lambda r: r["start_dt"])
+            claimed: set[int] = set()
+            for perf in performed_rows:
+                perf_dt = perf["end_dt"] or perf["start_dt"]
+                best_idx: int | None = None
+                for idx, plan in enumerate(planned_rows):
+                    if idx in claimed:
+                        continue
+                    plan_dt = plan["start_dt"]
+                    if plan_dt is None or plan_dt > perf_dt:
+                        continue
+                    if (perf_dt - plan_dt).days > window:
+                        continue
+                    # Closest-but-earlier wins: prefer the planned
+                    # with the largest start_dt still <= perf_dt.
+                    if best_idx is None or plan_dt > planned_rows[best_idx]["start_dt"]:
+                        best_idx = idx
+                if best_idx is not None:
+                    claimed.add(best_idx)
+                    shadow[planned_rows[best_idx]["canonical_uuid"]] = perf["canonical_uuid"]
+
+        self._shadow_index = shadow
+        return shadow
 
     async def _update_tooth_condition(
         self,

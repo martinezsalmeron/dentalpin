@@ -6,14 +6,17 @@ tight (``from .base import MapperContext, MappingResolver``).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Protocol
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Protocol
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import EntityMapping
+
+if TYPE_CHECKING:
+    from ..dpmf import DpmfHandle
 
 
 class MappingResolver:
@@ -86,6 +89,12 @@ class MapperContext:
     resolver: MappingResolver
     import_fiscal_compliance: bool
     created_by: UUID  # The admin who launched the import; used as actor for created_by FKs.
+    # Optional reference to the open DPMF handle. Populated by the
+    # service orchestrator inside ``_run_pipeline``. Mappers that need
+    # to peek at sibling rows (e.g. the applied_treatment shadow-pairing
+    # pre-pass) read it; the rest can ignore it. Tests and other call
+    # sites that don't open a DPMF leave it ``None``.
+    handle: DpmfHandle | None = field(default=None)
 
 
 class Mapper(Protocol):

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- fix(applied_treatment): drop budget-shadow planned rows whose
+  performed counterpart was created as a *new* TtosMed entry.
+  Gesdén never updates ``StaTto`` 3→5 in place — when a budgeted
+  line gets executed the clinician adds a second row at
+  ``StaTto=5`` and the original sits at ``StaTto=3`` forever, so
+  importing both flooded the odontogram with planned/performed
+  twins. A single DPMF pre-pass groups by
+  ``(patient, IdTto, IdTipoOdg, teeth)`` and pairs each performed
+  with the nearest earlier planned inside a 24-month window; the
+  planned twin is skipped and its ``canonical_uuid`` redirected
+  via the resolver to the performed's ``PlannedTreatmentItem`` so
+  any ``budget_line`` / ``applied_treatment_phase`` that referred
+  to the planned still resolves cleanly. Clinics that update
+  ``StaTto`` in place have only one row per treatment → the
+  pairing never matches → no behavioural change for them.
 - feat(patient): pipe ``Pacientes.Notas`` (new in dental-bridge
   adapter 0.0.2) through the same classifier that handles
   ``AlertPac.Texto``. Lines parse into ``Allergy`` / ``Medication`` /
