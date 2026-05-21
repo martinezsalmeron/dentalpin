@@ -503,7 +503,11 @@ class AppliedTreatmentMapper:
         # credit until each piece is actually performed; counting the
         # whole plan as earned the moment we import would erase that
         # credit.
-        if formal_done and amount is not None and amount > 0:
+        if formal_done and amount is not None and amount != 0:
+            # Negative amounts are credit-note corrections coming from
+            # Gesdén — needed so the patient ledger nets out correctly
+            # against the matching payments. The CHECK constraint was
+            # lifted in ``pay_0003`` precisely for this path.
             ctx.db.add(
                 PatientEarnedEntry(
                     clinic_id=ctx.clinic_id,
@@ -682,7 +686,7 @@ class AppliedTreatmentMapper:
         constraint ``(treatment_id, source_session_id)``.
         """
         amount = _decimal_or_none(payload.get("amount"))
-        if amount is None or amount <= 0:
+        if amount is None or amount == 0:
             return
         status_code = _coerce_int(payload.get("status_code"))
         start_dt = _parse_datetime(payload.get("start_date")) or datetime.now(UTC)

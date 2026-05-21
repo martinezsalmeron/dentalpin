@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- feat(payment): split a Gesdén ``PagoCli`` across every patient
+  linked to its payer client. The mapper used to attribute the whole
+  amount to the first patient mapped, inflating that patient's credit
+  while leaving family members in apparent debt. Now
+  ``PatientClientLinkMapper`` exposes the full M:N graph through
+  ``ctx.client_to_patients``; the payment mapper splits each amount
+  proportionally to each linked patient's existing ``earned`` ledger
+  (or evenly when nobody has earned activity yet). The resolver
+  maps the source canonical_uuid to the first split share; the rest
+  are unmapped audit rows. Emits a ``payment.split_across_family``
+  warning per split for the operator to spot-check.
+- fix(applied_treatment): allow negative earned amounts (credit-note
+  corrections from Gesdén's ``Nota Económica`` rows). The
+  ``ck_earned_amount_nonneg`` check was lifted in ``pay_0003`` so the
+  ledger sums net out correctly against the matching payments;
+  publishers still emit positive amounts in normal flow.
 - fix(applied_treatment): mirror billable non-clinical Gesdén entries
   (hygiene, panoramic X-rays, fluorisation, "Bonos", first-visit
   consultations, generic services — ``IdTipoOdg`` in

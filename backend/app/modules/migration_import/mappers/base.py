@@ -95,6 +95,13 @@ class MapperContext:
     # pre-pass) read it; the rest can ignore it. Tests and other call
     # sites that don't open a DPMF leave it ``None``.
     handle: DpmfHandle | None = field(default=None)
+    # ``client_uuid`` → list of patient_ids linked to that client.
+    # Populated by ``PatientClientLinkMapper`` (Gesdén's ``PacCli`` is
+    # M:N) and read by ``PaymentMapper`` to split a ``PagoCli`` across
+    # every family member instead of attributing the whole amount to
+    # the first patient mapped. Empty by default so test paths that
+    # bypass the link mapper just see the 1:1 fallback.
+    client_to_patients: dict[str, list[UUID]] = field(default_factory=dict)
 
 
 class Mapper(Protocol):

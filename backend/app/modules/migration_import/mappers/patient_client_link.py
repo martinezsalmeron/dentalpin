@@ -67,6 +67,13 @@ class PatientClientLinkMapper:
             dentalpin_id=patient_id,
         )
 
+        # In-memory M:N index so ``PaymentMapper`` can split a single
+        # ``PagoCli`` across every patient linked to the payer. The
+        # SQL sidecar below (``patient_for_client``) keeps the legacy
+        # 1:1 "first wins" mapping for callers that want a single
+        # patient_id; the in-memory dict carries the full set.
+        ctx.client_to_patients.setdefault(str(client_uuid), []).append(patient_id)
+
         # 2) Sidecar mapping (``patient_for_client``) for the payment
         # mapper to consult. ``INSERT ... ON CONFLICT DO NOTHING`` keeps
         # the first patient registered per client without raising; an

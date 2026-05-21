@@ -229,7 +229,11 @@ class PatientEarnedEntry(Base, TimestampMixin):
     patient: Mapped["Patient"] = relationship()
 
     __table_args__ = (
-        CheckConstraint("amount >= 0", name="ck_earned_amount_nonneg"),
+        # Note: amount may be negative. Gesdén stores credit-note style
+        # corrections (``Nota Económica``) as negative ``TtosMed.Importe``
+        # rows that the migration importer needs to land so the patient
+        # ledger reconciles with the source. Event-driven publishers
+        # still emit positive amounts in normal flow.
         UniqueConstraint("treatment_id", "source_session_id", name="uq_earned_treatment_session"),
         Index("idx_earned_clinic_patient", "clinic_id", "patient_id"),
         Index("idx_earned_clinic_performed", "clinic_id", "performed_at"),

@@ -14,11 +14,13 @@ data.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+
+from app.modules.payments.models import PatientEarnedEntry
 
 from ..models import ImportWarning
 from .base import MapperContext
@@ -69,28 +71,38 @@ class PaymentMapper:
         if existing is not None:
             return existing
 
-        # DPMF payments reference a Client (payer), not a Patient. Resolve
-        # through the ``patient_for_client`` sidecar populated by
-        # ``PatientClientLinkMapper``. If that fails, accept a direct
-        # ``patient_uuid`` for sources that carry it.
-        patient_id: UUID | None = None
+        # DPMF payments reference a Client (payer), not a Patient. Gesdén's
+        # ``PacCli`` is M:N — one client (typically the head of household)
+        # routinely pays for several patients (spouse + kids + dependants).
+        # ``PatientClientLinkMapper`` records every (client, patient) pair
+        # in ``ctx.client_to_patients``; we resolve the FULL list here so
+        # a single ``PagoCli`` can be split proportionally across every
+        # linked patient rather than dumped onto the first one mapped,
+        # which used to inflate that patient's apparent credit while
+        # leaving the rest of the family in apparent debt.
         client_uuid_external = payload.get("client_uuid")
+        all_patient_ids: list[UUID] = []
         if client_uuid_external:
-            patient_id = await ctx.resolver.get(
-                "patient_for_client", str(client_uuid_external)
-            )
-        if patient_id is None:
-            patient_uuid_external = payload.get("patient_uuid")
-            if patient_uuid_external:
-                patient_id = await ctx.resolver.get(
-                    "patient", str(patient_uuid_external)
+            all_patient_ids = list(ctx.client_to_patients.get(str(client_uuid_external), []))
+        if not all_patient_ids:
+            # Legacy single-patient fallback: try the sidecar (older
+            # imports), then a direct ``patient_uuid`` from the payload.
+            fallback: UUID | None = None
+            if client_uuid_external:
+                fallback = await ctx.resolver.get("patient_for_client", str(client_uuid_external))
+            if fallback is None:
+                patient_uuid_external = payload.get("patient_uuid")
+                if patient_uuid_external:
+                    fallback = await ctx.resolver.get("patient", str(patient_uuid_external))
+            if fallback is None:
+                await _warn(
+                    ctx,
+                    source_id,
+                    "payment.no_patient_for_client",
+                    "Pago omitido: cliente/paciente no resoluble (sin link o link no importado).",
                 )
-        if patient_id is None:
-            await _warn(
-                ctx, source_id, "payment.no_patient_for_client",
-                "Pago omitido: cliente/paciente no resoluble (sin link o link no importado).",
-            )
-            return None
+                return None
+            all_patient_ids = [fallback]
 
         try:
             amount = Decimal(str(payload.get("amount") or "0"))
@@ -98,7 +110,9 @@ class PaymentMapper:
             await _warn(ctx, source_id, "payment.invalid_amount", "Pago omitido: importe inválido.")
             return None
         if amount <= 0:
-            await _warn(ctx, source_id, "payment.zero_amount", "Pago omitido: importe nulo o negativo.")
+            await _warn(
+                ctx, source_id, "payment.zero_amount", "Pago omitido: importe nulo o negativo."
+            )
             return None
 
         # Canonical Payment exposes ``payment_kind`` (the source numeric
@@ -108,7 +122,9 @@ class PaymentMapper:
         # exist yet. Unknown kinds fall back to "other".
         method = _PAYMENT_KIND_MAP.get(payload.get("payment_kind"), "other")
 
-        paid_at = _parse_date(payload.get("paid_on") or payload.get("paid_at") or payload.get("payment_date"))
+        paid_at = _parse_date(
+            payload.get("paid_on") or payload.get("paid_at") or payload.get("payment_date")
+        )
         if paid_at is None:
             # Payment.payment_date is NOT NULL — fall back to today for
             # rows whose source date is missing/unparseable. The notes
@@ -119,36 +135,120 @@ class PaymentMapper:
 
         from app.modules.payments.models import Payment
 
-        payment = Payment(
-            clinic_id=ctx.clinic_id,
-            patient_id=patient_id,
-            amount=amount,
-            currency=currency,
-            method=method,
-            payment_date=paid_at,
-            notes=(payload.get("notes") or f"Importado dental-bridge ({source_id})"),
-            recorded_by=ctx.created_by,
-        )
-        ctx.db.add(payment)
-        await ctx.db.flush()
+        # Split across linked patients when the client covers more than
+        # one. Weight by the earned ledger so a family member with more
+        # work done absorbs proportionally more of the payment; if no
+        # patient has any earned activity yet (paid-up-front cohort)
+        # the split is even.
+        shares = await self._split_amounts(ctx, amount, all_patient_ids)
 
+        first_payment_id: UUID | None = None
+        for idx, (pid, share_amount) in enumerate(shares):
+            note_prefix = payload.get("notes") or f"Importado dental-bridge ({source_id})"
+            if len(shares) > 1:
+                note = (
+                    f"{note_prefix} · reparto familiar {idx + 1}/{len(shares)} "
+                    f"(cliente {client_uuid_external})"
+                )
+            else:
+                note = note_prefix
+            payment = Payment(
+                clinic_id=ctx.clinic_id,
+                patient_id=pid,
+                amount=share_amount,
+                currency=currency,
+                method=method,
+                payment_date=paid_at,
+                notes=note,
+                recorded_by=ctx.created_by,
+            )
+            ctx.db.add(payment)
+            await ctx.db.flush()
+            if first_payment_id is None:
+                first_payment_id = payment.id
+
+        if len(shares) > 1:
+            await _warn(
+                ctx,
+                source_id,
+                "payment.split_across_family",
+                f"Pago {amount} repartido entre {len(shares)} pacientes del cliente "
+                f"{client_uuid_external} (proporcional al ledger earned).",
+            )
+
+        # Resolver maps the canonical_uuid to the first split row; the
+        # remaining shares stay unmapped (re-runs short-circuit at the
+        # top of apply() so we don't duplicate).
+        assert first_payment_id is not None
         await ctx.resolver.set(
             entity_type="payment",
             canonical_uuid=canonical_uuid,
             source_system=source_system,
             dentalpin_table="payments",
-            dentalpin_id=payment.id,
+            dentalpin_id=first_payment_id,
         )
-        return payment.id
+        return first_payment_id
+
+    async def _split_amounts(
+        self,
+        ctx: MapperContext,
+        total: Decimal,
+        patient_ids: list[UUID],
+    ) -> list[tuple[UUID, Decimal]]:
+        """Distribute ``total`` across ``patient_ids`` weighted by each
+        patient's existing ``PatientEarnedEntry`` sum, falling back to
+        an even split when nobody has any earned activity yet.
+
+        Rounding goes to two decimals; the last share absorbs any
+        remainder so the splits sum exactly to ``total``.
+        """
+        n = len(patient_ids)
+        if n == 1:
+            return [(patient_ids[0], total)]
+        # Pull earned-per-patient in one round-trip.
+        rows = await ctx.db.execute(
+            select(
+                PatientEarnedEntry.patient_id,
+                func.coalesce(func.sum(PatientEarnedEntry.amount), Decimal("0")),
+            )
+            .where(PatientEarnedEntry.patient_id.in_(patient_ids))
+            .group_by(PatientEarnedEntry.patient_id)
+        )
+        earned_map: dict[UUID, Decimal] = {pid: Decimal("0") for pid in patient_ids}
+        for pid, earned in rows.all():
+            earned_map[pid] = earned or Decimal("0")
+        weight_total = sum(earned_map.values())
+        shares: list[tuple[UUID, Decimal]] = []
+        if weight_total <= 0:
+            # Even split.
+            per = (total / Decimal(n)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            allocated = Decimal("0")
+            for idx, pid in enumerate(patient_ids):
+                if idx == n - 1:
+                    share = total - allocated
+                else:
+                    share = per
+                    allocated += per
+                shares.append((pid, share))
+        else:
+            allocated = Decimal("0")
+            for idx, pid in enumerate(patient_ids):
+                if idx == n - 1:
+                    share = total - allocated
+                else:
+                    share = (total * earned_map[pid] / weight_total).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+                    allocated += share
+                shares.append((pid, share))
+        return shares
 
     async def _currency_for_clinic(self, ctx: MapperContext) -> str:
         if ctx.clinic_id in self._currency_cache:
             return self._currency_cache[ctx.clinic_id]
         from app.core.auth.models import Clinic
 
-        result = await ctx.db.execute(
-            select(Clinic.currency).where(Clinic.id == ctx.clinic_id)
-        )
+        result = await ctx.db.execute(select(Clinic.currency).where(Clinic.id == ctx.clinic_id))
         currency = result.scalar_one_or_none() or "EUR"
         self._currency_cache[ctx.clinic_id] = currency
         return currency

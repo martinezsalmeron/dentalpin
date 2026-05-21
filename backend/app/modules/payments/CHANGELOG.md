@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- chore(migration ``pay_0003``): drop the ``ck_earned_amount_nonneg``
+  check on ``patient_earned_entries``. Migration imports need to land
+  Gesdén's ``Nota Económica`` credit-note rows (negative
+  ``TtosMed.Importe``) so the patient ledger reconciles with the
+  source's running total. Event-driven publishers still emit
+  non-negative amounts in normal operation.
 - feat(earned-per-session): ``PatientEarnedEntry`` gains
   ``source_session_id`` + ``description`` and is now keyed on
   ``(treatment_id, source_session_id)`` so multi-session treatments
