@@ -584,10 +584,20 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
       </UButton>
     </div>
 
-    <!-- Two-column layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+    <!-- Two-column layout.
+         Tailwind's ``lg:`` (1024px) used to drive this layout but
+         many laptops + browsers with DevTools or side panels open
+         report a viewport below 1024px, collapsing the grid to a
+         single column — odontogram filled full width and the
+         treatment list + clinical notes slid below it. The custom
+         ``min-[960px]:`` breakpoint covers most desktops/laptops
+         (13″ MacBook = 1280px, even with the dock taking 64px the
+         viewport is ≥1216px; a 1280px window with a 320px DevTools
+         pane still has 960px left) while keeping the stacked
+         layout for genuine tablet widths. -->
+    <div class="grid grid-cols-1 min-[960px]:grid-cols-5 gap-4">
       <!-- Left column: Odontogram (wider) -->
-      <UCard class="lg:col-span-3 self-start">
+      <UCard class="min-[960px]:col-span-3 self-start">
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon
@@ -613,7 +623,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
       </UCard>
 
       <!-- Right column: Treatment list + clinical notes, stacked and auto-height. -->
-      <div class="lg:col-span-2 flex flex-col gap-4 self-start">
+      <div class="min-[960px]:col-span-2 flex flex-col gap-4 self-start">
         <UCard
           class="plan-list-card"
           :class="{ 'plan-list-pulse': listPulse }"

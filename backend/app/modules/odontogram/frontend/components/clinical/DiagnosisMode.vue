@@ -109,7 +109,12 @@ async function handleTreatmentsChanged() {
 </script>
 
 <template>
-  <div class="lg:flex lg:gap-4 lg:items-start">
+  <!-- Side-by-side at ``min-[960px]:`` instead of the previous
+       ``lg:`` (1024px) — laptops + browsers with DevTools or side
+       panels open often report a viewport just below 1024px, which
+       collapsed the right-rail notes sidebar below the odontogram
+       and made the chart fill the full width (looking "gigante"). -->
+  <div class="min-[960px]:flex min-[960px]:gap-4 min-[960px]:items-start">
     <div class="flex-1 min-w-0 space-y-4">
       <!-- Loading state -->
       <div
@@ -193,9 +198,9 @@ async function handleTreatmentsChanged() {
       </template>
     </div>
 
-    <!-- Right rail (lg+): clinical-notes sidebar provided by other modules
-         via the ``odontogram.diagnosis.sidebar`` slot. -->
-    <aside class="hidden lg:block lg:w-80 xl:w-96 lg:shrink-0">
+    <!-- Right rail at ≥960px: clinical-notes sidebar provided by
+         other modules via the ``odontogram.diagnosis.sidebar`` slot. -->
+    <aside class="hidden min-[960px]:block min-[960px]:w-80 xl:w-96 min-[960px]:shrink-0">
       <ModuleSlot
         name="odontogram.diagnosis.sidebar"
         :ctx="sidebarCtx"
@@ -204,7 +209,7 @@ async function handleTreatmentsChanged() {
 
     <!-- Floating action button + slideover for narrow viewports. -->
     <UButton
-      class="fixed right-4 bottom-4 z-30 lg:hidden shadow-lg"
+      class="fixed right-4 bottom-4 z-30 min-[960px]:hidden shadow-lg"
       icon="i-lucide-notebook-pen"
       color="primary"
       size="lg"
@@ -214,7 +219,7 @@ async function handleTreatmentsChanged() {
     <USlideover
       v-model:open="sidebarOpen"
       side="right"
-      class="lg:hidden"
+      class="min-[960px]:hidden"
     >
       <template #content>
         <div class="p-2 h-full">
