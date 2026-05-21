@@ -133,6 +133,13 @@ class PaymentMapper:
 
         currency = await self._currency_for_clinic(ctx)
 
+        # Preserve original Gesdén cashier when available — falls back
+        # to the migration admin when the source had no user link or
+        # the referenced user wasn't imported.
+        recorded_by = await ctx.resolver.resolve_actor(
+            payload.get("user_uuid"), ctx.created_by
+        )
+
         from app.modules.payments.models import Payment
 
         # Split across linked patients when the client covers more than
@@ -160,7 +167,7 @@ class PaymentMapper:
                 method=method,
                 payment_date=paid_at,
                 notes=note,
-                recorded_by=ctx.created_by,
+                recorded_by=recorded_by,
             )
             ctx.db.add(payment)
             await ctx.db.flush()

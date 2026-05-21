@@ -231,6 +231,55 @@ TREATMENT_CATALOG = [
 STATUS_CODES = [3, 5, 6]  # 3 planned, 5/6 realised
 ROLE_BY_INDEX = ["dentist", "hygienist", "dentist", "assistant", "dentist"]
 
+# Per-treatment notes — picked at random so migrated treatments
+# carry realistic, varied clinical narrative instead of a single
+# placeholder string.
+TREATMENT_NOTES = [
+    "Anestesia con lidocaína 2% sin epinefrina. Sin incidencias intraoperatorias.",
+    "Tallado conservador con preservación de esmalte. Aislamiento absoluto con dique.",
+    "Composite A2 estratificado en tres capas. Polimerización 20s por capa.",
+    "Endodoncia en dos sesiones. Obturación con gutapercha + sellador AH Plus.",
+    "Paciente refiere sensibilidad post-operatoria leve. Citado a control en 7 días.",
+    "Implante 4.1x10mm Straumann SLA. Torque de inserción 35 Ncm. Tapa de cicatrización colocada.",
+    "Provisional acrílico ajustado. Próxima sesión: prueba metal-cerámica.",
+    "Corona definitiva cementada con ionómero de vidrio. Oclusión revisada y ajustada.",
+    "Extracción sin complicaciones. Hemostasia con compresión y sutura 4-0 reabsorbible.",
+    "Limpieza con ultrasonidos + pulido con copa de goma. Profilaxis con flúor tópico.",
+    "Radiografía panorámica de control. Sin hallazgos patológicos significativos.",
+    "Revisión post-tratamiento: cicatrización óptima. Paciente sin molestias.",
+    "Sellado de fosas y fisuras en molar permanente. Indicado por riesgo de caries elevado.",
+    "Apicectomía con obturación retrógrada MTA. Sutura 5-0. Antibiótico profiláctico recetado.",
+    "Blanqueamiento ambulatorio con peróxido carbamida 16% en férula. Resultado: -3 tonos en Vita.",
+]
+
+# Per-patient narrative templates — placeholders ({alergia}, {enfermedad})
+# are filled at fab time so each patient has a distinct medical
+# context. Tests that the per-row notes reach the patient profile
+# alert classifier as designed.
+PATIENT_NOTES = [
+    "Paciente con {enfermedad} controlada. Alergia a {alergia}. Última visita sin incidencias.",
+    "Antecedentes: {enfermedad}. Toma medicación habitual. Sin alergias conocidas.",
+    "Sensibilidad dentinaria generalizada. Bruxismo nocturno; usa férula. Sin patologías sistémicas.",
+    "Paciente embarazada (2º trimestre). Posponer radiografías no urgentes. Revisión de higiene reforzada.",
+    "Reacción anterior a {alergia} — confirmar antes de prescribir antibióticos o analgésicos.",
+    "Historial de {enfermedad}. Recomendado seguimiento semestral. Recall periodontal activo.",
+    "Paciente con prótesis parcial removible superior. Buena higiene oral. Sin patologías relevantes.",
+    "Tratamiento de ortodoncia en curso (brackets). Cita mensual para ajuste. Higiene buena.",
+    "Fumador (15 cig/día). Riesgo periodontal moderado. Recall trimestral. Educación en higiene.",
+    "Paciente con ansiedad dental severa. Manejo con técnicas conductuales. Anestesia tópica previa.",
+]
+
+# Standalone Gesdén users (administrativos, recepción, contabilidad).
+# Generated so `user_uuid` references on budgets/payments/etc. can be
+# resolved by the importer instead of falling back to the migration
+# admin. Each tuple: (source_id, given_name, family_name, email, role-hint-only)
+GESDEN_USERS = [
+    ("USR1", "Carmen", "Vidal", "admin@clinica-demo.local", "Administradora"),
+    ("USR2", "Lucía", "Pérez", "recepcion.am@clinica-demo.local", "Recepción mañana"),
+    ("USR3", "Sara", "López", "recepcion.pm@clinica-demo.local", "Recepción tarde"),
+    ("USR4", "Mateo", "Ruiz", "contabilidad@clinica-demo.local", "Contabilidad"),
+]
+
 
 def fab(conn: sqlite3.Connection) -> dict[str, int]:
     rnd = random.Random(20260521)
@@ -264,6 +313,20 @@ def fab(conn: sqlite3.Connection) -> dict[str, int]:
             "tenant_label": TENANT,
         })
         bump("professional")
+
+    # --- Standalone users (non-clinical staff in Gesdén) ---
+    user_uuids: list[str] = []
+    for sid, given, family, email, _ in GESDEN_USERS:
+        u_uuid = append(conn, "user", sid, {
+            "login": email,
+            "given_name": given,
+            "family_name": family,
+            "email": email,
+            "deactivated": False,
+            "tenant_label": TENANT,
+        })
+        user_uuids.append(u_uuid)
+        bump("user")
 
     # --- Treatment catalog items + variants ---
     catalog_uuids: list[tuple[str, float, bool]] = []  # (variant_uuid, price, is_global)
@@ -303,11 +366,16 @@ def fab(conn: sqlite3.Connection) -> dict[str, int]:
         dob = date(rnd.randint(1940, 2015), rnd.randint(1, 12), rnd.randint(1, 28))
         sex = rnd.choice(["male", "female", "unknown"])
         registered = date(rnd.randint(2010, 2024), rnd.randint(1, 12), rnd.randint(1, 28))
-        notes = (
-            f"Paciente {gname} {fname} — historia clínica resumida: "
-            "alergia controlada, último tratamiento sin incidencias. "
-            "Recomendado seguimiento semestral."
-        ) if pi % 3 == 0 else None
+        # ~40% of patients carry a clinical narrative; pick a varied
+        # template and fill placeholders so each row is distinct.
+        if pi % 5 not in (0, 3):
+            notes = None
+        else:
+            template = rnd.choice(PATIENT_NOTES)
+            notes = template.format(
+                alergia=rnd.choice(ALLERGIES),
+                enfermedad=rnd.choice(DISEASES),
+            )
         p_uuid = append(conn, "patient", sid, {
             "patient_number": f"{pi:05d}",
             "given_name": gname,
@@ -435,13 +503,14 @@ def fab(conn: sqlite3.Connection) -> dict[str, int]:
                 "patient_uuid": p_uuid,
                 "client_uuid": c_uuid,
                 "professional_uuid": prof_uuid,
+                "user_uuid": rnd.choice(user_uuids),
                 "treatment_variant_uuid": variant_uuid,
                 "status_code": status_code,
                 "start_date": iso(start),
                 "end_date": iso(end_dt) if end_dt else None,
                 "amount": str(amount),
                 "units": 1,
-                "notes": "Migrado dental-bridge — historial sin incidencias.",
+                "notes": rnd.choice(TREATMENT_NOTES),
                 "teeth": [tooth] if tooth else [],
                 "tenant_label": TENANT,
             }
@@ -481,6 +550,7 @@ def fab(conn: sqlite3.Connection) -> dict[str, int]:
             b_uuid = append(conn, "budget", b_sid, {
                 "patient_uuid": p_uuid,
                 "professional_uuid": prof_uuid,
+                "elaborated_by_user_uuid": rnd.choice(user_uuids),
                 "number": pi,
                 "title": f"Presupuesto plan {quote_dt.year}",
                 "quote_date": iso(quote_dt),
@@ -525,6 +595,7 @@ def fab(conn: sqlite3.Connection) -> dict[str, int]:
             fd_uuid = append(conn, "fiscal_document", fd_sid, {
                 "client_uuid": c_uuid,
                 "patient_uuid": p_uuid,
+                "user_uuid": rnd.choice(user_uuids),
                 "series": "F",
                 "number": str(next_fdocid - 1),
                 "year": issued.year,
@@ -568,6 +639,7 @@ def fab(conn: sqlite3.Connection) -> dict[str, int]:
             append(conn, "payment", pay_sid, {
                 "client_uuid": c_uuid,
                 "patient_uuid": p_uuid,
+                "user_uuid": rnd.choice(user_uuids),
                 "amount": str(amount),
                 "paid_on": iso(paid),
                 "payment_kind": method,

@@ -48,6 +48,10 @@ class MappingResolver:
         self._job_id = job_id
         self._cache: dict[tuple[str, str], UUID] = {}
         self._skipped_cache: set[tuple[str, str]] = set()
+        # Set by :meth:`preload_cache` so :meth:`get` knows whether a
+        # cache miss is authoritative (preloaded → guaranteed unmapped)
+        # or just a missing entry that still warrants a DB read.
+        self._cache_warm: bool = False
 
     async def get(self, entity_type: str, canonical_uuid: str) -> UUID | None:
         """Return the DentalPin row id mapped to ``(entity_type, canonical_uuid)``.
@@ -58,6 +62,12 @@ class MappingResolver:
         key = (entity_type, canonical_uuid)
         if key in self._cache:
             return self._cache[key]
+        if self._cache_warm:
+            # Bulk preload already populated the cache for this
+            # clinic; a miss here means the entity has never been
+            # mapped. Skip the DB round-trip — saves ~5 ms × 1 M
+            # idempotency checks on a re-run.
+            return None
         result = await self._db.execute(
             select(EntityMapping.dentalpin_id).where(
                 EntityMapping.clinic_id == self._clinic_id,
@@ -69,6 +79,39 @@ class MappingResolver:
         if row is not None:
             self._cache[key] = row
         return row
+
+    async def preload_cache(self) -> None:
+        """Load every ``entity_mappings`` row for this clinic into memory.
+
+        Called once at the start of ``_run_pipeline``. After this:
+        - :meth:`get` cache hits resolve in O(1) instead of a DB
+          round-trip, so a re-run that short-circuits every entity
+          finishes in seconds instead of minutes.
+        - :meth:`was_skipped` reads the cache for ``<type>.__skipped__``
+          rows the same way.
+
+        Trade-off: one big SELECT + the in-memory dict size (~1 M rows
+        × ~80 bytes = ~80 MB on the biggest real Gesdén imports). Still
+        well below the backend container's memory budget and pays
+        itself back after the first ~10 K rows of any re-run.
+        """
+        result = await self._db.execute(
+            select(
+                EntityMapping.entity_type,
+                EntityMapping.source_canonical_uuid,
+                EntityMapping.dentalpin_id,
+            ).where(EntityMapping.clinic_id == self._clinic_id)
+        )
+        loaded = 0
+        for entity_type, canonical_uuid, dentalpin_id in result.all():
+            if entity_type.endswith(_SKIP_SUFFIX):
+                base = entity_type[: -len(_SKIP_SUFFIX)]
+                self._skipped_cache.add((base, canonical_uuid))
+            else:
+                self._cache[(entity_type, canonical_uuid)] = dentalpin_id
+            loaded += 1
+        self._cache_warm = True
+        return loaded  # type: ignore[return-value]
 
     async def set(
         self,
@@ -124,6 +167,8 @@ class MappingResolver:
         key = (entity_type, canonical_uuid)
         if key in self._skipped_cache:
             return True
+        if self._cache_warm:
+            return False
         result = await self._db.execute(
             select(EntityMapping.id).where(
                 EntityMapping.clinic_id == self._clinic_id,
@@ -135,6 +180,22 @@ class MappingResolver:
             self._skipped_cache.add(key)
             return True
         return False
+
+    async def resolve_actor(
+        self, source_user_uuid: Any, fallback: UUID
+    ) -> UUID:
+        """Resolve a DPMF ``user_uuid`` to a destination ``users.id``.
+
+        Falls back to ``fallback`` (typically ``ctx.created_by``) when
+        the canonical uuid is missing, malformed, or points at a user
+        the importer didn't land. This preserves the original
+        Gesdén audit trail when possible without breaking the FK
+        constraint when the source row is incomplete.
+        """
+        if not source_user_uuid:
+            return fallback
+        resolved = await self.get("user", str(source_user_uuid))
+        return resolved or fallback
 
 
 @dataclass

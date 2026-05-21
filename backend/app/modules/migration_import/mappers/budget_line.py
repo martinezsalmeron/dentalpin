@@ -1,33 +1,73 @@
 """Map ``budget_line`` → :class:`budget.BudgetItem`.
 
-Each line needs:
+This mapper bypasses :class:`BudgetItemService.create_item` and writes
+the model directly because the service path is too heavy for bulk
+migration:
 
-- ``budget_id``   via the resolver against the already-mapped ``budget``.
+- ``BudgetItemService.create_item`` does ``db.get(TreatmentCatalogItem)``
+  + ``db.get(VatType)`` + ``db.refresh(item, [...])`` after the insert,
+  giving four extra round-trips per row. We already validated the
+  catalog item via the resolver, so the lookup is redundant; we cache
+  the VAT info per catalog_item_id; and the post-insert refresh is for
+  the HTTP response, which the migration doesn't need.
+- The original code also called ``db.get(Budget, budget_id)`` plus
+  ``BudgetService._recalculate_totals`` per line — O(N²) per budget. The
+  recalc is deferred to ``service._finalise_migrated_budgets``; the
+  status promotion is hoisted into the post-pipeline pass too (we just
+  collect the budget_ids that saw at least one ``applied_treatment_uuid``
+  on this run).
+
+Each line still needs:
+
+- ``budget_id`` via the resolver against the already-mapped ``budget``.
 - ``catalog_item_id`` via the resolver against ``treatment_catalog_item``
-  (canonical ``treatment_uuid``). When the source line points at a
-  ``treatment_variant_uuid`` we don't currently have a variant mapper,
-  so the line is skipped with a warning until the variant landing is
-  built.
+  (canonical ``treatment_uuid``) — falls back to the variant when the
+  source only ships a per-tariff variant_uuid.
 
 Pricing fields (``unit_amount``, ``units``, ``discount_*``,
-``vat_percent``) carry over verbatim — the destination service does
-its own line-total recomputation, so we just hand it the snapshot.
+``vat_percent``) carry over verbatim and we compute the line totals
+inline with the same formula as ``BudgetItemService._calculate_line_totals``.
 """
 
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from app.modules.budget.models import Budget
-from app.modules.budget.service import BudgetItemService, BudgetService
+from sqlalchemy import select
+
+from app.modules.budget.models import BudgetItem
+from app.modules.catalog.models import TreatmentCatalogItem, VatType
 
 from ..models import ImportWarning
 from .base import MapperContext
 
 
 class BudgetLineMapper:
+    def __init__(self) -> None:
+        # catalog_item_id -> (vat_type_id, vat_rate). First lookup loads
+        # from DB; subsequent lines reusing the same catalog item read
+        # from this dict. 200 catalog items × 385K lines ⇒ 99.95% hit.
+        self._vat_cache: dict[UUID, tuple[UUID | None, float]] = {}
+        # Budgets that have already had at least one line marked as
+        # "accepted" — applied once per budget at the post-pipeline pass
+        # by ``service._finalise_migrated_budgets`` to avoid one UPDATE
+        # per line.
+        self._budgets_to_accept: set[UUID] = set()
+        # (budget_item_id, applied_treatment_uuid) pairs collected while
+        # iterating budget_lines. The applied_treatment mapper hasn't
+        # run yet (it's level 4 in the entity order), so we can't
+        # resolve to a Treatment.id here. The post-pipeline pass
+        # ``service._finalise_migrated_budgets`` walks this list and
+        # back-fills ``BudgetItem.treatment_id`` ↔ ``Treatment.budget_item_id``
+        # once the applied_treatment mappings exist. The reverse-link
+        # path on the applied_treatment mapper (``budget_line_uuid`` →
+        # BudgetItem) only fires for the 0.9% of treatments whose
+        # source row carries the back-ref — Gesdén populates the
+        # forward link (this list) for 95% of rows.
+        self._pending_treatment_links: list[tuple[UUID, str]] = []
+
     async def apply(
         self,
         ctx: MapperContext,
@@ -50,15 +90,16 @@ class BudgetLineMapper:
         budget_id = await ctx.resolver.get("budget", str(budget_uuid))
         if budget_id is None:
             await _warn(
-                ctx, source_id, "budget_line.unmapped_budget",
+                ctx,
+                source_id,
+                "budget_line.unmapped_budget",
                 "Línea omitida: presupuesto padre no mapeado.",
             )
             return None
 
         # Prefer the parent treatment; fall back to the variant if the
-        # source only carries a per-tariff variant_uuid. Both resolve
-        # to the same TreatmentCatalogItem (the variant mapper is a
-        # pipe-through).
+        # source only carries a per-tariff variant_uuid. Both resolve to
+        # the same TreatmentCatalogItem.
         catalog_item_id = None
         if payload.get("treatment_uuid"):
             catalog_item_id = await ctx.resolver.get(
@@ -69,9 +110,11 @@ class BudgetLineMapper:
                 "treatment_catalog_variant", str(payload["treatment_variant_uuid"])
             )
         if catalog_item_id is None:
-            code = "budget_line.no_treatment" if not (
-                payload.get("treatment_uuid") or payload.get("treatment_variant_uuid")
-            ) else "budget_line.unmapped_treatment"
+            code = (
+                "budget_line.no_treatment"
+                if not (payload.get("treatment_uuid") or payload.get("treatment_variant_uuid"))
+                else "budget_line.unmapped_treatment"
+            )
             msg = (
                 "Línea omitida: sin tratamiento de catálogo en origen."
                 if code == "budget_line.no_treatment"
@@ -91,8 +134,8 @@ class BudgetLineMapper:
         discount_percent = _decimal_or_none(payload.get("discount_percent"))
         discount_amount = _decimal_or_none(payload.get("discount_amount"))
         if discount_amount and discount_amount > 0:
-            discount_type = "absolute"
-            discount_value = discount_amount
+            discount_type: str | None = "absolute"
+            discount_value: Decimal | None = discount_amount
         elif discount_percent and discount_percent > 0:
             discount_type = "percentage"
             discount_value = discount_percent
@@ -112,46 +155,64 @@ class BudgetLineMapper:
             else None
         )
         base_notes = payload.get("notes")
-        combined_notes = "\n".join(n for n in (base_notes, extra_teeth_note) if n)
+        combined_notes = "\n".join(n for n in (base_notes, extra_teeth_note) if n) or None
 
-        data: dict[str, Any] = {
-            "catalog_item_id": catalog_item_id,
-            "unit_price": unit_price,
-            "quantity": quantity,
-            "discount_type": discount_type,
-            "discount_value": discount_value,
-            "tooth_number": tooth_number,
-            "display_order": payload.get("order_within_budget") or 0,
-            "notes": combined_notes or None,
-        }
-        data = {k: v for k, v in data.items() if v is not None}
+        vat_type_id, vat_rate = await self._vat_info(ctx, catalog_item_id)
 
-        item = await BudgetItemService.create_item(ctx.db, ctx.clinic_id, budget_id, data)
+        # Compute line totals inline (mirrors
+        # ``BudgetItemService._calculate_line_totals`` so a manual recalc
+        # post-import sees the same numbers).
+        line_subtotal = (unit_price * Decimal(quantity)).quantize(Decimal("0.01"))
+        line_discount = Decimal("0.00")
+        if discount_value is not None and discount_type:
+            if discount_type == "percentage":
+                line_discount = (line_subtotal * discount_value / Decimal(100)).quantize(
+                    Decimal("0.01")
+                )
+            else:
+                line_discount = min(discount_value, line_subtotal).quantize(Decimal("0.01"))
+        taxable = line_subtotal - line_discount
+        line_tax = (taxable * Decimal(str(vat_rate)) / Decimal(100)).quantize(Decimal("0.01"))
+        line_total = (taxable + line_tax).quantize(Decimal("0.01"))
 
-        # Refresh aggregate totals on the parent budget. Each line
-        # triggers one SELECT over budget_items — fine for migration
-        # batches (~20 lines/budget) and keeps the budget header in
-        # sync without a separate finalisation pass.
-        budget = await ctx.db.get(Budget, budget_id)
-        if budget is not None:
-            await BudgetService._recalculate_totals(ctx.db, budget)
+        item = BudgetItem(
+            id=uuid4(),
+            clinic_id=ctx.clinic_id,
+            budget_id=budget_id,
+            catalog_item_id=catalog_item_id,
+            unit_price=unit_price,
+            quantity=quantity,
+            discount_type=discount_type,
+            discount_value=discount_value,
+            vat_type_id=vat_type_id,
+            vat_rate=vat_rate,
+            tooth_number=tooth_number,
+            display_order=payload.get("order_within_budget") or 0,
+            notes=combined_notes,
+            line_subtotal=line_subtotal,
+            line_discount=line_discount,
+            line_tax=line_tax,
+            line_total=line_total,
+        )
+        ctx.db.add(item)
+        await ctx.db.flush()
 
-            # Source-truth signal for "was this budget accepted?" — Gesdén
-            # stores the Presu↔TtosMed double link in
-            # ``PresuTto.IdTtoMedOrig``, which dental-bridge exposes as
-            # ``budget_line.applied_treatment_uuid``. If any line of a
-            # budget points at an applied treatment, the patient acted on
-            # the budget → it was accepted. Clinics with poor data
-            # hygiene leave ``FecAcepta`` null but this signal still
-            # fires because the clinical work happened. Promotion is
-            # one-way (draft → accepted); never demote a budget that the
-            # operator may have already updated manually.
-            if (
-                budget.status == "draft"
-                and payload.get("applied_treatment_uuid") not in (None, "")
-            ):
-                budget.status = "accepted"
-                budget.accepted_via = "manual"
+        # Status promotion: mark the budget for acceptance at the
+        # post-pipeline pass (one UPDATE per budget instead of one per
+        # line). The mapper instance survives across the whole job so
+        # the set accumulates as we iterate budget_lines.
+        applied_uuid = payload.get("applied_treatment_uuid")
+        if applied_uuid not in (None, "") and budget_id not in self._budgets_to_accept:
+            self._budgets_to_accept.add(budget_id)
+        # Record the forward link so the post-pipeline pass can wire
+        # BudgetItem.treatment_id once the applied_treatment mapper
+        # has landed its Treatment row. Even when the budget is still
+        # 'draft' (no acceptance) we keep the link — the source may
+        # have created a TtosMed without flagging the budget; the
+        # operator can interpret the link as "this line covers this
+        # treatment" independently of acceptance.
+        if applied_uuid not in (None, ""):
+            self._pending_treatment_links.append((item.id, str(applied_uuid)))
 
         await ctx.resolver.set(
             entity_type="budget_line",
@@ -161,6 +222,28 @@ class BudgetLineMapper:
             dentalpin_id=item.id,
         )
         return item.id
+
+    async def _vat_info(
+        self, ctx: MapperContext, catalog_item_id: UUID
+    ) -> tuple[UUID | None, float]:
+        cached = self._vat_cache.get(catalog_item_id)
+        if cached is not None:
+            return cached
+        result = await ctx.db.execute(
+            select(TreatmentCatalogItem.vat_type_id).where(
+                TreatmentCatalogItem.id == catalog_item_id
+            )
+        )
+        vat_type_id = result.scalar_one_or_none()
+        vat_rate = 0.0
+        if vat_type_id is not None:
+            row = await ctx.db.execute(
+                select(VatType.rate).where(VatType.id == vat_type_id)
+            )
+            vat_rate = float(row.scalar_one_or_none() or 0.0)
+        info = (vat_type_id, vat_rate)
+        self._vat_cache[catalog_item_id] = info
+        return info
 
 
 async def _warn(ctx: MapperContext, source_id: str, code: str, message: str) -> None:

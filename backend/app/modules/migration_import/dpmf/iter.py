@@ -30,6 +30,15 @@ ENTITY_ORDER: tuple[str, ...] = (
     "work_calendar_day",
     "work_calendar_shift",
     "appointment_recurrence",
+    # Level 3.5 — budgets MUST precede applied_treatment so the
+    # treatment mapper can resolve ``budget_line_uuid`` →
+    # ``BudgetItem`` and group its plan by source presupuesto
+    # (instead of falling through to the per-year catch-all). The
+    # forward link from budget_line to applied_treatment stays
+    # unresolved at create time and is back-filled symmetrically
+    # when the applied_treatment lands.
+    "budget",
+    "budget_line",
     # Level 4 — clinical operations
     "appointment",
     "applied_treatment",
@@ -41,9 +50,6 @@ ENTITY_ORDER: tuple[str, ...] = (
     "prescription",
     "prescription_item",
     "communication",
-    # Level 5 — budgets
-    "budget",
-    "budget_line",
     # Level 6 — receivables
     "debt",
     "payment",

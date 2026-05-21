@@ -2,6 +2,85 @@
 
 ## Unreleased
 
+- perf(resolver): bulk-preload the entity_mappings cache at the start
+  of ``_run_pipeline``. Re-executes that hit short-circuits for every
+  row used to do 1 DB SELECT per entity (1.27 M SELECTs on a real
+  Gesdén dataset); now one SELECT populates the in-memory dict and
+  subsequent ``get`` calls resolve from RAM. Combined with the
+  ``cache_warm`` flag, cache misses skip the DB read entirely — the
+  preload is authoritative for "this entity has never been mapped".
+- perf(budget_line): bypass ``BudgetItemService.create_item``. The
+  service did ``db.get(TreatmentCatalogItem)`` + ``db.get(VatType)`` +
+  two post-insert refreshes per row — four round-trips on top of the
+  INSERT. The mapper now writes the ``BudgetItem`` directly with the
+  line totals computed inline (mirrors
+  ``_calculate_line_totals``), caches VAT info per
+  ``catalog_item_id`` (200 catalog items × 385 K lines = 99.95%
+  cache hit), and skips the post-insert refresh entirely (no
+  response object needed). Throughput on real Gesdén data went from
+  ~250 entities/s to ~830 entities/s.
+- perf(budget_line): defer budget status promotion + total recalc to
+  one post-pipeline pass (``service._finalise_migrated_budgets``).
+  The previous code did one ``db.get(Budget)`` + status check per
+  budget_line (~385 K lookups) and called
+  ``BudgetService._recalculate_totals`` per row — O(N²) per budget
+  for the recalc. The new pass does one bulk ``UPDATE`` for status
+  promotion and one recalc per budget at the end.
+- feat(budget_line ↔ treatment): post-pipeline back-fill of
+  ``BudgetItem.treatment_id`` ↔ ``Treatment.budget_item_id`` driven
+  by the budget_line side of the link. Verified on a real Gesdén
+  export: 95% of ``budget_line`` rows carry ``applied_treatment_uuid``
+  while only 0.9% of ``applied_treatment`` rows carry the reverse
+  ``budget_line_uuid``, so the budget_line side is what we resolve.
+  The mapper accumulates ``(budget_item_id, applied_treatment_uuid)``
+  pairs during ingest; the post-pipeline pass resolves them in
+  batches of 500 via two SELECTs (entity_mappings →
+  ``PlannedTreatmentItem.id`` → ``Treatment.id``) and applies the
+  two-direction UPDATE.
+- feat(service): allow re-executing a job in ``status='failed'``.
+  Operators routinely fix a downstream issue (DB out of space,
+  catalogue gap…) and resume the same job. Mappers stay idempotent
+  via the resolver short-circuit + savepoint pattern.
+- fix(applied_treatment): gate ``PatientEarnedEntry`` creation on
+  ``is_realised`` (formal-done **or** heuristic age/notes promotion)
+  instead of ``formal_done`` alone. The previous gate left an
+  inconsistency: heuristic-promoted rows landed with
+  ``Treatment.status='performed'`` and
+  ``PlannedTreatmentItem.status='completed'`` (plan tab shows the
+  work done) yet skipped the earned-ledger row — the pagos tab then
+  claimed the patient had a huge credit against work the UI told
+  them was finished. The ``completed_by_age`` /
+  ``completed_by_notes`` warnings remain in place so ops can review
+  the heuristic classifications. Same gate applied to the
+  non-clinical earned path.
+- feat(dpmf/iter): move ``budget`` + ``budget_line`` from level 5 to
+  level 3.5, before ``applied_treatment``. The reorder lets
+  ``applied_treatment`` resolve ``budget_line_uuid`` to a real
+  ``BudgetItem`` and group its plan by source presupuesto (instead
+  of falling through to the per-year catch-all). Without this the
+  Plan tab listed migrated treatments under "Migrado — 2025"
+  disconnected from the presupuesto that originated them, even when
+  budget.status had been correctly promoted to ``accepted``.
+- fix(applied_treatment): back-fill the symmetric
+  ``BudgetItem.treatment_id`` ↔ ``Treatment.budget_item_id`` link
+  when an applied_treatment carries a ``budget_line_uuid``. The
+  Presupuesto tab now shows each accepted line connected to the
+  imported Treatment row (FK to ``treatments.id``); the Plan tab can
+  navigate back to the source budget.
+- feat(user): new ``UserMapper`` for standalone Gesdén users
+  (administradoras, recepción, contabilidad…). Maps
+  ``CanonicalUser`` → ``auth.User`` + ``ClinicMembership(role='receptionist')``.
+  Non-loginable password hash (matches professional mapper pattern)
+  so the admin must send a reset before the imported person signs
+  in. Without this, ``user`` rows fell to ``RawEntity`` and every
+  ``user_uuid`` reference in the DPMF was silently ignored.
+- feat(resolver): new ``resolve_actor`` helper on ``MappingResolver``
+  that resolves a DPMF ``user_uuid`` to a destination ``users.id``
+  with a fallback (typically ``ctx.created_by``). Used by budget /
+  payment / fiscal_document mappers to preserve the original
+  Gesdén author/cashier/issuer when available — falls back to the
+  migration admin only when the source row had no user link or
+  the referenced user wasn't imported.
 - fix(catalog): extend the display-label fallback chain to include
   ``patient_facing_description`` and ``name`` before falling through
   to ``code``. The previous chain stopped at ``agenda_description``

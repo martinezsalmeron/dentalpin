@@ -442,7 +442,7 @@ class AppliedTreatmentMapper:
         # source presupuesto). When the source has no budget for this
         # treatment, fall back to a per-year bucket so a patient with
         # 20 years of history doesn't end up with one mega-plan.
-        budget_id = await self._budget_for_applied_treatment(ctx, payload)
+        budget_id, budget_item_id = await self._budget_for_applied_treatment(ctx, payload)
         year_for_grouping = start_dt.year if budget_id is None and start_dt else None
         plan_id = await self._get_or_create_plan(ctx, patient_id, budget_id, year=year_for_grouping)
 
@@ -460,9 +460,25 @@ class AppliedTreatmentMapper:
             price_snapshot=amount,
             notes=payload.get("notes"),
             source_module="migration_import",
+            budget_item_id=budget_item_id,
         )
         ctx.db.add(treatment)
         await ctx.db.flush()
+
+        # 1a) Back-fill the symmetric link on the budget side so the
+        # Presupuesto UI shows each accepted line connected to its
+        # imported Treatment. ``BudgetItem.treatment_id`` is nullable
+        # and stays so for lines whose source had no
+        # ``applied_treatment_uuid`` (planned-only quotes).
+        if budget_item_id is not None:
+            await ctx.db.execute(
+                BudgetItem.__table__.update()
+                .where(
+                    BudgetItem.id == budget_item_id,
+                    BudgetItem.clinic_id == ctx.clinic_id,
+                )
+                .values(treatment_id=treatment.id)
+            )
 
         # 1b) TreatmentTooth children — populate from the decoded teeth
         # the dental-bridge transformer emits (PiezasAdu + PiezasLec
@@ -524,16 +540,18 @@ class AppliedTreatmentMapper:
         # completed treatments don't count against the payments
         # received and the balance reads "patient has a huge credit".
         #
-        # **Only formal-done treatments count toward earnings.** The
-        # heuristic above (age / notes) promotes ``is_realised`` so
-        # the UI shows old planned treatments as completed, but
-        # promoting them in the financial ledger would invent revenue
-        # the clinic hasn't necessarily earned. Patients who paid
-        # up-front for an implant plan typically have legitimate
-        # credit until each piece is actually performed; counting the
-        # whole plan as earned the moment we import would erase that
-        # credit.
-        if formal_done and amount is not None and amount != 0:
+        # We gate on ``is_realised`` (formal-done **or** heuristic
+        # promotion via age/notes), not just ``formal_done``. The
+        # previous gate left an inconsistency: heuristic-promoted
+        # rows landed with ``Treatment.status='performed'`` and
+        # ``PlannedTreatmentItem.status='completed'`` (so the plan
+        # tab shows the work done) yet skipped the earned-ledger row
+        # — the pagos tab then claimed the patient had a huge credit
+        # against work the UI told them was finished. The audit
+        # warnings (``completed_by_age``, ``completed_by_notes``)
+        # remain in place so ops can review the heuristic
+        # classifications.
+        if is_realised and amount is not None and amount != 0:
             # Negative amounts are credit-note corrections coming from
             # Gesdén — needed so the patient ledger nets out correctly
             # against the matching payments. The CHECK constraint was
@@ -721,9 +739,11 @@ class AppliedTreatmentMapper:
         - ``PatientEarnedEntry`` keyed by the new ``treatment_id`` so
           the pagos tab adds up to the same total as the plan.
 
-        Gates: only formal-done rows (``StaTto`` ∈ {5,6} or ``FecFin``
-        set) AND non-zero ``Importe`` (negatives are kept — Gesdén
-        records refunds and discounts that way; see ``pay_0003``).
+        Gates: ``is_realised`` rows (formal-done by ``StaTto`` ∈ {5,6}
+        or ``FecFin``, **or** heuristically promoted by age/notes —
+        matching the standard path's policy) AND non-zero ``Importe``
+        (negatives are kept — Gesdén records refunds and discounts
+        that way; see ``pay_0003``).
         """
         amount = _decimal_or_none(payload.get("amount"))
         if amount is None or amount == 0:
@@ -732,8 +752,21 @@ class AppliedTreatmentMapper:
         start_dt = _parse_datetime(payload.get("start_date")) or datetime.now(UTC)
         end_dt = _parse_datetime(payload.get("end_date"))
         formal_done = status_code in _REALISED_CODES or end_dt is not None
-        if not formal_done:
+        is_realised = formal_done
+        if not is_realised:
+            notes_value = payload.get("notes") or ""
+            age_days = (datetime.now(UTC) - start_dt).days
+            if age_days >= _OLD_TREATMENT_AGE_DAYS:
+                is_realised = True
+            elif (
+                age_days >= _MID_TREATMENT_AGE_DAYS
+                and len(notes_value) > _NOTES_LIKELY_PERFORMED_MIN_CHARS
+            ):
+                is_realised = True
+        if not is_realised:
             return None
+        if not formal_done and end_dt is None:
+            end_dt = start_dt
         professional_id: UUID | None = None
         prof_uuid = payload.get("professional_uuid")
         if prof_uuid:
@@ -897,23 +930,28 @@ class AppliedTreatmentMapper:
 
     async def _budget_for_applied_treatment(
         self, ctx: MapperContext, payload: dict[str, Any]
-    ) -> UUID | None:
-        """Walk ``applied_treatment.budget_line_uuid`` → its budget."""
+    ) -> tuple[UUID | None, UUID | None]:
+        """Walk ``applied_treatment.budget_line_uuid`` → (budget_id, budget_item_id).
+
+        Both ids are returned because the caller needs the item to
+        back-fill ``BudgetItem.treatment_id`` once it has created the
+        ``Treatment`` row.
+        """
         budget_line_uuid = payload.get("budget_line_uuid")
         if not budget_line_uuid:
-            return None
+            return None, None
         budget_item_id = await ctx.resolver.get("budget_line", str(budget_line_uuid))
         if budget_item_id is None:
-            return None
+            return None, None
         if budget_item_id in self._budget_for_item:
-            return self._budget_for_item[budget_item_id]
+            return self._budget_for_item[budget_item_id], budget_item_id
         result = await ctx.db.execute(
             select(BudgetItem.budget_id).where(BudgetItem.id == budget_item_id)
         )
         budget_id = result.scalar_one_or_none()
         if budget_id is not None:
             self._budget_for_item[budget_item_id] = budget_id
-        return budget_id
+        return budget_id, budget_item_id
 
     async def _get_or_create_plan(
         self,

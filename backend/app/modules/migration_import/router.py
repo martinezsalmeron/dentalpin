@@ -188,7 +188,7 @@ async def execute_job(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[ImportJobResponse]:
     job = await _get_job_or_404(db, ctx.clinic_id, job_id)
-    if job.status not in {"validated", "previewing", "completed"}:
+    if job.status not in {"validated", "previewing", "completed", "failed"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"cannot execute job in status {job.status}",

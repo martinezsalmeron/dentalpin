@@ -39,7 +39,7 @@ from .events import (
     publish_job_started,
 )
 from .mappers import FALLBACK_MAPPER, MAPPERS, MapperContext, MappingResolver
-from .models import FileStaging, ImportJob, ImportWarning
+from .models import EntityMapping, FileStaging, ImportJob, ImportWarning
 from .schemas import (
     EntityPreview,
     FilesManifestSummary,
@@ -292,8 +292,12 @@ class ImportJobService:
                     return
                 # ``executing`` is excluded on purpose — re-entry while
                 # another task is mid-pipeline would race against the
-                # batch counter and the entity-mapping inserts.
-                if job.status not in {"validated", "previewing", "completed"}:
+                # batch counter and the entity-mapping inserts. We
+                # allow ``failed`` so the operator can resume after
+                # fixing whatever blocked the previous run; the resolver
+                # short-circuits on entities already mapped, so the
+                # re-run only does the missing tail.
+                if job.status not in {"validated", "previewing", "completed", "failed"}:
                     logger.error("execute: job %s in status %s — refusing", job.id, job.status)
                     return
                 if job.clinic_id != clinic_id:
@@ -362,6 +366,18 @@ class ImportJobService:
         from .dpmf.iter import ordered_entity_types
 
         resolver = MappingResolver(db=db, clinic_id=job.clinic_id, job_id=job.id)
+        # Bulk-load any pre-existing ``entity_mappings`` for this clinic
+        # into the resolver cache so re-executes (or resumes after a
+        # failed/killed run) don't pay 1 DB SELECT per already-mapped
+        # entity. On a 1.27 M-row Gesdén dataset this collapses the
+        # idempotency check from ~5 ms × 1 M to one SELECT + in-memory
+        # dict lookups.
+        await resolver.preload_cache()
+        logger.info(
+            "resolver cache preloaded: %d entries (%d skipped sentinels)",
+            len(resolver._cache),
+            len(resolver._skipped_cache),
+        )
         ctx = MapperContext(
             db=db,
             clinic_id=job.clinic_id,
@@ -478,6 +494,14 @@ class ImportJobService:
             await ImportJobService._persist_dpmf_warnings(db, job, handle)
             await db.commit()
 
+            # Post-pipeline recalculation pass: budget_line mappers
+            # defer the budget aggregate refresh to here, so the
+            # single recalc per budget runs once over the final set
+            # of lines instead of N times during ingest (O(N²) per
+            # budget). Same idea would apply to other aggregates if
+            # they get added.
+            await ImportJobService._finalise_migrated_budgets(db, job)
+
     @staticmethod
     async def _persist_files_manifest(db: AsyncSession, job: ImportJob, handle: DpmfHandle) -> None:
         for row in handle.files_iter():
@@ -514,6 +538,153 @@ class ImportJobService:
                     code="file.sha256_missing",
                     message=f"file {rel_path} has no sha256 — cannot be matched",
                 )
+
+    @staticmethod
+    async def _finalise_migrated_budgets(db: AsyncSession, job: ImportJob) -> None:
+        """Apply deferred budget post-processing once the pipeline is done.
+
+        - **Status promotion**: the ``budget_line`` mapper accumulates
+          the set of budgets that had at least one source line carrying
+          ``applied_treatment_uuid`` (Gesdén's "the patient acted on
+          this presupuesto" signal). Promote those drafts to ``accepted``
+          in one UPDATE instead of one per line.
+        - **Aggregate recalc**: budget_line mappers skip the per-row
+          ``_recalculate_totals`` to keep the ingest loop O(N) instead
+          of O(N²) per budget — the price is that
+          ``Budget.subtotal``/``discount``/``tax``/``total`` are stale
+          until this pass runs. We restrict the recalc to budgets whose
+          ``BudgetItem`` rows resolve back to a migration-import
+          ``entity_mappings`` row from this job.
+        """
+        from app.modules.budget.models import Budget, BudgetItem
+        from app.modules.budget.service import BudgetService
+
+        # Bulk status promotion before recalc — the totals computation
+        # walks BudgetItem regardless of Budget.status, so order is
+        # irrelevant for arithmetic, but doing the UPDATE first keeps
+        # the SELECT for recalc cheap (no extra status read needed).
+        line_mapper = MAPPERS.get("budget_line")
+        accept_pending: set = getattr(line_mapper, "_budgets_to_accept", set())
+        if accept_pending:
+            pending = list(accept_pending)
+            for batch_start in range(0, len(pending), 500):
+                batch = pending[batch_start : batch_start + 500]
+                await db.execute(
+                    Budget.__table__.update()
+                    .where(
+                        Budget.clinic_id == job.clinic_id,
+                        Budget.id.in_(batch),
+                        Budget.status == "draft",
+                    )
+                    .values(status="accepted", accepted_via="manual")
+                )
+            await db.commit()
+            logger.info(
+                "post-pipeline: promoted %d budgets to accepted (job %s)",
+                len(pending),
+                job.id,
+            )
+            accept_pending.clear()
+
+        # Treatment ↔ BudgetItem back-fill. Gesdén overwhelmingly
+        # emits the forward link on the budget_line side
+        # (``payload.applied_treatment_uuid``), so we collect those
+        # pairs during budget_line ingest and resolve them here once
+        # the applied_treatment mappings exist.
+        pending_links: list = getattr(line_mapper, "_pending_treatment_links", [])
+        if pending_links:
+            from app.modules.odontogram.models import Treatment as _Treatment
+            from app.modules.treatment_plan.models import PlannedTreatmentItem
+
+            patched = 0
+            for batch_start in range(0, len(pending_links), 500):
+                batch = pending_links[batch_start : batch_start + 500]
+                applied_uuids = list({uuid for _, uuid in batch})
+                # One round-trip pulls all PlannedTreatmentItem.id +
+                # PlannedTreatmentItem.treatment_id for the batch.
+                rows = await db.execute(
+                    select(
+                        EntityMapping.source_canonical_uuid,
+                        EntityMapping.dentalpin_id,
+                    ).where(
+                        EntityMapping.clinic_id == job.clinic_id,
+                        EntityMapping.entity_type == "applied_treatment",
+                        EntityMapping.source_canonical_uuid.in_(applied_uuids),
+                    )
+                )
+                plan_item_by_uuid = {r[0]: r[1] for r in rows.all()}
+                if not plan_item_by_uuid:
+                    continue
+                pti_rows = await db.execute(
+                    select(
+                        PlannedTreatmentItem.id, PlannedTreatmentItem.treatment_id
+                    ).where(PlannedTreatmentItem.id.in_(plan_item_by_uuid.values()))
+                )
+                treatment_by_plan_item = {r[0]: r[1] for r in pti_rows.all()}
+                for budget_item_id, applied_uuid in batch:
+                    plan_item_id = plan_item_by_uuid.get(applied_uuid)
+                    if plan_item_id is None:
+                        continue
+                    treatment_id = treatment_by_plan_item.get(plan_item_id)
+                    if treatment_id is None:
+                        continue
+                    await db.execute(
+                        BudgetItem.__table__.update()
+                        .where(
+                            BudgetItem.id == budget_item_id,
+                            BudgetItem.clinic_id == job.clinic_id,
+                        )
+                        .values(treatment_id=treatment_id)
+                    )
+                    await db.execute(
+                        _Treatment.__table__.update()
+                        .where(
+                            _Treatment.id == treatment_id,
+                            _Treatment.clinic_id == job.clinic_id,
+                            _Treatment.budget_item_id.is_(None),
+                        )
+                        .values(budget_item_id=budget_item_id)
+                    )
+                    patched += 1
+            await db.commit()
+            logger.info(
+                "post-pipeline: linked %d BudgetItem ↔ Treatment pairs (job %s)",
+                patched,
+                job.id,
+            )
+            pending_links.clear()
+
+        result = await db.execute(
+            select(BudgetItem.budget_id)
+            .join(
+                EntityMapping,
+                (EntityMapping.dentalpin_id == BudgetItem.id)
+                & (EntityMapping.entity_type == "budget_line"),
+            )
+            .where(
+                EntityMapping.job_id == job.id,
+                EntityMapping.clinic_id == job.clinic_id,
+            )
+            .distinct()
+        )
+        budget_ids = [row[0] for row in result.all()]
+        if not budget_ids:
+            return
+        for batch_start in range(0, len(budget_ids), 200):
+            batch = budget_ids[batch_start : batch_start + 200]
+            budgets = (
+                (await db.execute(select(Budget).where(Budget.id.in_(batch))))
+                .scalars()
+                .all()
+            )
+            for budget in budgets:
+                await BudgetService._recalculate_totals(db, budget)
+            await db.commit()
+        logger.info(
+            "post-pipeline: recalculated totals for %d budgets (job %s)",
+            len(budget_ids),
+            job.id,
+        )
 
     @staticmethod
     async def _persist_dpmf_warnings(db: AsyncSession, job: ImportJob, handle: DpmfHandle) -> None:

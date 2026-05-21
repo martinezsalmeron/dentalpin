@@ -29,3 +29,17 @@ def test_every_listed_type_known() -> None:
         "patient_document",
     ):
         assert required in ENTITY_ORDER
+
+
+def test_budget_precedes_applied_treatment() -> None:
+    """Budget rows must land first so applied_treatment can resolve its
+    ``budget_line_uuid`` to a real ``BudgetItem`` and group the
+    destination plan by source presupuesto. Without this order the plan
+    falls through to the per-year catch-all and the budget UI lists
+    items disconnected from the Treatment rows."""
+    out = ordered_entity_types(
+        ["applied_treatment", "budget_line", "budget", "applied_treatment_phase"]
+    )
+    assert out.index("budget") < out.index("applied_treatment")
+    assert out.index("budget_line") < out.index("applied_treatment")
+    assert out.index("applied_treatment") < out.index("applied_treatment_phase")

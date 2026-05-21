@@ -121,7 +121,13 @@ class BudgetMapper:
         }
         data = {k: v for k, v in data.items() if v is not None}
 
-        budget = await BudgetService.create_budget(ctx.db, ctx.clinic_id, ctx.created_by, data)
+        # Preserve the original Gesdén author when available — falls
+        # back to the migration admin when the source had no user link
+        # or the referenced user wasn't imported.
+        created_by = await ctx.resolver.resolve_actor(
+            payload.get("elaborated_by_user_uuid"), ctx.created_by
+        )
+        budget = await BudgetService.create_budget(ctx.db, ctx.clinic_id, created_by, data)
 
         if status != "draft":
             # Persist accepted/rejected metadata since create_budget

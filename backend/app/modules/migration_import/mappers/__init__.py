@@ -36,9 +36,11 @@ from .payment import PaymentMapper
 from .pharmacological_history import PharmacologicalHistoryMapper
 from .professional import ProfessionalMapper
 from .raw import RawEntityMapper
+from .user import UserMapper
 
 PatientMapperInst = PatientMapper()
 ProfessionalMapperInst = ProfessionalMapper()
+UserMapperInst = UserMapper()
 DocumentMapperInst = DocumentMapper()
 PaymentMapperInst = PaymentMapper()
 FiscalDocumentMapperInst = FiscalDocumentMapper()
@@ -58,6 +60,7 @@ FALLBACK_MAPPER = RawEntityMapper()
 MAPPERS: dict[str, object] = {
     "patient": PatientMapperInst,
     "professional": ProfessionalMapperInst,
+    "user": UserMapperInst,
     "patient_document": DocumentMapperInst,
     "payment": PaymentMapperInst,
     "fiscal_document": FiscalDocumentMapperInst,

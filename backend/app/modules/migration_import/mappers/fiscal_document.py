@@ -86,6 +86,9 @@ class FiscalDocumentMapper:
             invoice_number = f"{source_series}-{source_number}"
 
         issue_date = _parse_date(payload.get("document_date") or payload.get("issued_at"))
+        created_by = await ctx.resolver.resolve_actor(
+            payload.get("user_uuid"), ctx.created_by
+        )
         invoice = Invoice(
             id=uuid4(),
             clinic_id=ctx.clinic_id,
@@ -96,7 +99,7 @@ class FiscalDocumentMapper:
             total=_decimal(payload.get("total"), default="0"),
             total_tax=_decimal(payload.get("tax_total"), default="0"),
             subtotal=_decimal(payload.get("subtotal"), default="0"),
-            created_by=ctx.created_by,
+            created_by=created_by,
         )
 
         if _verifactu_active(ctx):
