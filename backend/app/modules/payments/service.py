@@ -563,21 +563,57 @@ class LedgerService:
                 )
             )
 
-        # Earned
+        # Earned — enriched with treatment + catalog + performer data
+        # in one round-trip so the patient timeline can show "Empaste
+        # composite · realizado · Dra. García" instead of the bare
+        # ``source_event`` string. Raw text() keeps the payments
+        # module's CLAUDE.md contract (no Python imports from
+        # ``odontogram`` / ``treatment_plan`` / ``auth``); we read the
+        # shared tables via SQL only.
+        from sqlalchemy import text
+
         result = await db.execute(
-            select(PatientEarnedEntry).where(
-                PatientEarnedEntry.clinic_id == clinic_id,
-                PatientEarnedEntry.patient_id == patient_id,
-            )
+            text(
+                """
+                SELECT pe.id, pe.amount, pe.performed_at, pe.source_event,
+                       pe.treatment_id, pe.professional_id,
+                       t.status AS treatment_status,
+                       ci.names AS catalog_names,
+                       u.first_name AS prof_first_name,
+                       u.last_name AS prof_last_name
+                FROM patient_earned_entries pe
+                LEFT JOIN treatments t ON t.id = pe.treatment_id
+                LEFT JOIN treatment_catalog_items ci ON ci.id = pe.catalog_item_id
+                LEFT JOIN users u ON u.id = pe.professional_id
+                WHERE pe.clinic_id = :clinic_id AND pe.patient_id = :patient_id
+                """
+            ),
+            {"clinic_id": str(clinic_id), "patient_id": str(patient_id)},
         )
-        for e in result.scalars().all():
+        for row in result.mappings():
+            catalog_names = row["catalog_names"] or {}
+            # Catalog names are stored as i18n JSONB; prefer the
+            # operative language Spanish, fall back to English, then
+            # to the source-event tag (e.g. "migration_import") so the
+            # row is never label-less.
+            treatment_name: str | None = None
+            if isinstance(catalog_names, dict):
+                treatment_name = catalog_names.get("es") or catalog_names.get("en")
+            prof_first = row["prof_first_name"] or ""
+            prof_last = row["prof_last_name"] or ""
+            prof_name = f"{prof_first} {prof_last}".strip() or None
             entries.append(
                 LedgerEntry(
                     entry_type="earned",
-                    occurred_at=e.performed_at,
-                    amount=e.amount,
-                    reference_id=e.id,
-                    description=e.source_event,
+                    occurred_at=row["performed_at"],
+                    amount=row["amount"],
+                    reference_id=row["id"],
+                    description=treatment_name or row["source_event"],
+                    treatment_id=row["treatment_id"],
+                    treatment_name=treatment_name,
+                    treatment_status=row["treatment_status"],
+                    professional_id=row["professional_id"],
+                    professional_name=prof_name,
                 )
             )
 

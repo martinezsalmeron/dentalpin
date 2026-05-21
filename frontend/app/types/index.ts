@@ -1289,6 +1289,13 @@ export interface PatientLedgerEntry {
   amount: number
   reference_id: string
   description?: string
+  // Earned-only enrichment populated by the timeline builder when
+  // the entry resolves to a Treatment row.
+  treatment_id?: string | null
+  treatment_name?: string | null
+  treatment_status?: string | null
+  professional_id?: string | null
+  professional_name?: string | null
 }
 
 export interface PatientLedger {

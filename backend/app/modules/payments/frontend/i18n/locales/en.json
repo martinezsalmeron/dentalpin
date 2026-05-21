@@ -205,6 +205,13 @@
           "refund": "Refund",
           "earned": "Treatment performed"
         },
+        "treatmentStatus": {
+          "planned": "Planned",
+          "performed": "Performed",
+          "completed": "Completed",
+          "cancelled": "Cancelled",
+          "in_progress": "In progress"
+        },
         "rowMenu": {
           "detail": "View detail",
           "refund": "Refund"

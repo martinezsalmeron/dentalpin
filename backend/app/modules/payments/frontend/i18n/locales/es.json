@@ -205,6 +205,13 @@
           "refund": "Devolución",
           "earned": "Tratamiento realizado"
         },
+        "treatmentStatus": {
+          "planned": "Planificado",
+          "performed": "Realizado",
+          "completed": "Completado",
+          "cancelled": "Cancelado",
+          "in_progress": "En curso"
+        },
         "rowMenu": {
           "detail": "Ver detalle",
           "refund": "Reembolsar"

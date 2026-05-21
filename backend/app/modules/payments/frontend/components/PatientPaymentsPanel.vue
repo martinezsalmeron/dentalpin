@@ -160,8 +160,28 @@ function formatDate(iso: string): string {
 }
 
 function entryDescription(entry: PatientLedgerEntry): string {
+  if (entry.entry_type === 'earned' && entry.treatment_name) return entry.treatment_name
   if (entry.description) return entry.description
   return t(`payments.patientPanel.timeline.types.${entry.entry_type}`)
+}
+
+function treatmentStatusLabel(status: string | null | undefined): string {
+  if (!status) return ''
+  const key = `payments.patientPanel.timeline.treatmentStatus.${status}`
+  // Fall back to capitalising the raw status string when no i18n
+  // entry exists yet (e.g. a new lifecycle value lands before the
+  // translation does) so the column stays informative.
+  const translated = t(key)
+  if (translated === key) return status.charAt(0).toUpperCase() + status.slice(1)
+  return translated
+}
+
+function entryMeta(entry: PatientLedgerEntry): string[] {
+  if (entry.entry_type !== 'earned') return []
+  const parts: string[] = []
+  if (entry.treatment_status) parts.push(treatmentStatusLabel(entry.treatment_status))
+  if (entry.professional_name) parts.push(`Dr. ${entry.professional_name}`)
+  return parts
 }
 
 async function refresh() {
@@ -399,6 +419,20 @@ function handleRefunded() {
                 </span>
                 <span class="text-caption text-subtle truncate">
                   {{ entryDescription(entry) }}
+                </span>
+              </div>
+              <div
+                v-if="entryMeta(entry).length > 0"
+                class="text-caption text-subtle mt-0.5 flex flex-wrap gap-x-2"
+              >
+                <span
+                  v-for="(meta, idx) in entryMeta(entry)"
+                  :key="idx"
+                >
+                  {{ meta }}<span
+                    v-if="idx < entryMeta(entry).length - 1"
+                    class="text-muted"
+                  > · </span>
                 </span>
               </div>
               <div class="text-caption text-muted mt-0.5">

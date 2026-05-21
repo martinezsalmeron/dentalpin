@@ -186,13 +186,28 @@ class RefundResponse(BaseModel):
 
 
 class LedgerEntry(BaseModel):
-    """A single row in the patient timeline (payment, refund, earned)."""
+    """A single row in the patient timeline (payment, refund, earned).
+
+    For ``earned`` entries we additionally surface the linked
+    treatment's catalog name, lifecycle status and performing
+    professional. The clinical context lives on different tables
+    (``odontogram.treatments`` ↔ ``catalog.treatment_catalog_items``
+    ↔ ``auth.users``), so the timeline aggregator joins them once
+    rather than letting the UI fan out a request per row.
+    """
 
     entry_type: Literal["payment", "refund", "earned"]
     occurred_at: datetime
     amount: Decimal  # positive for payment/earned, negative for refund
     reference_id: UUID
     description: str | None = None
+
+    # Earned-only enrichment. None for payment/refund rows.
+    treatment_id: UUID | None = None
+    treatment_name: str | None = None
+    treatment_status: str | None = None  # planned | performed | …
+    professional_id: UUID | None = None
+    professional_name: str | None = None
 
 
 class PatientLedger(BaseModel):
