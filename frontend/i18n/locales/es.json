@@ -502,6 +502,8 @@
         "inlay": "Inlay",
         "overlay": "Overlay",
         "crown": "Corona",
+        "crown_on_implant": "Corona sobre implante",
+        "provisional_crown_on_implant": "Corona provisional sobre implante",
         "pontic": "Póntico",
         "bridge_abutment": "Pilar de puente",
         "extraction": "Exodoncia",

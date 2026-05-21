@@ -215,6 +215,30 @@ export const TREATMENT_ICONS: Record<string, string> = {
     <ellipse cx="12" cy="11" rx="6" ry="2" fill="currentColor" fill-opacity="0.2"/>
   `,
 
+  // Crown on implant — solid crown above a stylised implant screw
+  crown_on_implant: `
+    <path d="M6 2H18L20 7H4Z" fill="currentColor" fill-opacity="0.55" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+    <path d="M5 7H19V11C19 12 17 13 12 13C7 13 5 12 5 11Z" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="1.25"/>
+    <rect x="10.5" y="13" width="3" height="2" fill="currentColor"/>
+    <path d="M9 15H15L14.5 22H9.5Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+    <line x1="9.5" y1="16.5" x2="14.5" y2="16.5" stroke="currentColor" stroke-width="0.8"/>
+    <line x1="9.6" y1="18" x2="14.4" y2="18" stroke="currentColor" stroke-width="0.8"/>
+    <line x1="9.7" y1="19.5" x2="14.3" y2="19.5" stroke="currentColor" stroke-width="0.8"/>
+    <line x1="9.8" y1="21" x2="14.2" y2="21" stroke="currentColor" stroke-width="0.8"/>
+  `,
+
+  // Provisional crown on implant — same shape, dashed outline + lighter fill
+  provisional_crown_on_implant: `
+    <path d="M6 2H18L20 7H4Z" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.25" stroke-dasharray="2 1.5" stroke-linejoin="round"/>
+    <path d="M5 7H19V11C19 12 17 13 12 13C7 13 5 12 5 11Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.25" stroke-dasharray="2 1.5"/>
+    <rect x="10.5" y="13" width="3" height="2" fill="currentColor" fill-opacity="0.6"/>
+    <path d="M9 15H15L14.5 22H9.5Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+    <line x1="9.5" y1="16.5" x2="14.5" y2="16.5" stroke="currentColor" stroke-width="0.8"/>
+    <line x1="9.6" y1="18" x2="14.4" y2="18" stroke="currentColor" stroke-width="0.8"/>
+    <line x1="9.7" y1="19.5" x2="14.3" y2="19.5" stroke="currentColor" stroke-width="0.8"/>
+    <line x1="9.8" y1="21" x2="14.2" y2="21" stroke="currentColor" stroke-width="0.8"/>
+  `,
+
   // Pontic - suspended tooth (new name for bridge_pontic)
   pontic: `
     <line x1="2" y1="4" x2="22" y2="4" stroke="currentColor" stroke-width="2"/>
@@ -465,6 +489,9 @@ export const TREATMENT_ICON_BY_INTERNAL_CODE: Record<string, string> = {
   'REST-BRIDGE-MC': 'bridge_metal_ceramic',
   'REST-BRIDGE-ZIR': 'bridge_zirconia',
   'REST-BRIDGE-MARY': 'bridge_maryland',
+  'REST-CROWN-IMPL-MC': 'crown_on_implant',
+  'REST-CROWN-IMPL-ZIR': 'crown_on_implant',
+  'REST-CROWN-IMPL-PROV': 'provisional_crown_on_implant',
   'REST-SPLINT-OCC': 'splint_occlusal',
   'REST-SPLINT-PERIO': 'splint_periodontal'
 }

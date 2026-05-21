@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- feat(treatments): add ``crown_on_implant`` and
+  ``provisional_crown_on_implant`` clinical types. Both render on the
+  lateral view as a solid prosthetic fill on the crown path (same code
+  path as ``bridge``) — the diagonal-stripes pattern used by regular
+  ``crown`` looked too sparse / artificial for implant-supported
+  restorations. The two new types appear in ``TreatmentPicker`` under
+  the Restauradora category, and count as ``hasReplacementTreatment``
+  so the underlying ``missing`` / ``extraction`` state stops fading
+  the tooth.
+- fix(ToothDualView): when a tooth carrying ``missing`` /
+  ``extraction_indicated`` / ``extraction`` state receives a
+  prosthetic replacement (implant, bridge, crown, pontic,
+  bridge_abutment, overlay, inlay, unerupted), render the tooth at
+  full opacity — the restoration supersedes the extracted state.
+  Also suppress the dashed/solid X overlays (occlusal + lateral) on
+  those teeth, so the X no longer paints over the implant/crown.
+  Previously, SVG-level opacity (and the wrapper ``.transparent``
+  0.4 dim) faded both the natural anatomy and every overlay, so a
+  newly placed implant on an extracted tooth rendered almost
+  invisible. Opacity now applies only to natural-anatomy paths and
+  only when no replacement is present.
 - fix(DiagnosisMode): hide treatments whose
   ``source_module === 'migration_import'`` from the Diagnóstico panel.
   Migrated patients arrived with their entire chart history (often

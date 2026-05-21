@@ -560,6 +560,74 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "visualization_rules": [pattern_fill("outline", "#D1D5DB")],
             "visualization_config": {"color": "#D1D5DB"},
         },
+        # Coronas sobre implante — render as solid lateral-crown fill
+        # (the runtime in ToothDualView treats `crown_on_implant` and
+        # `provisional_crown_on_implant` the same way as a bridge).
+        {
+            "internal_code": "REST-CROWN-IMPL-MC",
+            "names": {
+                "es": "Corona sobre implante metal-cerámica",
+                "en": "Metal-ceramic crown on implant",
+            },
+            "treatment_scope": "tooth",
+            "default_price": Decimal("600.00"),
+            "default_duration_minutes": 90,
+            "vat_type": "exempt",
+            "pricing_strategy": "per_tooth",
+            "odontogram_treatment_type": "crown_on_implant",
+            "visualization_rules": [pattern_fill("solid", "#F59E0B")],
+            "visualization_config": {"color": "#F59E0B"},
+            "sessions": [
+                {
+                    "labels": {"es": "Toma de medidas", "en": "Impressions"},
+                    "default_price": Decimal("200.00"),
+                },
+                {
+                    "labels": {"es": "Colocación", "en": "Placement"},
+                    "default_price": Decimal("400.00"),
+                },
+            ],
+        },
+        {
+            "internal_code": "REST-CROWN-IMPL-ZIR",
+            "names": {
+                "es": "Corona sobre implante zirconio",
+                "en": "Zirconia crown on implant",
+            },
+            "treatment_scope": "tooth",
+            "default_price": Decimal("750.00"),
+            "default_duration_minutes": 90,
+            "vat_type": "exempt",
+            "pricing_strategy": "per_tooth",
+            "odontogram_treatment_type": "crown_on_implant",
+            "visualization_rules": [pattern_fill("solid", "#FBBF24")],
+            "visualization_config": {"color": "#FBBF24"},
+            "sessions": [
+                {
+                    "labels": {"es": "Toma de medidas", "en": "Impressions"},
+                    "default_price": Decimal("250.00"),
+                },
+                {
+                    "labels": {"es": "Colocación", "en": "Placement"},
+                    "default_price": Decimal("500.00"),
+                },
+            ],
+        },
+        {
+            "internal_code": "REST-CROWN-IMPL-PROV",
+            "names": {
+                "es": "Corona provisional sobre implante",
+                "en": "Provisional crown on implant",
+            },
+            "treatment_scope": "tooth",
+            "default_price": Decimal("180.00"),
+            "default_duration_minutes": 45,
+            "vat_type": "exempt",
+            "pricing_strategy": "per_tooth",
+            "odontogram_treatment_type": "provisional_crown_on_implant",
+            "visualization_rules": [pattern_fill("solid", "#FCD34D")],
+            "visualization_config": {"color": "#FCD34D"},
+        },
         # Puentes (per_role pricing)
         {
             "internal_code": "REST-BRIDGE-MC",

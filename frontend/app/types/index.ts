@@ -400,6 +400,8 @@ export type ClinicalType
     | 'inlay'
     | 'overlay'
     | 'crown'
+    | 'crown_on_implant'
+    | 'provisional_crown_on_implant'
     | 'bridge'
     | 'splint'
     // Cirugía

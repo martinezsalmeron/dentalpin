@@ -44,6 +44,8 @@ const treatmentCategories = computed(() => [
     treatments: [
       { key: 'veneer' as TreatmentType, label: t('odontogram.treatments.types.veneer'), category: 'whole_tooth' },
       { key: 'post' as TreatmentType, label: t('odontogram.treatments.types.post'), category: 'whole_tooth' },
+      { key: 'crown_on_implant' as TreatmentType, label: t('odontogram.treatments.types.crown_on_implant'), category: 'whole_tooth' },
+      { key: 'provisional_crown_on_implant' as TreatmentType, label: t('odontogram.treatments.types.provisional_crown_on_implant'), category: 'whole_tooth' },
       { key: 'bridge_pontic' as TreatmentType, label: t('odontogram.treatments.types.bridge_pontic'), category: 'whole_tooth' },
       { key: 'bridge_abutment' as TreatmentType, label: t('odontogram.treatments.types.bridge_abutment'), category: 'whole_tooth' }
     ]

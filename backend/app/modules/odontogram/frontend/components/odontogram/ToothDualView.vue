@@ -87,8 +87,24 @@ const _toothName = computed(() => {
   return `${t(nameKey)} ${t(positionKeys.vertical)} ${t(positionKeys.horizontal)}`
 })
 
-// Check if tooth should be transparent (extracted/missing)
+// A prosthetic replacement (implant, bridge, crown, pontic, abutment,
+// overlay, inlay, unerupted) supersedes the "missing/extracted" state:
+// the tooth is functionally present again, so its anatomy should not
+// be faded under the restoration.
+const hasReplacementTreatment = computed(() => {
+  return props.treatments?.some(t =>
+    t.treatment_type === 'implant'
+    || t.treatment_type === 'bridge'
+    || t.treatment_type === 'crown_on_implant'
+    || t.treatment_type === 'provisional_crown_on_implant'
+    || hasVisualizationRule(t.treatment_type, 'pattern_fill')
+  ) || false
+})
+
+// Check if tooth should be transparent (extracted/missing without a
+// prosthetic replacement).
 const isToothTransparent = computed(() => {
+  if (hasReplacementTreatment.value) return false
   if (props.generalCondition === 'missing' || props.generalCondition === 'extraction_indicated') {
     return true
   }
@@ -113,26 +129,40 @@ const hasImplantTreatment = computed(() => {
   return toothTreatments.value.some(t => t.treatment_type === 'implant')
 })
 
+// Treatments that paint the lateral crown with a solid prosthetic fill
+// (instead of relying on the pattern_fill rule). Bridges and crowns on
+// implants share this rendering because the result looks closer to the
+// real metal-ceramic / prosthetic finish.
+const SOLID_CROWN_FILL_TYPES = ['bridge', 'crown_on_implant', 'provisional_crown_on_implant'] as const
+
 // Bridge treatment on this tooth (clinical_type === 'bridge').
 // Roles come from the per-tooth membership: 'pillar' | 'pontic' | null.
 const bridgeTreatment = computed(() => {
   return toothTreatments.value.find(t => t.treatment_type === 'bridge')
 })
 
-const hasBridgeTreatment = computed(() => bridgeTreatment.value !== undefined)
-
 // Pontic teeth have no root: the natural tooth is missing and the prosthetic
 // pontic floats between the two abutments.
 const isBridgePontic = computed(() => bridgeTreatment.value?.role === 'pontic')
 
-const bridgeFillColor = computed(() => {
-  if (!bridgeTreatment.value) return 'none'
-  return getTreatmentColor(bridgeTreatment.value.treatment_type)
+// Generic prosthetic crown fill (bridge OR crown-on-implant variants
+// share the same lateral-crown solid render).
+const crownFillTreatment = computed(() => {
+  return toothTreatments.value.find(t =>
+    (SOLID_CROWN_FILL_TYPES as readonly string[]).includes(t.treatment_type)
+  )
 })
 
-const bridgeFillOpacity = computed(() => {
-  if (!bridgeTreatment.value) return 0
-  return STATUS_STYLES[bridgeTreatment.value.status]?.opacity ?? 1
+const hasCrownFillTreatment = computed(() => crownFillTreatment.value !== undefined)
+
+const crownFillColor = computed(() => {
+  if (!crownFillTreatment.value) return 'none'
+  return getTreatmentColor(crownFillTreatment.value.treatment_type)
+})
+
+const crownFillOpacity = computed(() => {
+  if (!crownFillTreatment.value) return 0
+  return STATUS_STYLES[crownFillTreatment.value.status]?.opacity ?? 1
 })
 
 function hasTreatment(type: string, status?: TreatmentStatus): boolean {
@@ -305,7 +335,6 @@ const hasPlannedLateralTreatments = computed(() => {
       'readonly': readonly,
       'displaced': isDisplaced,
       'rotated': isRotated,
-      'transparent': isToothTransparent,
       'highlighted': isHighlighted,
       'has-preview': showingPreview,
       'is-upper': isUpper,
@@ -327,8 +356,7 @@ const hasPlannedLateralTreatments = computed(() => {
         class="lateral-view"
         :style="{
           transform: toothTransform,
-          transformOrigin: 'center center',
-          opacity: toothOpacity
+          transformOrigin: 'center center'
         }"
       >
         <!-- Clip-path for partial pulp fills (half, two_thirds) -->
@@ -349,6 +377,7 @@ const hasPlannedLateralTreatments = computed(() => {
         <g
           v-if="!hasImplantTreatment && !isBridgePontic"
           class="roots"
+          :opacity="toothOpacity"
         >
           <!-- Single root -->
           <template v-if="'root' in lateralPaths && lateralPaths.root">
@@ -396,44 +425,48 @@ const hasPlannedLateralTreatments = computed(() => {
             stroke-width="0.6"
             stroke-linecap="round"
             stroke-linejoin="round"
+            :opacity="toothOpacity"
           />
 
-          <!-- Bridge crown fill (pillar + pontic share the same prosthetic material) -->
+          <!-- Solid prosthetic crown fill (bridge + crown-on-implant variants
+               share the same lateral-crown solid render). -->
           <path
-            v-if="hasBridgeTreatment"
+            v-if="hasCrownFillTreatment"
             :d="lateralPaths.crown"
-            :fill="bridgeFillColor"
-            :fill-opacity="bridgeFillOpacity"
+            :fill="crownFillColor"
+            :fill-opacity="crownFillOpacity"
             stroke="none"
             class="bridge-crown-fill"
           />
 
           <!-- Rule 1: Pulp chamber with dynamic fill based on treatment type -->
-          <!-- Bridge crown covers natural anatomy: hide pulp chamber. -->
+          <!-- Prosthetic crown covers natural anatomy: hide pulp chamber. -->
           <!-- Pulp outline (always visible when no treatment) -->
           <path
-            v-if="lateralPaths.pulp && !hasImplantTreatment && !hasPulpTreatment && !hasBridgeTreatment"
+            v-if="lateralPaths.pulp && !hasImplantTreatment && !hasPulpTreatment && !hasCrownFillTreatment"
             :d="lateralPaths.pulp"
             class="tooth-pulp"
             fill="none"
             stroke-width="0.5"
             stroke-linecap="round"
             stroke-linejoin="round"
+            :opacity="toothOpacity"
           />
           <!-- Pulp outline (visible when partial fill to show unfilled area) -->
           <path
-            v-if="lateralPaths.pulp && hasPulpTreatment && !hasImplantTreatment && needsPulpClip && !hasBridgeTreatment"
+            v-if="lateralPaths.pulp && hasPulpTreatment && !hasImplantTreatment && needsPulpClip && !hasCrownFillTreatment"
             :d="lateralPaths.pulp"
             class="tooth-pulp"
             fill="none"
             stroke-width="0.5"
             stroke-linecap="round"
             stroke-linejoin="round"
+            :opacity="toothOpacity"
           />
           <!-- Filled pulp (Rule 1 treatments - pulpitis, root canal, etc.) -->
           <!-- Uses clip-path for partial fills (half, two_thirds) to ensure fill stays within pulp bounds -->
           <path
-            v-if="hasPulpTreatment && !hasImplantTreatment && !hasBridgeTreatment"
+            v-if="hasPulpTreatment && !hasImplantTreatment && !hasCrownFillTreatment"
             :d="getPulpFillPath()"
             class="tooth-pulp pulp-filled"
             :fill="getPulpFillColor()"
@@ -452,6 +485,7 @@ const hasPlannedLateralTreatments = computed(() => {
             stroke-linecap="round"
             stroke-linejoin="round"
             fill="none"
+            :opacity="toothOpacity"
           />
         </g>
 
@@ -509,7 +543,7 @@ const hasPlannedLateralTreatments = computed(() => {
             </template>
 
             <!-- Extraction / Missing X markers -->
-            <template v-else-if="['extraction', 'missing'].includes(treatment.treatment_type) && iconAnchors">
+            <template v-else-if="['extraction', 'missing'].includes(treatment.treatment_type) && iconAnchors && !hasReplacementTreatment">
               <g
                 :transform="`translate(${iconAnchors.crownCenter.x}, ${iconAnchors.crownCenter.y})`"
                 :opacity="treatment.treatment_type === 'missing' ? 0.5 : STATUS_STYLES[treatment.status]?.opacity ?? 1"
@@ -730,7 +764,6 @@ const hasPlannedLateralTreatments = computed(() => {
         viewBox="0 0 50 50"
         class="occlusal-view"
         :style="{
-          opacity: toothOpacity,
           transform: toothTransform,
           transformOrigin: 'center center'
         }"
@@ -756,6 +789,7 @@ const hasPlannedLateralTreatments = computed(() => {
           stroke-linecap="round"
           stroke-linejoin="round"
           pointer-events="none"
+          :opacity="toothOpacity"
         />
 
         <!-- Highlight details (fissures, ridges) -->
@@ -769,6 +803,7 @@ const hasPlannedLateralTreatments = computed(() => {
           stroke-linejoin="round"
           fill="none"
           pointer-events="none"
+          :opacity="toothOpacity"
         />
 
         <!-- Treatment overlays on occlusal view -->
@@ -902,7 +937,7 @@ const hasPlannedLateralTreatments = computed(() => {
             v-for="treatment in toothTreatments.filter(t =>
               !hasVisualizationRule(t.treatment_type, 'occlusal_surface')
               && !hasVisualizationRule(t.treatment_type, 'pattern_fill')
-              && !['bracket', 'tube', 'band', 'attachment', 'retainer', 'implant', 'bridge'].includes(t.treatment_type)
+              && !['bracket', 'tube', 'band', 'attachment', 'retainer', 'implant', 'bridge', 'crown_on_implant', 'provisional_crown_on_implant'].includes(t.treatment_type)
               && !hasVisualizationRule(t.treatment_type, 'pulp_fill')
               && !hasVisualizationRule(t.treatment_type, 'lateral_icon')
             )"
@@ -922,7 +957,7 @@ const hasPlannedLateralTreatments = computed(() => {
 
         <!-- Missing tooth X overlay -->
         <g
-          v-if="generalCondition === 'missing'"
+          v-if="generalCondition === 'missing' && !hasReplacementTreatment"
           class="missing-indicator"
           pointer-events="none"
         >
@@ -948,7 +983,7 @@ const hasPlannedLateralTreatments = computed(() => {
 
         <!-- Extraction indicated marker -->
         <g
-          v-if="generalCondition === 'extraction_indicated'"
+          v-if="generalCondition === 'extraction_indicated' && !hasReplacementTreatment"
           class="extraction-indicator"
           pointer-events="none"
         >
@@ -1041,10 +1076,6 @@ const hasPlannedLateralTreatments = computed(() => {
 
 .tooth-dual-view-wrapper.readonly:hover {
   transform: none;
-}
-
-.tooth-dual-view-wrapper.transparent {
-  opacity: 0.4;
 }
 
 .tooth-dual-view-wrapper.has-preview {

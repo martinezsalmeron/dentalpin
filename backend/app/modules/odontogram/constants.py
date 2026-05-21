@@ -195,6 +195,8 @@ class TreatmentType(StrEnum):
     INLAY = "inlay"
     OVERLAY = "overlay"
     CROWN = "crown"
+    CROWN_ON_IMPLANT = "crown_on_implant"  # Definitive crown supported by an implant.
+    PROVISIONAL_CROWN_ON_IMPLANT = "provisional_crown_on_implant"  # Temporary crown on an implant.
     BRIDGE = "bridge"  # Atomic multi-tooth. Roles (pillar/pontic) live on TreatmentTooth.
     SPLINT = "splint"  # Atomic multi-tooth.
 
@@ -365,6 +367,8 @@ WHOLE_TOOTH_TREATMENTS: Final[set[str]] = {
     TreatmentType.UNERUPTED.value,
     TreatmentType.OVERLAY.value,
     TreatmentType.CROWN.value,
+    TreatmentType.CROWN_ON_IMPLANT.value,
+    TreatmentType.PROVISIONAL_CROWN_ON_IMPLANT.value,
     TreatmentType.BRIDGE.value,
     TreatmentType.SPLINT.value,
     TreatmentType.EXTRACTION.value,

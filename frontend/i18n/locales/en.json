@@ -482,6 +482,8 @@
         "inlay": "Inlay",
         "overlay": "Overlay",
         "crown": "Crown",
+        "crown_on_implant": "Crown on implant",
+        "provisional_crown_on_implant": "Provisional crown on implant",
         "pontic": "Pontic",
         "bridge_pontic": "Bridge Pontic",
         "bridge_abutment": "Bridge Abutment",

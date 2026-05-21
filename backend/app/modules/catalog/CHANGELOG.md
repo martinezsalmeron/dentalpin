@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- feat(seed): add catalog items for implant-supported crowns —
+  ``REST-CROWN-IMPL-MC`` (metal-ceramic), ``REST-CROWN-IMPL-ZIR``
+  (zirconia) and ``REST-CROWN-IMPL-PROV`` (provisional). They map to
+  the new odontogram clinical types ``crown_on_implant`` and
+  ``provisional_crown_on_implant``.
 - feat(sessions): new ``CatalogItemSession`` entity defines named,
   priced steps for treatments billed in stages (e.g. crown: "Toma de
   medidas" 200€ + "Colocación" 600€). Sum of session prices must
