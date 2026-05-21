@@ -24,8 +24,16 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 
+// Migrated whole-mouth rows (hygiene, X-rays, fluorisation, generic
+// billed services) live on a per-year catch-all plan so the patient's
+// payments tab can trace each amount, but they don't represent an
+// observable artefact on the chart — hiding them here matches the
+// DiagnosisMode filter that already excludes migration_import rows.
 const globals = computed(() =>
-  props.treatments.filter(t => t.scope === 'global_mouth' || t.scope === 'global_arch')
+  props.treatments.filter(
+    t => (t.scope === 'global_mouth' || t.scope === 'global_arch')
+      && t.source_module !== 'migration_import',
+  ),
 )
 
 function labelFor(tr: Treatment): string {

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- fix(GlobalTreatmentsStrip): hide migrated whole-mouth rows
+  (``source_module === 'migration_import'`` with
+  ``scope='global_mouth' | 'global_arch'``) from the BOCA COMPLETA
+  chip strip under the odontogram. The migration importer creates
+  these so the patient's payments + plan list can trace billed
+  hygiene/X-rays/etc., but they don't belong on the chart view; the
+  filter mirrors the existing DiagnosisMode exclusion.
 - feat(treatments): add ``crown_on_implant`` and
   ``provisional_crown_on_implant`` clinical types. Both render on the
   lateral view as a solid prosthetic fill on the crown path (same code
