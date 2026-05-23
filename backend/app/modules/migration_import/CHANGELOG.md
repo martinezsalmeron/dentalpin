@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- feat(patient): mapper now also hydrates ``phone``, ``email`` and
+  ``address`` (JSONB ``{street, postal_code}``) from the DPMF. Patient-level
+  fields (dental-bridge ``0.0.3``+ adds them under ``Pacientes.*``) win
+  over the client-level fallback. Mobile beats landline; phone is
+  defensively truncated to the ``varchar(20)`` column width. ``AceptaSMS``
+  set to false also flips ``do_not_contact`` on so SMS-only opt-outs
+  propagate. Pre-0.0.3 DPMFs still import — they just leave the new
+  columns null because the exporter didn't carry them.
+- feat(patient): mapper now hydrates email, billing_name, billing_tax_id,
+  do_not_contact and status from the DPMF rather than dropping them.
+  Email + legal name + NIF come from the default Gesdén client
+  (``Pacientes.IdCliDefec`` → ``IdCliPac`` → ``IdCli`` → ``IdCliTutor``,
+  first match wins). Lazy one-pass scan over
+  ``ctx.handle.entity_iter('client')`` per job (cache keyed on
+  ``job_id``). ``billing_*`` only populated when the client's NIF
+  differs from the patient's (third-party/company payer). GDPR/LOPD
+  drives ``do_not_contact`` (false consent → opt-out). ``Inactivo`` /
+  ``Exitus`` collapse to ``status='archived'`` with a note explaining
+  which. ``registered_at`` (FecAlta) is appended to notes. Phone +
+  address still missing because dental-bridge v0.0.2 does not export
+  Gesdén's ``Telef``/``Movil``/``Domicilio`` — upstream limitation.
 - feat(applied_treatment): non-clinical TtosMed rows land as
   ``ClinicalNote(administrative, owner=patient)`` instead of synthetic
   ``Treatment(scope='global_mouth', clinical_type='migrated')`` +
