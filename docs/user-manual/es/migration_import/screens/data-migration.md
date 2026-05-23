@@ -41,6 +41,19 @@ Migración de datos**.
 | **Botón Confirmar**   | Lanza `POST /execute`. Requiere `migration_import.job.execute`. |
 | **Progreso**          | Mientras `status = executing`, muestra *X de Y entidades*. Refresca cada 2 s. |
 
+## Qué se importa y dónde
+
+- **Filas con enlace al catálogo destino** se importan como
+  tratamientos del odontograma + items del plan.
+- **Apuntes libres y entradas no clínicas** (filas `TtosMed` de
+  Gesdén sin `IdTto`, además de los tipos *Anotación*, *Nota
+  Económica*, *Higiene*, *Panorámica*, *Bonos*, *Primera Visita*…)
+  se importan como **notas administrativas en la pestaña Resumen del
+  paciente**, no como tarjetas "Tratamiento general" en el
+  odontograma. El texto original se conserva tal cual; la autoría va
+  al clínico de origen cuando se puede resolver, y al administrador
+  que lanzó el import en otro caso.
+
 ## Permisos
 
 La página requiere `migration_import.job.read`. El botón **Confirmar**

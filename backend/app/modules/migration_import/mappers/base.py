@@ -135,6 +135,25 @@ class MappingResolver:
         self._db.add(mapping)
         self._cache[(entity_type, canonical_uuid)] = dentalpin_id
 
+    async def mapping_table(self, entity_type: str, canonical_uuid: str) -> str | None:
+        """Return the ``dentalpin_table`` recorded for this mapping.
+
+        Lets a downstream mapper tell apart canonicals that landed as,
+        say, ``treatments`` vs ``clinical_notes`` without inventing a
+        new sidecar per shape. Not cached — call sparingly (mainly the
+        ``DebtMapper`` checking whether the source applied_treatment
+        was routed to a Treatment or to an administrative note).
+        Returns ``None`` if the mapping does not exist.
+        """
+        result = await self._db.execute(
+            select(EntityMapping.dentalpin_table).where(
+                EntityMapping.clinic_id == self._clinic_id,
+                EntityMapping.entity_type == entity_type,
+                EntityMapping.source_canonical_uuid == canonical_uuid,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def mark_skipped(
         self,
         entity_type: str,

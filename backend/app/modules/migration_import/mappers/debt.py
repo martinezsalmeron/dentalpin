@@ -119,6 +119,27 @@ class DebtMapper:
                 "applied_treatment_record", str(applied_treatment_uuid)
             )
             if treatment_id is None:
+                # The sidecar is missing when the applied_treatment
+                # mapper routed the canonical to an administrative
+                # ClinicalNote instead of a Treatment (non-clinical
+                # entries: payment-on-account memos, anotaciones,
+                # generic services with no catalog link). Those are
+                # never billable services — skip the earned entry so
+                # the patient ledger doesn't double-count payments as
+                # phantom income.
+                applied_target = await ctx.resolver.mapping_table(
+                    "applied_treatment", str(applied_treatment_uuid)
+                )
+                if applied_target == "clinical_notes":
+                    await _warn(
+                        ctx,
+                        source_id,
+                        "debt.no_clinical_target",
+                        f"Deuda apunta a anotación administrativa migrada "
+                        f"(canonical={applied_treatment_uuid}); no se registra en el ledger.",
+                    )
+                    await ctx.resolver.mark_skipped("debt", canonical_uuid, source_system)
+                    return None
                 await _warn(
                     ctx,
                     source_id,

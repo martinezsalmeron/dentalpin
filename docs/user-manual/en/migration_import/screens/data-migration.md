@@ -40,6 +40,18 @@ Single-page wizard located at **Settings → Workspace → Data migration**.
 | **Confirm button** | Triggers `POST /execute`. Gated by `migration_import.job.execute`. |
 | **Progress**     | While `status = executing`, shows *X of Y entities*. Polls every 2 s. |
 
+## What lands where
+
+- **Source rows that map cleanly to a destination catalog item** become
+  proper odontogram treatments + plan items.
+- **Free-text memos and non-clinical entries** (Gesdén `TtosMed` rows
+  without an `IdTto` link, plus the *Anotación*, *Nota Económica*,
+  *Higiene*, *Panorámica*, *Bonos*, *Primera Visita*… types) land as
+  **administrative notes on the patient's Summary tab** instead of
+  fake "Tratamiento general" tiles. The original text is preserved
+  verbatim; authorship goes to the source clinician when resolvable,
+  otherwise to the admin who launched the import.
+
 ## Permissions
 
 The page itself requires `migration_import.job.read`. The **Confirm**

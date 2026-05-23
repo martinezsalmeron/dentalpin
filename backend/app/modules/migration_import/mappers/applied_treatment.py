@@ -289,63 +289,68 @@ class AppliedTreatmentMapper:
                 self._pending_shadow_links[twin_uuid].append(canonical_uuid)
             return None
 
-        # Drop non-clinical Gesdén entries (notes, panoramic X-rays,
-        # hygiene visits, generic memos…). They aren't tooth-level
-        # treatments and importing them pollutes the destination plan
-        # with empty line items. The canonical row still lands in
-        # RawEntity via the catch-all so the audit trail isn't lost.
+        # Route non-clinical Gesdén entries (notes, payment memos,
+        # panoramic X-rays, hygiene visits, generic services…) to a
+        # patient-level administrative ClinicalNote instead of a
+        # synthetic Treatment. Two source signals qualify:
+        #
+        # - ``IdTipoOdg`` in :data:`_NON_CLINICAL_TIPO_ODG`
+        #   (Anotación, Nota Económica, Higiene, Panorámica, …).
+        # - The row carries *no* recognisable clinical signal:
+        #   ``IdTto`` is null **and** ``IdTipoOdg`` doesn't resolve to a
+        #   DentalPin ``clinical_type``. These are the free-text rows
+        #   that would otherwise land as ``clinical_type='migrated'``
+        #   (the catch-all) with a blank label. Rows with a known
+        #   clinical IdTipoOdg (filling, crown, extraction…) but no
+        #   catalog link stay as Treatments — we don't lose the
+        #   clinical typing just because the source skipped catalog
+        #   selection.
+        #
+        # The canonical row still lands in RawEntity via the catch-all
+        # so the audit trail isn't lost. The patient ledger is driven
+        # separately by ``DebtMapper`` reading ``DeudaCli`` — this code
+        # path never touches earned entries.
         id_tipo_odg = _coerce_int(raw.get("IdTipoOdg"))
-        if id_tipo_odg in _NON_CLINICAL_TIPO_ODG:
-            # Already seen in a previous execute? Short-circuit so we
-            # don't duplicate the synthetic Treatment / earned ledger
-            # row or re-emit the audit warning.
+        is_non_clinical = id_tipo_odg in _NON_CLINICAL_TIPO_ODG
+        has_no_catalog_variant = not payload.get("treatment_variant_uuid")
+        has_no_clinical_type = clinical_type_for_tipo_odg(id_tipo_odg) is None
+        if is_non_clinical or (has_no_catalog_variant and has_no_clinical_type):
+            # Short-circuit re-runs.
             if await ctx.resolver.was_skipped("applied_treatment", canonical_uuid):
                 return None
-            # The row carries no tooth and shouldn't pollute the
-            # odontogram chart. We still materialise it on the plan
-            # view (hygiene visits, panoramic X-rays, fluorisation,
-            # "Bonos", first-visit consultations…) so the clinical
-            # timeline doesn't lose them. The patient ledger is
-            # driven separately by ``DebtMapper`` reading ``DeudaCli`` —
-            # this code path no longer touches earned entries.
             await _warn(
                 ctx,
                 source_id,
                 "applied_treatment.non_clinical_entry",
-                f"Entrada no clínica registrada solo en plan (IdTipoOdg={id_tipo_odg}).",
+                (
+                    "Entrada no clínica registrada como nota administrativa "
+                    f"(IdTipoOdg={id_tipo_odg}, IdTto={'null' if has_no_catalog_variant else 'set'})."
+                ),
             )
-            result = await self._record_non_clinical_treatment(
+            note_id = await self._record_non_clinical_note(
                 ctx,
                 patient_id=patient_id,
                 payload=payload,
                 source_id=source_id,
                 id_tipo_odg=id_tipo_odg,
             )
-            if result is not None:
-                plan_item_id, treatment_id = result
+            if note_id is not None:
                 # Register against ``applied_treatment`` so downstream
-                # entities (phases, fiscal lines) that reference this
-                # canonical resolve to the synthetic plan item, and the
-                # sidecar ``applied_treatment_record`` so ``DebtMapper``
-                # can recover the Treatment row.
+                # references (phases, fiscal lines) resolve to a real
+                # row. No sidecar ``applied_treatment_record``: there's
+                # no Treatment to recover. ``DebtMapper`` tolerates the
+                # miss and skips the PatientEarnedEntry — these aren't
+                # billable services.
                 await ctx.resolver.set(
                     entity_type="applied_treatment",
                     canonical_uuid=canonical_uuid,
                     source_system=source_system,
-                    dentalpin_table="planned_treatment_items",
-                    dentalpin_id=plan_item_id,
-                )
-                await ctx.resolver.set(
-                    entity_type="applied_treatment_record",
-                    canonical_uuid=canonical_uuid,
-                    source_system=source_system,
-                    dentalpin_table="treatments",
-                    dentalpin_id=treatment_id,
+                    dentalpin_table="clinical_notes",
+                    dentalpin_id=note_id,
                 )
             else:
-                # Non-realised non-clinical row → no plan/treatment
-                # created. Drop a skip sentinel so re-runs don't
-                # re-warn.
+                # Empty notes + no catalog → nothing worth keeping in
+                # patient-facing surfaces. Sentinel suppresses re-warns.
                 await ctx.resolver.mark_skipped("applied_treatment", canonical_uuid, source_system)
             return None
 
@@ -719,7 +724,7 @@ class AppliedTreatmentMapper:
         self._shadow_index = shadow
         return shadow
 
-    async def _record_non_clinical_treatment(
+    async def _record_non_clinical_note(
         self,
         ctx: MapperContext,
         *,
@@ -727,121 +732,61 @@ class AppliedTreatmentMapper:
         payload: dict[str, Any],
         source_id: str,
         id_tipo_odg: int | None,
-    ) -> tuple[UUID, UUID] | None:
-        """Project a non-clinical Gesdén row (hygiene visit, panoramic
-        X-ray, fluorisation, "Bonos", primera visita, generic service…)
-        into the destination plan view.
+    ) -> UUID | None:
+        """Persist a Gesdén non-clinical TtosMed row as a patient-level
+        :class:`ClinicalNote` instead of a synthetic ``Treatment``.
 
-        Two rows go in:
+        Covers two source shapes:
 
-        - ``Treatment(scope='global_mouth', clinical_type='migrated')``
-          so the row is enumerable from the plan view + BOCA COMPLETA
-          strip but paints no tooth on the odontogram chart.
-        - ``PlannedTreatmentItem`` on the per-year catch-all plan so
-          ``/patients/{id}?tab=clinical&clinicalMode=plans`` lists what
-          the patient received.
+        - ``IdTipoOdg`` in the non-clinical taxonomy (Anotación, Nota
+          Económica, Bonos, Higiene, Panorámica…). These never represent
+          per-tooth interventions; some are administrative memos
+          ("Pago a cuenta de Tratamientos"), others are whole-mouth
+          services. Both belong on the patient summary feed, not in the
+          odontogram chart or plan list.
+        - ``IdTto`` null (no catalog variant). The receptionist typed
+          free text without picking a service from the catalog. In our
+          field exports these are the bulk of the noise (≈4 k rows on
+          a 500-patient subset).
 
-        The patient ledger is **not** touched here. ``DeudaCli`` is the
-        only source of truth for billing — when a DPMF debt row points
-        at this canonical the ``DebtMapper`` will recover the Treatment
-        row via the ``applied_treatment_record`` resolver sidecar (set
-        by the caller in ``apply()``).
+        Resulting :class:`ClinicalNote` is ``note_type='administrative'``
+        and ``owner_type='patient'``. The note body is the source
+        ``Notas`` field verbatim. ``author_id`` defaults to the admin
+        who launched the import; if the source row has a resolvable
+        ``professional_uuid`` we attribute the note to that clinician
+        instead. ``created_at`` is backdated to the source ``FecFin``
+        (or ``FecIni`` when no end date) so the patient timeline keeps
+        chronological order.
 
-        Gates: realised rows only — formal-done by ``StaTto ∈ {5,6}``
-        or ``FecFin``, or heuristically promoted by age/notes. Returns
-        ``(plan_item_id, treatment_id)`` or ``None`` when the row is
-        still planned. Amount is informational only; we accept null /
-        zero / negative — the Treatment row still surfaces on the
-        timeline.
+        Returns the new ``ClinicalNote.id`` or ``None`` when the source
+        row has no usable text (caller marks the canonical skipped so
+        re-runs don't re-warn).
         """
-        status_code = _coerce_int(payload.get("status_code"))
-        start_dt = _parse_datetime(payload.get("start_date")) or datetime.now(UTC)
-        end_dt = _parse_datetime(payload.get("end_date"))
-        amount = _decimal_or_none(payload.get("amount"))
-        formal_done = status_code in _REALISED_CODES or end_dt is not None
-        is_realised = formal_done
-        if not is_realised:
-            notes_value = payload.get("notes") or ""
-            age_days = (datetime.now(UTC) - start_dt).days
-            if age_days >= _OLD_TREATMENT_AGE_DAYS:
-                is_realised = True
-            elif (
-                age_days >= _MID_TREATMENT_AGE_DAYS
-                and len(notes_value) > _NOTES_LIKELY_PERFORMED_MIN_CHARS
-            ):
-                is_realised = True
-        if not is_realised:
+        body = (payload.get("notes") or "").strip()
+        if not body:
             return None
-        if not formal_done and end_dt is None:
-            end_dt = start_dt
-        professional_id: UUID | None = None
+        start_dt = _parse_datetime(payload.get("start_date")) or datetime.now(UTC)
+        end_dt = _parse_datetime(payload.get("end_date")) or start_dt
+        author_id = ctx.created_by
         prof_uuid = payload.get("professional_uuid")
         if prof_uuid:
-            professional_id = await ctx.resolver.get("professional", str(prof_uuid))
-
-        # Resolve the destination catalog item from the canonical
-        # variant so the UI shows the real service name
-        # ("Mantenimiento periodontal", "Panorámica", "Bono ortodoncia"…)
-        # instead of the generic "migrated" clinical_type fallback when
-        # the BOCA COMPLETA strip / plan list render the chip.
-        catalog_item_id: UUID | None = None
-        variant_uuid = payload.get("treatment_variant_uuid")
-        if variant_uuid:
-            catalog_item_id = await ctx.resolver.get("treatment_catalog_variant", str(variant_uuid))
-            if catalog_item_id is None:
-                await _warn(
-                    ctx,
-                    source_id,
-                    "applied_treatment.unmapped_variant",
-                    f"Variante de catálogo {variant_uuid} no encontrada en mappings "
-                    "previos; se importa el tratamiento sin enlace de catálogo.",
-                )
-
-        # 1) Treatment header — global_mouth keeps it off the per-tooth
-        # paint while still enumerable from the plan view and the
-        # whole-mouth chip strip. ``price_snapshot`` carries the
-        # source ``Importe`` for reference; the ledger amount comes
-        # from ``DeudaCli`` via ``DebtMapper``.
-        treatment = Treatment(
+            resolved = await ctx.resolver.get("professional", str(prof_uuid))
+            if resolved is not None:
+                author_id = resolved
+        note = ClinicalNote(
             clinic_id=ctx.clinic_id,
-            patient_id=patient_id,
-            clinical_type=_FALLBACK_CLINICAL_TYPE,
-            scope="global_mouth",
-            catalog_item_id=catalog_item_id,
-            status="performed",
-            recorded_at=start_dt,
-            performed_at=end_dt or start_dt,
-            performed_by=professional_id,
-            price_snapshot=amount,
-            notes=payload.get("notes"),
-            source_module="migration_import",
+            note_type="administrative",
+            owner_type="patient",
+            owner_id=patient_id,
+            tooth_number=None,
+            body=body,
+            author_id=author_id,
+            created_at=end_dt,
+            updated_at=end_dt,
         )
-        ctx.db.add(treatment)
+        ctx.db.add(note)
         await ctx.db.flush()
-
-        # 2) Plan grouping. Non-tooth services rarely belong to a
-        # source presupuesto, so we use the per-year catch-all that
-        # ``_get_or_create_plan`` already provides — the same year
-        # bucket the clinical rows for this patient land on.
-        plan_id = await self._get_or_create_plan(
-            ctx, patient_id, budget_id=None, year=start_dt.year
-        )
-        sequence = self._next_sequence.get(plan_id, 0) + 1
-        self._next_sequence[plan_id] = sequence
-        item = PlannedTreatmentItem(
-            clinic_id=ctx.clinic_id,
-            treatment_plan_id=plan_id,
-            treatment_id=treatment.id,
-            sequence_order=sequence,
-            status="completed",
-            completed_at=end_dt or start_dt,
-            completed_by=professional_id,
-            assigned_professional_id=professional_id,
-            notes=payload.get("notes"),
-        )
-        ctx.db.add(item)
-        await ctx.db.flush()
-        return item.id, treatment.id
+        return note.id
 
     async def _update_tooth_condition(
         self,

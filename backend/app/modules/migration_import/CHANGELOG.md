@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- feat(applied_treatment): non-clinical TtosMed rows land as
+  ``ClinicalNote(administrative, owner=patient)`` instead of synthetic
+  ``Treatment(scope='global_mouth', clinical_type='migrated')`` +
+  ``PlannedTreatmentItem``. Two source signals route to the new path:
+  ``IdTipoOdg`` in the non-clinical taxonomy (Anotación, Nota
+  Económica, Higiene, Panorámica…) **and** ``IdTto`` null (the
+  receptionist typed free text without selecting a catalog variant).
+  Field impact on a 500-patient subset: ~4 k "migrated" tiles
+  disappear from the odontogram BOCA COMPLETA strip and the per-year
+  catch-all plan; the same text shows up in the patient Summary feed
+  as an administrative note (preserves authorship via
+  ``professional_uuid`` when resolvable). ``DebtMapper`` detects the
+  reroute via a new ``MappingResolver.mapping_table()`` helper and
+  skips the ``PatientEarnedEntry`` when the linked applied_treatment
+  resolves to a ClinicalNote (warning code ``debt.no_clinical_target``).
 - feat(professional): operator-tunable filtering at execute time.
   Adds four knobs to ``ExecuteRequest`` — ``professional_min_activity_months``
   (default 24), ``professional_exclude_agenda_orphans`` (on),
