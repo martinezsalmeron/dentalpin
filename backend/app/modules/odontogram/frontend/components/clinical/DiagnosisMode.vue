@@ -97,10 +97,32 @@ const sessionTreatmentIds = computed(() =>
   conditions.value.map(c => c.id).filter((id): id is string => Boolean(id))
 )
 
+// Map every treatment of this patient (not only diagnosis-mode conditions)
+// to its teeth, so the sidebar can resolve a treatment-owned note to the
+// tooth it belongs to without importing odontogram. Treatment-typed notes
+// survive plan churn and may belong to any status.
+const treatmentsToothById = computed<Record<string, number[]>>(() => {
+  const map: Record<string, number[]> = {}
+  for (const t of treatments.value) {
+    if (!t.id) continue
+    const teeth = (t.teeth || [])
+      .map(x => x.tooth_number)
+      .filter((n): n is number => typeof n === 'number')
+    if (teeth.length) map[t.id] = teeth
+  }
+  return map
+})
+
+function handleNoteTeethHover(teeth: number[] | null) {
+  hoveredTeeth.value = teeth && teeth.length ? teeth : []
+}
+
 const sidebarCtx = computed(() => ({
   patientId: props.patientId,
   selectedTooth: selectedTooth.value,
-  sessionTreatmentIds: sessionTreatmentIds.value
+  sessionTreatmentIds: sessionTreatmentIds.value,
+  treatmentsToothById: treatmentsToothById.value,
+  onTeethHover: handleNoteTeethHover
 }))
 
 async function handleTreatmentsChanged() {

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- feat(ux): hovering or keyboard-focusing a note in ``DiagnosisNotesSidebar`` or
+  ``PlanNotesTimeline`` now pulses the matching tooth on the odontogram, mirroring
+  the existing hover behaviour of the per-tooth treatment list. ``DiagnosisNotesSidebar``
+  resolves the tooth via two new optional ``ctx`` props (``treatmentsToothById`` +
+  ``onTeethHover``) so the module stays decoupled from odontogram. ``PlanNotesTimeline``
+  emits ``item-hover`` (matching ``PlanTreatmentList``); ``PlanDetailView`` wires it
+  into the existing ``hoveredItemId`` highlight pipeline. Notes with no tooth
+  (plan-level, administrative without ``tooth_number``) silently no-op — no ghost
+  pulse.
 - feat(timeline): surface author (avatar + name) on every entry in the plan notes timeline. ``ClinicalNoteEntry`` now carries an ``author: AuthorBrief | None`` (notes: from ``ClinicalNote.author``; visits: from ``Appointment.professional``). ``PlanNotesTimeline.vue`` renders the author header so the dentist can tell who wrote each note at a glance.
 - refactor(perms): migrate hardcoded ``can('clinical_notes.notes.{read,write}')`` strings in ``TreatmentNoteButton`` / ``DiagnosisNotesSidebar`` / ``PlanNotesTimeline`` / ``RecentNotesFeed`` to ``PERMISSIONS.clinicalNotes.*``.
 - fix(isolation): declare ``agenda`` in ``manifest.depends`` — the

@@ -719,6 +719,7 @@ const moreMenuItems = computed<DropdownMenuItem[]>(() => {
             :patient-id="plan.patient_id"
             :items="plan.items"
             :readonly="readonly"
+            @item-hover="hoveredItemId = $event"
           />
         </UCard>
       </div>

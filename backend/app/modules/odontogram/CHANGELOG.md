@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- feat(ux): ``DiagnosisMode`` now publishes a ``treatmentsToothById`` map
+  and an ``onTeethHover`` callback through the
+  ``odontogram.diagnosis.sidebar`` slot ctx, so the clinical-notes
+  sidebar can pulse the matching tooth on the chart when the user
+  hovers/focuses a note. Reuses the existing ``hoveredTeeth`` →
+  ``highlightedTeethProp`` plumbing on ``OdontogramChart``.
 - feat(treatments): add ``crown_on_implant`` and
   ``provisional_crown_on_implant`` clinical types. Both render on the
   lateral view as a solid prosthetic fill on the crown path (same code

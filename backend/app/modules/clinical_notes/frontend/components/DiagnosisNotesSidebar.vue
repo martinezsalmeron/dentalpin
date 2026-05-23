@@ -17,6 +17,13 @@ const props = defineProps<{
   ctx: {
     patientId: string
     selectedTooth?: number | null
+    /**
+     * Host-supplied lookup so a treatment-owned note can be resolved to
+     * the teeth it belongs to without this module importing odontogram.
+     */
+    treatmentsToothById?: Record<string, number[]>
+    /** Host-supplied callback invoked on note hover/focus. */
+    onTeethHover?: (teeth: number[] | null) => void
   }
 }>()
 
@@ -127,6 +134,29 @@ function canEditEntry(entry: RecentNoteEntry): boolean {
   return canWrite.value && !!entry.author?.id && entry.author.id === user.value?.id
 }
 
+// Resolve a note to the teeth it visually belongs to so hover/focus on a
+// note row can pulse the matching tooth in the odontogram. Returns null
+// when the note has no tooth (e.g. plan-level, administrative) so the
+// host emits an empty highlight instead of a ghost pulse.
+function resolveNoteTeeth(entry: RecentNoteEntry): number[] | null {
+  if (entry.tooth_number != null) return [entry.tooth_number]
+  if (entry.owner_type === 'treatment') {
+    const teeth = props.ctx?.treatmentsToothById?.[entry.owner_id]
+    if (teeth && teeth.length) return teeth
+  }
+  return null
+}
+
+function handleNoteEnter(entry: RecentNoteEntry) {
+  const teeth = resolveNoteTeeth(entry)
+  if (!teeth) return
+  props.ctx?.onTeethHover?.(teeth)
+}
+
+function handleNoteLeave() {
+  props.ctx?.onTeethHover?.(null)
+}
+
 watch(
   () => props.ctx?.patientId,
   refresh,
@@ -202,6 +232,10 @@ watch(
         :highlight="ctx?.selectedTooth != null && ctx.selectedTooth === entry.tooth_number"
         @edit="startEdit(entry)"
         @delete="handleDelete(entry)"
+        @mouseenter="handleNoteEnter(entry)"
+        @mouseleave="handleNoteLeave()"
+        @focusin="handleNoteEnter(entry)"
+        @focusout="handleNoteLeave()"
       />
 
       <div

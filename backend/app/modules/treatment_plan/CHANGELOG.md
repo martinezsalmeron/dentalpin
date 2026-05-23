@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- feat(ux): ``PlanDetailView`` wires the new ``PlanNotesTimeline``
+  ``item-hover`` event into the existing ``hoveredItemId`` highlight
+  pipeline, so hovering or focusing a note in the timeline pulses the
+  matching tooth/arch on the odontogram. Treatment-source notes resolve
+  via ``itemByTreatmentId``; visit-source via ``itemByPlanItemId``;
+  plan-level notes no-op.
 - feat(sessions): plan items now own 1..N ``PlannedTreatmentItemSession``
   rows that capture the named, billable steps of a multi-session
   treatment (e.g. crown: "Toma de medidas" 200€ + "Colocación" 600€).

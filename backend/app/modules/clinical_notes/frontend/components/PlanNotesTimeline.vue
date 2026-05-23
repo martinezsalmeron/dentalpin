@@ -25,7 +25,15 @@ const props = defineProps<{
   patientId?: string | null
 }>()
 
-const emit = defineEmits<{ updated: [] }>()
+const emit = defineEmits<{
+  updated: []
+  /**
+   * Mirrors PlanTreatmentList's ``item-hover`` so the host can pulse
+   * the matching tooth/arch on the odontogram when the user hovers a
+   * note in the timeline. Plan-level notes emit ``null``.
+   */
+  'item-hover': [itemId: string | null]
+}>()
 
 const { t, locale } = useI18n()
 const { user } = useAuth()
@@ -201,6 +209,27 @@ function sourceTypeLabel(source: Source): string {
   return t('clinicalNotes.timeline.source.plan')
 }
 
+function entryItemId(entry: ClinicalNoteEntry): string | null {
+  if (entry.source === 'plan') return null
+  if (entry.source === 'treatment') {
+    return itemByTreatmentId.value.get(entry.owner_id)?.id ?? null
+  }
+  if (entry.source === 'visit' && entry.plan_item_id) {
+    return itemByPlanItemId.value.get(entry.plan_item_id)?.id ?? null
+  }
+  return null
+}
+
+function handleEntryEnter(entry: ClinicalNoteEntry) {
+  const itemId = entryItemId(entry)
+  if (!itemId) return
+  emit('item-hover', itemId)
+}
+
+function handleEntryLeave() {
+  emit('item-hover', null)
+}
+
 function entryTreatmentName(entry: ClinicalNoteEntry): string | null {
   if (entry.source === 'plan') return null
   const item =
@@ -348,8 +377,12 @@ watch(() => props.planId, refresh, { immediate: true })
       <li
         v-for="entry in visibleEntries"
         :key="entry.note_id || `${entry.source}-${entry.owner_id}-${entry.created_at}`"
-        class="rounded-md p-3 bg-surface border border-default"
+        class="rounded-md p-3 bg-surface border border-default transition-colors hover:bg-elevated/40 focus-within:bg-elevated/40"
         :style="{ borderLeft: `3px solid ${sourceMeta(entry.source).borderColor}` }"
+        @mouseenter="handleEntryEnter(entry)"
+        @mouseleave="handleEntryLeave()"
+        @focusin="handleEntryEnter(entry)"
+        @focusout="handleEntryLeave()"
       >
         <header class="flex items-start justify-between gap-2 mb-2">
           <div class="flex items-start gap-2 min-w-0 flex-1">
