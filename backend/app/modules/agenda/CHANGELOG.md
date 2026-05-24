@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- fix(modal): suppress spurious "Se detectaron solapamientos" toast
+  after creating an appointment. ``useAppointments.createAppointment``
+  mutates the shared ``appointments`` array (same reactive instance the
+  parent passes as ``existingAppointments``), so the just-created entry
+  briefly self-overlapped with ``formData`` before the modal closed and
+  the overlap watcher fired against it. Fix flips
+  ``initialDataLoaded`` off at the top of ``handleSave`` — the same
+  flag the modal already uses when closing — so the watcher stays quiet
+  until the modal reopens.
+- fix(modal-tz): "Este slot está fuera del horario" no longer fires
+  for in-hours slots when the browser timezone differs from the clinic
+  timezone (e.g. Madrid receptionist on an NY clinic). The pre-save
+  availability check compared instants — naive form strings interpreted
+  as browser-local against ``r.start``/``r.end`` carrying the clinic
+  offset — which shifted the slot by the browser↔clinic gap. Now
+  compares wall-clock minutes via ``parseIsoParts`` /
+  ``isoPartsToDateKey``, mirroring ``useCalendarBounds`` /
+  ``useBlockedSegments``.
 - feat(notes)!: appointment notes promoted to the polymorphic
   ``clinical_notes`` store. The legacy free-text
   ``appointments.notes`` column is **dropped** (``ag_0005``); the

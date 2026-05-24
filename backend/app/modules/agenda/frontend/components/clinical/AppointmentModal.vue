@@ -7,7 +7,7 @@ import type {
   Surface
 } from '~~/app/types'
 import { PERMISSIONS } from '~~/app/config/permissions'
-import { formatLocalDate } from '../../utils/date'
+import { formatLocalDate, isoPartsToDateKey, parseIsoParts } from '../../utils/date'
 
 const props = defineProps<{
   open: boolean
@@ -433,6 +433,10 @@ async function handleSave() {
   if (!canSave.value || !selectedPatient.value) return
 
   isSubmitting.value = true
+  // Silence the overlap watcher: createAppointment mutates the shared
+  // appointments array, so the brand-new appointment would otherwise
+  // self-overlap with formData before the modal closes.
+  initialDataLoaded.value = false
 
   try {
     // Build start_time ISO string
@@ -449,13 +453,28 @@ async function handleSave() {
       professional_id: selectedProfessionalId.value
     })
     if (availability) {
-      const slotStart = new Date(startTime).getTime()
-      const slotEnd = new Date(endTime).getTime()
-      const conflict = availability.ranges.find(r =>
-        r.state !== 'open'
-        && new Date(r.start).getTime() < slotEnd
-        && new Date(r.end).getTime() > slotStart
-      )
+      // Compare wall-clock minutes against the clinic-TZ ranges instead
+      // of routing both sides through ``new Date()``. The form values are
+      // naive (browser-local) while ``r.start``/``r.end`` carry the clinic
+      // offset (e.g. ``-04:00`` for an NY clinic), so comparing instants
+      // shifted slots by the browser↔clinic gap and flagged in-hours
+      // slots as outside hours when the two zones disagree. Mirrors the
+      // wall-clock approach used by ``useCalendarBounds`` /
+      // ``useBlockedSegments``.
+      const [fh, fm] = formData.startTime.split(':').map(Number)
+      const formStart = (fh ?? 0) * 60 + (fm ?? 0)
+      const formEnd = formStart + formData.duration
+      const conflict = availability.ranges.find(r => {
+        if (r.state === 'open') return false
+        const sParts = parseIsoParts(r.start)
+        const eParts = parseIsoParts(r.end)
+        const sDate = isoPartsToDateKey(sParts)
+        const eDate = isoPartsToDateKey(eParts)
+        if (sDate !== formData.date && eDate !== formData.date) return false
+        const rStart = sDate === formData.date ? sParts.hour * 60 + sParts.minute : 0
+        const rEnd = eDate === formData.date ? eParts.hour * 60 + eParts.minute : 24 * 60
+        return rStart < formEnd && rEnd > formStart
+      })
       if (conflict) {
         const confirmed = window.confirm(t('schedules.availability.confirmOutside'))
         if (!confirmed) {
