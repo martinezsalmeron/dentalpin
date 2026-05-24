@@ -86,7 +86,6 @@ class NotificationHandlers:
                     "clinic_name": clinic.name if clinic else "DentalPin",
                     "clinic_phone": clinic.phone if clinic else None,
                     "clinic_address": clinic.address if clinic else None,
-                    "notes": appointment.notes,
                 }
 
                 # Send notification

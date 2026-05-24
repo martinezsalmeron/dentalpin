@@ -31,6 +31,8 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 const { statusColour, statusLabel, isTerminal } = useAppointmentStatus()
+const notesIndicator = useAppointmentNotesIndicator()
+const hasNotes = computed(() => notesIndicator.has(props.appointment.id))
 
 // Manual 30-second tick (@vueuse/core is not a dependency of this repo).
 const now = ref(new Date())
@@ -157,7 +159,16 @@ const cardStyle = computed(() => ({
   >
     <div class="flex items-start justify-between gap-2">
       <div class="min-w-0 flex-1">
-        <div class="font-medium truncate">{{ patientName }}</div>
+        <div class="flex items-center gap-1 min-w-0">
+          <span class="font-medium truncate">{{ patientName }}</span>
+          <UIcon
+            v-if="hasNotes"
+            name="i-lucide-sticky-note"
+            class="w-3.5 h-3.5 text-primary shrink-0"
+            :aria-label="t('appointments.hasNotes', 'Tiene notas')"
+            :title="t('appointments.hasNotes', 'Tiene notas')"
+          />
+        </div>
         <div class="flex items-center gap-1 text-muted text-xs mt-0.5">
           <span>{{ startLabel }}–{{ endLabel }}</span>
           <span v-if="appointment.treatment_type" class="truncate">· {{ appointment.treatment_type }}</span>

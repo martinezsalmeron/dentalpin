@@ -4,6 +4,8 @@ import type { BlockedSegment } from '../../composables/useBlockedSegments'
 import { calculateOverlapGroups } from '../../composables/calculateOverlapGroups'
 import { formatLocalDate } from '../../utils/date'
 
+const notesIndicator = useAppointmentNotesIndicator()
+
 interface ProfessionalWithColor extends Professional {
   color: string
 }
@@ -679,6 +681,12 @@ const appointmentsByProfIndex = computed(() => {
                       <span class="text-xs font-medium truncate">
                         {{ appointment.patient ? `${appointment.patient.first_name} ${appointment.patient.last_name}` : 'Sin paciente' }}
                       </span>
+                      <UIcon
+                        v-if="notesIndicator.has(appointment.id)"
+                        name="i-lucide-sticky-note"
+                        class="w-3 h-3 flex-shrink-0 text-primary"
+                        :title="t('appointments.hasNotes', 'Tiene notas')"
+                      />
                     </div>
                     <div
                       v-if="appointment.treatment_type"

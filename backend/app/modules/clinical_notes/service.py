@@ -24,12 +24,13 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import and_, false, or_, select
+from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.events import event_bus
 from app.core.events.types import EventType
+from app.modules.agenda.models import Appointment
 from app.modules.media.models import Document, MediaAttachment
 from app.modules.media.service import AttachmentService
 from app.modules.odontogram.models import Treatment
@@ -37,11 +38,14 @@ from app.modules.patients.models import Patient
 from app.modules.treatment_plan.models import PlannedTreatmentItem, TreatmentPlan
 
 from .models import (
+    NOTE_OWNER_APPOINTMENT,
     NOTE_OWNER_PATIENT,
     NOTE_OWNER_PLAN,
     NOTE_OWNER_TREATMENT,
     NOTE_OWNER_TYPES,
     NOTE_TYPE_ADMINISTRATIVE,
+    NOTE_TYPE_APPOINTMENT_ADMINISTRATIVE,
+    NOTE_TYPE_APPOINTMENT_CLINICAL,
     NOTE_TYPE_DIAGNOSIS,
     NOTE_TYPE_TREATMENT,
     NOTE_TYPE_TREATMENT_PLAN,
@@ -78,6 +82,10 @@ _NOTE_TYPE_TO_EVENT = {
     NOTE_TYPE_DIAGNOSIS: EventType.CLINICAL_NOTE_DIAGNOSIS_CREATED,
     NOTE_TYPE_TREATMENT: EventType.CLINICAL_NOTE_TREATMENT_CREATED,
     NOTE_TYPE_TREATMENT_PLAN: EventType.CLINICAL_NOTE_PLAN_CREATED,
+    NOTE_TYPE_APPOINTMENT_CLINICAL: EventType.CLINICAL_NOTE_APPOINTMENT_CLINICAL_CREATED,
+    NOTE_TYPE_APPOINTMENT_ADMINISTRATIVE: (
+        EventType.CLINICAL_NOTE_APPOINTMENT_ADMINISTRATIVE_CREATED
+    ),
 }
 
 
@@ -131,6 +139,25 @@ async def _resolve_plan_owner(
     return row[0], row[1]
 
 
+async def _resolve_appointment_owner(
+    db: AsyncSession, clinic_id: UUID, appointment_id: UUID
+) -> tuple[UUID, UUID]:
+    result = await db.execute(
+        select(Appointment.id, Appointment.patient_id).where(
+            Appointment.id == appointment_id,
+            Appointment.clinic_id == clinic_id,
+        )
+    )
+    row = result.first()
+    if row is None:
+        raise NoteOwnerError(f"appointment {appointment_id} not found")
+    if row[1] is None:
+        raise NoteOwnerError(
+            f"appointment {appointment_id} has no patient — notes require a patient binding"
+        )
+    return row[0], row[1]
+
+
 async def resolve_owner_patient(
     db: AsyncSession,
     clinic_id: UUID,
@@ -145,6 +172,9 @@ async def resolve_owner_patient(
         return patient_id
     if owner_type == NOTE_OWNER_PLAN:
         _, patient_id = await _resolve_plan_owner(db, clinic_id, owner_id)
+        return patient_id
+    if owner_type == NOTE_OWNER_APPOINTMENT:
+        _, patient_id = await _resolve_appointment_owner(db, clinic_id, owner_id)
         return patient_id
     raise NoteOwnerError(f"unsupported owner_type {owner_type!r}")
 
@@ -174,6 +204,7 @@ class NoteService:
                 ClinicalNote.owner_id == owner_id,
                 ClinicalNote.deleted_at.is_(None),
             )
+            .options(selectinload(ClinicalNote.author))
             .order_by(ClinicalNote.created_at.desc())
         )
         return list(result.scalars().all())
@@ -361,6 +392,34 @@ async def _load_documents(
         )
     )
     return list(result.scalars().all())
+
+
+async def count_notes_for_owners(
+    db: AsyncSession,
+    clinic_id: UUID,
+    owner_type: str,
+    owner_ids: list[UUID],
+) -> dict[UUID, int]:
+    """Bulk count of live notes per ``owner_id`` for a single ``owner_type``.
+
+    Owners with zero notes are omitted from the result. Soft-deleted
+    notes are excluded.
+    """
+    if owner_type not in NOTE_OWNER_TYPES:
+        raise NoteOwnerError(f"unsupported note owner_type {owner_type!r}")
+    if not owner_ids:
+        return {}
+    result = await db.execute(
+        select(ClinicalNote.owner_id, func.count(ClinicalNote.id))
+        .where(
+            ClinicalNote.clinic_id == clinic_id,
+            ClinicalNote.owner_type == owner_type,
+            ClinicalNote.owner_id.in_(owner_ids),
+            ClinicalNote.deleted_at.is_(None),
+        )
+        .group_by(ClinicalNote.owner_id)
+    )
+    return {row[0]: row[1] for row in result.all()}
 
 
 async def list_attachments_for_note(

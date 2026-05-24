@@ -35,6 +35,7 @@ from .service import (
     AttachmentPatientMismatchError,
     NoteOwnerError,
     NoteService,
+    count_notes_for_owners,
     list_attachments_for_note,
     list_attachments_for_owner,
     list_grouped_for_patient,
@@ -45,7 +46,7 @@ from .service import (
 
 router = APIRouter()
 
-ATTACHMENT_OWNER_PATTERN = "^(patient|treatment|plan|clinical_note)$"
+ATTACHMENT_OWNER_PATTERN = "^(patient|treatment|plan|appointment|clinical_note)$"
 
 
 def _is_admin_role(ctx: ClinicContext) -> bool:
@@ -84,6 +85,28 @@ def _decorate_attachment(att) -> NoteAttachmentResponse:
     return response
 
 
+def _author_brief_from(note: ClinicalNote) -> dict | None:
+    """Project the loaded ``author`` relationship into an AuthorBrief shape."""
+    author = getattr(note, "author", None)
+    if author is None:
+        return None
+    full_name = (
+        getattr(author, "full_name", None)
+        or " ".join(
+            filter(
+                None,
+                [getattr(author, "first_name", None), getattr(author, "last_name", None)],
+            )
+        ).strip()
+        or None
+    )
+    return {
+        "id": author.id,
+        "full_name": full_name,
+        "email": getattr(author, "email", None),
+    }
+
+
 async def _decorate_note(
     db: AsyncSession, clinic_id: UUID, note: ClinicalNote
 ) -> ClinicalNoteResponse:
@@ -91,6 +114,11 @@ async def _decorate_note(
     response = ClinicalNoteResponse.model_validate(note)
     attachments = await list_attachments_for_note(db, clinic_id, note.id)
     response.attachments = [_decorate_attachment(a) for a in attachments]
+    author_brief = _author_brief_from(note)
+    if author_brief is not None:
+        from .schemas import AuthorBrief
+
+        response.author = AuthorBrief.model_validate(author_brief)
     return response
 
 
@@ -202,6 +230,25 @@ async def delete_note(
         raise HTTPException(status_code=403, detail=str(e)) from e
     if not ok:
         raise HTTPException(status_code=404, detail="Note not found")
+
+
+@router.get(
+    "/notes/counts",
+    response_model=ApiResponse[dict[str, int]],
+)
+async def count_notes_by_owner(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("clinical_notes.notes.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    owner_type: str = Query(..., pattern=NOTE_OWNER_PATTERN),
+    owner_ids: list[UUID] = Query(..., min_length=1, max_length=500),
+) -> ApiResponse[dict[str, int]]:
+    """Bulk note counts per owner_id. Used by callers that render a
+    "has notes" indicator next to a list of entities (e.g. the agenda
+    weekly/daily/kanban views) without fetching each note body.
+    """
+    counts = await count_notes_for_owners(db, ctx.clinic_id, owner_type, owner_ids)
+    return ApiResponse(data={str(k): v for k, v in counts.items()})
 
 
 # ---------------------------------------------------------------------------

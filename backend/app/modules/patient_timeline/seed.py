@@ -76,7 +76,7 @@ async def seed_timeline_demo(db: AsyncSession, clinic_id: UUID) -> dict[str, int
                 source_table="appointments",
                 source_id=appt.id,
                 title=f"{title_es}: {treatment_label}",
-                description=appt.notes,
+                description=None,
                 event_data={
                     "cabinet": appt.cabinet,
                     "professional_id": str(appt.professional_id),

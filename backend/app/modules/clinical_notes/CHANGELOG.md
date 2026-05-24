@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- feat(appointment-owner): add ``owner_type='appointment'`` with two
+  new ``note_type`` values (``appointment_clinical`` +
+  ``appointment_administrative``) so notes can attach to a
+  ``agenda.Appointment``. Matrix CHECK extended (``cn_0003``); media
+  owner registry resolves ``appointment → patient`` so adjuntos
+  surface in the patient gallery. Two new events
+  (``CLINICAL_NOTE_APPOINTMENT_CLINICAL_CREATED`` /
+  ``CLINICAL_NOTE_APPOINTMENT_ADMINISTRATIVE_CREATED``) follow the
+  existing ``clinical_notes.<note_type>_created`` naming so
+  ``patient_timeline`` picks them up via its string-derived dispatch.
+  Frontend: new ``AppointmentNotesPanel`` mounted on the
+  ``appointment.detail.notes`` slot (agenda hosts; no cross-import).
 - feat(ux): hovering or keyboard-focusing a note in ``DiagnosisNotesSidebar`` or
   ``PlanNotesTimeline`` now pulses the matching tooth on the odontogram, mirroring
   the existing hover behaviour of the per-tooth treatment list. ``DiagnosisNotesSidebar``

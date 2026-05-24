@@ -146,7 +146,6 @@ class AppointmentCreate(BaseModel):
     end_time: datetime
     treatment_type: str | None = Field(default=None, max_length=100)  # Legacy field
     planned_item_ids: list[UUID] | None = None
-    notes: str | None = None
     color: str | None = Field(default=None, max_length=7)
 
 
@@ -160,7 +159,6 @@ class AppointmentUpdate(BaseModel):
     treatment_type: str | None = Field(default=None, max_length=100)
     planned_item_ids: list[UUID] | None = None
     status: str | None = None
-    notes: str | None = None
     color: str | None = Field(default=None, max_length=7)
 
 
@@ -269,7 +267,6 @@ class AppointmentResponse(BaseModel):
     treatment_type: str | None
     status: str
     current_status_since: datetime
-    notes: str | None
     color: str | None
     created_at: datetime
     updated_at: datetime
@@ -308,7 +305,6 @@ class AppointmentResponse(BaseModel):
                 "treatment_type": data.treatment_type,
                 "status": data.status,
                 "current_status_since": data.current_status_since,
-                "notes": data.notes,
                 "color": data.color,
                 "created_at": data.created_at,
                 "updated_at": data.updated_at,

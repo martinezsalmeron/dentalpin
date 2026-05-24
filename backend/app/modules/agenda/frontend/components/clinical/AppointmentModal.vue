@@ -57,8 +57,7 @@ const formData = reactive({
   date: '',
   startTime: '09:00',
   duration: 30,
-  cabinet: UNASSIGNED_CABINET,
-  notes: ''
+  cabinet: UNASSIGNED_CABINET
 })
 
 // Duration options (in minutes)
@@ -244,6 +243,12 @@ watch(() => props.open, async (isOpen) => {
     // Disable overlap warnings while closed so reloads of existingAppointments
     // don't trigger a late false positive.
     initialDataLoaded.value = false
+    // Re-check the "has notes" indicator for this appointment so the
+    // sticky-note icon appears immediately after the user creates a
+    // note from the slot panel. Bounded — single id round-trip.
+    if (props.appointment?.id) {
+      useAppointmentNotesIndicator().fetchFor([props.appointment.id])
+    }
     return
   }
   // Reset flags when modal opens
@@ -271,7 +276,6 @@ watch(() => props.open, async (isOpen) => {
     formData.startTime = apt.start_time.split('T')[1]?.substring(0, 5) ?? '09:00'
     // null cabinet (#51) maps to the "assign later" option.
     formData.cabinet = apt.cabinet ?? UNASSIGNED_CABINET
-    formData.notes = apt.notes || ''
 
     // Map each AppointmentTreatmentBrief into a PlannedTreatmentItem shape so the
     // shared selector can render it. The Treatment.id is not available in the
@@ -389,7 +393,6 @@ watch(() => props.open, async (isOpen) => {
     } else {
       formData.cabinet = UNASSIGNED_CABINET
     }
-    formData.notes = ''
     selectedTreatments.value = []
     // Reset email checkbox for create mode
     sendConfirmationEmail.value = true
@@ -477,8 +480,7 @@ async function handleSave() {
       end_time: endTime,
       planned_item_ids: selectedTreatments.value.length > 0
         ? selectedTreatments.value.map(t => t.id)
-        : undefined,
-      notes: formData.notes || undefined
+        : undefined
     }
 
     let savedAppointment: Appointment
@@ -753,28 +755,26 @@ function openPatientFile() {
               </UFormField>
             </section>
 
-            <!-- Section 4: Notas (collapsed by default) -->
-            <details class="group">
-              <summary class="flex items-center gap-2 text-caption uppercase tracking-wide text-subtle cursor-pointer hover:text-default select-none">
-                <UIcon
-                  name="i-lucide-chevron-right"
-                  class="w-3.5 h-3.5 transition-transform group-open:rotate-90"
-                />
+            <!-- Section 4: Notas — slot rendered by clinical_notes when an
+                 appointment exists (edit mode). On create, the modal hides
+                 it: the appointment must be saved first so we have an id to
+                 anchor the polymorphic notes to. -->
+            <section
+              v-if="isEditMode && appointment?.id"
+              class="space-y-3"
+            >
+              <div class="flex items-center gap-2 text-caption uppercase tracking-wide text-subtle">
                 <UIcon
                   name="i-lucide-sticky-note"
                   class="w-3.5 h-3.5"
                 />
                 {{ t('appointments.notes') }}
-              </summary>
-              <div class="mt-2">
-                <UTextarea
-                  v-model="formData.notes"
-                  :placeholder="t('appointments.notesPlaceholder', 'Detalles internos para el equipo')"
-                  :rows="3"
-                  class="w-full"
-                />
               </div>
-            </details>
+              <ModuleSlot
+                name="appointment.detail.notes"
+                :ctx="{ appointmentId: appointment.id, patientId: appointment.patient_id }"
+              />
+            </section>
           </form>
         </div>
 

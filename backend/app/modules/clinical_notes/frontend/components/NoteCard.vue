@@ -348,10 +348,12 @@ const linkedLabel = computed(() => {
   position: relative;
 }
 
-.note-card--administrative {
+.note-card--administrative,
+.note-card--appointment_administrative {
   border-left: 3px solid var(--color-neutral, #94a3b8);
 }
-.note-card--diagnosis {
+.note-card--diagnosis,
+.note-card--appointment_clinical {
   border-left: 3px solid var(--color-info-accent, #3b82f6);
 }
 .note-card--treatment {

@@ -24,12 +24,14 @@ Routes mounted at `/api/v1/clinical_notes/`.
 
 ## Note matrix
 
-| `note_type`     | `owner_type` | `owner_id` references                  | `tooth_number` |
-|-----------------|--------------|----------------------------------------|----------------|
-| administrative  | patient      | patients.id                            | always NULL    |
-| diagnosis       | patient      | patients.id                            | optional       |
-| treatment       | treatment    | treatments.id (odontogram)             | always NULL    |
-| treatment_plan  | plan         | treatment_plans.id (treatment_plan)    | always NULL    |
+| `note_type`                  | `owner_type`  | `owner_id` references                  | `tooth_number` |
+|------------------------------|---------------|----------------------------------------|----------------|
+| administrative               | patient       | patients.id                            | always NULL    |
+| diagnosis                    | patient       | patients.id                            | optional       |
+| treatment                    | treatment     | treatments.id (odontogram)             | always NULL    |
+| treatment_plan               | plan          | treatment_plans.id (treatment_plan)    | always NULL    |
+| appointment_clinical         | appointment   | appointments.id (agenda)               | always NULL    |
+| appointment_administrative   | appointment   | appointments.id (agenda)               | always NULL    |
 
 The `owner_id` has no DB-level FK (polymorphic); the service layer
 verifies the owner exists in the same clinic before insert. A DB-level
@@ -73,6 +75,8 @@ read/write notes (administrative notes are reception-friendly).
 | `clinical_notes.diagnosis_created`      | diagnosis note created      |
 | `clinical_notes.treatment_created`      | treatment note created      |
 | `clinical_notes.plan_created`           | treatment_plan note created |
+| `clinical_notes.appointment_clinical_created`       | clinical note on an appointment |
+| `clinical_notes.appointment_administrative_created` | administrative note on an appointment |
 
 Payload is uniform: ``{ clinic_id, patient_id, note_id, note_type,
 owner_type, owner_id, tooth_number, user_id, body_excerpt, occurred_at }``.

@@ -4,7 +4,13 @@
       "administrative": "Administrative",
       "diagnosis": "Diagnosis",
       "treatment": "Treatment",
-      "treatment_plan": "Plan"
+      "treatment_plan": "Plan",
+      "appointment_clinical": "Clinical",
+      "appointment_administrative": "Administrative"
+    },
+    "appointment": {
+      "addByType": "Add {label} note",
+      "empty": "No notes on this appointment yet. Use the buttons above to add one."
     },
     "feed": {
       "filterLabel": "Filters",

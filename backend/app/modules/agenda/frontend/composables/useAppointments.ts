@@ -8,6 +8,26 @@ export function useAppointments() {
   const isLoading = useState<boolean>('appointments:loading', () => false)
   const error = useState<string | null>('appointments:error', () => null)
 
+  // Whenever the loaded appointments change (initial fetch, navigation,
+  // mutation), refresh the "has notes" indicator for the new id set.
+  // Guarded by a single ``useState`` flag so the watcher is wired
+  // exactly once across the whole app, regardless of how many
+  // components call ``useAppointments``.
+  if (import.meta.client) {
+    const wired = useState<boolean>('appointments:notes-indicator-wired', () => false)
+    if (!wired.value) {
+      wired.value = true
+      const notesIndicator = useAppointmentNotesIndicator()
+      watch(
+        appointments,
+        (list) => {
+          notesIndicator.fetchFor(list.map(a => a.id))
+        },
+        { immediate: true }
+      )
+    }
+  }
+
   // Actions
   async function fetchAppointments(startDate: Date, endDate: Date): Promise<Appointment[]> {
     isLoading.value = true

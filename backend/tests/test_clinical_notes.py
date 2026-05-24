@@ -4,14 +4,16 @@ Covers the four note_type pairings, the recent feed for the patient summary
 tab, the type/owner matrix CHECK rejection and the per-treatment endpoint.
 """
 
-from datetime import UTC, datetime
-from uuid import uuid4
+from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.models import Clinic, ClinicMembership
+from app.modules.agenda.models import Appointment
+from app.modules.agenda.service import AppointmentService
 from app.modules.odontogram.models import Treatment
 
 
@@ -218,3 +220,168 @@ async def test_recent_feed_filters_by_type(
     rows = only_admin.json()["data"]
     assert all(r["note_type"] == "administrative" for r in rows)
     assert any(r["body"] == "Admin" for r in rows)
+
+
+# ---------------------------------------------------------------------------
+# Appointment-owner notes (clinical_notes cn_0003 + agenda ag_0005)
+# ---------------------------------------------------------------------------
+
+
+async def _seed_appointment(
+    db_session: AsyncSession,
+    clinic_id: UUID,
+    patient_id: UUID,
+    actor_id: UUID,
+) -> Appointment:
+    start = datetime(2026, 7, 1, 10, 0, tzinfo=UTC)
+    apt = await AppointmentService.create_appointment(
+        db_session,
+        clinic_id,
+        {
+            "patient_id": patient_id,
+            "professional_id": actor_id,
+            "start_time": start,
+            "end_time": start + timedelta(minutes=30),
+        },
+        created_by=actor_id,
+    )
+    await db_session.commit()
+    return apt
+
+
+@pytest.mark.asyncio
+async def test_create_appointment_clinical_note(
+    client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+):
+    ctx = await _seed_clinic_and_patient(db_session, client, auth_headers)
+    me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    user_id = UUID(me.json()["data"]["user"]["id"])
+    apt = await _seed_appointment(
+        db_session, UUID(ctx["clinic_id"]), UUID(ctx["patient_id"]), user_id
+    )
+
+    resp = await client.post(
+        "/api/v1/clinical_notes/notes",
+        headers=auth_headers,
+        json={
+            "note_type": "appointment_clinical",
+            "owner_type": "appointment",
+            "owner_id": str(apt.id),
+            "body": "Patient reported pain in lower right molar",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    note = resp.json()["data"]
+    assert note["note_type"] == "appointment_clinical"
+    assert note["owner_type"] == "appointment"
+    assert note["owner_id"] == str(apt.id)
+    assert note["tooth_number"] is None
+
+
+@pytest.mark.asyncio
+async def test_create_appointment_administrative_note(
+    client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+):
+    ctx = await _seed_clinic_and_patient(db_session, client, auth_headers)
+    me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    user_id = UUID(me.json()["data"]["user"]["id"])
+    apt = await _seed_appointment(
+        db_session, UUID(ctx["clinic_id"]), UUID(ctx["patient_id"]), user_id
+    )
+
+    resp = await client.post(
+        "/api/v1/clinical_notes/notes",
+        headers=auth_headers,
+        json={
+            "note_type": "appointment_administrative",
+            "owner_type": "appointment",
+            "owner_id": str(apt.id),
+            "body": "Patient arrived 10 minutes late",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+
+
+@pytest.mark.asyncio
+async def test_appointment_note_resolves_to_patient_in_feed(
+    client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+):
+    ctx = await _seed_clinic_and_patient(db_session, client, auth_headers)
+    me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    user_id = UUID(me.json()["data"]["user"]["id"])
+    apt = await _seed_appointment(
+        db_session, UUID(ctx["clinic_id"]), UUID(ctx["patient_id"]), user_id
+    )
+
+    await client.post(
+        "/api/v1/clinical_notes/notes",
+        headers=auth_headers,
+        json={
+            "note_type": "appointment_clinical",
+            "owner_type": "appointment",
+            "owner_id": str(apt.id),
+            "body": "Visible in patient feed via appointment owner",
+        },
+    )
+
+    recent = await client.get(
+        f"/api/v1/clinical_notes/patients/{ctx['patient_id']}/recent",
+        headers=auth_headers,
+    )
+    assert recent.status_code == 200
+    bodies = [e["body"] for e in recent.json()["data"]]
+    assert any("Visible in patient feed" in b for b in bodies)
+
+
+@pytest.mark.asyncio
+async def test_matrix_rejects_appointment_clinical_on_patient(
+    client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+):
+    ctx = await _seed_clinic_and_patient(db_session, client, auth_headers)
+    resp = await client.post(
+        "/api/v1/clinical_notes/notes",
+        headers=auth_headers,
+        json={
+            "note_type": "appointment_clinical",
+            "owner_type": "patient",
+            "owner_id": ctx["patient_id"],
+            "body": "should fail",
+        },
+    )
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
+async def test_appointment_owner_404_when_not_found(
+    client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+):
+    await _seed_clinic_and_patient(db_session, client, auth_headers)
+    fake_id = str(uuid4())
+    resp = await client.post(
+        "/api/v1/clinical_notes/notes",
+        headers=auth_headers,
+        json={
+            "note_type": "appointment_clinical",
+            "owner_type": "appointment",
+            "owner_id": fake_id,
+            "body": "no appointment",
+        },
+    )
+    assert resp.status_code == 404, resp.text
+
+
+@pytest.mark.asyncio
+async def test_appointment_response_no_legacy_notes_field(
+    client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+):
+    """ag_0005 dropped the column — the API must not expose ``notes`` anymore."""
+    ctx = await _seed_clinic_and_patient(db_session, client, auth_headers)
+    me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    user_id = UUID(me.json()["data"]["user"]["id"])
+    apt = await _seed_appointment(
+        db_session, UUID(ctx["clinic_id"]), UUID(ctx["patient_id"]), user_id
+    )
+
+    resp = await client.get(f"/api/v1/agenda/appointments/{apt.id}", headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert "notes" not in resp.json()["data"]

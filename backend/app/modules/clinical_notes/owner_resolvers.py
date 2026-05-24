@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.agenda.models import Appointment
 from app.modules.media.attachment_registry import OwnerSpec, attachment_registry
 from app.modules.odontogram.models import Treatment
 from app.modules.patients.models import Patient
@@ -56,6 +57,17 @@ async def _resolve_plan(db: AsyncSession, clinic_id: UUID, owner_id: UUID) -> UU
     return row[0] if row else None
 
 
+async def _resolve_appointment(db: AsyncSession, clinic_id: UUID, owner_id: UUID) -> UUID | None:
+    result = await db.execute(
+        select(Appointment.patient_id).where(
+            Appointment.id == owner_id,
+            Appointment.clinic_id == clinic_id,
+        )
+    )
+    row = result.first()
+    return row[0] if row else None
+
+
 async def _resolve_clinical_note(db: AsyncSession, clinic_id: UUID, owner_id: UUID) -> UUID | None:
     """A note's patient = the patient reachable from its own owner."""
     result = await db.execute(
@@ -75,6 +87,8 @@ async def _resolve_clinical_note(db: AsyncSession, clinic_id: UUID, owner_id: UU
         return await _resolve_treatment(db, clinic_id, note_owner_id)
     if note_owner_type == "plan":
         return await _resolve_plan(db, clinic_id, note_owner_id)
+    if note_owner_type == "appointment":
+        return await _resolve_appointment(db, clinic_id, note_owner_id)
     return None
 
 
@@ -84,6 +98,7 @@ def register() -> None:
         OwnerSpec(owner_type="patient", resolver=_resolve_patient, label="Paciente"),
         OwnerSpec(owner_type="treatment", resolver=_resolve_treatment, label="Tratamiento"),
         OwnerSpec(owner_type="plan", resolver=_resolve_plan, label="Plan de tratamiento"),
+        OwnerSpec(owner_type="appointment", resolver=_resolve_appointment, label="Cita"),
         OwnerSpec(
             owner_type="clinical_note",
             resolver=_resolve_clinical_note,

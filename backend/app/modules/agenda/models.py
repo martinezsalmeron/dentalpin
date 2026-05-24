@@ -107,7 +107,6 @@ class Appointment(Base, TimestampMixin):
     current_status_since: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    notes: Mapped[str | None] = mapped_column(Text)
     color: Mapped[str | None] = mapped_column(String(7))
 
     clinic: Mapped[Clinic] = relationship(back_populates="appointments")

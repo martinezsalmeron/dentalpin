@@ -247,7 +247,6 @@ export interface Appointment {
   treatments?: AppointmentTreatmentBrief[] // New: treatments from catalog
   status: AppointmentStatus
   current_status_since: string
-  notes?: string
   color?: string
   created_at: string
   updated_at: string
@@ -267,7 +266,6 @@ export interface AppointmentCreate {
   end_time: string
   treatment_type?: string // Legacy field
   planned_item_ids?: string[] // List of PlannedTreatmentItem IDs
-  notes?: string
   color?: string
 }
 
@@ -2132,8 +2130,10 @@ export type NoteType
     | 'diagnosis'
     | 'treatment'
     | 'treatment_plan'
+    | 'appointment_clinical'
+    | 'appointment_administrative'
 
-export type ClinicalNoteOwnerType = 'patient' | 'treatment' | 'plan'
+export type ClinicalNoteOwnerType = 'patient' | 'treatment' | 'plan' | 'appointment'
 export type AttachmentOwnerType = ClinicalNoteOwnerType | 'clinical_note'
 
 export interface NoteAttachment {
@@ -2163,6 +2163,7 @@ export interface ClinicalNote {
   tooth_number: number | null
   body: string
   author_id: string
+  author?: ClinicalNoteAuthor | null
   created_at: string
   updated_at: string
   attachments: NoteAttachment[]
@@ -2196,7 +2197,7 @@ export interface ClinicalNoteAuthor {
 }
 
 export interface ClinicalNoteLinked {
-  kind: 'patient' | 'treatment' | 'plan'
+  kind: 'patient' | 'treatment' | 'plan' | 'appointment'
   id: string | null
   label: string | null
   tooth_number: number | null

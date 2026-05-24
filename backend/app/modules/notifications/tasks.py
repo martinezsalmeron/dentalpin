@@ -130,7 +130,6 @@ async def process_appointment_reminders() -> None:
                         "clinic_name": clinic.name if clinic else "DentalPin",
                         "clinic_phone": clinic.phone if clinic else None,
                         "clinic_address": clinic.address if clinic else None,
-                        "notes": appointment.notes,
                         "appointment_id": str(appointment.id),  # For duplicate check
                     }
 
@@ -229,7 +228,6 @@ async def send_single_reminder(appointment_id: UUID, clinic_id: UUID) -> bool:
                 "clinic_name": clinic.name if clinic else "DentalPin",
                 "clinic_phone": clinic.phone if clinic else None,
                 "clinic_address": clinic.address if clinic else None,
-                "notes": appointment.notes,
                 "appointment_id": str(appointment.id),
             }
 

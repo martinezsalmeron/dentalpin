@@ -683,7 +683,6 @@ class AppointmentService:
             "cabinet": appointment.cabinet,
             "start_time": appointment.start_time.isoformat(),
             "end_time": appointment.end_time.isoformat(),
-            "notes": appointment.notes,
             "from_status": from_status,
             "to_status": to_status,
             "changed_at": now.isoformat(),

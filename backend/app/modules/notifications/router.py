@@ -376,7 +376,6 @@ async def send_notification(
 
         context["appointment_date"] = appointment.start_time.strftime("%d/%m/%Y")
         context["appointment_time"] = appointment.start_time.strftime("%H:%M")
-        context["notes"] = appointment.notes
 
         # Get professional
         if appointment.professional_id:

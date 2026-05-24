@@ -2431,7 +2431,6 @@ def generate_appointments_data(plans_result: dict, reference_date: date | None =
                     "end_time": end_time,
                     "treatment_type": t(look["name"]),
                     "status": appt_scenario["status"],
-                    "notes": None,
                     "color": look["color"],
                 }
             )

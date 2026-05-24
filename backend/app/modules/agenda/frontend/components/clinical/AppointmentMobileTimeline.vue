@@ -27,6 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, locale } = useI18n()
+const notesIndicator = useAppointmentNotesIndicator()
 
 function isFree(e: TimelineEntry): e is FreeSlotEntry { return e.type === 'free' }
 function isBusy(e: TimelineEntry): e is BusyEntry { return e.type === 'busy' }
@@ -125,6 +126,12 @@ function entryKey(e: TimelineEntry, i: number): string {
             <span class="text-ui text-default truncate font-medium">
               {{ patientName(entry.appointment) }}
             </span>
+            <UIcon
+              v-if="notesIndicator.has(entry.appointment.id)"
+              name="i-lucide-sticky-note"
+              class="w-3.5 h-3.5 text-primary shrink-0"
+              :title="t('appointments.hasNotes', 'Tiene notas')"
+            />
           </div>
           <div class="flex items-center gap-2 flex-wrap text-caption text-subtle">
             <span

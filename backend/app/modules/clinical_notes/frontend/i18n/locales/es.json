@@ -4,7 +4,13 @@
       "administrative": "Administrativa",
       "diagnosis": "Diagnóstico",
       "treatment": "Tratamiento",
-      "treatment_plan": "Plan"
+      "treatment_plan": "Plan",
+      "appointment_clinical": "Clínica",
+      "appointment_administrative": "Administrativa"
+    },
+    "appointment": {
+      "addByType": "Añadir nota {label}",
+      "empty": "Sin notas en esta cita. Usa los botones de arriba para añadir una."
     },
     "feed": {
       "filterLabel": "Filtros",

@@ -740,6 +740,7 @@
     "selectTreatment": "Seleccionar tratamiento",
     "estimatedDuration": "Duración estimada",
     "notes": "Notas",
+    "hasNotes": "Tiene notas",
     "status": {
       "label": "Estado",
       "scheduled": "Programada",
@@ -782,7 +783,6 @@
     "transitionFailed": "No se pudo cambiar el estado de la cita",
     "when": "Cuándo",
     "whereWho": "Gabinete y profesional",
-    "notesPlaceholder": "Detalles internos para el equipo",
     "followup": {
       "title": "Acciones tras finalizar la cita"
     },

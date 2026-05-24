@@ -6,19 +6,25 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .models import (
+    NOTE_OWNER_APPOINTMENT,
     NOTE_OWNER_PATIENT,
     NOTE_OWNER_PLAN,
     NOTE_OWNER_TREATMENT,
     NOTE_OWNER_TYPES,
     NOTE_TYPE_ADMINISTRATIVE,
+    NOTE_TYPE_APPOINTMENT_ADMINISTRATIVE,
+    NOTE_TYPE_APPOINTMENT_CLINICAL,
     NOTE_TYPE_DIAGNOSIS,
     NOTE_TYPE_TREATMENT,
     NOTE_TYPE_TREATMENT_PLAN,
     NOTE_TYPES,
 )
 
-NOTE_TYPE_PATTERN = "^(administrative|diagnosis|treatment|treatment_plan)$"
-NOTE_OWNER_PATTERN = "^(patient|treatment|plan)$"
+NOTE_TYPE_PATTERN = (
+    "^(administrative|diagnosis|treatment|treatment_plan"
+    "|appointment_clinical|appointment_administrative)$"
+)
+NOTE_OWNER_PATTERN = "^(patient|treatment|plan|appointment)$"
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +70,8 @@ _TYPE_OWNER_MATRIX: dict[str, str] = {
     NOTE_TYPE_DIAGNOSIS: NOTE_OWNER_PATIENT,
     NOTE_TYPE_TREATMENT: NOTE_OWNER_TREATMENT,
     NOTE_TYPE_TREATMENT_PLAN: NOTE_OWNER_PLAN,
+    NOTE_TYPE_APPOINTMENT_CLINICAL: NOTE_OWNER_APPOINTMENT,
+    NOTE_TYPE_APPOINTMENT_ADMINISTRATIVE: NOTE_OWNER_APPOINTMENT,
 }
 
 
@@ -111,6 +119,7 @@ class ClinicalNoteResponse(BaseModel):
     tooth_number: int | None
     body: str
     author_id: UUID
+    author: "AuthorBrief | None" = None
     created_at: datetime
     updated_at: datetime
     attachments: list[NoteAttachmentResponse] = Field(default_factory=list)
@@ -129,6 +138,10 @@ class AuthorBrief(BaseModel):
     id: UUID
     full_name: str | None = None
     email: str | None = None
+
+
+# Resolve forward reference declared on ClinicalNoteResponse.author.
+ClinicalNoteResponse.model_rebuild()
 
 
 class LinkedEntityBrief(BaseModel):

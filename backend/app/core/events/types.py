@@ -168,6 +168,13 @@ class EventType:
     CLINICAL_NOTE_DIAGNOSIS_CREATED = "clinical_notes.diagnosis_created"
     CLINICAL_NOTE_TREATMENT_CREATED = "clinical_notes.treatment_created"
     CLINICAL_NOTE_PLAN_CREATED = "clinical_notes.plan_created"
+    # Appointment-owner notes. Payload mirrors the other four — patient_id
+    # is resolved via the appointment's patient_id so subscribers
+    # (patient_timeline) don't need to know about the agenda model.
+    CLINICAL_NOTE_APPOINTMENT_CLINICAL_CREATED = "clinical_notes.appointment_clinical_created"
+    CLINICAL_NOTE_APPOINTMENT_ADMINISTRATIVE_CREATED = (
+        "clinical_notes.appointment_administrative_created"
+    )
 
     # Visit-level note event (agenda module — reuses AppointmentTreatment.notes)
     AGENDA_VISIT_NOTE_UPDATED = "agenda.visit_note_updated"

@@ -12,6 +12,8 @@ Owner / type matrix:
 | ``diagnosis``      | ``patient``    | ``patients.id`` (optional tooth) |
 | ``treatment``      | ``treatment``  | ``treatments.id`` (odontogram)   |
 | ``treatment_plan`` | ``plan``       | ``treatment_plans.id``           |
+| ``appointment_clinical``       | ``appointment`` | ``appointments.id``      |
+| ``appointment_administrative`` | ``appointment`` | ``appointments.id``      |
 
 ``owner_id`` has no DB-level FK (polymorphic) — the service layer validates
 that the owner exists in the same clinic before insert.
@@ -48,18 +50,28 @@ NOTE_TYPE_ADMINISTRATIVE = "administrative"
 NOTE_TYPE_DIAGNOSIS = "diagnosis"
 NOTE_TYPE_TREATMENT = "treatment"
 NOTE_TYPE_TREATMENT_PLAN = "treatment_plan"
+NOTE_TYPE_APPOINTMENT_CLINICAL = "appointment_clinical"
+NOTE_TYPE_APPOINTMENT_ADMINISTRATIVE = "appointment_administrative"
 NOTE_TYPES = (
     NOTE_TYPE_ADMINISTRATIVE,
     NOTE_TYPE_DIAGNOSIS,
     NOTE_TYPE_TREATMENT,
     NOTE_TYPE_TREATMENT_PLAN,
+    NOTE_TYPE_APPOINTMENT_CLINICAL,
+    NOTE_TYPE_APPOINTMENT_ADMINISTRATIVE,
 )
 
 # Owner types — what ``owner_id`` references.
 NOTE_OWNER_PATIENT = "patient"
 NOTE_OWNER_TREATMENT = "treatment"
 NOTE_OWNER_PLAN = "plan"
-NOTE_OWNER_TYPES = (NOTE_OWNER_PATIENT, NOTE_OWNER_TREATMENT, NOTE_OWNER_PLAN)
+NOTE_OWNER_APPOINTMENT = "appointment"
+NOTE_OWNER_TYPES = (
+    NOTE_OWNER_PATIENT,
+    NOTE_OWNER_TREATMENT,
+    NOTE_OWNER_PLAN,
+    NOTE_OWNER_APPOINTMENT,
+)
 
 
 if TYPE_CHECKING:
@@ -80,7 +92,7 @@ class ClinicalNote(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
 
-    note_type: Mapped[str] = mapped_column(String(20))
+    note_type: Mapped[str] = mapped_column(String(40))
     owner_type: Mapped[str] = mapped_column(String(20))
     owner_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True))
 
@@ -99,11 +111,12 @@ class ClinicalNote(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "note_type IN ('administrative', 'diagnosis', 'treatment', 'treatment_plan')",
+            "note_type IN ('administrative', 'diagnosis', 'treatment', "
+            "'treatment_plan', 'appointment_clinical', 'appointment_administrative')",
             name="ck_clinical_notes_note_type",
         ),
         CheckConstraint(
-            "owner_type IN ('patient', 'treatment', 'plan')",
+            "owner_type IN ('patient', 'treatment', 'plan', 'appointment')",
             name="ck_clinical_notes_owner_type",
         ),
         CheckConstraint(
@@ -111,6 +124,10 @@ class ClinicalNote(Base, TimestampMixin):
             "OR (note_type = 'diagnosis' AND owner_type = 'patient') "
             "OR (note_type = 'treatment' AND owner_type = 'treatment' AND tooth_number IS NULL) "
             "OR (note_type = 'treatment_plan' AND owner_type = 'plan' "
+            "AND tooth_number IS NULL) "
+            "OR (note_type = 'appointment_clinical' AND owner_type = 'appointment' "
+            "AND tooth_number IS NULL) "
+            "OR (note_type = 'appointment_administrative' AND owner_type = 'appointment' "
             "AND tooth_number IS NULL)",
             name="ck_clinical_notes_type_owner_matrix",
         ),

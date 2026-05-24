@@ -35,6 +35,18 @@ const META: Record<NoteType, NoteTypeMeta> = {
     icon: 'i-lucide-list-checks',
     labelKey: 'clinicalNotes.types.treatment_plan',
     templateCategory: 'general'
+  },
+  appointment_clinical: {
+    color: 'info',
+    icon: 'i-lucide-stethoscope',
+    labelKey: 'clinicalNotes.types.appointment_clinical',
+    templateCategory: 'general'
+  },
+  appointment_administrative: {
+    color: 'neutral',
+    icon: 'i-lucide-user-cog',
+    labelKey: 'clinicalNotes.types.appointment_administrative',
+    templateCategory: 'administrative'
   }
 }
 
@@ -42,7 +54,9 @@ const ALL_TYPES: NoteType[] = [
   'administrative',
   'diagnosis',
   'treatment',
-  'treatment_plan'
+  'treatment_plan',
+  'appointment_clinical',
+  'appointment_administrative'
 ]
 
 /**

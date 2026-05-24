@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- feat(notes)!: appointment notes promoted to the polymorphic
+  ``clinical_notes`` store. The legacy free-text
+  ``appointments.notes`` column is **dropped** (``ag_0005``); the
+  ``Notes`` section of ``AppointmentModal`` becomes an
+  ``appointment.detail.notes`` slot that ``clinical_notes`` fills with
+  ``AppointmentNotesPanel`` (Clínica + Administrativa buttons +
+  cronological feed). Patient-facing email templates stop carrying
+  the free-text ``notes`` context key (it was internal-only by intent).
+  Migration is pre-prod: no data backfill — reset dev with
+  ``./scripts/reset-db.sh && ./scripts/seed-demo.sh``.
 - feat(ux): `AppointmentModal` header now exposes an "Abrir ficha"
   link next to the selected patient's name. Closes the modal and
   navigates to `/patients/{id}` so receptionists/dentists can jump

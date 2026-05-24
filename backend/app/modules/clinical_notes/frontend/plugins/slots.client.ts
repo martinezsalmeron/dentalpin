@@ -49,4 +49,16 @@ export default defineNuxtPlugin(() => {
     order: 10,
     permission: 'clinical_notes.notes.read'
   })
+
+  // Agenda appointment modal — clinical + administrative notes per
+  // appointment. ``agenda`` exposes the slot point and never imports
+  // this module.
+  registerSlot('appointment.detail.notes', {
+    id: 'clinical_notes.appointment.detail.notes',
+    component: defineAsyncComponent(
+      () => import('../components/AppointmentNotesPanel.vue')
+    ),
+    order: 10,
+    permission: 'clinical_notes.notes.read'
+  })
 })

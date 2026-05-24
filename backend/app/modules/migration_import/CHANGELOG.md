@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- feat(appointment): free-text ``appointment.notes`` in the DPMF
+  payload is now routed to a polymorphic ``ClinicalNote`` row
+  (``owner_type='appointment'``,
+  ``note_type='appointment_administrative'``) instead of the legacy
+  ``appointments.notes`` column dropped in ``ag_0005``. Default
+  bucket is *administrative* (Gesdén notes typically carry reception
+  memos). Idempotent under the synthetic ``appointment_note`` entity
+  type so re-runs do not duplicate. ``author_id`` prefers the
+  resolved professional; falls back to the import actor (``ctx.created_by``).
 - feat(patient): mapper now also hydrates ``phone``, ``email`` and
   ``address`` (JSONB ``{street, postal_code}``) from the DPMF. Patient-level
   fields (dental-bridge ``0.0.3``+ adds them under ``Pacientes.*``) win
