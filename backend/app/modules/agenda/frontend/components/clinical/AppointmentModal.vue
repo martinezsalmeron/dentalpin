@@ -821,7 +821,7 @@ function openPatientFile() {
                   {{ t('appointments.sendEmail') }}
                 </UButton>
                 <template #content>
-                  <UDropdownMenuContent>
+                  <UDropdownMenuGroup>
                     <UDropdownMenuItem
                       icon="i-lucide-check-circle"
                       @click="sendConfirmation(appointment!.id, appointment!.patient_id!)"
@@ -834,7 +834,7 @@ function openPatientFile() {
                     >
                       {{ t('appointments.sendReminderEmail') }}
                     </UDropdownMenuItem>
-                  </UDropdownMenuContent>
+                  </UDropdownMenuGroup>
                 </template>
               </UDropdownMenu>
             </div>

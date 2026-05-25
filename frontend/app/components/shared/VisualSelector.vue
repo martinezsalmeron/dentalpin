@@ -160,6 +160,7 @@ defineExpose({
       :placeholder="placeholder || t('selector.typeToSearch')"
       icon="i-lucide-search"
       :loading="isSearching"
+      data-testid="visual-selector-input"
       @focus="handleFocus"
       @blur="handleBlur"
       @keydown="handleKeydown"
