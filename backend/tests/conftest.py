@@ -59,6 +59,11 @@ from app.modules.payments.models import (  # noqa: F401
     PaymentHistory,
     Refund,
 )
+from app.modules.periodontogram.models import (  # noqa: F401
+    PeriodontogramSite,
+    PeriodontogramSnapshot,
+    PeriodontogramTooth,
+)
 from app.modules.recalls.models import (  # noqa: F401
     Recall,
     RecallContactAttempt,
