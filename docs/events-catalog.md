@@ -63,9 +63,9 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `odontogram.tooth.updated` | `EventType.ODONTOGRAM_TOOTH_UPDATED` | — | — |
 | `odontogram.treatment.added` | `EventType.ODONTOGRAM_TREATMENT_ADDED` | `odontogram` | — |
 | `odontogram.treatment.deleted` | `EventType.ODONTOGRAM_TREATMENT_DELETED` | `odontogram` | — |
-| `odontogram.treatment.performed` | `EventType.ODONTOGRAM_TREATMENT_PERFORMED` | `odontogram` | `budget`, `patient_timeline`, `payments`, `treatment_plan` |
+| `odontogram.treatment.performed` | `EventType.ODONTOGRAM_TREATMENT_PERFORMED` | `odontogram` | `budget`, `patient_timeline`, `payments`, `periodontogram`, `treatment_plan` |
 | `odontogram.treatment.status_changed` | `EventType.ODONTOGRAM_TREATMENT_STATUS_CHANGED` | `odontogram` | — |
-| `patient.archived` | `EventType.PATIENT_ARCHIVED` | `patients` | `media`, `recalls` |
+| `patient.archived` | `EventType.PATIENT_ARCHIVED` | `patients` | `media`, `periodontogram`, `recalls` |
 | `patient.created` | `EventType.PATIENT_CREATED` | `patients` | `notifications` |
 | `patient.medical_updated` | `EventType.PATIENT_MEDICAL_UPDATED` | `patients_clinical` | `patient_timeline` |
 | `patient.updated` | `EventType.PATIENT_UPDATED` | `patients` | — |
@@ -494,6 +494,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
   - `budget`
   - `patient_timeline`
   - `payments`
+  - `periodontogram`
   - `treatment_plan`
 
 ### `odontogram.treatment.status_changed`
@@ -510,6 +511,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
   - `patients` — `backend/app/modules/patients/service.py:255`
 - **Subscribers:**
   - `media`
+  - `periodontogram`
   - `recalls`
 
 ### `patient.created`

@@ -40,6 +40,12 @@ SCHEDULES_TABLES = {
     "schedule_shifts",
 }
 
+PERIODONTOGRAM_TABLES = {
+    "periodontogram_snapshots",
+    "periodontogram_teeth",
+    "periodontogram_sites",
+}
+
 
 def _alembic(*args: str) -> None:
     subprocess.run(
@@ -94,6 +100,38 @@ def test_schedules_uninstall_roundtrip_is_branch_scoped() -> None:
 
     # Reinstall via the same branch head the processor uses for install.
     _alembic("upgrade", "schedules@head")
+    after_up = _list_tables()
+    assert before <= after_up, (
+        f"reinstall did not restore every table; missing: {before - after_up}"
+    )
+
+
+def test_periodontogram_uninstall_roundtrip_is_branch_scoped() -> None:
+    """install → uninstall → reinstall drops only periodontogram's tables.
+
+    Mirrors the schedules round-trip: the partial unique index protecting
+    the single-draft invariant must also be re-created cleanly. The module
+    ships one revision so ``periodontogram@-1`` is equivalent to ``base``.
+    """
+    _alembic("upgrade", "heads")
+    before = _list_tables()
+    assert PERIODONTOGRAM_TABLES.issubset(before), (
+        f"expected periodontogram tables at heads; missing: {PERIODONTOGRAM_TABLES - before}"
+    )
+    baseline_non_periodontogram = before - PERIODONTOGRAM_TABLES
+
+    _alembic("downgrade", "periodontogram@-1")
+
+    after_down = _list_tables()
+    assert PERIODONTOGRAM_TABLES.isdisjoint(after_down), (
+        f"periodontogram tables survived downgrade: {PERIODONTOGRAM_TABLES & after_down}"
+    )
+    assert baseline_non_periodontogram <= after_down, (
+        "downgrade leaked into other modules; missing tables: "
+        f"{baseline_non_periodontogram - after_down}"
+    )
+
+    _alembic("upgrade", "periodontogram@head")
     after_up = _list_tables()
     assert before <= after_up, (
         f"reinstall did not restore every table; missing: {before - after_up}"
