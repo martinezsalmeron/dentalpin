@@ -51,13 +51,17 @@ class ProposalsService:
         # Seed an in-memory cache of canonical_uuids already proposed
         # so we don't double-write on a re-call.
         existing_rows = (
-            await db.execute(
-                select(MappingDecision.canonical_uuid).where(
-                    MappingDecision.job_id == job.id,
-                    MappingDecision.entity_type == _PROPOSAL_ENTITY_TYPE,
+            (
+                await db.execute(
+                    select(MappingDecision.canonical_uuid).where(
+                        MappingDecision.job_id == job.id,
+                        MappingDecision.entity_type == _PROPOSAL_ENTITY_TYPE,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         already_proposed = set(existing_rows)
 
         # The mapper expects a full MapperContext including a resolver.
@@ -148,9 +152,7 @@ class ProposalsService:
             base_filters.append(MappingDecision.proposed_action == proposed_action)
 
         total = (
-            await db.execute(
-                select(func.count(MappingDecision.id)).where(*base_filters)
-            )
+            await db.execute(select(func.count(MappingDecision.id)).where(*base_filters))
         ).scalar_one()
         result = await db.execute(
             select(MappingDecision)
@@ -189,9 +191,7 @@ class ProposalsService:
             return None
 
         decision.operator_action = operator_action
-        decision.operator_target_id = (
-            operator_target_id if operator_action == "relinked" else None
-        )
+        decision.operator_target_id = operator_target_id if operator_action == "relinked" else None
         decision.operator_target_category_key = (
             operator_target_category_key if operator_action == "create_new" else None
         )

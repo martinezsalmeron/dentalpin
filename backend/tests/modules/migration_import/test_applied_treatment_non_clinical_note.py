@@ -13,7 +13,6 @@ points at one of these.
 
 from __future__ import annotations
 
-import json
 from uuid import uuid4
 
 import pytest
@@ -122,12 +121,16 @@ async def test_no_catalog_variant_lands_as_clinical_note(db_session) -> None:
     await db_session.flush()
 
     notes = (
-        await db_session.execute(
-            select(ClinicalNote).where(
-                ClinicalNote.owner_type == "patient", ClinicalNote.owner_id == patient.id
+        (
+            await db_session.execute(
+                select(ClinicalNote).where(
+                    ClinicalNote.owner_type == "patient", ClinicalNote.owner_id == patient.id
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(notes) == 1
     note = notes[0]
     assert note.note_type == "administrative"
@@ -135,14 +138,20 @@ async def test_no_catalog_variant_lands_as_clinical_note(db_session) -> None:
     assert note.author_id == admin.id
 
     treatments = (
-        await db_session.execute(select(Treatment).where(Treatment.patient_id == patient.id))
-    ).scalars().all()
+        (await db_session.execute(select(Treatment).where(Treatment.patient_id == patient.id)))
+        .scalars()
+        .all()
+    )
     assert treatments == []
     plan_items = (
-        await db_session.execute(
-            select(PlannedTreatmentItem).where(PlannedTreatmentItem.clinic_id == clinic.id)
+        (
+            await db_session.execute(
+                select(PlannedTreatmentItem).where(PlannedTreatmentItem.clinic_id == clinic.id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert plan_items == []
 
     # Resolver registers the canonical as a clinical_notes target so
@@ -173,10 +182,10 @@ async def test_non_clinical_tipo_odg_lands_as_clinical_note(db_session) -> None:
     await db_session.flush()
 
     notes = (
-        await db_session.execute(
-            select(ClinicalNote).where(ClinicalNote.owner_id == patient.id)
-        )
-    ).scalars().all()
+        (await db_session.execute(select(ClinicalNote).where(ClinicalNote.owner_id == patient.id)))
+        .scalars()
+        .all()
+    )
     assert len(notes) == 1
     assert notes[0].body == "Comentario clínico libre del receptionista"
 
@@ -201,10 +210,10 @@ async def test_empty_notes_marks_skipped_no_writes(db_session) -> None:
     await db_session.flush()
 
     notes = (
-        await db_session.execute(
-            select(ClinicalNote).where(ClinicalNote.owner_id == patient.id)
-        )
-    ).scalars().all()
+        (await db_session.execute(select(ClinicalNote).where(ClinicalNote.owner_id == patient.id)))
+        .scalars()
+        .all()
+    )
     assert notes == []
     assert await ctx.resolver.was_skipped("applied_treatment", canonical)
 
@@ -237,10 +246,10 @@ async def test_reimport_is_idempotent(db_session) -> None:
     await db_session.flush()
 
     notes = (
-        await db_session.execute(
-            select(ClinicalNote).where(ClinicalNote.owner_id == patient.id)
-        )
-    ).scalars().all()
+        (await db_session.execute(select(ClinicalNote).where(ClinicalNote.owner_id == patient.id)))
+        .scalars()
+        .all()
+    )
     assert len(notes) == 1
 
 
@@ -264,10 +273,10 @@ async def test_warning_emitted_for_non_clinical_entry(db_session) -> None:
     await db_session.flush()
 
     warnings = (
-        await db_session.execute(
-            select(ImportWarning).where(ImportWarning.job_id == ctx.job_id)
-        )
-    ).scalars().all()
+        (await db_session.execute(select(ImportWarning).where(ImportWarning.job_id == ctx.job_id)))
+        .scalars()
+        .all()
+    )
     codes = {w.code for w in warnings}
     assert "applied_treatment.non_clinical_entry" in codes
 
@@ -311,8 +320,6 @@ async def test_professional_uuid_becomes_note_author(db_session) -> None:
     await db_session.flush()
 
     note = (
-        await db_session.execute(
-            select(ClinicalNote).where(ClinicalNote.owner_id == patient.id)
-        )
+        await db_session.execute(select(ClinicalNote).where(ClinicalNote.owner_id == patient.id))
     ).scalar_one()
     assert note.author_id == dentist.id

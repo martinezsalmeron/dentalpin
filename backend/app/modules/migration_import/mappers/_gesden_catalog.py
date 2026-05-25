@@ -66,17 +66,17 @@ CATEGORY_MIGRATED: Final[str] = "migrado_gesden"
 # ---------------------------------------------------------------------------
 GESDEN_TIPO_ODG_TO_CLINICAL_TYPE: Final[dict[int, str | None]] = {
     # 1-6: tooth state markers (not treatments)
-    1: None,   # Piezas Iniciales
-    2: None,   # Posición Diente
-    3: None,   # Rotación Diente
-    4: None,   # Pieza Niño
-    5: None,   # Pieza Adulto
-    6: None,   # SuperNumeraria
+    1: None,  # Piezas Iniciales
+    2: None,  # Posición Diente
+    3: None,  # Rotación Diente
+    4: None,  # Pieza Niño
+    5: None,  # Pieza Adulto
+    6: None,  # SuperNumeraria
     # 7-8: orthodontic appliances
     7: TreatmentType.BAND.value,
     8: TreatmentType.BRACKET.value,
     # 9-14: admin / non-clinical
-    9: None,   # Nuevo Paciente
+    9: None,  # Nuevo Paciente
     10: None,  # Visita No Atendida
     11: None,  # Anotación
     12: None,  # Nota Económica
@@ -109,7 +109,7 @@ GESDEN_TIPO_ODG_TO_CLINICAL_TYPE: Final[dict[int, str | None]] = {
     # 44-46: implant lifecycle
     44: TreatmentType.EXTRACTION.value,  # Rechazo Implante (removal)
     45: TreatmentType.EXTRACTION.value,  # Retirada Implante
-    46: TreatmentType.IMPLANT.value,     # Reposición Implante
+    46: TreatmentType.IMPLANT.value,  # Reposición Implante
 }
 
 
@@ -219,11 +219,13 @@ GESDEN_TIPO_ODG_TO_CATEGORY_KEY: Final[dict[int, str]] = {
 # IdTipoODG values that imply surface-level selection on the odontogram.
 # Mapped to ``requires_surfaces=True`` on the destination catalog item.
 # ---------------------------------------------------------------------------
-GESDEN_REQUIRES_SURFACES: Final[frozenset[int]] = frozenset({
-    22,  # Obturaciones — M/O/D/V/L surfaces
-    32,  # Sellado — occlusal (and pits/fissures)
-    33,  # Carilla — vestibular
-})
+GESDEN_REQUIRES_SURFACES: Final[frozenset[int]] = frozenset(
+    {
+        22,  # Obturaciones — M/O/D/V/L surfaces
+        32,  # Sellado — occlusal (and pits/fissures)
+        33,  # Carilla — vestibular
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -231,18 +233,20 @@ GESDEN_REQUIRES_SURFACES: Final[frozenset[int]] = frozenset({
 # affected piece). Used to pick pricing_strategy when creating an inferred
 # catalog item.
 # ---------------------------------------------------------------------------
-PER_TOOTH_CLINICAL_TYPES: Final[frozenset[str]] = frozenset({
-    TreatmentType.CROWN.value,
-    TreatmentType.CROWN_ON_IMPLANT.value,
-    TreatmentType.PROVISIONAL_CROWN_ON_IMPLANT.value,
-    TreatmentType.VENEER.value,
-    TreatmentType.IMPLANT.value,
-    TreatmentType.BRACKET.value,
-    TreatmentType.BAND.value,
-    TreatmentType.TUBE.value,
-    TreatmentType.ATTACHMENT.value,
-    TreatmentType.SEALANT.value,
-})
+PER_TOOTH_CLINICAL_TYPES: Final[frozenset[str]] = frozenset(
+    {
+        TreatmentType.CROWN.value,
+        TreatmentType.CROWN_ON_IMPLANT.value,
+        TreatmentType.PROVISIONAL_CROWN_ON_IMPLANT.value,
+        TreatmentType.VENEER.value,
+        TreatmentType.IMPLANT.value,
+        TreatmentType.BRACKET.value,
+        TreatmentType.BAND.value,
+        TreatmentType.TUBE.value,
+        TreatmentType.ATTACHMENT.value,
+        TreatmentType.SEALANT.value,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -426,23 +430,56 @@ def pricing_strategy_for(
 # core tables. Drift would otherwise silently dump entries into
 # ``migrado_gesden``.
 # ---------------------------------------------------------------------------
-_DOCUMENTED_TIPO_ODG: Final[frozenset[int]] = frozenset({
-    1, 2, 3, 4, 5, 6,
-    7, 8,
-    9, 10, 11, 12, 13, 14,
-    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-    38, 39, 40, 41, 42,
-    44, 45, 46,
-})
+_DOCUMENTED_TIPO_ODG: Final[frozenset[int]] = frozenset(
+    {
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        44,
+        45,
+        46,
+    }
+)
 
 assert _DOCUMENTED_TIPO_ODG == GESDEN_TIPO_ODG_TO_CLINICAL_TYPE.keys(), (
     "GESDEN_TIPO_ODG_TO_CLINICAL_TYPE drift: "
     f"missing={_DOCUMENTED_TIPO_ODG - GESDEN_TIPO_ODG_TO_CLINICAL_TYPE.keys()} "
     f"extra={GESDEN_TIPO_ODG_TO_CLINICAL_TYPE.keys() - _DOCUMENTED_TIPO_ODG}"
 )
-assert _DOCUMENTED_TIPO_ODG == GESDEN_TIPO_ODG_TO_SCOPE.keys(), (
-    "GESDEN_TIPO_ODG_TO_SCOPE drift"
-)
+assert _DOCUMENTED_TIPO_ODG == GESDEN_TIPO_ODG_TO_SCOPE.keys(), "GESDEN_TIPO_ODG_TO_SCOPE drift"
 assert _DOCUMENTED_TIPO_ODG == GESDEN_TIPO_ODG_TO_CATEGORY_KEY.keys(), (
     "GESDEN_TIPO_ODG_TO_CATEGORY_KEY drift"
 )

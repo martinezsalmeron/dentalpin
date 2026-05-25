@@ -211,9 +211,7 @@ class CatalogItemMapper:
         # IGNORED — operator dropped this row. Mark as skipped so re-
         # runs short-circuit and downstream mappers see a clean miss.
         if effective_action == "ignored":
-            await ctx.resolver.mark_skipped(
-                "treatment_catalog_item", canonical_uuid, source_system
-            )
+            await ctx.resolver.mark_skipped("treatment_catalog_item", canonical_uuid, source_system)
             ctx.db.add(
                 ImportWarning(
                     job_id=ctx.job_id,
@@ -283,9 +281,7 @@ class CatalogItemMapper:
         """Public entry point for the proposals service. Returns
         ``(display_name, tipo_odg, proposal)`` without persisting.
         """
-        return await self._compute_proposal(
-            ctx, payload=payload, raw=raw, source_id=source_id
-        )
+        return await self._compute_proposal(ctx, payload=payload, raw=raw, source_id=source_id)
 
     async def _compute_proposal(
         self,
@@ -338,19 +334,27 @@ class CatalogItemMapper:
         infer_category_key = target_category_key or CATEGORY_MIGRATED
         if match is not None:
             matched_id, matched_label, was_fuzzy = match
-            return name, tipo_odg, Proposal(
-                action="fuzzy_link" if was_fuzzy else "link",
-                target_id=matched_id,
-                target_label=matched_label,
-                target_category_key=None,
-                score=1.0 if not was_fuzzy else None,
+            return (
+                name,
+                tipo_odg,
+                Proposal(
+                    action="fuzzy_link" if was_fuzzy else "link",
+                    target_id=matched_id,
+                    target_label=matched_label,
+                    target_category_key=None,
+                    score=1.0 if not was_fuzzy else None,
+                ),
             )
-        return name, tipo_odg, Proposal(
-            action="create",
-            target_id=None,
-            target_label=None,
-            target_category_key=infer_category_key,
-            score=None,
+        return (
+            name,
+            tipo_odg,
+            Proposal(
+                action="create",
+                target_id=None,
+                target_label=None,
+                target_category_key=infer_category_key,
+                score=None,
+            ),
         )
 
     async def _create_inferred_item(
@@ -597,11 +601,7 @@ class CatalogItemMapper:
         # Gesdén rows whose operator filed them under the wrong
         # IdTipoODG: e.g. a sealant filed under 22-Obturaciones still
         # finds PREV-SEAL when we widen the search.
-        if (
-            category_filter is not None
-            and snapshot is not full_snapshot
-            and best_id is None
-        ):
+        if category_filter is not None and snapshot is not full_snapshot and best_id is None:
             return await self._global_match(normalised, expanded_normalised, full_snapshot)
         return None
 

@@ -381,9 +381,7 @@ async def patch_proposal(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
     if decision is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="proposal not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="proposal not found")
     return ApiResponse(data=MappingDecisionResponse.model_validate(decision))
 
 

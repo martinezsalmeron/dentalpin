@@ -24,14 +24,12 @@ from app.core.auth.models import Clinic, ClinicMembership, User
 from app.database import async_session_maker
 from app.modules.billing.models import Invoice
 from app.modules.budget.models import Budget
-from app.modules.catalog.models import TreatmentCatalogItem
-from app.modules.migration_import.models import EntityMapping, ImportJob, ImportWarning
+from app.modules.migration_import.models import EntityMapping, ImportWarning
 from app.modules.migration_import.service import ImportJobService
 from app.modules.odontogram.models import Treatment
 from app.modules.patients.models import Patient
 from app.modules.payments.models import Payment
 from app.modules.treatment_plan.models import TreatmentPlan
-
 
 DEFAULT_FILTERS = {
     "professional_min_activity_months": 24,
@@ -46,9 +44,7 @@ async def run(dpmf_path: Path) -> None:
         clinic = (
             await db.execute(select(Clinic).order_by(Clinic.created_at).limit(1))
         ).scalar_one()
-        admin = (
-            await db.execute(select(User).order_by(User.created_at).limit(1))
-        ).scalar_one()
+        admin = (await db.execute(select(User).order_by(User.created_at).limit(1))).scalar_one()
         print(f"[clinic] {clinic.name} ({clinic.id})")
         print(f"[admin]  {admin.email} ({admin.id})")
         print(f"[filters] {DEFAULT_FILTERS}")

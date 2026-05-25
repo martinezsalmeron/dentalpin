@@ -24,7 +24,6 @@ from app.core.auth.models import Clinic, User
 from app.modules.catalog.models import (
     TreatmentCatalogItem,
     TreatmentCategory,
-    VatType,
 )
 from app.modules.catalog.seed import seed_catalog
 from app.modules.migration_import.mappers.base import MapperContext, MappingResolver

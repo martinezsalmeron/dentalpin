@@ -23,7 +23,6 @@ from app.modules.migration_import.mappers._gesden_catalog import (
 )
 from app.modules.odontogram.constants import TreatmentScope, TreatmentType
 
-
 _VALID_CLINICAL_TYPES = {t.value for t in TreatmentType}
 _VALID_SCOPES = {t.value for t in TreatmentScope}
 
@@ -31,12 +30,45 @@ _VALID_SCOPES = {t.value for t in TreatmentScope}
 def test_all_documented_tipo_odg_present() -> None:
     """The 46-value TTipoOdg master must be covered in all three tables."""
     documented = {
-        1, 2, 3, 4, 5, 6,
-        7, 8,
-        9, 10, 11, 12, 13, 14,
-        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-        38, 39, 40, 41, 42,
-        44, 45, 46,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        44,
+        45,
+        46,
     }
     assert documented == GESDEN_TIPO_ODG_TO_CLINICAL_TYPE.keys()
     assert documented == GESDEN_TIPO_ODG_TO_SCOPE.keys()
@@ -59,9 +91,17 @@ def test_category_keys_match_seed() -> None:
     """All category keys must match either a seeded TreatmentCategory or
     the migrated catch-all."""
     seeded = {
-        "diagnostico", "preventivo", "restauradora", "endodoncia",
-        "periodoncia", "cirugia", "ortodoncia", "estetica", "protesis",
-        "pediatrica", CATEGORY_MIGRATED,
+        "diagnostico",
+        "preventivo",
+        "restauradora",
+        "endodoncia",
+        "periodoncia",
+        "cirugia",
+        "ortodoncia",
+        "estetica",
+        "protesis",
+        "pediatrica",
+        CATEGORY_MIGRATED,
     }
     for tipo_odg, key in GESDEN_TIPO_ODG_TO_CATEGORY_KEY.items():
         assert key in seeded, (tipo_odg, key)

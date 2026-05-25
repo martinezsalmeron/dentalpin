@@ -249,7 +249,9 @@ class MappingDecision(Base, TimestampMixin):
         ForeignKey("clinics.id", ondelete="CASCADE"), index=True, nullable=False
     )
 
-    entity_type: Mapped[str] = mapped_column(String(50), nullable=False, default="treatment_catalog_item")
+    entity_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="treatment_catalog_item"
+    )
     canonical_uuid: Mapped[str] = mapped_column(String(36), nullable=False)
 
     # Snapshot of the Gesdén-side label for the UI. Free-form, never used as FK.
@@ -279,9 +281,7 @@ class MappingDecision(Base, TimestampMixin):
     #   "relinked"    — operator picked a different catalog item
     #   "create_new"  — operator wants a new row in `operator_target_category_key`
     #   "ignored"     — operator wants this Gesdén row dropped (treated as skipped)
-    operator_action: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="pending"
-    )
+    operator_action: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     operator_target_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))
     operator_target_category_key: Mapped[str | None] = mapped_column(String(50))
     operator_notes: Mapped[str | None] = mapped_column(Text)
@@ -289,7 +289,9 @@ class MappingDecision(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint(
-            "job_id", "entity_type", "canonical_uuid",
+            "job_id",
+            "entity_type",
+            "canonical_uuid",
             name="uq_migration_mapping_decision",
         ),
         Index("ix_migration_mapping_decision_action", "job_id", "operator_action"),

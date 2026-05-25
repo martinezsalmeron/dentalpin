@@ -3,7 +3,7 @@ module: migration_import
 last_verified_commit: HEAD
 locale: en
 screen: data-migration
-path: /settings/workspace/data-migration
+route: /settings/workspace/data-migration
 related_endpoints:
   - POST /api/v1/migration_import/jobs
   - POST /api/v1/migration_import/jobs/{id}/validate

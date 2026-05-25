@@ -179,7 +179,9 @@ async def test_filter_orphan_without_activity_is_demoted(db_session) -> None:
     ).scalar_one()
     assert user.is_active is False
     membership = (
-        await db_session.execute(select(ClinicMembership).where(ClinicMembership.user_id == user.id))
+        await db_session.execute(
+            select(ClinicMembership).where(ClinicMembership.user_id == user.id)
+        )
     ).scalar_one()
     assert membership.role == "assistant"
 
@@ -214,7 +216,9 @@ async def test_filter_orphan_with_recent_activity_stays_active(db_session) -> No
     ).scalar_one()
     assert user.is_active is True
     membership = (
-        await db_session.execute(select(ClinicMembership).where(ClinicMembership.user_id == user.id))
+        await db_session.execute(
+            select(ClinicMembership).where(ClinicMembership.user_id == user.id)
+        )
     ).scalar_one()
     # role=other falls back to assistant per _ROLE_MAP — that's expected
     # for TUsuAgd orphans which never carry IdTipoColab.
@@ -252,14 +256,14 @@ async def test_filter_stale_activity_demotes(db_session) -> None:
     ).scalar_one()
     assert user.is_active is False
     membership = (
-        await db_session.execute(select(ClinicMembership).where(ClinicMembership.user_id == user.id))
+        await db_session.execute(
+            select(ClinicMembership).where(ClinicMembership.user_id == user.id)
+        )
     ).scalar_one()
     assert membership.role == "assistant"
 
     warning = (
-        await db_session.execute(
-            select(ImportWarning).where(ImportWarning.job_id == ctx.job_id)
-        )
+        await db_session.execute(select(ImportWarning).where(ImportWarning.job_id == ctx.job_id))
     ).scalar_one()
     assert warning.code == "professional.filtered.no_recent_activity"
 
@@ -296,7 +300,9 @@ async def test_filter_keeps_recent_active_doctor(db_session) -> None:
     ).scalar_one()
     assert user.is_active is True
     membership = (
-        await db_session.execute(select(ClinicMembership).where(ClinicMembership.user_id == user.id))
+        await db_session.execute(
+            select(ClinicMembership).where(ClinicMembership.user_id == user.id)
+        )
     ).scalar_one()
     assert membership.role == "dentist"
 

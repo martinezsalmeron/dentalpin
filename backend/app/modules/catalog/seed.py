@@ -1638,7 +1638,10 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
         },
         {
             "internal_code": "PROT-PROV-REMOV",
-            "names": {"es": "Prótesis provisional removible", "en": "Provisional removable denture"},
+            "names": {
+                "es": "Prótesis provisional removible",
+                "en": "Provisional removable denture",
+            },
             "treatment_scope": "global_arch",
             "default_price": Decimal("350.00"),
             "default_duration_minutes": 60,

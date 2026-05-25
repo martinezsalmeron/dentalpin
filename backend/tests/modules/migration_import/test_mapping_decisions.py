@@ -233,41 +233,43 @@ async def test_bulk_accept_picks_high_confidence_only(db_session) -> None:
     clinic, admin = await _bootstrap(db_session)
     ctx = await _ctx(db_session, clinic.id, admin.id)
 
-    db_session.add_all([
-        MappingDecision(
-            job_id=ctx.job_id,
-            clinic_id=clinic.id,
-            entity_type="treatment_catalog_item",
-            canonical_uuid=str(uuid4()),
-            source_label="High confidence",
-            proposed_action="fuzzy_link",
-            proposed_target_id=uuid4(),
-            proposed_score=0.95,
-            operator_action="pending",
-        ),
-        MappingDecision(
-            job_id=ctx.job_id,
-            clinic_id=clinic.id,
-            entity_type="treatment_catalog_item",
-            canonical_uuid=str(uuid4()),
-            source_label="Border",
-            proposed_action="fuzzy_link",
-            proposed_target_id=uuid4(),
-            proposed_score=0.75,
-            operator_action="pending",
-        ),
-        MappingDecision(
-            job_id=ctx.job_id,
-            clinic_id=clinic.id,
-            entity_type="treatment_catalog_item",
-            canonical_uuid=str(uuid4()),
-            source_label="Exact",
-            proposed_action="link",
-            proposed_target_id=uuid4(),
-            proposed_score=None,
-            operator_action="pending",
-        ),
-    ])
+    db_session.add_all(
+        [
+            MappingDecision(
+                job_id=ctx.job_id,
+                clinic_id=clinic.id,
+                entity_type="treatment_catalog_item",
+                canonical_uuid=str(uuid4()),
+                source_label="High confidence",
+                proposed_action="fuzzy_link",
+                proposed_target_id=uuid4(),
+                proposed_score=0.95,
+                operator_action="pending",
+            ),
+            MappingDecision(
+                job_id=ctx.job_id,
+                clinic_id=clinic.id,
+                entity_type="treatment_catalog_item",
+                canonical_uuid=str(uuid4()),
+                source_label="Border",
+                proposed_action="fuzzy_link",
+                proposed_target_id=uuid4(),
+                proposed_score=0.75,
+                operator_action="pending",
+            ),
+            MappingDecision(
+                job_id=ctx.job_id,
+                clinic_id=clinic.id,
+                entity_type="treatment_catalog_item",
+                canonical_uuid=str(uuid4()),
+                source_label="Exact",
+                proposed_action="link",
+                proposed_target_id=uuid4(),
+                proposed_score=None,
+                operator_action="pending",
+            ),
+        ]
+    )
     await db_session.flush()
 
     accepted = await ProposalsService.bulk_accept(db_session, ctx.job_id, min_score=0.9)
@@ -312,7 +314,7 @@ async def _ctx(db_session, clinic_id, admin_id):
     )
 
 
-async def _seeded_pair(db_session, clinic_id, *codes) -> dict[str, "uuid4"]:
+async def _seeded_pair(db_session, clinic_id, *codes) -> dict[str, uuid4]:
     out: dict[str, object] = {}
     for code in codes:
         item = (

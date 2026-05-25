@@ -89,7 +89,9 @@ class PatientMapper:
             for row in ctx.handle.entity_iter("client"):
                 _, src_id, _, payload_json, _, _ = row
                 try:
-                    payload = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
+                    payload = (
+                        json.loads(payload_json) if isinstance(payload_json, str) else payload_json
+                    )
                 except (TypeError, ValueError):
                     continue
                 sid = _normalize_id(src_id)
@@ -208,9 +210,7 @@ class PatientMapper:
 
         email = _first_str(payload.get("email"), client_payload.get("email"))
 
-        street = _first_str(
-            payload.get("address_street"), client_payload.get("address_street")
-        )
+        street = _first_str(payload.get("address_street"), client_payload.get("address_street"))
         postal_code = _first_str(
             payload.get("address_postal_code"), client_payload.get("address_postal_code")
         )

@@ -216,8 +216,7 @@ class ProfessionalMapper:
                     severity="info",
                     code=f"professional.filtered.{filter_reason}",
                     message=(
-                        f"Imported {last_name}, {first_name} as inactive "
-                        f"(filter: {filter_reason})."
+                        f"Imported {last_name}, {first_name} as inactive (filter: {filter_reason})."
                     ),
                     raw_data=None,
                 )
