@@ -434,12 +434,19 @@ def run(strict: bool) -> int:
         return 0
 
     if strict:
+        if findings.errors:
+            print(
+                f"\nFAILED in --strict mode "
+                f"({len(findings.errors)} error(s), {len(findings.warnings)} warning(s)).",
+                file=sys.stderr,
+            )
+            return 1
         print(
-            f"\nFAILED in --strict mode "
-            f"({len(findings.errors)} error(s), {len(findings.warnings)} warning(s)).",
+            f"\nPASS in --strict mode "
+            f"(0 error(s), {len(findings.warnings)} informational warning(s)).",
             file=sys.stderr,
         )
-        return 1
+        return 0
 
     print(
         f"\n(warning-only mode — backfill in progress, "

@@ -16,7 +16,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 0 | yes |
 | `clinical_notes` | 0.2.0 | official | patients, odontogram, treatment_plan, media, agenda | auto | no | 2 | 0 | 0 | yes |
 | `media` | 0.2.0 | official | patients | auto | no | 4 | 7 | 1 | yes |
-| `migration_import` | 0.1.0 | official | patients, patients_clinical, clinical_notes, agenda, schedules, catalog, budget, odontogram, treatment_plan, billing, payments, media | manual | yes | 4 | 5 | 0 | yes |
+| `migration_import` | 0.1.0 | official | patients, patients_clinical, clinical_notes, agenda, schedules, recalls, catalog, budget, odontogram, treatment_plan, billing, payments, media | manual | yes | 4 | 5 | 0 | yes |
 | `notifications` | 0.1.0 | official | patients, agenda, budget, billing, catalog | auto | no | 8 | 0 | 6 | yes |
 | `odontogram` | 0.3.0 | official | patients, catalog | auto | no | 4 | 4 | 0 | yes |
 | `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 34 | yes |
@@ -179,7 +179,7 @@ Importa datos de pacientes, citas, presupuestos, pagos y documentos desde un arc
 - **License:** BSL-1.1
 - **Category:** official
 - **Install policy:** installable=True · auto_install=False · removable=True
-- **Depends:** `patients`, `patients_clinical`, `clinical_notes`, `agenda`, `schedules`, `catalog`, `budget`, `odontogram`, `treatment_plan`, `billing`, `payments`, `media`
+- **Depends:** `patients`, `patients_clinical`, `clinical_notes`, `agenda`, `schedules`, `recalls`, `catalog`, `budget`, `odontogram`, `treatment_plan`, `billing`, `payments`, `media`
 - **Frontend layer:** `frontend`
 - **Permissions:**
   - `migration_import.binary.write`

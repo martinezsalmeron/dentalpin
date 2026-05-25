@@ -60,6 +60,7 @@ class MigrationImportModule(BaseModule):
             "clinical_notes",
             "agenda",
             "schedules",
+            "recalls",
             "catalog",
             "budget",
             "odontogram",
