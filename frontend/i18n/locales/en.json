@@ -631,7 +631,8 @@
       "createPlan": "Create Treatment Plan",
       "continuePlan": "Continue Plan \"{name}\"",
       "selectPlan": "Select plan",
-      "continue": "Continue"
+      "continue": "Continue",
+      "odontogramTab": "Odontogram"
     },
     "plans": {
       "title": "Treatment Plans",

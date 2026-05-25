@@ -1,0 +1,29 @@
+{
+  "periodontogram": {
+    "tab": {
+      "label": "Periodontogram"
+    },
+    "empty": {
+      "title": "No periodontal exams yet",
+      "description": "Open a new session to record probing depths, bleeding, plaque and the rest of the SEPA metrics.",
+      "cta": "Start exam"
+    },
+    "session": {
+      "draftBadge": "Draft in progress",
+      "closedBadge": "Closed session",
+      "recordedAt": "Recorded on {date}",
+      "openDraft": "Open new session",
+      "continueDraft": "Continue draft"
+    },
+    "indices": {
+      "bop": "Bleeding",
+      "pi": "Plaque",
+      "calMean": "Mean CAL",
+      "deepPockets": "Pockets ≥5mm"
+    },
+    "loading": "Loading periodontogram…",
+    "errors": {
+      "loadFailed": "Could not load the periodontogram."
+    }
+  }
+}

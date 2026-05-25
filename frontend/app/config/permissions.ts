@@ -125,5 +125,9 @@ export const PERMISSIONS = {
     professionalWrite: 'schedules.professional.write',
     professionalOwnRead: 'schedules.professional.own.read',
     professionalOwnWrite: 'schedules.professional.own.write'
+  },
+  periodontogram: {
+    read: 'periodontogram.read',
+    write: 'periodontogram.write'
   }
 } as const

@@ -123,7 +123,7 @@ watch(currentMode, (newMode) => {
       :patient-id="patientId"
     />
 
-    <DiagnosisMode
+    <DiagnosisModeContainer
       v-else-if="currentMode === 'diagnosis'"
       :patient-id="patientId"
       :readonly="readonly"

@@ -1,0 +1,29 @@
+{
+  "periodontogram": {
+    "tab": {
+      "label": "Periodontograma"
+    },
+    "empty": {
+      "title": "Sin exploraciones periodontales todavía",
+      "description": "Inicia una nueva sesión para registrar profundidades de sondaje, sangrado, placa y demás métricas SEPA.",
+      "cta": "Iniciar exploración"
+    },
+    "session": {
+      "draftBadge": "Borrador en curso",
+      "closedBadge": "Sesión cerrada",
+      "recordedAt": "Registrada el {date}",
+      "openDraft": "Abrir nueva sesión",
+      "continueDraft": "Continuar borrador"
+    },
+    "indices": {
+      "bop": "Sangrado",
+      "pi": "Placa",
+      "calMean": "CAL medio",
+      "deepPockets": "Bolsas ≥5mm"
+    },
+    "loading": "Cargando periodontograma…",
+    "errors": {
+      "loadFailed": "No se pudo cargar el periodontograma."
+    }
+  }
+}
