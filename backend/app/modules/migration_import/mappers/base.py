@@ -121,8 +121,25 @@ class MappingResolver:
         dentalpin_table: str,
         dentalpin_id: UUID,
     ) -> None:
-        """Persist the mapping. Idempotent — duplicate inserts no-op via
-        the UNIQUE constraint."""
+        """Persist the mapping. Idempotent — second call for the same
+        ``(entity_type, canonical_uuid)`` is a no-op (cache hit or
+        existing row in DB) so a re-execute never trips the UNIQUE
+        constraint on ``entity_mappings``."""
+        key = (entity_type, canonical_uuid)
+        if key in self._cache:
+            return
+        if not self._cache_warm:
+            existing = await self._db.execute(
+                select(EntityMapping.dentalpin_id).where(
+                    EntityMapping.clinic_id == self._clinic_id,
+                    EntityMapping.entity_type == entity_type,
+                    EntityMapping.source_canonical_uuid == canonical_uuid,
+                )
+            )
+            row = existing.scalar_one_or_none()
+            if row is not None:
+                self._cache[key] = row
+                return
         mapping = EntityMapping(
             clinic_id=self._clinic_id,
             job_id=self._job_id,
@@ -133,7 +150,7 @@ class MappingResolver:
             dentalpin_id=dentalpin_id,
         )
         self._db.add(mapping)
-        self._cache[(entity_type, canonical_uuid)] = dentalpin_id
+        self._cache[key] = dentalpin_id
 
     async def mapping_table(self, entity_type: str, canonical_uuid: str) -> str | None:
         """Return the ``dentalpin_table`` recorded for this mapping.

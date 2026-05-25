@@ -486,6 +486,14 @@ async def list_recent_for_patient(
     plan_ids = [p.id for p in plans]
     plan_by_id = {p.id: p for p in plans}
 
+    appointments_result = await db.execute(
+        select(Appointment.id).where(
+            Appointment.clinic_id == clinic_id,
+            Appointment.patient_id == patient_id,
+        )
+    )
+    appointment_ids = [row[0] for row in appointments_result.all()]
+
     treatment_clause = and_(
         ClinicalNote.owner_type == NOTE_OWNER_TREATMENT,
         ClinicalNote.owner_id.in_(treatment_ids) if treatment_ids else false(),
@@ -498,7 +506,11 @@ async def list_recent_for_patient(
         ClinicalNote.owner_type == NOTE_OWNER_PATIENT,
         ClinicalNote.owner_id == patient_id,
     )
-    owner_filter = or_(patient_clause, treatment_clause, plan_clause)
+    appointment_clause = and_(
+        ClinicalNote.owner_type == NOTE_OWNER_APPOINTMENT,
+        ClinicalNote.owner_id.in_(appointment_ids) if appointment_ids else false(),
+    )
+    owner_filter = or_(patient_clause, treatment_clause, plan_clause, appointment_clause)
 
     stmt = (
         select(ClinicalNote)
@@ -593,6 +605,13 @@ def _build_linked(
             "kind": "plan",
             "id": note.owner_id,
             "label": label,
+            "tooth_number": None,
+        }
+    if note.owner_type == NOTE_OWNER_APPOINTMENT:
+        return {
+            "kind": "appointment",
+            "id": note.owner_id,
+            "label": None,
             "tooth_number": None,
         }
     return {"kind": note.owner_type, "id": note.owner_id, "label": None, "tooth_number": None}
