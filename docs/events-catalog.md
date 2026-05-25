@@ -73,6 +73,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `payment.recorded` | `EventType.PAYMENT_RECORDED` | `payments` | — |
 | `payment.refunded` | `EventType.PAYMENT_REFUNDED` | `payments` | `billing` |
 | `payment.voided` | `EventType.PAYMENT_VOIDED` | — | — |
+| `periodontogram.snapshot.closed` | `EventType.PERIODONTOGRAM_SNAPSHOT_CLOSED` | `periodontogram` | — |
 | `recall.cancelled` | `EventType.RECALL_CANCELLED` | `recalls` | — |
 | `recall.completed` | `EventType.RECALL_COMPLETED` | `recalls` | — |
 | `recall.created` | `EventType.RECALL_CREATED` | `recalls` | — |
@@ -564,6 +565,13 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.PAYMENT_VOIDED`
 - **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `periodontogram.snapshot.closed`
+
+- **Constant:** `EventType.PERIODONTOGRAM_SNAPSHOT_CLOSED`
+- **Publishers:**
+  - `periodontogram` — `backend/app/modules/periodontogram/service.py:371`
 - **Subscribers:** —
 
 ### `recall.cancelled`

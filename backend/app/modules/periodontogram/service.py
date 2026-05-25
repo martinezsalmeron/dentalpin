@@ -21,7 +21,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.events import EventType, event_bus
+
 from .constants import PERIO_TEETH, SITE_CODES, SnapshotStatus
+from .indices import compute_indices
 from .models import PeriodontogramSite, PeriodontogramSnapshot, PeriodontogramTooth
 from .schemas import SitePatch, ToothPatch
 
@@ -183,18 +186,71 @@ class PeriodontogramService:
                 detail="Another draft already exists for this patient",
             ) from exc
 
+        # Pre-fill from odontogram (read-only — never imported via FK).
+        # Missing teeth come out as ``is_present=False`` and implants as
+        # ``is_implant=True``. If odontogram has no data the defaults stand.
+        prefill = await PeriodontogramService._read_odontogram_flags(db, clinic_id, patient_id)
+
         for tooth_number in PERIO_TEETH:
+            flags = prefill.get(tooth_number, {})
             db.add(
                 PeriodontogramTooth(
                     snapshot_id=snap.id,
                     tooth_number=tooth_number,
-                    is_present=True,
-                    is_implant=False,
+                    is_present=flags.get("is_present", True),
+                    is_implant=flags.get("is_implant", False),
                 )
             )
 
         await db.flush()
         return snap, True
+
+    @staticmethod
+    async def _read_odontogram_flags(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+    ) -> dict[int, dict[str, bool]]:
+        """Read tooth records + performed treatments from odontogram.
+
+        Returns ``{tooth_number: {"is_present": bool, "is_implant": bool}}``
+        for any tooth that diverges from the defaults. Empty dict if the
+        odontogram module has no data yet for this patient.
+
+        Import is local to keep ``manifest.depends`` honest at module load
+        time — periodontogram declares ``odontogram`` in ``depends`` so the
+        manifest validator allows this reach-in.
+        """
+        from app.modules.odontogram.models import Treatment
+        from app.modules.odontogram.service import OdontogramService
+
+        teeth_records = await OdontogramService.get_patient_odontogram(db, clinic_id, patient_id)
+
+        flags: dict[int, dict[str, bool]] = {}
+        for record in teeth_records:
+            if record.general_condition == "missing":
+                flags[record.tooth_number] = {"is_present": False, "is_implant": False}
+
+        # Performed implants override is_present (treatments live on a
+        # separate table; one query keeps it cheap).
+        implant_stmt = (
+            select(Treatment)
+            .where(
+                Treatment.clinic_id == clinic_id,
+                Treatment.patient_id == patient_id,
+                Treatment.clinical_type == "implant",
+                Treatment.status == "performed",
+                Treatment.deleted_at.is_(None),
+            )
+            .options(selectinload(Treatment.teeth))
+        )
+        implants = (await db.execute(implant_stmt)).scalars().all()
+        for treatment in implants:
+            for link in treatment.teeth:
+                tn = link.tooth_number
+                flags[tn] = {"is_present": True, "is_implant": True}
+
+        return flags
 
     @staticmethod
     async def update_tooth(
@@ -297,14 +353,32 @@ class PeriodontogramService:
                 detail="Snapshot is already closed",
             )
 
+        # Compute indices over the snapshot's sites and freeze them on the
+        # row as JSONB. Avoids re-walking every site for read traffic.
+        # ``snap.teeth`` is selectin-loaded by ``get_snapshot`` together
+        # with the per-tooth sites; walk through the teeth to avoid
+        # triggering a lazy load on ``snap.sites``.
+        all_sites = [site for tooth in snap.teeth for site in tooth.sites]
+        snap.indices = compute_indices(all_sites)
+
         snap.status = SnapshotStatus.CLOSED.value
         snap.closed_at = datetime.now(UTC)
         snap.closed_by = user_id
         if notes is not None:
             snap.notes = notes
-        # ``indices`` stays NULL here — PR-3 wires ``compute_indices`` and
-        # the ``periodontogram.snapshot.closed`` event publication.
         await db.flush()
+
+        await event_bus.publish(
+            EventType.PERIODONTOGRAM_SNAPSHOT_CLOSED,
+            {
+                "snapshot_id": str(snap.id),
+                "patient_id": str(snap.patient_id),
+                "clinic_id": str(snap.clinic_id),
+                "closed_at": snap.closed_at.isoformat(),
+                "closed_by": str(snap.closed_by),
+                "indices": snap.indices,
+            },
+        )
         return snap
 
     @staticmethod

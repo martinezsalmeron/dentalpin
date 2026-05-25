@@ -24,6 +24,7 @@ from app.database import get_db
 from app.modules.patients.models import Patient
 
 from .schemas import (
+    IndicesResponse,
     SitePatch,
     SiteValue,
     SnapshotDetail,
@@ -76,7 +77,7 @@ def _serialise_snapshot(snap) -> SnapshotDetail:
         closed_at=snap.closed_at,
         closed_by=snap.closed_by,
         notes=snap.notes,
-        indices=None,  # PR-3 will populate from snap.indices JSONB.
+        indices=IndicesResponse(**snap.indices) if snap.indices else None,
         teeth=teeth_values,
     )
 
@@ -260,6 +261,28 @@ async def close_snapshot(
     await db.commit()
     detail = await PeriodontogramService.get_snapshot(db, ctx.clinic_id, snapshot_id)
     return ApiResponse(data=_serialise_snapshot(detail))
+
+
+@router.get(
+    "/snapshots/{snapshot_id}/indices",
+    response_model=ApiResponse[IndicesResponse],
+)
+async def get_snapshot_indices(
+    snapshot_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("periodontogram.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[IndicesResponse]:
+    """Return frozen indices on closed snapshots or live-computed indices
+    on drafts. Lets the UI render the same banner regardless of state."""
+    from .indices import compute_indices
+
+    snap = await PeriodontogramService.get_snapshot(db, ctx.clinic_id, snapshot_id)
+    if snap.indices:
+        return ApiResponse(data=IndicesResponse(**snap.indices))
+    all_sites = [site for tooth in snap.teeth for site in tooth.sites]
+    live = compute_indices(all_sites)
+    return ApiResponse(data=IndicesResponse(**live))
 
 
 @router.delete(

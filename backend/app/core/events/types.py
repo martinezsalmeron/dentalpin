@@ -194,6 +194,13 @@ class EventType:
     # Payload: (job_id, entity_type, count).
     MIGRATION_ENTITY_PERSISTED = "migration.entity.persisted"
 
+    # Periodontogram events (periodontogram module — SEPA snapshot, issue #79)
+    # Fired when a draft snapshot transitions to ``closed``. Payload:
+    # (snapshot_id, patient_id, clinic_id, closed_at, closed_by, indices)
+    # where ``indices`` is the JSONB blob ``{bop_pct, pi_pct, cal_mean_mm,
+    # deep_pockets_count}``. Reserved for patient_timeline integration.
+    PERIODONTOGRAM_SNAPSHOT_CLOSED = "periodontogram.snapshot.closed"
+
     # Recalls events (recalls module — patient call-back workflow, issue #62)
     # Foundation for a future outreach module that will subscribe to react
     # with WhatsApp/SMS/email automation. Recalls itself never sends.
