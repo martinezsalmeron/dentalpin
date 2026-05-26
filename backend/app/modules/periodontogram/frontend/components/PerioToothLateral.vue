@@ -1,15 +1,14 @@
 <script setup lang="ts">
 /**
- * One tooth rendered as a lateral silhouette with all six probing
- * sites shown below the SVG.
+ * One tooth rendered as a lateral silhouette plus three site markers
+ * for the requested face.
  *
  * Reuses the odontogram's professional lateral SVG paths
- * (`getLateralPath`, `getToothTransform`) so the tooth orientation
- * matches the anatomy of the arch (roots up for upper, roots down
- * for lower). The six site markers are split into a vestibular
- * triplet (MV V DV) and a palatal/lingual triplet (ML L DL) with a
- * faint divider — keeps the two faces readable in one row instead
- * of duplicating the tooth twice per arch.
+ * (`getLateralPath`, `getToothTransform`). For palatal/lingual rows
+ * we compose a vertical flip on top of the quadrant transform so
+ * the same SVG can stand in for the other face of the tooth — the
+ * established SEPA convention for showing both faces of an arch
+ * stacked vertically.
  */
 import { computed } from 'vue'
 import type { PerioSite, PerioTooth, SiteCode } from '../types'
@@ -21,6 +20,8 @@ import {
 
 const props = defineProps<{
   tooth: PerioTooth
+  /** Anatomical face this row represents. */
+  face: 'vestibular' | 'palatal' | 'lingual'
   readonly?: boolean
 }>()
 
@@ -31,12 +32,22 @@ const emit = defineEmits<{
 const lateralPaths = computed(() => getLateralPath(props.tooth.tooth_number))
 const baseTransform = computed(() => getToothTransform(props.tooth.tooth_number))
 
-const siteByCode = computed<Record<string, PerioSite | null>>(() => {
-  const map: Record<string, PerioSite | null> = {
-    MV: null, V: null, DV: null, ML: null, L: null, DL: null
+const faceTransform = computed(() => {
+  if (props.face !== 'vestibular') {
+    return `${baseTransform.value} scaleY(-1)`.trim()
   }
+  return baseTransform.value
+})
+
+const visibleSites = computed<readonly SiteCode[]>(() =>
+  props.face === 'vestibular' ? VESTIBULAR_SITES : PALATAL_SITES
+)
+
+const siteByCode = computed<Record<string, PerioSite | null>>(() => {
+  const map: Record<string, PerioSite | null> = {}
+  for (const code of visibleSites.value) map[code] = null
   for (const site of props.tooth.sites) {
-    map[site.site_code] = site
+    if (visibleSites.value.includes(site.site_code)) map[site.site_code] = site
   }
   return map
 })
@@ -45,22 +56,27 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
 </script>
 
 <template>
-  <div class="perio-tooth-lateral flex flex-col items-center gap-1">
+  <div class="perio-tooth-lateral flex flex-col items-center gap-0.5">
     <div class="perio-tooth-lateral__svg-wrapper relative" :style="{ opacity: visualOpacity }">
       <svg
         :viewBox="lateralPaths.viewBox"
-        class="h-20 w-12"
-        :style="{ transform: baseTransform }"
+        class="h-16 w-10"
+        :style="{ transform: faceTransform }"
         preserveAspectRatio="xMidYMid meet"
       >
-        <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-gray-400">
+        <g
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+          class="text-gray-400"
+        >
           <path :d="lateralPaths.crown" />
           <path v-if="lateralPaths.root" :d="lateralPaths.root" />
           <template v-else-if="lateralPaths.roots">
             <path v-for="(d, idx) in lateralPaths.roots" :key="idx" :d="d" />
           </template>
         </g>
-        <!-- Soft gum line in red. -->
         <path
           :d="lateralPaths.gumLine"
           fill="none"
@@ -84,20 +100,12 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
       </span>
     </div>
 
-    <!-- Vestibular triplet | Palatal/lingual triplet — both faces in
-         one tooth instead of duplicating the SVG twice per arch. -->
+    <!-- Three site markers for THIS face only — keeps the visual
+         heatmap directly under the tooth instead of duplicating it
+         alongside an irrelevant face. -->
     <div class="flex items-center gap-0.5">
       <PerioSiteMarker
-        v-for="code in VESTIBULAR_SITES"
-        :key="code"
-        :site="siteByCode[code]"
-        size="sm"
-        :disabled="readonly || !tooth.is_present"
-        @click="emit('siteClick', code)"
-      />
-      <span aria-hidden="true" class="mx-0.5 text-gray-300">|</span>
-      <PerioSiteMarker
-        v-for="code in PALATAL_SITES"
+        v-for="code in visibleSites"
         :key="code"
         :site="siteByCode[code]"
         size="sm"
@@ -105,7 +113,5 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
         @click="emit('siteClick', code)"
       />
     </div>
-
-    <span class="font-mono text-[10px] text-gray-500">{{ tooth.tooth_number }}</span>
   </div>
 </template>
