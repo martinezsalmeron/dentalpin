@@ -3,10 +3,18 @@
  * One tooth rendered as a lateral silhouette plus three site markers
  * for the requested face.
  *
+ * When `tooth.is_implant` is true, the natural root paths are
+ * suppressed and the odontogram's `ImplantSVG` component is layered
+ * into the root area instead — same visual language as the
+ * odontogram so the dentist sees consistent iconography across
+ * modules. Crown + gum line stay drawn so the clinical context
+ * (carious crown, deep recession, etc.) survives the implant
+ * placement.
+ *
  * Reuses the odontogram's professional lateral SVG paths
  * (`getLateralPath`, `getToothTransform`). For palatal/lingual rows
- * we compose a vertical flip on top of the quadrant transform so
- * the same SVG can stand in for the other face of the tooth — the
+ * we compose a vertical flip on top of the quadrant transform so the
+ * same SVG can stand in for the other face of the tooth — the
  * established SEPA convention for showing both faces of an arch
  * stacked vertically.
  */
@@ -24,10 +32,6 @@ const props = defineProps<{
   face: 'vestibular' | 'palatal' | 'lingual'
   readonly?: boolean
 }>()
-
-// Markers are display-only — editing happens via the inline table
-// cells in PerioArchBlock. Keeping the markers as decorative dots
-// avoids two competing edit affordances on the same data.
 
 const lateralPaths = computed(() => getLateralPath(props.tooth.tooth_number))
 const baseTransform = computed(() => getToothTransform(props.tooth.tooth_number))
@@ -71,12 +75,32 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
           stroke-linejoin="round"
           class="text-gray-400"
         >
+          <!-- Crown stays whether implant or not — periodontitis can
+               sit on top of an implant crown just like a natural one. -->
           <path :d="lateralPaths.crown" />
-          <path v-if="lateralPaths.root" :d="lateralPaths.root" />
-          <template v-else-if="lateralPaths.roots">
-            <path v-for="(d, idx) in lateralPaths.roots" :key="idx" :d="d" />
+
+          <!-- Natural root paths only when no implant is recorded. -->
+          <template v-if="!tooth.is_implant">
+            <path v-if="lateralPaths.root" :d="lateralPaths.root" />
+            <template v-else-if="lateralPaths.roots">
+              <path v-for="(d, idx) in lateralPaths.roots" :key="idx" :d="d" />
+            </template>
           </template>
         </g>
+
+        <!-- Implant fixture replaces the natural root area. Same
+             component the odontogram uses, so the icon language
+             stays consistent across modules. -->
+        <ImplantSVG
+          v-if="tooth.is_implant && tooth.is_present"
+          :view-box="lateralPaths.viewBox"
+          :tooth-number="tooth.tooth_number"
+          fill="#10b981"
+          status="existing"
+        />
+
+        <!-- Soft gum line in red — drawn last so it overlays both
+             natural root and implant fixture. -->
         <path
           :d="lateralPaths.gumLine"
           fill="none"
@@ -86,12 +110,6 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
         />
       </svg>
 
-      <UIcon
-        v-if="tooth.is_implant"
-        name="i-lucide-anchor"
-        class="absolute right-0 top-0 text-emerald-600"
-        title="Implante"
-      />
       <span
         v-if="!tooth.is_present"
         class="absolute inset-0 flex items-center justify-center text-gray-400"
