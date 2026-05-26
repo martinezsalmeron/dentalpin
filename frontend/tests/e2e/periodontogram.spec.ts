@@ -133,34 +133,22 @@ test.describe('periodontogram — admin', () => {
     await ensureDraftExists(loggedIn, patientId)
     await navigateToPerioTab(loggedIn, patientId)
 
-    // Click the first probing-depth cell that is interactive. The
-    // metrics table renders the sondaje row with buttons containing a
-    // tabular dot when empty.
+    // Inline edit — the Sondaje row renders an `<input type="number">`
+    // per site. Click any cell, type the value, blur to commit. No
+    // modal, no Save button.
     const region = loggedIn.getByRole('region', { name: /Periodonto/i })
-    // The "Sondaje" / "Probing" row in the SEPA metrics table.
     const sondajeRow = region
       .locator('tr', { hasText: /Sondaje|Probing/i })
       .first()
     await expect(sondajeRow).toBeVisible({ timeout: 10_000 })
 
-    const firstSiteButton = sondajeRow.locator('button').first()
-    await firstSiteButton.click()
+    const firstSiteInput = sondajeRow.locator('input[type="number"]').first()
+    await firstSiteInput.click()
+    await firstSiteInput.fill('5')
+    await firstSiteInput.blur()
 
-    // Site popover opens with the PD input. UModal renders in a
-    // teleport, so look for the spinbutton globally rather than
-    // scoping to role=dialog (Nuxt UI's modal doesn't always expose
-    // the dialog role on the wrapper).
-    const pdInput = loggedIn.locator('input[type="number"]').first()
-    await expect(pdInput).toBeVisible({ timeout: 8_000 })
-    await pdInput.fill('5')
-
-    // The save button inside the popover footer.
-    await loggedIn
-      .getByRole('button', { name: /^(Guardar|Save)$/i })
-      .last()
-      .click()
-
-    // Wait for autosave indicator to settle.
+    // Autosave indicator returns to "Guardado / Saved" once the
+    // debounced PATCH completes.
     await expect(loggedIn.getByText(/Guardado|Saved/i).first()).toBeVisible({
       timeout: 5_000
     })

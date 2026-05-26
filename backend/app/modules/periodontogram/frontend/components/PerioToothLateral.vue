@@ -25,9 +25,9 @@ const props = defineProps<{
   readonly?: boolean
 }>()
 
-const emit = defineEmits<{
-  siteClick: [siteCode: SiteCode]
-}>()
+// Markers are display-only — editing happens via the inline table
+// cells in PerioArchBlock. Keeping the markers as decorative dots
+// avoids two competing edit affordances on the same data.
 
 const lateralPaths = computed(() => getLateralPath(props.tooth.tooth_number))
 const baseTransform = computed(() => getToothTransform(props.tooth.tooth_number))
@@ -100,17 +100,16 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
       </span>
     </div>
 
-    <!-- Three site markers for THIS face only — keeps the visual
-         heatmap directly under the tooth instead of duplicating it
-         alongside an irrelevant face. -->
+    <!-- Three site markers for THIS face only — decorative heatmap
+         under the tooth so the dentist can spot deep pockets at a
+         glance. Editing happens in the metric table rows. -->
     <div class="flex items-center gap-0.5">
       <PerioSiteMarker
         v-for="code in visibleSites"
         :key="code"
         :site="siteByCode[code]"
         size="sm"
-        :disabled="readonly || !tooth.is_present"
-        @click="emit('siteClick', code)"
+        readonly
       />
     </div>
   </div>

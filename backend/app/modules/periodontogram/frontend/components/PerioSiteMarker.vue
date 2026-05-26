@@ -13,11 +13,8 @@ import { probingDepthClasses } from '../composables/usePerioHeatmap'
 const props = defineProps<{
   site: PerioSite | null
   size?: 'sm' | 'md'
-  disabled?: boolean
-}>()
-
-const emit = defineEmits<{
-  click: []
+  /** Display-only mode — no hover scale, no click handler. */
+  readonly?: boolean
 }>()
 
 const colourClass = computed(() => probingDepthClasses(props.site?.probing_depth_mm ?? null))
@@ -27,13 +24,10 @@ const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 
 </script>
 
 <template>
-  <button
-    type="button"
-    class="perio-site-marker inline-flex items-center justify-center rounded-full font-mono font-medium ring-1 ring-inset transition hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1"
-    :class="[colourClass, sizeClass, { 'cursor-not-allowed opacity-60': disabled }]"
-    :disabled="disabled"
+  <span
+    class="perio-site-marker inline-flex items-center justify-center rounded-full font-mono font-medium ring-1 ring-inset"
+    :class="[colourClass, sizeClass]"
     :aria-label="`Sitio ${site?.site_code ?? ''}, sondaje ${site?.probing_depth_mm ?? 'sin valor'}${site?.bleeding_on_probing ? ', con sangrado' : ''}${site?.plaque ? ', con placa' : ''}`"
-    @click.stop="emit('click')"
   >
     <span v-if="site?.probing_depth_mm != null">{{ site.probing_depth_mm }}</span>
     <span v-else>·</span>
@@ -50,7 +44,7 @@ const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 
       title="Placa"
       aria-hidden="true"
     />
-  </button>
+  </span>
 </template>
 
 <style scoped>

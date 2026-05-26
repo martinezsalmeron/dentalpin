@@ -2,12 +2,12 @@
 /**
  * SEPA chart orchestrator.
  *
- * Banner + 2 arch blocks + per-site / per-tooth editors. Autosave
- * batches edits via `usePeriodontogramSession`; the sticky session
- * actions bar lets the dentist close or discard the draft. Read-only
- * for closed snapshots — popovers stay disabled in that state.
+ * Wires the inline edits emitted by `PerioArchBlock` (per-tooth and
+ * per-site patches) into the autosave queue, plus the sticky session
+ * actions for close / discard. No modal popovers — every cell in the
+ * chart edits in place.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import type { PerioSnapshotDetail, PerioSnapshotSummary, SiteCode } from '../types'
 import { usePeriodontogramSession } from '../composables/usePeriodontogramSession'
 
@@ -35,9 +35,6 @@ const {
   discardDraft
 } = usePeriodontogramSession()
 
-// Surface autosave failures so the dentist doesn't keep typing into a
-// black hole. The toast is debounced by the underlying error setter —
-// only fires when `lastError` actually changes value.
 watch(lastError, (err) => {
   if (err) {
     toast.add({
@@ -49,9 +46,6 @@ watch(lastError, (err) => {
   }
 })
 
-// beforeunload guard while a draft has unsaved edits. The browser
-// surfaces a generic confirmation prompt — wording is fixed by the
-// platform but our intent ("don't lose this exam") still gets through.
 function _beforeUnload(event: BeforeUnloadEvent) {
   if (dirty.value || saving.value) {
     event.preventDefault()
@@ -80,49 +74,15 @@ const lowerTeeth = computed(() =>
   props.snapshot.teeth.filter(t => Math.floor(t.tooth_number / 10) >= 3)
 )
 
-const editingSite = ref<{ toothNumber: number, siteCode: SiteCode } | null>(null)
-const sitePopoverOpen = ref(false)
-const editingToothNumber = ref<number | null>(null)
-const toothModalOpen = ref(false)
-
-const editingSiteValue = computed(() => {
-  if (!editingSite.value) return null
-  const tooth = props.snapshot.teeth.find(t => t.tooth_number === editingSite.value!.toothNumber)
-  return tooth?.sites.find(s => s.site_code === editingSite.value!.siteCode) ?? null
-})
-
-const editingTooth = computed(() => {
-  if (editingToothNumber.value == null) return null
-  return props.snapshot.teeth.find(t => t.tooth_number === editingToothNumber.value) ?? null
-})
-
-function handleEditSite(toothNumber: number, siteCode: SiteCode) {
+function handleEditSite(toothNumber: number, siteCode: SiteCode, patch: Record<string, unknown>) {
   if (isReadOnly.value) return
-  editingSite.value = { toothNumber, siteCode }
-  sitePopoverOpen.value = true
-}
-
-function handleEditTooth(toothNumber: number) {
-  if (isReadOnly.value) return
-  editingToothNumber.value = toothNumber
-  toothModalOpen.value = true
-}
-
-async function handleSaveSite(patch: Record<string, unknown>) {
-  if (!editingSite.value) return
-  patchSite(
-    props.snapshot.id,
-    editingSite.value.toothNumber,
-    editingSite.value.siteCode,
-    patch
-  )
-  // Optimistic: refresh after the debounce window so totals update.
+  patchSite(props.snapshot.id, toothNumber, siteCode, patch)
   setTimeout(() => emit('refresh'), 800)
 }
 
-async function handleSaveTooth(patch: Record<string, unknown>) {
-  if (editingToothNumber.value == null) return
-  patchTooth(props.snapshot.id, editingToothNumber.value, patch)
+function handleEditTooth(toothNumber: number, patch: Record<string, unknown>) {
+  if (isReadOnly.value) return
+  patchTooth(props.snapshot.id, toothNumber, patch)
   setTimeout(() => emit('refresh'), 800)
 }
 
@@ -150,19 +110,12 @@ const summary = computed<PerioSnapshotSummary>(() => ({
   <div class="periodontogram-chart space-y-4">
     <PerioIndicesBanner :indices="snapshot.indices" :snapshot="summary" />
 
-    <!--
-      Horizontal scroll wrapper: the SEPA chart needs ~960px of width to
-      fit all 16 teeth + the 9 metrics rows comfortably. On tablets in
-      portrait and on phones the wrapper scrolls instead of cramping
-      the layout. A quadrant-by-quadrant swipe variant is queued for a
-      later phase.
-    -->
     <div
       class="overflow-x-auto pb-2"
       role="region"
       aria-label="Periodontograma — arcadas superior e inferior"
     >
-      <div class="min-w-[960px] space-y-4">
+      <div class="min-w-[1100px] space-y-4">
         <PerioArchBlock
           arch="upper"
           :teeth="upperTeeth"
@@ -179,21 +132,6 @@ const summary = computed<PerioSnapshotSummary>(() => ({
         />
       </div>
     </div>
-
-    <PerioSiteInputPopover
-      v-if="editingSite"
-      v-model="sitePopoverOpen"
-      :tooth-number="editingSite.toothNumber"
-      :site-code="editingSite.siteCode"
-      :site="editingSiteValue"
-      @save="handleSaveSite"
-    />
-
-    <PerioToothInputModal
-      v-model="toothModalOpen"
-      :tooth="editingTooth"
-      @save="handleSaveTooth"
-    />
 
     <PerioSessionActions
       v-if="snapshot.status === 'draft' && !readonly"
