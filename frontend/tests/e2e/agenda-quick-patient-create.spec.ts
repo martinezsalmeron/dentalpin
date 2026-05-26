@@ -32,7 +32,7 @@ test.describe('agenda — quick patient create', () => {
 
     // Modal mounts an async chunk — wait for the patient search input
     // to be ready.
-    const searchInput = loggedIn.locator('[data-testid="visual-selector-input"] input').first()
+    const searchInput = loggedIn.locator('input[data-testid="visual-selector-input"]').first()
     await expect(searchInput).toBeVisible({ timeout: 10_000 })
 
     // Type a name that is unique enough to not collide with seed data
@@ -123,7 +123,7 @@ test.describe('agenda — quick patient create', () => {
     }
     await createButton.click()
 
-    const searchInput = page.locator('[data-testid="visual-selector-input"] input').first()
+    const searchInput = page.locator('input[data-testid="visual-selector-input"]').first()
     await expect(searchInput).toBeVisible({ timeout: 10_000 })
     await searchInput.fill('Nonexistent Patient X')
 

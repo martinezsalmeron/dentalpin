@@ -118,6 +118,29 @@ const modalTitle = computed(() =>
   isEditMode.value ? t('appointments.edit') : t('appointments.create')
 )
 
+// Email dropdown in edit mode — Nuxt UI v4 uses an items-prop API
+// instead of <UDropdownMenuItem> children.
+const emailDropdownItems = computed(() => [[
+  {
+    label: t('appointments.resendConfirmation'),
+    icon: 'i-lucide-check-circle',
+    onSelect: () => {
+      if (props.appointment?.id && props.appointment.patient_id) {
+        sendConfirmation(props.appointment.id, props.appointment.patient_id)
+      }
+    }
+  },
+  {
+    label: t('appointments.sendReminderEmail'),
+    icon: 'i-lucide-clock',
+    onSelect: () => {
+      if (props.appointment?.id && props.appointment.patient_id) {
+        sendReminder(props.appointment.id, props.appointment.patient_id)
+      }
+    }
+  }
+]])
+
 const canSave = computed(() => {
   // Cabinet is optional (#51) — only patient + date + start time +
   // professional are required to book.
@@ -812,7 +835,10 @@ function openPatientFile() {
               </UButton>
 
               <!-- Email dropdown in edit mode -->
-              <UDropdownMenu v-if="isEditMode && appointmentPatientHasEmail">
+              <UDropdownMenu
+                v-if="isEditMode && appointmentPatientHasEmail"
+                :items="emailDropdownItems"
+              >
                 <UButton
                   variant="outline"
                   icon="i-lucide-mail"
@@ -820,22 +846,6 @@ function openPatientFile() {
                 >
                   {{ t('appointments.sendEmail') }}
                 </UButton>
-                <template #content>
-                  <UDropdownMenuGroup>
-                    <UDropdownMenuItem
-                      icon="i-lucide-check-circle"
-                      @click="sendConfirmation(appointment!.id, appointment!.patient_id!)"
-                    >
-                      {{ t('appointments.resendConfirmation') }}
-                    </UDropdownMenuItem>
-                    <UDropdownMenuItem
-                      icon="i-lucide-clock"
-                      @click="sendReminder(appointment!.id, appointment!.patient_id!)"
-                    >
-                      {{ t('appointments.sendReminderEmail') }}
-                    </UDropdownMenuItem>
-                  </UDropdownMenuGroup>
-                </template>
               </UDropdownMenu>
             </div>
             <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-2 sm:gap-3">
