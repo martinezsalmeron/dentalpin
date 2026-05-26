@@ -2,10 +2,9 @@
 /**
  * Entry point rendered by the `patient.diagnosis.subtabs` slot.
  *
- * PR-4 ships a deliberately minimal surface: timeline summary, draft
- * pill, and the empty-state CTA. The chart itself + per-site editing
- * arrive in PR-5 / PR-6 — keeping this PR scoped to "module installs,
- * sub-tab appears, fallback works".
+ * PR-5 lights up the SEPA chart for both drafts and closed snapshots.
+ * Timeline navigation between closed snapshots and autosave plumbing
+ * arrive in PR-6.
  */
 
 import { onMounted, ref, watch } from 'vue'
@@ -16,7 +15,7 @@ const props = defineProps<{
   readonly?: boolean
 }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const starting = ref(false)
 
 const {
@@ -29,53 +28,50 @@ const {
   isEmpty,
   fetchTimeline,
   fetchDraft,
+  fetchSnapshot,
   startDraft
 } = usePeriodontogram(() => props.patientId)
 
-onMounted(async () => {
+async function refreshAll() {
   await fetchTimeline()
-  if (hasDraft.value) {
-    await fetchDraft()
-  }
-})
-
-watch(
-  () => props.patientId,
-  async () => {
-    await fetchTimeline()
+  if (hasDraft.value && timeline.value?.draft) {
+    await fetchSnapshot(timeline.value.draft.id)
+  } else if (timeline.value && timeline.value.dates.length > 0) {
+    // Show the most recent closed snapshot as the default view.
+    const last = timeline.value.dates[timeline.value.dates.length - 1]
+    await fetchSnapshot(last.snapshot_id)
+  } else {
     currentSnapshot.value = null
-    if (hasDraft.value) {
-      await fetchDraft()
-    }
   }
-)
+}
+
+onMounted(refreshAll)
+watch(() => props.patientId, refreshAll)
 
 async function handleStart() {
   starting.value = true
   try {
     await startDraft()
+    if (timeline.value?.draft) {
+      await fetchSnapshot(timeline.value.draft.id)
+    }
   } finally {
     starting.value = false
   }
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(locale.value, {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
-  } catch {
-    return iso
+async function handleRefresh() {
+  if (currentSnapshot.value) {
+    await fetchSnapshot(currentSnapshot.value.id)
   }
+  await fetchTimeline()
 }
 </script>
 
 <template>
   <div class="periodontogram-view space-y-4">
     <div
-      v-if="isLoading"
+      v-if="isLoading && !currentSnapshot"
       class="flex items-center gap-2 text-sm text-gray-500"
     >
       <UIcon name="i-lucide-loader-2" class="animate-spin" />
@@ -96,63 +92,29 @@ function formatDate(iso: string): string {
       @start="handleStart"
     />
 
-    <template v-else>
-      <UCard>
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex items-center gap-3">
-            <UBadge
-              v-if="hasDraft"
-              color="warning"
-              variant="soft"
-            >
-              {{ t('periodontogram.session.draftBadge') }}
-            </UBadge>
-            <UBadge
-              v-else
-              color="success"
-              variant="soft"
-            >
-              {{ t('periodontogram.session.closedBadge') }}
-            </UBadge>
-            <span class="text-sm text-gray-600">
-              {{ closedCount }} {{ t('periodontogram.session.closedBadge').toLowerCase() }}
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
-            <UButton
-              v-if="hasDraft && currentSnapshot"
-              variant="outline"
-              size="sm"
-              icon="i-lucide-edit"
-              disabled
-            >
-              {{ t('periodontogram.session.continueDraft') }}
-            </UButton>
-            <UButton
-              v-else
-              size="sm"
-              icon="i-lucide-plus"
-              :loading="starting"
-              :disabled="readonly"
-              @click="handleStart"
-            >
-              {{ t('periodontogram.session.openDraft') }}
-            </UButton>
-          </div>
-        </div>
-      </UCard>
+    <template v-else-if="currentSnapshot">
+      <PeriodontogramChart
+        :snapshot="currentSnapshot"
+        :readonly="readonly"
+        @refresh="handleRefresh"
+      />
 
-      <UCard v-if="timeline && timeline.dates.length > 0">
-        <ul class="space-y-2 text-sm">
-          <li
-            v-for="entry in timeline.dates"
-            :key="entry.snapshot_id"
-            class="flex items-center justify-between rounded border border-gray-100 px-3 py-2"
+      <!-- Quick action for snapshots in closed-only state. -->
+      <UCard v-if="!hasDraft">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600">
+            {{ closedCount }} sesiones cerradas
+          </span>
+          <UButton
+            size="sm"
+            icon="i-lucide-plus"
+            :loading="starting"
+            :disabled="readonly"
+            @click="handleStart"
           >
-            <span class="font-medium text-gray-900">{{ formatDate(entry.date) }}</span>
-            <span class="text-gray-500">{{ entry.change_count }} sitios</span>
-          </li>
-        </ul>
+            {{ t('periodontogram.session.openDraft') }}
+          </UButton>
+        </div>
       </UCard>
     </template>
   </div>

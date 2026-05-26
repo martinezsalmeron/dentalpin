@@ -1,0 +1,56 @@
+<script setup lang="ts">
+/**
+ * Tiny dot rendering a single probing site.
+ *
+ * Colour is driven by `probing_depth_mm` via the heatmap composable.
+ * Bleeding / plaque overlays are indicated by ring colour and a small
+ * marker glyph; suppuration adds a pulse.
+ */
+import { computed } from 'vue'
+import type { PerioSite } from '../types'
+import { probingDepthClasses } from '../composables/usePerioHeatmap'
+
+const props = defineProps<{
+  site: PerioSite | null
+  size?: 'sm' | 'md'
+  disabled?: boolean
+}>()
+
+const emit = defineEmits<{
+  click: []
+}>()
+
+const colourClass = computed(() => probingDepthClasses(props.site?.probing_depth_mm ?? null))
+const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 'h-5 w-5 text-xs'))
+</script>
+
+<template>
+  <button
+    type="button"
+    class="perio-site-marker inline-flex items-center justify-center rounded-full font-mono font-medium ring-1 ring-inset transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary-500"
+    :class="[colourClass, sizeClass, { 'cursor-not-allowed opacity-60': disabled }]"
+    :disabled="disabled"
+    :aria-label="site ? `${site.site_code}: ${site.probing_depth_mm ?? '·'}mm` : 'sin valor'"
+    @click.stop="emit('click')"
+  >
+    <span v-if="site?.probing_depth_mm != null">{{ site.probing_depth_mm }}</span>
+    <span v-else>·</span>
+
+    <span
+      v-if="site?.bleeding_on_probing"
+      class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-error-500 ring-1 ring-white"
+      title="Sangrado"
+    />
+    <span
+      v-if="site?.plaque"
+      class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-white"
+      title="Placa"
+    />
+  </button>
+</template>
+
+<style scoped>
+.perio-site-marker {
+  position: relative;
+}
+</style>
