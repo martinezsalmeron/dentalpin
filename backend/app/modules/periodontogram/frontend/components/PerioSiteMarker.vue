@@ -21,6 +21,8 @@ const emit = defineEmits<{
 }>()
 
 const colourClass = computed(() => probingDepthClasses(props.site?.probing_depth_mm ?? null))
+// Tap targets bump to 44px on touch devices via the @media block in
+// the style section below. Visual size stays compact on desktop.
 const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 'h-5 w-5 text-xs'))
 </script>
 
@@ -52,5 +54,12 @@ const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 
 <style scoped>
 .perio-site-marker {
   position: relative;
+}
+
+@media (pointer: coarse) {
+  .perio-site-marker {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 </style>

@@ -111,21 +111,30 @@ const summary = computed<PerioSnapshotSummary>(() => ({
   <div class="periodontogram-chart space-y-4">
     <PerioIndicesBanner :indices="snapshot.indices" :snapshot="summary" />
 
-    <div class="space-y-4">
-      <PerioArchBlock
-        arch="upper"
-        :teeth="upperTeeth"
-        :readonly="isReadOnly"
-        @edit-tooth="handleEditTooth"
-        @edit-site="handleEditSite"
-      />
-      <PerioArchBlock
-        arch="lower"
-        :teeth="lowerTeeth"
-        :readonly="isReadOnly"
-        @edit-tooth="handleEditTooth"
-        @edit-site="handleEditSite"
-      />
+    <!--
+      Horizontal scroll wrapper: the SEPA chart needs ~960px of width to
+      fit all 16 teeth + the 9 metrics rows comfortably. On tablets in
+      portrait and on phones the wrapper scrolls instead of cramping
+      the layout. A quadrant-by-quadrant swipe variant is queued for a
+      later phase.
+    -->
+    <div class="overflow-x-auto pb-2">
+      <div class="min-w-[960px] space-y-4">
+        <PerioArchBlock
+          arch="upper"
+          :teeth="upperTeeth"
+          :readonly="isReadOnly"
+          @edit-tooth="handleEditTooth"
+          @edit-site="handleEditSite"
+        />
+        <PerioArchBlock
+          arch="lower"
+          :teeth="lowerTeeth"
+          :readonly="isReadOnly"
+          @edit-tooth="handleEditTooth"
+          @edit-site="handleEditSite"
+        />
+      </div>
     </div>
 
     <PerioSiteInputPopover

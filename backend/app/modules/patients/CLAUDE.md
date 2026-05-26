@@ -72,6 +72,13 @@ None.
     drives the Cobros sub-mode in the Administración tab.
   - `patient.detail.sidebar` — deprecated, kept registered for
     community modules. Renders as a section at the bottom of Resumen.
+  - `patient.diagnosis.subtabs` — optional sub-tabs rendered inside
+    the *Diagnosis* mode of `ClinicalTab`, alongside the implicit
+    "Odontograma" tab. Ctx `{ patientId, readonly? }`. Order
+    convention: 10 odontogram (implicit), 20 periodontogram. With
+    zero registered entries `DiagnosisModeContainer.vue` falls back
+    to the bare `<DiagnosisMode>` render — uninstalling every
+    optional consumer restores the pre-slot UI verbatim.
 
 ## Related ADRs
 
