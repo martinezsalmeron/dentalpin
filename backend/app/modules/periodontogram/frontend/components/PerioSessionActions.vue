@@ -36,12 +36,19 @@ function confirmDiscard() {
 <template>
   <div
     class="perio-session-actions sticky bottom-0 z-10 flex items-center justify-between border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur"
+    role="toolbar"
+    aria-label="Acciones de la sesión periodontal"
   >
-    <div class="flex items-center gap-2 text-xs">
+    <div
+      class="flex items-center gap-2 text-xs"
+      aria-live="polite"
+      role="status"
+    >
       <UIcon
         v-if="saving"
         name="i-lucide-loader-2"
         class="animate-spin text-gray-500"
+        aria-hidden="true"
       />
       <span v-if="saving" class="text-gray-500">Guardando…</span>
       <span v-else-if="dirty" class="text-amber-600">Cambios pendientes</span>

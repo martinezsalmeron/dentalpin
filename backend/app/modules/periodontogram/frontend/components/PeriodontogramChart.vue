@@ -7,7 +7,7 @@
  * actions bar lets the dentist close or discard the draft. Read-only
  * for closed snapshots — popovers stay disabled in that state.
  */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PerioSnapshotDetail, PerioSnapshotSummary, SiteCode } from '../types'
 import { usePeriodontogramSession } from '../composables/usePeriodontogramSession'
 
@@ -22,15 +22,54 @@ const emit = defineEmits<{
   discarded: []
 }>()
 
+const toast = useToast()
+
 const {
   saving,
   dirty,
+  lastError,
   patchTooth,
   patchSite,
   flushPending,
   closeSession,
   discardDraft
 } = usePeriodontogramSession()
+
+// Surface autosave failures so the dentist doesn't keep typing into a
+// black hole. The toast is debounced by the underlying error setter —
+// only fires when `lastError` actually changes value.
+watch(lastError, (err) => {
+  if (err) {
+    toast.add({
+      title: 'No se pudo guardar el cambio',
+      description: 'Comprueba tu conexión e intenta de nuevo.',
+      color: 'error',
+      icon: 'i-lucide-alert-triangle'
+    })
+  }
+})
+
+// beforeunload guard while a draft has unsaved edits. The browser
+// surfaces a generic confirmation prompt — wording is fixed by the
+// platform but our intent ("don't lose this exam") still gets through.
+function _beforeUnload(event: BeforeUnloadEvent) {
+  if (dirty.value || saving.value) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', _beforeUnload)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('beforeunload', _beforeUnload)
+  }
+})
 
 const isReadOnly = computed(() => props.readonly || props.snapshot.status === 'closed')
 
@@ -118,7 +157,11 @@ const summary = computed<PerioSnapshotSummary>(() => ({
       the layout. A quadrant-by-quadrant swipe variant is queued for a
       later phase.
     -->
-    <div class="overflow-x-auto pb-2">
+    <div
+      class="overflow-x-auto pb-2"
+      role="region"
+      aria-label="Periodontograma — arcadas superior e inferior"
+    >
       <div class="min-w-[960px] space-y-4">
         <PerioArchBlock
           arch="upper"

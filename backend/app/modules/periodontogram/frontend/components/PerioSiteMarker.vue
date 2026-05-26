@@ -29,10 +29,10 @@ const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 
 <template>
   <button
     type="button"
-    class="perio-site-marker inline-flex items-center justify-center rounded-full font-mono font-medium ring-1 ring-inset transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary-500"
+    class="perio-site-marker inline-flex items-center justify-center rounded-full font-mono font-medium ring-1 ring-inset transition hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1"
     :class="[colourClass, sizeClass, { 'cursor-not-allowed opacity-60': disabled }]"
     :disabled="disabled"
-    :aria-label="site ? `${site.site_code}: ${site.probing_depth_mm ?? '·'}mm` : 'sin valor'"
+    :aria-label="`Sitio ${site?.site_code ?? ''}, sondaje ${site?.probing_depth_mm ?? 'sin valor'}${site?.bleeding_on_probing ? ', con sangrado' : ''}${site?.plaque ? ', con placa' : ''}`"
     @click.stop="emit('click')"
   >
     <span v-if="site?.probing_depth_mm != null">{{ site.probing_depth_mm }}</span>
@@ -42,11 +42,13 @@ const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 
       v-if="site?.bleeding_on_probing"
       class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-error-500 ring-1 ring-white"
       title="Sangrado"
+      aria-hidden="true"
     />
     <span
       v-if="site?.plaque"
       class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-white"
       title="Placa"
+      aria-hidden="true"
     />
   </button>
 </template>
