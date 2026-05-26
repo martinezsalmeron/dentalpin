@@ -180,15 +180,19 @@ test.describe('periodontogram — admin', () => {
       .first()
       .click()
 
-    // Wait for the confirmation modal title.
-    await expect(
-      loggedIn.getByText(/Cerrar sesión periodontal|Close periodontal session/i).first()
-    ).toBeVisible({ timeout: 5_000 })
+    // Wait for the confirmation modal title (renders inside the
+    // UModal header via the :title prop in Nuxt UI v3).
+    const modalTitle = loggedIn.getByText(
+      /Cerrar sesión periodontal|Close periodontal session/i
+    ).first()
+    await expect(modalTitle).toBeVisible({ timeout: 5_000 })
 
-    // The footer button is the second match for the regex on the page.
+    // Confirm in the modal footer. Scope to the dialog so we don't
+    // race with the sticky-bar trigger button that carries the same
+    // copy.
     await loggedIn
+      .getByRole('dialog')
       .getByRole('button', { name: /^(Cerrar sesión|Close session)$/i })
-      .nth(1)
       .click()
 
     // The session transitioned to closed: the post-close summary

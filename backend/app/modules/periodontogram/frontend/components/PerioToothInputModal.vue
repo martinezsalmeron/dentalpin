@@ -2,10 +2,10 @@
 /**
  * Tooth-level editor.
  *
- * Mobility (0–3 Miller), prognosis (good/fair/poor/hopeless), furcation
- * (0/I/II/III on both buccal and lingual roots — molars only), and
- * keratinized gingiva width. The form mirrors the values currently
- * on the tooth row; emits a partial patch on save.
+ * Captures the per-tooth SEPA fields that don't live on the site
+ * grid: mobility (Miller 0–3), individual prognosis, furcation grade
+ * on both roots (molars only), keratinized gingiva width, plus the
+ * presence + implant flags.
  */
 import { computed, ref, watch } from 'vue'
 import type { Furcation, PerioTooth, Prognosis } from '../types'
@@ -60,7 +60,7 @@ watch(
 const isMolar = computed(() => {
   if (!props.tooth) return false
   const pos = props.tooth.tooth_number % 10
-  return pos >= 6 // 16/17/18, 26/27/28, etc.
+  return pos >= 6
 })
 
 const prognosisOptions = [
@@ -92,18 +92,13 @@ function handleSave() {
 </script>
 
 <template>
-  <UModal v-model="isOpen">
-    <UCard v-if="tooth">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-900">
-            Diente {{ tooth.tooth_number }}
-          </h3>
-          <UButton variant="ghost" icon="i-lucide-x" size="xs" @click="isOpen = false" />
-        </div>
-      </template>
-
-      <div class="space-y-3">
+  <UModal
+    :open="isOpen"
+    :title="tooth ? `Diente ${tooth.tooth_number}` : 'Diente'"
+    @update:open="(v) => { isOpen = v }"
+  >
+    <template #body>
+      <div v-if="tooth" class="space-y-3 p-4">
         <div class="flex items-center gap-4">
           <UCheckbox v-model="isPresent" label="Presente" />
           <UCheckbox v-model="isImplant" label="Implante" />
@@ -131,13 +126,16 @@ function handleSave() {
           </UFormField>
         </div>
       </div>
-
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton variant="outline" @click="isOpen = false">Cancelar</UButton>
-          <UButton @click="handleSave">Guardar</UButton>
-        </div>
-      </template>
-    </UCard>
+    </template>
+    <template #footer>
+      <div class="flex justify-end gap-2 p-2">
+        <UButton variant="outline" color="neutral" @click="isOpen = false">
+          Cancelar
+        </UButton>
+        <UButton color="primary" @click="handleSave">
+          Guardar
+        </UButton>
+      </div>
+    </template>
   </UModal>
 </template>

@@ -64,43 +64,61 @@ function confirmDiscard() {
       </UButton>
     </div>
 
-    <UModal v-model="showClose">
-      <UCard>
-        <template #header>
-          <h3 class="text-sm font-semibold text-gray-900">Cerrar sesión periodontal</h3>
-        </template>
-        <p class="mb-3 text-sm text-gray-600">
-          Una vez cerrada, la sesión queda inmutable y aparece en el historial.
-          Para correcciones tendrás que abrir una nueva sesión.
-        </p>
-        <UFormField label="Nota (opcional)">
-          <UTextarea v-model="notes" rows="3" placeholder="Observaciones de la exploración…" />
-        </UFormField>
-        <template #footer>
-          <div class="flex justify-end gap-2">
-            <UButton variant="outline" @click="showClose = false">Cancelar</UButton>
-            <UButton @click="confirmClose">Cerrar sesión</UButton>
-          </div>
-        </template>
-      </UCard>
+    <UModal
+      :open="showClose"
+      title="Cerrar sesión periodontal"
+      @update:open="(v) => { showClose = v }"
+    >
+      <template #body>
+        <div class="space-y-3 p-4">
+          <p class="text-sm text-gray-600">
+            Una vez cerrada, la sesión queda inmutable y aparece en el historial.
+            Para correcciones tendrás que abrir una nueva sesión.
+          </p>
+          <UFormField label="Nota (opcional)">
+            <UTextarea
+              v-model="notes"
+              :rows="3"
+              placeholder="Observaciones de la exploración…"
+            />
+          </UFormField>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2 p-2">
+          <UButton variant="outline" color="neutral" @click="showClose = false">
+            Cancelar
+          </UButton>
+          <UButton color="primary" @click="confirmClose">
+            Cerrar sesión
+          </UButton>
+        </div>
+      </template>
     </UModal>
 
-    <UModal v-model="showDiscard">
-      <UCard>
-        <template #header>
-          <h3 class="text-sm font-semibold text-gray-900">Descartar borrador</h3>
-        </template>
-        <p class="text-sm text-gray-600">
-          Se eliminarán todos los datos introducidos en esta sesión. Esta acción
-          no se puede deshacer.
-        </p>
-        <template #footer>
-          <div class="flex justify-end gap-2">
-            <UButton variant="outline" @click="showDiscard = false">Cancelar</UButton>
-            <UButton color="error" @click="confirmDiscard">Descartar</UButton>
-          </div>
-        </template>
-      </UCard>
+    <UModal
+      :open="showDiscard"
+      title="Descartar borrador"
+      @update:open="(v) => { showDiscard = v }"
+    >
+      <template #body>
+        <div class="p-4">
+          <p class="text-sm text-gray-600">
+            Se eliminarán todos los datos introducidos en esta sesión.
+            Esta acción no se puede deshacer.
+          </p>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2 p-2">
+          <UButton variant="outline" color="neutral" @click="showDiscard = false">
+            Cancelar
+          </UButton>
+          <UButton color="error" @click="confirmDiscard">
+            Descartar
+          </UButton>
+        </div>
+      </template>
     </UModal>
   </div>
 </template>

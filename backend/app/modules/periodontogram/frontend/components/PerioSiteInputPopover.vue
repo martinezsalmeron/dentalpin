@@ -1,12 +1,11 @@
 <script setup lang="ts">
 /**
- * Compact popover for editing one probing site.
+ * Modal editor for one probing site.
  *
- * Used from `PerioMetricsTable` and `PerioToothLateral`. PR-5 wires
- * the visual shell + values; the autosave + submit handler land in
- * PR-6 alongside the session composable. For now the component emits
- * a `save` event with the patched payload and the parent decides what
- * to do.
+ * Emits a partial patch through the `save` event when the dentist
+ * confirms; the parent (PeriodontogramChart) routes the patch through
+ * `usePeriodontogramSession.patchSite` so it joins the autosave
+ * queue.
  */
 import { computed, ref, watch } from 'vue'
 import type { PerioSite, SiteCode } from '../types'
@@ -30,8 +29,6 @@ const emit = defineEmits<{
     }
   ]
 }>()
-
-const { t } = useI18n()
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -69,18 +66,13 @@ function handleSave() {
 </script>
 
 <template>
-  <UModal v-model="isOpen">
-    <UCard>
-      <template #header>
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-900">
-            {{ toothNumber }} · {{ siteCode }}
-          </h3>
-          <UButton variant="ghost" icon="i-lucide-x" size="xs" @click="isOpen = false" />
-        </div>
-      </template>
-
-      <div class="grid grid-cols-2 gap-3">
+  <UModal
+    :open="isOpen"
+    :title="`Diente ${toothNumber} · sitio ${siteCode}`"
+    @update:open="(v) => { isOpen = v }"
+  >
+    <template #body>
+      <div class="grid grid-cols-2 gap-3 p-4">
         <UFormField label="Sondaje (mm)">
           <UInput v-model.number="pd" type="number" :min="0" :max="15" />
         </UFormField>
@@ -91,13 +83,16 @@ function handleSave() {
         <UCheckbox v-model="plaque" label="Placa" />
         <UCheckbox v-model="sup" label="Supuración" />
       </div>
-
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton variant="outline" @click="isOpen = false">Cancelar</UButton>
-          <UButton @click="handleSave">{{ t('common.save') }}</UButton>
-        </div>
-      </template>
-    </UCard>
+    </template>
+    <template #footer>
+      <div class="flex justify-end gap-2 p-2">
+        <UButton variant="outline" color="neutral" @click="isOpen = false">
+          Cancelar
+        </UButton>
+        <UButton color="primary" @click="handleSave">
+          Guardar
+        </UButton>
+      </div>
+    </template>
   </UModal>
 </template>
