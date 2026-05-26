@@ -9,20 +9,24 @@
 
 export type HeatmapTone = 'neutral' | 'success' | 'warning-low' | 'warning-high' | 'error'
 
+// Calm-design pastel mapping — matches DentalPin's status badge tonal
+// scale (soft fill + accent ring + dark readable text). A site marker
+// should *signal* the pocket-depth bucket without shouting; the saturated
+// 500/600 tones used to dominate the SEPA chart visually.
 const TONE_TO_CLASS: Record<HeatmapTone, string> = {
-  'neutral': 'bg-gray-300 ring-gray-300 text-gray-700',
-  'success': 'bg-success-500 ring-success-500 text-white',
-  'warning-low': 'bg-warning-400 ring-warning-400 text-gray-900',
-  'warning-high': 'bg-warning-600 ring-warning-600 text-white',
-  'error': 'bg-error-500 ring-error-500 text-white'
+  'neutral': 'bg-gray-100 ring-gray-300 text-gray-500',
+  'success': 'bg-emerald-50 ring-emerald-400 text-emerald-700',
+  'warning-low': 'bg-amber-50 ring-amber-400 text-amber-700',
+  'warning-high': 'bg-orange-50 ring-orange-500 text-orange-700',
+  'error': 'bg-rose-50 ring-rose-400 text-rose-700'
 }
 
 const TONE_TO_HEX: Record<HeatmapTone, string> = {
   'neutral': '#d1d5db', // gray-300
-  'success': '#22c55e', // success-500
-  'warning-low': '#facc15', // warning-400
-  'warning-high': '#d97706', // warning-600
-  'error': '#ef4444' // error-500
+  'success': '#34d399', // emerald-400
+  'warning-low': '#fbbf24', // amber-400
+  'warning-high': '#f97316', // orange-500
+  'error': '#fb7185' // rose-400
 }
 
 export function probingDepthTone(pd: number | null | undefined): HeatmapTone {

@@ -56,6 +56,12 @@ const orderedTeeth = computed(() => {
   return out
 })
 
+// Pixel width of the strip overlay = tooth columns only (label column
+// is offset via `left`). Mirrors the <col style="width: 60px"> entries
+// in the <colgroup>.
+const TOOTH_COL_PX = 60
+const profileOverlayWidth = computed(() => `${orderedTeeth.value.length * TOOTH_COL_PX}px`)
+
 const heading = computed(() => (props.arch === 'upper' ? 'Superior' : 'Inferior'))
 const innerFace = computed<'palatal' | 'lingual'>(() =>
   props.arch === 'upper' ? 'palatal' : 'lingual'
@@ -191,7 +197,7 @@ function selectOnFocus(e: FocusEvent) {
     </header>
 
     <table
-      class="perio-arch-table w-full table-fixed border-collapse text-center font-mono text-[11px] leading-tight"
+      class="perio-arch-table table-fixed border-collapse text-center font-mono text-[11px] leading-tight"
     >
       <colgroup>
         <col style="width: 96px" />
@@ -364,23 +370,53 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
 
-        <!-- Vestibular tooth row -->
+        <!-- Vestibular tooth row. The label <th> doubles as the
+             positioning context for the SEPA profile overlay, which
+             absolute-positions itself over the tooth cells to the
+             right and renders gridlines + polylines directly on top
+             of the rendered root area of the tooth silhouettes. -->
         <tr class="tooth-row">
-          <th scope="row" class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+          <th
+            scope="row"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700 perio-row-anchor"
+          >
             Vestibular
+            <div class="perio-profile-anchor perio-profile-anchor--top" :style="{ width: profileOverlayWidth }">
+              <PerioProfileStrip
+                :teeth="orderedTeeth"
+                face="vestibular"
+                direction="depth-up"
+              />
+            </div>
           </th>
-          <td v-for="t in orderedTeeth" :key="`v-tooth-${t.tooth_number}`" class="px-0 align-bottom">
+          <td v-for="t in orderedTeeth" :key="`v-tooth-${t.tooth_number}`" class="px-0 align-top">
             <PerioToothLateral :tooth="t" face="vestibular" :readonly="readonly" />
           </td>
         </tr>
 
-        <!-- Palatal tooth row -->
+        <!-- Palatal tooth row. Overlay extends from bottom upward
+             because the palatal face is flipped: root renders down. -->
         <tr class="tooth-row">
-          <th scope="row" class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+          <th
+            scope="row"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700 perio-row-anchor"
+          >
             {{ innerFaceLabel }}
+            <div class="perio-profile-anchor perio-profile-anchor--bottom" :style="{ width: profileOverlayWidth }">
+              <PerioProfileStrip
+                :teeth="orderedTeeth"
+                :face="innerFace"
+                direction="depth-down"
+              />
+            </div>
           </th>
           <td v-for="t in orderedTeeth" :key="`p-tooth-${t.tooth_number}`" class="px-0 align-top">
-            <PerioToothLateral :tooth="t" :face="innerFace" :readonly="readonly" />
+            <PerioToothLateral
+              :tooth="t"
+              :face="innerFace"
+              :readonly="readonly"
+              markers-position="above"
+            />
           </td>
         </tr>
 
@@ -507,23 +543,52 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
 
-        <!-- Lingual tooth row -->
+        <!-- Lingual tooth row — overlay extends from top down (root
+             renders upward on the lower-arch lingual face: quadrant
+             flip cancels the face flip). -->
         <tr class="tooth-row">
-          <th scope="row" class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+          <th
+            scope="row"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700 perio-row-anchor"
+          >
             {{ innerFaceLabel }}
+            <div class="perio-profile-anchor perio-profile-anchor--top" :style="{ width: profileOverlayWidth }">
+              <PerioProfileStrip
+                :teeth="orderedTeeth"
+                :face="innerFace"
+                direction="depth-up"
+              />
+            </div>
           </th>
           <td v-for="t in orderedTeeth" :key="`l-tooth-${t.tooth_number}`" class="px-0 align-bottom">
             <PerioToothLateral :tooth="t" :face="innerFace" :readonly="readonly" />
           </td>
         </tr>
 
-        <!-- Vestibular tooth row -->
+        <!-- Vestibular tooth row — overlay extends from bottom up
+             (root renders downward on the lower-arch vestibular
+             face). -->
         <tr class="tooth-row">
-          <th scope="row" class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+          <th
+            scope="row"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700 perio-row-anchor"
+          >
             Vestibular
+            <div class="perio-profile-anchor perio-profile-anchor--bottom" :style="{ width: profileOverlayWidth }">
+              <PerioProfileStrip
+                :teeth="orderedTeeth"
+                face="vestibular"
+                direction="depth-down"
+              />
+            </div>
           </th>
           <td v-for="t in orderedTeeth" :key="`v-tooth-${t.tooth_number}`" class="px-0 align-top">
-            <PerioToothLateral :tooth="t" face="vestibular" :readonly="readonly" />
+            <PerioToothLateral
+              :tooth="t"
+              face="vestibular"
+              :readonly="readonly"
+              markers-position="above"
+            />
           </td>
         </tr>
 
@@ -775,14 +840,17 @@ function selectOnFocus(e: FocusEvent) {
   box-shadow: 0 0 0 2px rgb(59 130 246);
 }
 
+/* Calm-design pastel fills — soft background + accent border so the
+   marker reads as "on" without shouting. Matches the alert / badge
+   tonal scale used across the rest of DentalPin. */
 .perio-cell-toggle--bop.is-on {
-  background-color: rgb(239 68 68);
-  border-color: rgb(239 68 68);
+  background-color: var(--color-danger-soft);
+  border-color: var(--color-danger-accent);
 }
 
 .perio-cell-toggle--plaque.is-on {
-  background-color: rgb(59 130 246);
-  border-color: rgb(59 130 246);
+  background-color: var(--color-primary-soft);
+  border-color: var(--color-primary);
 }
 
 .perio-cell-toggle:disabled {
@@ -793,5 +861,48 @@ function selectOnFocus(e: FocusEvent) {
 .perio-arch-table .tooth-row td {
   padding-top: 4px;
   padding-bottom: 4px;
+}
+
+/* The tooth row's label <th> is the positioning anchor for the SEPA
+   profile overlay. Tables don't honor `position: relative` reliably on
+   <tr>, but they DO on <th> / <td>, so we hang the absolute overlay
+   off the row's first cell and stretch it across the tooth columns
+   to the right. */
+.perio-arch-table .perio-row-anchor {
+  position: relative;
+}
+
+.perio-profile-anchor {
+  position: absolute;
+  /* Label column is 96 px (first <col>). Position overlay to start at
+     the tooth columns and extend explicitly across them — `right: 0`
+     wouldn't work because the th cell that anchors us is only 96 px
+     wide, so the overlay would collapse. Width is set inline from
+     `profileOverlayWidth` on the template. */
+  left: 96px;
+  height: 60px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.perio-profile-anchor--top {
+  /* Outer row (vestibular upper, lingual lower) — markers rendered
+     below the tooth, SVG sits at the top of the cell after the 4 px
+     td padding. With VIEW_H=150 and TARGET_GUM_VB_Y=97.5, the gum
+     line lands at within-SVG cellY = 97.5/150 × 112 ≈ 72.8, so the
+     gum row-Y = 4 + 72.8 ≈ 77. Strip baseline (depth-up) sits at the
+     strip's bottom edge → top = 77 − 60 = 17. */
+  top: 17px;
+}
+
+.perio-profile-anchor--bottom {
+  /* Inner row (palatal upper, vestibular lower) — markers rendered
+     ABOVE the tooth, pushing the SVG down by markers (h-4 = 16 px) +
+     gap (2 px) = 18 px, so SVG row-Y = 4 + 18 = 22. The face flip
+     puts the gum at within-SVG cellY = 112 − 72.8 ≈ 39.2, so gum
+     row-Y = 22 + 39.2 ≈ 61. Strip baseline (depth-down) sits at the
+     strip's top edge → top = 61. */
+  top: 61px;
+  bottom: auto;
 }
 </style>

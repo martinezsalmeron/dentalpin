@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- fix(ui): pastel site-marker palette — probing-depth tones now use
+  soft fills + accent ring + dark readable text (emerald / amber /
+  orange / rose), matching the calm-design tonal scale used on status
+  badges elsewhere. Replaces the saturated 500/600 fills that were
+  dominating the SEPA chart visually.
+- fix(ui): SEPA chart visual alignment — common tooth view widened
+  (VIEW_H 130 → 150) so every tooth's crown bottom now fits inside the
+  cell without cropping in either vestibular or palatal/lingual rows,
+  effectively shrinking the rendered tooth by ~13 % to match the
+  4 px/mm scale of the profile strip. Red gum-line curve removed from
+  the tooth silhouettes; the strip's CEJ gridline now doubles as the
+  gum line. Site markers on inner rows (palatal upper, vestibular
+  lower) render above the tooth instead of below, so both markers
+  bands cluster between the two tooth rows and the arch block reads
+  symmetrically around the SEPA midline. Strip overlay offsets
+  recomputed for the new gum cellY (perio-profile-anchor--top 24→17,
+  --bottom 28→61).
 - feat(indices): `close_snapshot` now computes the SEPA bundle
   (BoP %, PI %, mean CAL, deep-pocket count) over the snapshot's
   sites, persists it on the row as JSONB, and publishes the new

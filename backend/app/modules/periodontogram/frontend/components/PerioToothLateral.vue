@@ -23,6 +23,7 @@ import type { PerioSite, PerioTooth, SiteCode } from '../types'
 import { PALATAL_SITES, VESTIBULAR_SITES } from '../types'
 import {
   getLateralPath,
+  getToothPosition,
   getToothTransform
 } from '../../../odontogram/frontend/components/odontogram/ToothSVGPaths'
 
@@ -31,10 +32,52 @@ const props = defineProps<{
   /** Anatomical face this row represents. */
   face: 'vestibular' | 'palatal' | 'lingual'
   readonly?: boolean
+  /**
+   * Where to render the three site markers relative to the tooth SVG.
+   * Defaults to `below`. Set to `above` on the inner row of each arch
+   * (palatal in upper, vestibular in lower) so both markers bands sit
+   * between the two tooth rows — keeps the arch block symmetric around
+   * the markers strip.
+   */
+  markersPosition?: 'above' | 'below'
 }>()
 
 const lateralPaths = computed(() => getLateralPath(props.tooth.tooth_number))
 const baseTransform = computed(() => getToothTransform(props.tooth.tooth_number))
+
+// Extracted from the gum-line path of each tooth in ToothSVGPaths.ts.
+// Used to align every tooth's CEJ (crown/root boundary) to the same
+// Y inside the cell, regardless of natural viewBox height. The strip
+// overlay's baseline lives at that same Y, so the CEJ sits on the
+// first millimetre line of the SEPA profile.
+const GUM_LINE_Y_BY_POSITION: Record<number, number> = {
+  1: 95, 2: 85, 3: 103, 4: 62.5, 5: 80, 6: 85, 7: 78, 8: 63
+}
+
+const VIEWBOX_W_BY_POSITION: Record<number, number> = {
+  1: 46, 2: 40, 3: 47, 4: 40, 5: 40, 6: 64, 7: 66, 8: 67
+}
+
+// Common 70 × 150 view window. 70 wide covers the widest molar
+// (vbW=67); 150 tall fits every tooth's crown bottom without cropping
+// (worst case is pos 7 second molar with 46 vbY of crown past the gum
+// line — 150 − 97.5 = 52.5 vbY of headroom). Gum pinned at vbY=97.5,
+// so it lands at cellY = (97.5 / 150) × 112 ≈ 72.8 inside the h-28
+// cell. Strip overlays in PerioArchBlock anchor to that same cellY.
+const VIEW_W = 70
+const VIEW_H = 150
+const TARGET_GUM_VB_Y = 97.5
+
+const alignedViewBox = computed(() => {
+  const position = getToothPosition(props.tooth.tooth_number)
+  const vbW = VIEWBOX_W_BY_POSITION[position] ?? VIEWBOX_W_BY_POSITION[1]
+  const gly = GUM_LINE_Y_BY_POSITION[position] ?? GUM_LINE_Y_BY_POSITION[1]
+  // Centre the tooth horizontally inside the common view window, then
+  // shift the view vertically so its CEJ row lands on TARGET_GUM_VB_Y.
+  const xV = vbW / 2 - VIEW_W / 2
+  const yV = gly - TARGET_GUM_VB_Y
+  return `${xV} ${yV} ${VIEW_W} ${VIEW_H}`
+})
 
 const faceTransform = computed(() => {
   if (props.face !== 'vestibular') {
@@ -61,10 +104,23 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
 
 <template>
   <div class="perio-tooth-lateral flex flex-col items-center gap-0.5">
+    <!-- Three site markers — rendered above the tooth on inner rows
+         (palatal in upper arch, vestibular in lower arch) so both
+         arches' markers cluster between the two tooth rows. -->
+    <div v-if="markersPosition === 'above'" class="flex items-center gap-0.5">
+      <PerioSiteMarker
+        v-for="code in visibleSites"
+        :key="`above-${code}`"
+        :site="siteByCode[code]"
+        size="sm"
+        readonly
+      />
+    </div>
+
     <div class="perio-tooth-lateral__svg-wrapper relative" :style="{ opacity: visualOpacity }">
       <svg
-        :viewBox="lateralPaths.viewBox"
-        class="h-16 w-10"
+        :viewBox="alignedViewBox"
+        class="h-28 w-[60px]"
         :style="{ transform: faceTransform }"
         preserveAspectRatio="xMidYMid meet"
       >
@@ -112,20 +168,11 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
           <path :d="lateralPaths.crown" />
         </g>
 
-        <!-- Soft gum line in red — outermost layer. Skipped on
-             implant teeth: the periodontal "gum line" concept on a
-             natural root doesn't map to the peri-implant soft tissue
-             interface, and drawing it would slash across the
-             implant fixture / crown junction. Matches how the
-             odontogram renders implants. -->
-        <path
-          v-if="!tooth.is_implant"
-          :d="lateralPaths.gumLine"
-          fill="none"
-          stroke="#ef4444"
-          stroke-width="1"
-          opacity="0.6"
-        />
+        <!-- Gum line is intentionally NOT painted on the tooth here.
+             The SEPA strip overlay (PerioProfileStrip) renders the
+             first mm gridline at exactly the CEJ cellY, so a separate
+             red curve would double-mark the same horizontal and clash
+             with the gridline. -->
       </svg>
 
       <span
@@ -136,13 +183,12 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
       </span>
     </div>
 
-    <!-- Three site markers for THIS face only — decorative heatmap
-         under the tooth so the dentist can spot deep pockets at a
-         glance. Editing happens in the metric table rows. -->
-    <div class="flex items-center gap-0.5">
+    <!-- Three site markers — rendered below by default (outer rows:
+         vestibular in upper, lingual in lower). -->
+    <div v-if="markersPosition !== 'above'" class="flex items-center gap-0.5">
       <PerioSiteMarker
         v-for="code in visibleSites"
-        :key="code"
+        :key="`below-${code}`"
         :site="siteByCode[code]"
         size="sm"
         readonly
