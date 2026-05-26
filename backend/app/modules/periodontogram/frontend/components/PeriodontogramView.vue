@@ -2,12 +2,12 @@
 /**
  * Entry point rendered by the `patient.diagnosis.subtabs` slot.
  *
- * PR-5 lights up the SEPA chart for both drafts and closed snapshots.
- * Timeline navigation between closed snapshots and autosave plumbing
- * arrive in PR-6.
+ * Composes the SEPA chart with the timeline slider so the dentist can
+ * walk between closed snapshots and the current draft, plus the
+ * history banner when viewing a frozen state.
  */
 
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { usePeriodontogram } from '../composables/usePeriodontogram'
 
 const props = defineProps<{
@@ -27,22 +27,28 @@ const {
   closedCount,
   isEmpty,
   fetchTimeline,
-  fetchDraft,
   fetchSnapshot,
   startDraft
 } = usePeriodontogram(() => props.patientId)
 
-async function refreshAll() {
-  await fetchTimeline()
+const viewingDate = ref<string | null>(null)
+const isViewingHistory = computed(() => viewingDate.value !== null)
+
+async function loadCurrentView() {
   if (hasDraft.value && timeline.value?.draft) {
     await fetchSnapshot(timeline.value.draft.id)
   } else if (timeline.value && timeline.value.dates.length > 0) {
-    // Show the most recent closed snapshot as the default view.
     const last = timeline.value.dates[timeline.value.dates.length - 1]
     await fetchSnapshot(last.snapshot_id)
   } else {
     currentSnapshot.value = null
   }
+  viewingDate.value = null
+}
+
+async function refreshAll() {
+  await fetchTimeline()
+  await loadCurrentView()
 }
 
 onMounted(refreshAll)
@@ -60,11 +66,30 @@ async function handleStart() {
   }
 }
 
+async function handleDateChange(date: string | null) {
+  if (date === null) {
+    await loadCurrentView()
+    return
+  }
+  const entry = timeline.value?.dates.find(d => d.date === date)
+  if (!entry) return
+  viewingDate.value = date
+  await fetchSnapshot(entry.snapshot_id)
+}
+
 async function handleRefresh() {
   if (currentSnapshot.value) {
     await fetchSnapshot(currentSnapshot.value.id)
   }
   await fetchTimeline()
+}
+
+async function handleClosed() {
+  await refreshAll()
+}
+
+async function handleDiscarded() {
+  await refreshAll()
 }
 </script>
 
@@ -93,14 +118,28 @@ async function handleRefresh() {
     />
 
     <template v-else-if="currentSnapshot">
-      <PeriodontogramChart
-        :snapshot="currentSnapshot"
-        :readonly="readonly"
-        @refresh="handleRefresh"
+      <PerioHistoryBanner
+        v-if="isViewingHistory && viewingDate"
+        :date="viewingDate"
+        @return-to-current="handleDateChange(null)"
       />
 
-      <!-- Quick action for snapshots in closed-only state. -->
-      <UCard v-if="!hasDraft">
+      <TimelineSlider
+        v-if="timeline && timeline.dates.length > 0"
+        :dates="timeline.dates.map(d => ({ date: d.date, change_count: d.change_count }))"
+        :current-date="viewingDate"
+        @update:current-date="handleDateChange"
+      />
+
+      <PeriodontogramChart
+        :snapshot="currentSnapshot"
+        :readonly="readonly || isViewingHistory"
+        @refresh="handleRefresh"
+        @closed="handleClosed"
+        @discarded="handleDiscarded"
+      />
+
+      <UCard v-if="!hasDraft && !isViewingHistory">
         <div class="flex items-center justify-between">
           <span class="text-sm text-gray-600">
             {{ closedCount }} sesiones cerradas
