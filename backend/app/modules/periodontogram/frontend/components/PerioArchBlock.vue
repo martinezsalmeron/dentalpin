@@ -2,9 +2,15 @@
 /**
  * One arch (upper or lower) of the SEPA layout.
  *
- * For the upper arch the metrics table sits on top and two tooth rows
- * (vestibular ↓ / palatal ↑) follow below. For the lower arch the
- * order flips: lingual ↓ / vestibular ↑ first, then the metrics table.
+ * One tooth row per arch — the per-site markers under each tooth
+ * expose both buccal (MV V DV) and palatal/lingual (ML L DL) halves,
+ * so we no longer need to duplicate the tooth into two anatomical
+ * rows. The metrics table mirrors the same six-site layout.
+ *
+ * Order: upper arch puts the table on top + teeth below; lower arch
+ * inverts — teeth above + table at the bottom — so the two arches
+ * meet at their occlusal plane in the middle of the page, matching
+ * the SEPA convention.
  */
 import { computed } from 'vue'
 import type { PerioTooth, SiteCode } from '../types'
@@ -30,7 +36,6 @@ const orderedTeeth = computed(() => {
     quadrantTeeth.sort((a, b) => {
       const pa = a.tooth_number % 10
       const pb = b.tooth_number % 10
-      // First quadrant of each side goes 8→1; second 1→8.
       return q === 1 || q === 4 ? pb - pa : pa - pb
     })
     out.push(...quadrantTeeth)
@@ -39,14 +44,6 @@ const orderedTeeth = computed(() => {
 })
 
 const heading = computed(() => (props.arch === 'upper' ? 'Superior' : 'Inferior'))
-
-const facePrimary = computed<'vestibular' | 'lingual'>(() =>
-  props.arch === 'upper' ? 'vestibular' : 'lingual'
-)
-
-const faceSecondary = computed<'palatal' | 'vestibular'>(() =>
-  props.arch === 'upper' ? 'palatal' : 'vestibular'
-)
 </script>
 
 <template>
@@ -54,50 +51,32 @@ const faceSecondary = computed<'palatal' | 'vestibular'>(() =>
     <header class="flex items-center justify-between">
       <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ heading }}</h4>
       <span class="text-[10px] text-gray-400">
-        {{ arch === 'upper' ? 'Vestibular / Palatino' : 'Lingual / Vestibular' }}
+        MV V DV · ML L DL
       </span>
     </header>
 
-    <!-- Upper arch: metrics table first, then teeth -->
     <template v-if="arch === 'upper'">
       <PerioMetricsTable
         :teeth="orderedTeeth"
-        face="vestibular"
         :readonly="readonly"
         @edit-tooth="(tn) => emit('editTooth', tn)"
         @edit-site="(tn, code) => emit('editSite', tn, code)"
       />
       <PerioToothRow
         :teeth="orderedTeeth"
-        :face="facePrimary"
-        :readonly="readonly"
-        @site-click="(tn, code) => emit('editSite', tn, code)"
-      />
-      <PerioToothRow
-        :teeth="orderedTeeth"
-        :face="faceSecondary"
         :readonly="readonly"
         @site-click="(tn, code) => emit('editSite', tn, code)"
       />
     </template>
 
-    <!-- Lower arch: teeth first, then metrics table -->
     <template v-else>
       <PerioToothRow
         :teeth="orderedTeeth"
-        :face="facePrimary"
-        :readonly="readonly"
-        @site-click="(tn, code) => emit('editSite', tn, code)"
-      />
-      <PerioToothRow
-        :teeth="orderedTeeth"
-        :face="faceSecondary"
         :readonly="readonly"
         @site-click="(tn, code) => emit('editSite', tn, code)"
       />
       <PerioMetricsTable
         :teeth="orderedTeeth"
-        face="vestibular"
         :readonly="readonly"
         @edit-tooth="(tn) => emit('editTooth', tn)"
         @edit-site="(tn, code) => emit('editSite', tn, code)"

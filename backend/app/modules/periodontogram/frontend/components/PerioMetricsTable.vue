@@ -2,23 +2,19 @@
 /**
  * SEPA metrics table for one arch.
  *
- * Renders the nine canonical rows (Implante, Movilidad, Pronóstico,
- * Furca, Sangrado, Placa, Anchura encía, Margen gingival, Profundidad
- * sondaje) across the 16 teeth in FDI order. Each cell is a button
- * that emits an edit event so the parent can open the right editor.
+ * Renders the canonical rows (Implante, Movilidad, Pronóstico, Furca
+ * vestibular, Furca palatina/lingual, Sangrado, Placa, Anchura encía,
+ * Margen gingival, Sondaje) across the 16 teeth in FDI order.
  *
- * Rows for site-level metrics (sangrado, placa, margen, sondaje)
- * show three sub-cells per tooth (vestibular face only — the
- * palatal/lingual face is shown on the matching arch's lower table).
+ * Per-site rows expose all six sites (MV V DV | ML L DL) in a single
+ * cell so the dentist sees the buccal and palatal halves of the same
+ * tooth without the table being duplicated.
  */
-import { computed } from 'vue'
 import type { PerioSite, PerioTooth, SiteCode } from '../types'
 import { PALATAL_SITES, VESTIBULAR_SITES } from '../types'
 
-const props = defineProps<{
+defineProps<{
   teeth: PerioTooth[]
-  /** Which set of three sites we display on the per-site rows. */
-  face: 'vestibular' | 'palatal' | 'lingual'
   readonly?: boolean
 }>()
 
@@ -26,10 +22,6 @@ const emit = defineEmits<{
   editTooth: [toothNumber: number]
   editSite: [toothNumber: number, siteCode: SiteCode]
 }>()
-
-const siteCodes = computed(() =>
-  props.face === 'vestibular' ? VESTIBULAR_SITES : PALATAL_SITES
-)
 
 function siteValue(tooth: PerioTooth, code: SiteCode): PerioSite | null {
   return tooth.sites.find(s => s.site_code === code) ?? null
@@ -45,18 +37,12 @@ function gmText(site: PerioSite | null): string {
   return String(site.gingival_margin_mm)
 }
 
-function furcaText(tooth: PerioTooth): string {
-  if (props.face === 'vestibular') return tooth.furcation_buccal ?? '·'
-  return tooth.furcation_lingual ?? '·'
-}
-
 function mobilityText(tooth: PerioTooth): string {
   return tooth.mobility != null ? String(tooth.mobility) : '·'
 }
 
 function prognosisText(tooth: PerioTooth): string {
   if (!tooth.prognosis) return '·'
-  // SEPA shorthand mapping (Bueno / Medio / Malo / Sin esperanza).
   return ({ good: 'B', fair: 'M', poor: 'D', hopeless: '✕' } as const)[tooth.prognosis]
 }
 </script>
@@ -108,14 +94,26 @@ function prognosisText(tooth: PerioTooth): string {
         </td>
       </tr>
       <tr>
-        <th scope="row" class="px-1 text-right font-medium text-gray-500">Furca</th>
-        <td v-for="t in teeth" :key="`fur-${t.tooth_number}`" class="px-1">
+        <th scope="row" class="px-1 text-right font-medium text-gray-500">Furca V</th>
+        <td v-for="t in teeth" :key="`furv-${t.tooth_number}`" class="px-1">
           <button
             class="rounded px-1 hover:bg-gray-100 disabled:cursor-not-allowed"
             :disabled="readonly || !t.is_present"
             @click="emit('editTooth', t.tooth_number)"
           >
-            {{ furcaText(t) }}
+            {{ t.furcation_buccal ?? '·' }}
+          </button>
+        </td>
+      </tr>
+      <tr>
+        <th scope="row" class="px-1 text-right font-medium text-gray-500">Furca L/P</th>
+        <td v-for="t in teeth" :key="`furl-${t.tooth_number}`" class="px-1">
+          <button
+            class="rounded px-1 hover:bg-gray-100 disabled:cursor-not-allowed"
+            :disabled="readonly || !t.is_present"
+            @click="emit('editTooth', t.tooth_number)"
+          >
+            {{ t.furcation_lingual ?? '·' }}
           </button>
         </td>
       </tr>
@@ -124,7 +122,17 @@ function prognosisText(tooth: PerioTooth): string {
         <td v-for="t in teeth" :key="`bop-${t.tooth_number}`" class="px-1">
           <div class="flex justify-center gap-0.5">
             <button
-              v-for="code in siteCodes"
+              v-for="code in VESTIBULAR_SITES"
+              :key="`bop-${t.tooth_number}-${code}`"
+              class="h-3 w-3 rounded-sm border border-gray-300 transition hover:scale-110"
+              :class="siteValue(t, code)?.bleeding_on_probing ? 'bg-error-500 border-error-500' : ''"
+              :disabled="readonly || !t.is_present"
+              :title="`${code} sangrado`"
+              @click="emit('editSite', t.tooth_number, code)"
+            />
+            <span aria-hidden="true" class="mx-0.5 text-gray-300">|</span>
+            <button
+              v-for="code in PALATAL_SITES"
               :key="`bop-${t.tooth_number}-${code}`"
               class="h-3 w-3 rounded-sm border border-gray-300 transition hover:scale-110"
               :class="siteValue(t, code)?.bleeding_on_probing ? 'bg-error-500 border-error-500' : ''"
@@ -140,7 +148,17 @@ function prognosisText(tooth: PerioTooth): string {
         <td v-for="t in teeth" :key="`pi-${t.tooth_number}`" class="px-1">
           <div class="flex justify-center gap-0.5">
             <button
-              v-for="code in siteCodes"
+              v-for="code in VESTIBULAR_SITES"
+              :key="`pi-${t.tooth_number}-${code}`"
+              class="h-3 w-3 rounded-sm border border-gray-300 transition hover:scale-110"
+              :class="siteValue(t, code)?.plaque ? 'bg-blue-500 border-blue-500' : ''"
+              :disabled="readonly || !t.is_present"
+              :title="`${code} placa`"
+              @click="emit('editSite', t.tooth_number, code)"
+            />
+            <span aria-hidden="true" class="mx-0.5 text-gray-300">|</span>
+            <button
+              v-for="code in PALATAL_SITES"
               :key="`pi-${t.tooth_number}-${code}`"
               class="h-3 w-3 rounded-sm border border-gray-300 transition hover:scale-110"
               :class="siteValue(t, code)?.plaque ? 'bg-blue-500 border-blue-500' : ''"
@@ -168,7 +186,18 @@ function prognosisText(tooth: PerioTooth): string {
         <td v-for="t in teeth" :key="`gm-${t.tooth_number}`" class="px-1">
           <div class="flex justify-center gap-0.5 tabular-nums">
             <button
-              v-for="code in siteCodes"
+              v-for="code in VESTIBULAR_SITES"
+              :key="`gm-${t.tooth_number}-${code}`"
+              class="w-3 rounded hover:bg-gray-100 disabled:cursor-not-allowed"
+              :disabled="readonly || !t.is_present"
+              :title="`${code} margen`"
+              @click="emit('editSite', t.tooth_number, code)"
+            >
+              {{ gmText(siteValue(t, code)) }}
+            </button>
+            <span aria-hidden="true" class="mx-0.5 text-gray-300">|</span>
+            <button
+              v-for="code in PALATAL_SITES"
               :key="`gm-${t.tooth_number}-${code}`"
               class="w-3 rounded hover:bg-gray-100 disabled:cursor-not-allowed"
               :disabled="readonly || !t.is_present"
@@ -185,7 +214,18 @@ function prognosisText(tooth: PerioTooth): string {
         <td v-for="t in teeth" :key="`pd-${t.tooth_number}`" class="px-1">
           <div class="flex justify-center gap-0.5 tabular-nums font-medium">
             <button
-              v-for="code in siteCodes"
+              v-for="code in VESTIBULAR_SITES"
+              :key="`pd-${t.tooth_number}-${code}`"
+              class="w-3 rounded hover:bg-gray-100 disabled:cursor-not-allowed"
+              :disabled="readonly || !t.is_present"
+              :title="`${code} sondaje`"
+              @click="emit('editSite', t.tooth_number, code)"
+            >
+              {{ pdText(siteValue(t, code)) }}
+            </button>
+            <span aria-hidden="true" class="mx-0.5 text-gray-300">|</span>
+            <button
+              v-for="code in PALATAL_SITES"
               :key="`pd-${t.tooth_number}-${code}`"
               class="w-3 rounded hover:bg-gray-100 disabled:cursor-not-allowed"
               :disabled="readonly || !t.is_present"
