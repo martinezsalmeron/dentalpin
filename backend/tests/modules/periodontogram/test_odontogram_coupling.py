@@ -142,9 +142,12 @@ async def test_close_snapshot_freezes_indices_and_serves_endpoint(
     )
     assert close.status_code == 200, close.text
     indices = close.json()["data"]["indices"]
-    assert indices["bop_pct"] == 100.0
-    assert indices["pi_pct"] == 100.0
-    assert indices["cal_mean_mm"] == 7.0
+    # Denominator is the theoretical site count (32 present teeth × 6 = 192),
+    # so a single bleeder / plaque site reads as 1/192 = 0.52%, not 100%.
+    # See ``indices.py`` — unmeasured sites count as zero, not excluded.
+    assert indices["bop_pct"] == round(100.0 / 192, 2)
+    assert indices["pi_pct"] == round(100.0 / 192, 2)
+    assert indices["cal_mean_mm"] == round(7 / 192, 2)
     assert indices["deep_pockets_count"] == 1
 
     # /indices endpoint returns the frozen indices on a closed snapshot.

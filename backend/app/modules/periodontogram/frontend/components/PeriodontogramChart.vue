@@ -2,22 +2,35 @@
 /**
  * SEPA chart orchestrator.
  *
- * Wires the inline edits emitted by `PerioArchBlock` (per-tooth and
- * per-site patches) into the autosave queue, plus the sticky session
- * actions for close / discard. No modal popovers — every cell in the
- * chart edits in place.
+ * Routes the inline edits from `PerioArchBlock` into the autosave
+ * queue, and surfaces session actions (close / discard) on the top
+ * header card instead of a sticky bottom bar — keeps the
+ * periodontogram aligned with the rest of the patient file's "main
+ * actions live up top" convention.
  */
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
-import type { PerioSnapshotDetail, PerioSnapshotSummary, SiteCode } from '../types'
+import type { PerioIndices, PerioSnapshotDetail, PerioSnapshotSummary, PerioTooth, SiteCode } from '../types'
 import { usePeriodontogramSession } from '../composables/usePeriodontogramSession'
+
+// Mirrors backend constants — client-side live indices must match the
+// formula the backend persists at close. Denominators anchor to
+// (present teeth × 6 sites); unmeasured sites count as zero rather
+// than dropping out, so a half-done exam doesn't report inflated
+// percentages.
+const DEEP_POCKET_THRESHOLD_MM = 5
+const SITES_PER_TOOTH = 6
 
 const props = defineProps<{
   snapshot: PerioSnapshotDetail
   readonly?: boolean
+  // Mutators owned by the parent's ref so optimistic updates fire on
+  // the same reactive object the timeline/view holds — mutating
+  // `props.snapshot` directly is unreliable across Vue prop proxies.
+  applySitePatch: (toothNumber: number, siteCode: SiteCode, patch: Record<string, unknown>) => void
+  applyToothPatch: (toothNumber: number, patch: Record<string, unknown>) => void
 }>()
 
 const emit = defineEmits<{
-  refresh: []
   closed: [snapshot: PerioSnapshotDetail]
   discarded: []
 }>()
@@ -74,16 +87,20 @@ const lowerTeeth = computed(() =>
   props.snapshot.teeth.filter(t => Math.floor(t.tooth_number / 10) >= 3)
 )
 
+// Optimistic-first: the parent's mutator updates `currentSnapshot.value`
+// so the cell repaints on the next frame, then we queue the debounced
+// PATCH. No refetch round-trip — backend confirmation is silent and the
+// saved indicator on the banner reflects the actual save state.
 function handleEditSite(toothNumber: number, siteCode: SiteCode, patch: Record<string, unknown>) {
   if (isReadOnly.value) return
+  props.applySitePatch(toothNumber, siteCode, patch)
   patchSite(props.snapshot.id, toothNumber, siteCode, patch)
-  setTimeout(() => emit('refresh'), 800)
 }
 
 function handleEditTooth(toothNumber: number, patch: Record<string, unknown>) {
   if (isReadOnly.value) return
+  props.applyToothPatch(toothNumber, patch)
   patchTooth(props.snapshot.id, toothNumber, patch)
-  setTimeout(() => emit('refresh'), 800)
 }
 
 async function handleClose(notes: string | null) {
@@ -104,11 +121,58 @@ const summary = computed<PerioSnapshotSummary>(() => ({
   recorded_at: props.snapshot.recorded_at,
   closed_at: props.snapshot.closed_at
 }))
+
+// Live indices recomputed from the in-memory teeth/sites on every edit
+// (drafts only — closed snapshots show the frozen backend value).
+// Mirrors `backend/app/modules/periodontogram/indices.py`.
+function _computeIndices(teeth: PerioTooth[]): PerioIndices {
+  const presentTeeth = teeth.filter(t => t.is_present)
+  const totalSites = presentTeeth.length * SITES_PER_TOOTH
+  if (totalSites === 0) {
+    return { bop_pct: 0, pi_pct: 0, cal_mean_mm: 0, deep_pockets_count: 0 }
+  }
+  let bop = 0
+  let plaque = 0
+  let calSum = 0
+  let deep = 0
+  for (const t of presentTeeth) {
+    let toothHasDeepPocket = false
+    for (const s of t.sites) {
+      if (s.bleeding_on_probing) bop++
+      if (s.plaque) plaque++
+      if (s.probing_depth_mm != null && s.gingival_margin_mm != null) {
+        calSum += s.probing_depth_mm + s.gingival_margin_mm
+      }
+      if (s.probing_depth_mm != null && s.probing_depth_mm >= DEEP_POCKET_THRESHOLD_MM) {
+        toothHasDeepPocket = true
+      }
+    }
+    if (toothHasDeepPocket) deep++
+  }
+  return {
+    bop_pct: (100 * bop) / totalSites,
+    pi_pct: (100 * plaque) / totalSites,
+    cal_mean_mm: calSum / totalSites,
+    deep_pockets_count: deep
+  }
+}
+
+const liveIndices = computed<PerioIndices | null>(() => {
+  if (isReadOnly.value) return props.snapshot.indices
+  return _computeIndices(props.snapshot.teeth)
+})
 </script>
 
 <template>
   <div class="periodontogram-chart space-y-4">
-    <PerioIndicesBanner :indices="snapshot.indices" :snapshot="summary" />
+    <PerioIndicesBanner
+      :indices="liveIndices"
+      :snapshot="summary"
+      :saving="saving"
+      :dirty="dirty"
+      @close="handleClose"
+      @discard="handleDiscard"
+    />
 
     <div
       class="overflow-x-auto pb-2"
@@ -132,13 +196,5 @@ const summary = computed<PerioSnapshotSummary>(() => ({
         />
       </div>
     </div>
-
-    <PerioSessionActions
-      v-if="snapshot.status === 'draft' && !readonly"
-      :saving="saving"
-      :dirty="dirty"
-      @close="handleClose"
-      @discard="handleDiscard"
-    />
   </div>
 </template>

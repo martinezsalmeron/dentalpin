@@ -256,6 +256,21 @@ body {
   --odontogram-bg: var(--color-surface-muted);
   --odontogram-gum: #FDA4AF;
   --odontogram-selected: var(--color-primary);
+
+  /* Periodontogram — SEPA profile strip palette */
+  --perio-grid-line: #E5E7EB;
+  --perio-grid-line-bold: #CBD5E1;
+  --perio-pocket-band: #FEE7E7;
+  --perio-pocket-band-opacity: 0.6;
+  --perio-gm-stroke: #0EA5E9;
+  --perio-pd-stroke: #DC2626;
+  --perio-implant-fill: #10B981;
+  --perio-cell-hover: var(--color-surface-muted);
+  --perio-cell-focus-ring: var(--color-warning-accent);
+  --perio-cell-toggle-border: var(--color-border-strong);
+  --perio-cell-toggle-bg: var(--color-surface);
+  --perio-vestibular-row: rgba(245, 158, 11, 0.06);
+  --perio-palatal-row: rgba(14, 165, 233, 0.06);
 }
 
 .dark {
@@ -268,6 +283,21 @@ body {
   --odontogram-bg: var(--color-surface-muted);
   --odontogram-gum: #BE6B78;
   --odontogram-selected: var(--color-primary);
+
+  /* Periodontogram — dark variants for SEPA profile strip */
+  --perio-grid-line: rgba(255, 250, 240, 0.10);
+  --perio-grid-line-bold: rgba(255, 250, 240, 0.22);
+  --perio-pocket-band: rgba(248, 113, 113, 0.18);
+  --perio-pocket-band-opacity: 1;
+  --perio-gm-stroke: #38BDF8;
+  --perio-pd-stroke: #F87171;
+  --perio-implant-fill: #34D399;
+  --perio-cell-hover: var(--color-surface-muted);
+  --perio-cell-focus-ring: var(--color-warning-accent);
+  --perio-cell-toggle-border: rgba(255, 250, 240, 0.18);
+  --perio-cell-toggle-bg: var(--color-surface-muted);
+  --perio-vestibular-row: rgba(245, 158, 11, 0.10);
+  --perio-palatal-row: rgba(56, 189, 248, 0.10);
 }
 
 /* ============================================================================

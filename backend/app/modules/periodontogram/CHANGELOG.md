@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- feat(ui): dark mode support across the whole periodontogram surface.
+  SEPA profile strip, tooth silhouettes, implant fixture, site
+  markers, arch tables, indices banner, history banner and empty
+  state now read from CSS tokens (`--perio-*`, `--odontogram-*`) or
+  use `dark:` Tailwind variants — no hardcoded hex / `rgb()` colours
+  left in templates or scoped styles.
+- refactor(indices): denominator anchored to `6 × present teeth` so
+  half-finished exams no longer report inflated BoP/PI percentages;
+  unmeasured sites count as "no finding" instead of dropping out of
+  the bucket. Frontend live computation in `PeriodontogramChart`
+  mirrors the backend formula exactly.
+- feat(ui): session actions (Cerrar sesión / Descartar borrador)
+  inlined into `PerioIndicesBanner` and the standalone
+  `PerioSessionActions.vue` component removed. Keeps the
+  periodontogram aligned with the rest of the patient file's "main
+  actions live up top" convention.
 - fix(ui): pastel site-marker palette — probing-depth tones now use
   soft fills + accent ring + dark readable text (emerald / amber /
   orange / rose), matching the calm-design tonal scale used on status

@@ -148,20 +148,25 @@ const gridlines = computed(() => {
         :x2="stripWidth"
         :y1="g.y"
         :y2="g.y"
-        :stroke="g.mm % 5 === 0 ? '#cbd5e1' : '#e5e7eb'"
+        :stroke="g.mm % 5 === 0 ? 'var(--perio-grid-line-bold)' : 'var(--perio-grid-line)'"
         :stroke-width="g.mm % 5 === 0 ? 0.6 : 0.35"
       />
     </g>
 
     <!-- Pocket band — soft red fill between the two lines. -->
-    <path v-if="bandPath" :d="bandPath" fill="#FEE7E7" opacity="0.6" />
+    <path
+      v-if="bandPath"
+      :d="bandPath"
+      fill="var(--perio-pocket-band)"
+      style="opacity: var(--perio-pocket-band-opacity)"
+    />
 
     <!-- Gingival margin (calm sky) -->
     <path
       v-if="gmPath"
       :d="gmPath"
       fill="none"
-      stroke="#0EA5E9"
+      stroke="var(--perio-gm-stroke)"
       stroke-width="1.4"
       stroke-linejoin="round"
       stroke-linecap="round"
@@ -172,7 +177,7 @@ const gridlines = computed(() => {
       v-if="pdPath"
       :d="pdPath"
       fill="none"
-      stroke="#DC2626"
+      stroke="var(--perio-pd-stroke)"
       stroke-width="1.4"
       stroke-linejoin="round"
       stroke-linecap="round"

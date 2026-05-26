@@ -188,10 +188,10 @@ function selectOnFocus(e: FocusEvent) {
 </script>
 
 <template>
-  <section class="perio-arch-block rounded-lg border border-gray-200 bg-white">
+  <section class="perio-arch-block rounded-lg border border-default bg-surface">
     <header class="flex items-center justify-between px-3 py-2">
-      <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ heading }}</h4>
-      <span class="text-[10px] text-gray-400">
+      <h4 class="text-xs font-semibold uppercase tracking-wide text-muted">{{ heading }}</h4>
+      <span class="text-[10px] text-subtle">
         Vestibular (MV V DV) ↔ {{ innerFaceLabel }} (ML L DL)
       </span>
     </header>
@@ -206,11 +206,11 @@ function selectOnFocus(e: FocusEvent) {
 
       <thead v-if="arch === 'upper'">
         <tr>
-          <th class="px-1 text-right font-medium text-gray-500"></th>
+          <th class="px-1 text-right font-medium text-muted"></th>
           <th
             v-for="t in orderedTeeth"
             :key="`fdi-${t.tooth_number}`"
-            class="px-1 py-1 font-medium text-gray-700"
+            class="px-1 py-1 font-medium text-default"
           >
             {{ t.tooth_number }}
           </th>
@@ -218,14 +218,14 @@ function selectOnFocus(e: FocusEvent) {
       </thead>
 
       <!-- ============== UPPER ARCH ============== -->
-      <tbody v-if="arch === 'upper'" class="divide-y divide-gray-100">
+      <tbody v-if="arch === 'upper'" class="divide-y divide-gray-100 dark:divide-gray-800">
         <!-- Implante (toggle ● / ·) -->
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Implante</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Implante</th>
           <td v-for="t in orderedTeeth" :key="`imp-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
-              :class="{ 'text-emerald-600': t.is_implant }"
+              :class="{ 'text-emerald-600 dark:text-emerald-400': t.is_implant }"
               :disabled="readonly"
               :title="t.is_implant ? 'Implante (clic para quitar)' : 'Clic para marcar como implante'"
               @click="onImplantToggle(t)"
@@ -237,7 +237,7 @@ function selectOnFocus(e: FocusEvent) {
 
         <!-- Movilidad (cycle 0..3 + null) -->
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Movilidad</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Movilidad</th>
           <td v-for="t in orderedTeeth" :key="`mob-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -252,7 +252,7 @@ function selectOnFocus(e: FocusEvent) {
 
         <!-- Pronóstico cycle -->
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Pronóstico</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Pronóstico</th>
           <td v-for="t in orderedTeeth" :key="`pron-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -267,7 +267,7 @@ function selectOnFocus(e: FocusEvent) {
 
         <!-- Furca V / L cycles -->
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Furca V</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Furca V</th>
           <td v-for="t in orderedTeeth" :key="`furv-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -280,7 +280,7 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Furca L/P</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Furca L/P</th>
           <td v-for="t in orderedTeeth" :key="`furl-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -295,7 +295,7 @@ function selectOnFocus(e: FocusEvent) {
 
         <!-- Anchura encía (numeric input) -->
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Anchura encía</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Anchura encía</th>
           <td v-for="t in orderedTeeth" :key="`kg-${t.tooth_number}`" class="px-1">
             <input
               type="number"
@@ -316,9 +316,9 @@ function selectOnFocus(e: FocusEvent) {
           { kind: 'site-gm', label: 'Margen' },
           { kind: 'site-plaque', label: 'Placa' },
           { kind: 'site-bop', label: 'Sangrado' }
-        ]" :key="`v-${row.kind}`" class="bg-amber-50/40">
-          <th scope="row" class="px-1 text-right font-medium text-amber-700">
-            {{ row.label }} <span class="text-[9px] text-amber-500">V</span>
+        ]" :key="`v-${row.kind}`" class="perio-row-vestibular">
+          <th scope="row" class="px-1 text-right font-medium text-amber-700 dark:text-amber-400">
+            {{ row.label }} <span class="text-[9px] text-amber-500 dark:text-amber-300/80">V</span>
           </th>
           <td v-for="t in orderedTeeth" :key="`v-${row.kind}-${t.tooth_number}`" class="px-1">
             <div class="flex items-center justify-center gap-0.5 tabular-nums">
@@ -378,7 +378,7 @@ function selectOnFocus(e: FocusEvent) {
         <tr class="tooth-row">
           <th
             scope="row"
-            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700 perio-row-anchor"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400 perio-row-anchor"
           >
             Vestibular
             <div class="perio-profile-anchor perio-profile-anchor--top" :style="{ width: profileOverlayWidth }">
@@ -399,7 +399,7 @@ function selectOnFocus(e: FocusEvent) {
         <tr class="tooth-row">
           <th
             scope="row"
-            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700 perio-row-anchor"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400 perio-row-anchor"
           >
             {{ innerFaceLabel }}
             <div class="perio-profile-anchor perio-profile-anchor--bottom" :style="{ width: profileOverlayWidth }">
@@ -426,9 +426,9 @@ function selectOnFocus(e: FocusEvent) {
           { kind: 'site-plaque', label: 'Placa' },
           { kind: 'site-gm', label: 'Margen' },
           { kind: 'site-pd', label: 'Sondaje' }
-        ]" :key="`p-${row.kind}`" class="bg-sky-50/40">
-          <th scope="row" class="px-1 text-right font-medium text-sky-700">
-            {{ row.label }} <span class="text-[9px] text-sky-500">{{ innerFaceLabel.charAt(0) }}</span>
+        ]" :key="`p-${row.kind}`" class="perio-row-palatal">
+          <th scope="row" class="px-1 text-right font-medium text-sky-700 dark:text-sky-400">
+            {{ row.label }} <span class="text-[9px] text-sky-500 dark:text-sky-300/80">{{ innerFaceLabel.charAt(0) }}</span>
           </th>
           <td v-for="t in orderedTeeth" :key="`p-${row.kind}-${t.tooth_number}`" class="px-1">
             <div class="flex items-center justify-center gap-0.5 tabular-nums">
@@ -482,16 +482,16 @@ function selectOnFocus(e: FocusEvent) {
       </tbody>
 
       <!-- ============== LOWER ARCH (mirror) ============== -->
-      <tbody v-else class="divide-y divide-gray-100">
+      <tbody v-else class="divide-y divide-gray-100 dark:divide-gray-800">
         <!-- Lingual site metrics on top -->
         <tr v-for="row in [
           { kind: 'site-pd', label: 'Sondaje' },
           { kind: 'site-gm', label: 'Margen' },
           { kind: 'site-plaque', label: 'Placa' },
           { kind: 'site-bop', label: 'Sangrado' }
-        ]" :key="`l-${row.kind}`" class="bg-sky-50/40">
-          <th scope="row" class="px-1 text-right font-medium text-sky-700">
-            {{ row.label }} <span class="text-[9px] text-sky-500">L</span>
+        ]" :key="`l-${row.kind}`" class="perio-row-palatal">
+          <th scope="row" class="px-1 text-right font-medium text-sky-700 dark:text-sky-400">
+            {{ row.label }} <span class="text-[9px] text-sky-500 dark:text-sky-300/80">L</span>
           </th>
           <td v-for="t in orderedTeeth" :key="`l-${row.kind}-${t.tooth_number}`" class="px-1">
             <div class="flex items-center justify-center gap-0.5 tabular-nums">
@@ -549,7 +549,7 @@ function selectOnFocus(e: FocusEvent) {
         <tr class="tooth-row">
           <th
             scope="row"
-            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700 perio-row-anchor"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400 perio-row-anchor"
           >
             {{ innerFaceLabel }}
             <div class="perio-profile-anchor perio-profile-anchor--top" :style="{ width: profileOverlayWidth }">
@@ -571,7 +571,7 @@ function selectOnFocus(e: FocusEvent) {
         <tr class="tooth-row">
           <th
             scope="row"
-            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700 perio-row-anchor"
+            class="px-1 text-right text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400 perio-row-anchor"
           >
             Vestibular
             <div class="perio-profile-anchor perio-profile-anchor--bottom" :style="{ width: profileOverlayWidth }">
@@ -598,9 +598,9 @@ function selectOnFocus(e: FocusEvent) {
           { kind: 'site-plaque', label: 'Placa' },
           { kind: 'site-gm', label: 'Margen' },
           { kind: 'site-pd', label: 'Sondaje' }
-        ]" :key="`v-${row.kind}`" class="bg-amber-50/40">
-          <th scope="row" class="px-1 text-right font-medium text-amber-700">
-            {{ row.label }} <span class="text-[9px] text-amber-500">V</span>
+        ]" :key="`v-${row.kind}`" class="perio-row-vestibular">
+          <th scope="row" class="px-1 text-right font-medium text-amber-700 dark:text-amber-400">
+            {{ row.label }} <span class="text-[9px] text-amber-500 dark:text-amber-300/80">V</span>
           </th>
           <td v-for="t in orderedTeeth" :key="`v-${row.kind}-${t.tooth_number}`" class="px-1">
             <div class="flex items-center justify-center gap-0.5 tabular-nums">
@@ -654,7 +654,7 @@ function selectOnFocus(e: FocusEvent) {
 
         <!-- Per-tooth metrics (reversed — closest to vestibular row) -->
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Anchura encía</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Anchura encía</th>
           <td v-for="t in orderedTeeth" :key="`kg-${t.tooth_number}`" class="px-1">
             <input
               type="number"
@@ -669,7 +669,7 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Furca L/P</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Furca L/P</th>
           <td v-for="t in orderedTeeth" :key="`furl-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -680,7 +680,7 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Furca V</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Furca V</th>
           <td v-for="t in orderedTeeth" :key="`furv-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -691,7 +691,7 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Pronóstico</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Pronóstico</th>
           <td v-for="t in orderedTeeth" :key="`pron-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -702,7 +702,7 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Movilidad</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Movilidad</th>
           <td v-for="t in orderedTeeth" :key="`mob-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
@@ -713,11 +713,11 @@ function selectOnFocus(e: FocusEvent) {
           </td>
         </tr>
         <tr>
-          <th scope="row" class="px-1 text-right font-medium text-gray-500">Implante</th>
+          <th scope="row" class="px-1 text-right font-medium text-muted">Implante</th>
           <td v-for="t in orderedTeeth" :key="`imp-${t.tooth_number}`" class="px-1">
             <button
               class="perio-cell-cycle"
-              :class="{ 'text-emerald-600': t.is_implant }"
+              :class="{ 'text-emerald-600 dark:text-emerald-400': t.is_implant }"
               :disabled="readonly"
               :title="t.is_implant ? 'Implante (clic para quitar)' : 'Clic para marcar como implante'"
               @click="onImplantToggle(t)"
@@ -728,11 +728,11 @@ function selectOnFocus(e: FocusEvent) {
 
       <tfoot v-if="arch === 'lower'">
         <tr>
-          <th class="px-1 text-right font-medium text-gray-500"></th>
+          <th class="px-1 text-right font-medium text-muted"></th>
           <th
             v-for="t in orderedTeeth"
             :key="`fdi-${t.tooth_number}`"
-            class="px-1 py-1 font-medium text-gray-700"
+            class="px-1 py-1 font-medium text-default"
           >
             {{ t.tooth_number }}
           </th>
@@ -764,13 +764,13 @@ function selectOnFocus(e: FocusEvent) {
 }
 
 .perio-cell-cycle:hover:not(:disabled) {
-  background-color: rgb(243 244 246); /* gray-100 */
+  background-color: var(--perio-cell-hover);
 }
 
 .perio-cell-cycle:focus-visible {
   outline: none;
-  border-color: rgb(59 130 246); /* primary-500 */
-  box-shadow: 0 0 0 1px rgb(59 130 246);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
 }
 
 .perio-cell-cycle:disabled {
@@ -785,6 +785,7 @@ function selectOnFocus(e: FocusEvent) {
   background: transparent;
   font-family: inherit;
   font-size: inherit;
+  color: var(--color-text);
   text-align: center;
   font-variant-numeric: tabular-nums;
   appearance: textfield;
@@ -800,19 +801,19 @@ function selectOnFocus(e: FocusEvent) {
 }
 
 .perio-cell-input:hover:not(:disabled) {
-  background-color: rgb(249 250 251);
+  background-color: var(--perio-cell-hover);
 }
 
 .perio-cell-input:focus {
   outline: none;
-  background-color: white;
-  border-color: rgb(245 158 11); /* amber-500 */
-  box-shadow: 0 0 0 1px rgb(245 158 11);
+  background-color: var(--color-surface);
+  border-color: var(--perio-cell-focus-ring);
+  box-shadow: 0 0 0 1px var(--perio-cell-focus-ring);
 }
 
 .perio-cell-input:disabled {
   cursor: not-allowed;
-  color: rgb(156 163 175);
+  color: var(--color-text-disabled);
 }
 
 .perio-cell-input--site {
@@ -825,8 +826,8 @@ function selectOnFocus(e: FocusEvent) {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid rgb(209 213 219);
-  background: white;
+  border: 1px solid var(--perio-cell-toggle-border);
+  background: var(--perio-cell-toggle-bg);
   cursor: pointer;
   transition: transform 100ms ease, background-color 100ms ease;
 }
@@ -837,7 +838,7 @@ function selectOnFocus(e: FocusEvent) {
 
 .perio-cell-toggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgb(59 130 246);
+  box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 /* Calm-design pastel fills — soft background + accent border so the
@@ -856,6 +857,17 @@ function selectOnFocus(e: FocusEvent) {
 .perio-cell-toggle:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* Soft tinted bands behind site metric rows. Vestibular = amber,
+   palatal/lingual = sky. Tokens flip the tint for dark mode so the
+   bands stay readable on a dark surface. */
+.perio-row-vestibular {
+  background-color: var(--perio-vestibular-row);
+}
+
+.perio-row-palatal {
+  background-color: var(--perio-palatal-row);
 }
 
 .perio-arch-table .tooth-row td {

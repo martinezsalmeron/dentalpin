@@ -21,14 +21,14 @@ const { t } = useI18n()
   <UCard class="perio-empty-state">
     <div class="flex flex-col items-center gap-3 py-10 text-center">
       <div
-        class="flex h-14 w-14 items-center justify-center rounded-full bg-primary-50 text-primary-600"
+        class="flex h-14 w-14 items-center justify-center rounded-full bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300"
       >
         <UIcon name="i-lucide-activity" class="text-2xl" />
       </div>
-      <h3 class="text-lg font-semibold text-gray-900">
+      <h3 class="text-lg font-semibold text-default">
         {{ t('periodontogram.empty.title') }}
       </h3>
-      <p class="max-w-md text-sm text-gray-600">
+      <p class="max-w-md text-sm text-muted">
         {{ t('periodontogram.empty.description') }}
       </p>
       <UButton

@@ -8,8 +8,10 @@
 
 import { computed, ref } from 'vue'
 import type {
+  PerioSite,
   PerioSnapshotDetail,
-  PerioTimelineResponse
+  PerioTimelineResponse,
+  SiteCode
 } from '../types'
 
 interface ApiResponse<T> {
@@ -60,6 +62,53 @@ export function usePeriodontogram(patientId: () => string) {
     currentSnapshot.value = response.data
   }
 
+  // Optimistic mutators — apply a per-tooth or per-site patch directly
+  // onto `currentSnapshot.value` so the UI updates on the next frame,
+  // before the debounced PATCH lands. Caller (the chart) is responsible
+  // for queueing the network write separately.
+  function applySitePatch(
+    toothNumber: number,
+    siteCode: SiteCode,
+    patch: Record<string, unknown>
+  ): void {
+    const snap = currentSnapshot.value
+    if (!snap) return
+    const tooth = snap.teeth.find(t => t.tooth_number === toothNumber)
+    if (!tooth) return
+    let site = tooth.sites.find(s => s.site_code === siteCode)
+    if (!site) {
+      // Backend creates the PeriodontogramSite row lazily on the first
+      // PATCH (see service.py: `update_site`). Mirror that here so the
+      // optimistic update has a target to mutate — otherwise the very
+      // first edit of a site would no-op locally and the marker would
+      // only repaint after a refetch.
+      site = {
+        site_code: siteCode,
+        probing_depth_mm: null,
+        gingival_margin_mm: null,
+        bleeding_on_probing: false,
+        plaque: false,
+        suppuration: false
+      } satisfies PerioSite
+      tooth.sites.push(site)
+    }
+    for (const [key, value] of Object.entries(patch)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (site as any)[key] = value
+    }
+  }
+
+  function applyToothPatch(toothNumber: number, patch: Record<string, unknown>): void {
+    const snap = currentSnapshot.value
+    if (!snap) return
+    const tooth = snap.teeth.find(t => t.tooth_number === toothNumber)
+    if (!tooth) return
+    for (const [key, value] of Object.entries(patch)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (tooth as any)[key] = value
+    }
+  }
+
   async function startDraft(): Promise<PerioSnapshotDetail> {
     const response = await api.post<ApiResponse<PerioSnapshotDetail>>(
       `/api/v1/periodontogram/patients/${patientId()}/draft`,
@@ -82,6 +131,8 @@ export function usePeriodontogram(patientId: () => string) {
     fetchTimeline,
     fetchDraft,
     fetchSnapshot,
-    startDraft
+    startDraft,
+    applySitePatch,
+    applyToothPatch
   }
 }

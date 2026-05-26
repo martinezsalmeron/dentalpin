@@ -28,6 +28,7 @@ class SiteCode(StrEnum):
 
 
 SITE_CODES: Final[list[str]] = [s.value for s in SiteCode]
+SITES_PER_TOOTH: Final[int] = len(SITE_CODES)
 VESTIBULAR_SITES: Final[tuple[str, str, str]] = (SiteCode.MV, SiteCode.V, SiteCode.DV)
 PALATAL_SITES: Final[tuple[str, str, str]] = (SiteCode.ML, SiteCode.L, SiteCode.DL)
 

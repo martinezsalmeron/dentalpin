@@ -3,8 +3,8 @@
  * Tiny dot rendering a single probing site.
  *
  * Colour is driven by `probing_depth_mm` via the heatmap composable.
- * Bleeding / plaque overlays are indicated by ring colour and a small
- * marker glyph; suppuration adds a pulse.
+ * Bleeding and plaque state is shown in the metric table rows (Sangrado
+ * / Placa) — keeping it out of the marker avoids visual duplication.
  */
 import { computed } from 'vue'
 import type { PerioSite } from '../types'
@@ -27,23 +27,10 @@ const sizeClass = computed(() => (props.size === 'sm' ? 'h-4 w-4 text-[10px]' : 
   <span
     class="perio-site-marker inline-flex items-center justify-center rounded-full font-mono font-medium ring-1 ring-inset"
     :class="[colourClass, sizeClass]"
-    :aria-label="`Sitio ${site?.site_code ?? ''}, sondaje ${site?.probing_depth_mm ?? 'sin valor'}${site?.bleeding_on_probing ? ', con sangrado' : ''}${site?.plaque ? ', con placa' : ''}`"
+    :aria-label="`Sitio ${site?.site_code ?? ''}, sondaje ${site?.probing_depth_mm ?? 'sin valor'}`"
   >
     <span v-if="site?.probing_depth_mm != null">{{ site.probing_depth_mm }}</span>
     <span v-else>·</span>
-
-    <span
-      v-if="site?.bleeding_on_probing"
-      class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-error-500 ring-1 ring-white"
-      title="Sangrado"
-      aria-hidden="true"
-    />
-    <span
-      v-if="site?.plaque"
-      class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-white"
-      title="Placa"
-      aria-hidden="true"
-    />
   </span>
 </template>
 

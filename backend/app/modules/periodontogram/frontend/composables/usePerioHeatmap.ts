@@ -14,11 +14,11 @@ export type HeatmapTone = 'neutral' | 'success' | 'warning-low' | 'warning-high'
 // should *signal* the pocket-depth bucket without shouting; the saturated
 // 500/600 tones used to dominate the SEPA chart visually.
 const TONE_TO_CLASS: Record<HeatmapTone, string> = {
-  'neutral': 'bg-gray-100 ring-gray-300 text-gray-500',
-  'success': 'bg-emerald-50 ring-emerald-400 text-emerald-700',
-  'warning-low': 'bg-amber-50 ring-amber-400 text-amber-700',
-  'warning-high': 'bg-orange-50 ring-orange-500 text-orange-700',
-  'error': 'bg-rose-50 ring-rose-400 text-rose-700'
+  'neutral': 'bg-gray-100 ring-gray-300 text-gray-500 dark:bg-gray-700/70 dark:ring-gray-500 dark:text-gray-300',
+  'success': 'bg-emerald-50 ring-emerald-400 text-emerald-700 dark:bg-emerald-900/50 dark:ring-emerald-500 dark:text-emerald-200',
+  'warning-low': 'bg-amber-50 ring-amber-400 text-amber-700 dark:bg-amber-900/50 dark:ring-amber-500 dark:text-amber-200',
+  'warning-high': 'bg-orange-50 ring-orange-500 text-orange-700 dark:bg-orange-900/50 dark:ring-orange-500 dark:text-orange-200',
+  'error': 'bg-rose-50 ring-rose-400 text-rose-700 dark:bg-rose-900/50 dark:ring-rose-500 dark:text-rose-200'
 }
 
 const TONE_TO_HEX: Record<HeatmapTone, string> = {

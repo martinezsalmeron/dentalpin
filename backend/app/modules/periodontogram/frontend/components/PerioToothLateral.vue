@@ -132,10 +132,9 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
         <g
           v-if="!tooth.is_implant"
           fill="none"
-          stroke="currentColor"
+          stroke="var(--odontogram-outline-light)"
           stroke-width="1.5"
           stroke-linejoin="round"
-          class="text-gray-400"
         >
           <path v-if="lateralPaths.root" :d="lateralPaths.root" />
           <template v-else-if="lateralPaths.roots">
@@ -150,20 +149,19 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
           v-if="tooth.is_implant && tooth.is_present"
           :view-box="lateralPaths.viewBox"
           :tooth-number="tooth.tooth_number"
-          fill="#10b981"
+          fill="var(--perio-implant-fill)"
           status="existing"
         />
 
-        <!-- Crown on top of root/implant. Solid white fill so the
+        <!-- Crown on top of root/implant. Surface-token fill so the
              crown's footprint occludes the implant neck — gives the
              same clean seal the odontogram produces between fixture
              and crown. -->
         <g
-          fill="white"
-          stroke="currentColor"
+          fill="var(--odontogram-fill)"
+          stroke="var(--odontogram-outline-light)"
           stroke-width="1.5"
           stroke-linejoin="round"
-          class="text-gray-400"
         >
           <path :d="lateralPaths.crown" />
         </g>
@@ -177,7 +175,7 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
 
       <span
         v-if="!tooth.is_present"
-        class="absolute inset-0 flex items-center justify-center text-gray-400"
+        class="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-600"
       >
         <span class="font-mono text-xs">—</span>
       </span>

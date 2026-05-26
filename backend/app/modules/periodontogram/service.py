@@ -104,11 +104,13 @@ class PeriodontogramService:
         clinic_id: UUID,
         patient_id: UUID,
     ) -> list[dict[str, object]]:
-        """Closed snapshots only. Each entry: snapshot_id, date, change_count.
+        """Closed snapshots only, deduped to one entry per calendar day.
 
-        ``change_count`` is the number of sites with any recorded probing
-        depth — a useful proxy for "how complete was this exam" when
-        rendering the slider.
+        Multiple snapshots closed on the same day collapse into the
+        latest one (largest ``closed_at``) — the slider should show one
+        dot per day, not one per session. ``change_count`` reports that
+        latest snapshot's filled sites; older same-day snapshots are
+        still reachable via the snapshot list endpoint if needed.
         """
         site_subq = (
             select(
@@ -136,14 +138,17 @@ class PeriodontogramService:
         )
 
         rows = (await db.execute(stmt)).all()
-        return [
-            {
+        by_date: dict[str, dict[str, object]] = {}
+        for row in rows:
+            date_str = row.closed_at.date().isoformat()
+            # rows arrive ASC by closed_at, so the last write wins — i.e.
+            # the latest snapshot of the day becomes the day's entry.
+            by_date[date_str] = {
                 "snapshot_id": row.id,
-                "date": row.closed_at.date().isoformat(),
+                "date": date_str,
                 "change_count": int(row.change_count),
             }
-            for row in rows
-        ]
+        return list(by_date.values())
 
     # ----- WRITE --------------------------------------------------------
 
@@ -353,13 +358,11 @@ class PeriodontogramService:
                 detail="Snapshot is already closed",
             )
 
-        # Compute indices over the snapshot's sites and freeze them on the
-        # row as JSONB. Avoids re-walking every site for read traffic.
-        # ``snap.teeth`` is selectin-loaded by ``get_snapshot`` together
-        # with the per-tooth sites; walk through the teeth to avoid
-        # triggering a lazy load on ``snap.sites``.
-        all_sites = [site for tooth in snap.teeth for site in tooth.sites]
-        snap.indices = compute_indices(all_sites)
+        # Compute indices over the snapshot's teeth and freeze them on
+        # the row as JSONB. Avoids re-walking every site for read
+        # traffic. Denominators anchor to the theoretical site count of
+        # every present tooth — see ``indices.py`` for the rationale.
+        snap.indices = compute_indices(snap.teeth)
 
         snap.status = SnapshotStatus.CLOSED.value
         snap.closed_at = datetime.now(UTC)

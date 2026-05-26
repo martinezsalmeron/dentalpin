@@ -280,8 +280,7 @@ async def get_snapshot_indices(
     snap = await PeriodontogramService.get_snapshot(db, ctx.clinic_id, snapshot_id)
     if snap.indices:
         return ApiResponse(data=IndicesResponse(**snap.indices))
-    all_sites = [site for tooth in snap.teeth for site in tooth.sites]
-    live = compute_indices(all_sites)
+    live = compute_indices(snap.teeth)
     return ApiResponse(data=IndicesResponse(**live))
 
 

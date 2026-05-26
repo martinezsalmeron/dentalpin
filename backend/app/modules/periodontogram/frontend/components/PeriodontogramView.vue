@@ -28,7 +28,9 @@ const {
   isEmpty,
   fetchTimeline,
   fetchSnapshot,
-  startDraft
+  startDraft,
+  applySitePatch,
+  applyToothPatch
 } = usePeriodontogram(() => props.patientId)
 
 const viewingDate = ref<string | null>(null)
@@ -77,13 +79,6 @@ async function handleDateChange(date: string | null) {
   await fetchSnapshot(entry.snapshot_id)
 }
 
-async function handleRefresh() {
-  if (currentSnapshot.value) {
-    await fetchSnapshot(currentSnapshot.value.id)
-  }
-  await fetchTimeline()
-}
-
 async function handleClosed() {
   await refreshAll()
 }
@@ -97,7 +92,7 @@ async function handleDiscarded() {
   <div class="periodontogram-view space-y-4">
     <div
       v-if="isLoading && !currentSnapshot"
-      class="flex items-center gap-2 text-sm text-gray-500"
+      class="flex items-center gap-2 text-sm text-muted"
     >
       <UIcon name="i-lucide-loader-2" class="animate-spin" />
       <span>{{ t('periodontogram.loading') }}</span>
@@ -134,14 +129,15 @@ async function handleDiscarded() {
       <PeriodontogramChart
         :snapshot="currentSnapshot"
         :readonly="readonly || isViewingHistory"
-        @refresh="handleRefresh"
+        :apply-site-patch="applySitePatch"
+        :apply-tooth-patch="applyToothPatch"
         @closed="handleClosed"
         @discarded="handleDiscarded"
       />
 
       <UCard v-if="!hasDraft && !isViewingHistory">
         <div class="flex items-center justify-between">
-          <span class="text-sm text-gray-600">
+          <span class="text-sm text-muted">
             {{ closedCount }} sesiones cerradas
           </span>
           <UButton
