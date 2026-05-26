@@ -68,29 +68,28 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
         :style="{ transform: faceTransform }"
         preserveAspectRatio="xMidYMid meet"
       >
+        <!-- Z-order matches the odontogram: root or implant first
+             (back layer), crown on top so its bottom edge overlaps
+             the implant neck cleanly, gum line on top of everything. -->
+
+        <!-- Natural root paths (back layer when no implant). -->
         <g
+          v-if="!tooth.is_implant"
           fill="none"
           stroke="currentColor"
           stroke-width="1.5"
           stroke-linejoin="round"
           class="text-gray-400"
         >
-          <!-- Crown stays whether implant or not — periodontitis can
-               sit on top of an implant crown just like a natural one. -->
-          <path :d="lateralPaths.crown" />
-
-          <!-- Natural root paths only when no implant is recorded. -->
-          <template v-if="!tooth.is_implant">
-            <path v-if="lateralPaths.root" :d="lateralPaths.root" />
-            <template v-else-if="lateralPaths.roots">
-              <path v-for="(d, idx) in lateralPaths.roots" :key="idx" :d="d" />
-            </template>
+          <path v-if="lateralPaths.root" :d="lateralPaths.root" />
+          <template v-else-if="lateralPaths.roots">
+            <path v-for="(d, idx) in lateralPaths.roots" :key="idx" :d="d" />
           </template>
         </g>
 
-        <!-- Implant fixture replaces the natural root area. Same
-             component the odontogram uses, so the icon language
-             stays consistent across modules. -->
+        <!-- Implant fixture replaces the natural root area. Drawn
+             before the crown so the crown's bottom edge covers the
+             implant neck — same visual seal the odontogram produces. -->
         <ImplantSVG
           v-if="tooth.is_implant && tooth.is_present"
           :view-box="lateralPaths.viewBox"
@@ -99,9 +98,28 @@ const visualOpacity = computed(() => (props.tooth.is_present ? 1 : 0.35))
           status="existing"
         />
 
-        <!-- Soft gum line in red — drawn last so it overlays both
-             natural root and implant fixture. -->
+        <!-- Crown on top of root/implant. Solid white fill so the
+             crown's footprint occludes the implant neck — gives the
+             same clean seal the odontogram produces between fixture
+             and crown. -->
+        <g
+          fill="white"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+          class="text-gray-400"
+        >
+          <path :d="lateralPaths.crown" />
+        </g>
+
+        <!-- Soft gum line in red — outermost layer. Skipped on
+             implant teeth: the periodontal "gum line" concept on a
+             natural root doesn't map to the peri-implant soft tissue
+             interface, and drawing it would slash across the
+             implant fixture / crown junction. Matches how the
+             odontogram renders implants. -->
         <path
+          v-if="!tooth.is_implant"
           :d="lateralPaths.gumLine"
           fill="none"
           stroke="#ef4444"
