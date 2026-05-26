@@ -24,11 +24,20 @@ test.describe('agenda — quick patient create', () => {
   test('receptionist creates a new patient from inside the New Appointment modal', async ({ loggedIn }) => {
     await loggedIn.goto('/appointments')
     await loggedIn.waitForURL(/\/appointments/, { timeout: 15_000 })
+    // Wait for the page to be quiet — the schedule fires
+    // ``GET /agenda/appointments?...`` on mount. Vue's ``@click`` handler
+    // is bound only after hydration completes; clicking before that lets
+    // the event reach the button DOM but the listener never runs, so the
+    // modal silently does not open. ``networkidle`` is the cheapest
+    // ready signal we have here.
+    await loggedIn.waitForLoadState('networkidle')
 
     // Open "Nueva cita" via the header button. Desktop only — the mobile
     // entry point is a free-slot tap which is brittle to click reliably
     // from outside the layout.
-    await loggedIn.getByRole('button', { name: /Nueva cita|New appointment/i }).first().click()
+    const newAppointmentBtn = loggedIn.getByRole('button', { name: /Nueva cita|New appointment/i }).first()
+    await expect(newAppointmentBtn).toBeEnabled({ timeout: 10_000 })
+    await newAppointmentBtn.click()
 
     // Modal mounts an async chunk — wait for the patient search input
     // to be ready.
@@ -114,6 +123,7 @@ test.describe('agenda — quick patient create', () => {
     }])
 
     await page.goto('/appointments')
+    await page.waitForLoadState('networkidle')
 
     // Hygienist may not see the create button — skip if so, the gating
     // is enforced anyway by the receptionist case above.
@@ -121,6 +131,7 @@ test.describe('agenda — quick patient create', () => {
     if (!(await createButton.isVisible().catch(() => false))) {
       test.skip(true, 'hygienist cannot open the new-appointment modal in this seed')
     }
+    await expect(createButton).toBeEnabled({ timeout: 10_000 })
     await createButton.click()
 
     const searchInput = page.locator('input[data-testid="visual-selector-input"]').first()
