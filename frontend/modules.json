@@ -16,7 +16,8 @@
     "/module_layers/notifications/frontend",
     "/module_layers/patient_timeline/frontend",
     "/module_layers/reports/frontend",
-    "/module_layers/periodontogram/frontend"
+    "/module_layers/periodontogram/frontend",
+    "/module_layers/copilot/frontend"
   ],
   "modules": [
     {
@@ -86,6 +87,10 @@
     {
       "name": "periodontogram",
       "path": "/module_layers/periodontogram/frontend"
+    },
+    {
+      "name": "copilot",
+      "path": "/module_layers/copilot/frontend"
     }
   ],
   "version": 1
