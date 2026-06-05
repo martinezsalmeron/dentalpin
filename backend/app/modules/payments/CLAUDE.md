@@ -44,6 +44,21 @@ Refund is admin/dentist by default. Clinic admins may grant
 `payments.record.refund` to receptionists via the roles UI — no code
 change required.
 
+## Tools exposed
+
+Agent tools in `tools.py` (wrap `PaymentReportsService`, no logic duplicated).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `payments_summary` | READ | `PaymentReportsService.summary` | `payments.reports.read` |
+| `collections_by_method` | READ | `PaymentReportsService.by_method` | `payments.reports.read` |
+
+**Off-books boundary.** These expose the **collection axis only** (gross
+collected / refunded). They drop `clinic_receivable_total` /
+`patient_credit_total` — "what's owed" is the invoiced-minus-collected
+diff this module must never surface (see the gotcha below). Aging /
+ledger-balance tools are deliberately NOT exposed to the agent.
+
 ## Events emitted
 
 - `payment.recorded` — payload `{clinic_id, payment_id, patient_id, amount, currency, method, payment_date, occurred_at}`.

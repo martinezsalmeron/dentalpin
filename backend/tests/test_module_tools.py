@@ -146,6 +146,62 @@ async def test_patient_timeline_empty(db_session, test_clinic) -> None:
     assert res.data["total"] == 0
 
 
+def test_financial_tools_registered() -> None:
+    names = tool_registry.list()
+    for expected in (
+        "reports.billing_report",
+        "reports.top_clients_by_billing",
+        "reports.scheduling_report",
+        "payments.payments_summary",
+        "payments.collections_by_method",
+    ):
+        assert expected in names
+
+
+@pytest.mark.asyncio
+async def test_billing_report_is_invoice_axis_only(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["reports.billing.read"])
+    res = await tool_registry.call(
+        ctx, "reports.billing_report", {"date_from": "2025-01-01", "date_to": "2025-12-31"}
+    )
+    assert res.ok
+    assert res.data["total_invoiced"] == 0
+    # off-books: never surface the invoiced-vs-paid diff
+    assert "total_paid" not in res.data
+    assert "total_pending" not in res.data
+
+
+@pytest.mark.asyncio
+async def test_top_clients_empty(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["reports.billing.read"])
+    res = await tool_registry.call(ctx, "reports.top_clients_by_billing", {"year": 2025})
+    assert res.ok
+    assert res.data["clients"] == []
+
+
+@pytest.mark.asyncio
+async def test_payments_summary_is_collection_axis_only(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["payments.reports.read"])
+    res = await tool_registry.call(
+        ctx, "payments.payments_summary", {"date_from": "2025-01-01", "date_to": "2025-12-31"}
+    )
+    assert res.ok
+    assert res.data["total_collected"] == 0
+    # off-books: never surface receivable / what's owed
+    assert "clinic_receivable_total" not in res.data
+    assert "patient_credit_total" not in res.data
+
+
+@pytest.mark.asyncio
+async def test_financial_denied_without_permission(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["patients.read"])  # no reports perm
+    res = await tool_registry.call(
+        ctx, "reports.billing_report", {"date_from": "2025-01-01", "date_to": "2025-12-31"}
+    )
+    assert res.ok is False
+    assert "permission denied" in (res.error or "")
+
+
 @pytest.mark.asyncio
 async def test_book_appointment_denied_without_write(db_session, test_clinic) -> None:
     ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.read"])  # no write

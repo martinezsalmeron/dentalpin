@@ -16,6 +16,22 @@ Read-only consumer of every business module.
 `reports.billing.read`, `reports.budgets.read`,
 `reports.scheduling.read`.
 
+## Tools exposed
+
+Agent tools in `tools.py` (wrap the report services, no logic duplicated).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `billing_report` | READ | `BillingReportService.get_summary` | `reports.billing.read` |
+| `top_clients_by_billing` | READ | `BillingReportService.top_clients_by_billing` | `reports.billing.read` |
+| `scheduling_report` | READ | `SchedulingReportService.get_summary` | `reports.scheduling.read` |
+
+**Off-books boundary.** The billing tools expose the **invoice axis only**
+(gross invoiced amounts). They strip paid / pending / overdue, because
+those equal the invoiced-minus-collected diff clinics keep off-record.
+The collection axis lives in `payments/tools.py`; the copilot system
+prompt forbids surfacing the difference.
+
 ## Events emitted
 
 None.
