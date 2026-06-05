@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- feat(agents): expose `tools.py` for the copilot agentic layer —
+  `get_day_overview` (READ), `book_appointment` (WRITE),
+  `cancel_appointment` (DESTRUCTIVE). Thin wrappers over
+  `AppointmentService`; clinic-scoped; RBAC via existing
+  `agenda.appointments.*`. `find_free_slots` deferred to `schedules`.
+  Issue #81 Layer B.
+
 - fix(modal): suppress spurious "Se detectaron solapamientos" toast
   after creating an appointment. ``useAppointments.createAppointment``
   mutates the shared ``appointments`` array (same reactive instance the

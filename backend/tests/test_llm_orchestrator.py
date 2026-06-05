@@ -290,6 +290,10 @@ def test_factory_rejects_unsupported_provider() -> None:
         get_provider("anthropic")
 
 
-def test_factory_openai_requires_key() -> None:
+def test_openai_provider_requires_key() -> None:
+    # The factory falls back to settings.OPENAI_API_KEY, so test the
+    # provider's own guard directly with no key available.
+    from app.core.llm.openai_provider import OpenAIProvider
+
     with pytest.raises(LLMConfigError):
-        get_provider("openai", api_key="")
+        OpenAIProvider(api_key="")

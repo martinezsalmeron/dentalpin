@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- feat(agents): expose `tools.py` for the copilot agentic layer —
+  `search_patients`, `get_patient` (READ), `create_patient` (WRITE).
+  Thin wrappers over `PatientService`; clinic-scoped; RBAC via existing
+  `patients.read`/`patients.write`. Issue #81 Layer B.
+
 - feat(ux): patient list default sort changed from ``last_name:asc`` to
   ``last_visit:desc`` so patients seen most recently surface first.
   ``last_visit`` is computed via a ``MAX(start_time) GROUP BY patient_id``

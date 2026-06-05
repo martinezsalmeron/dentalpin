@@ -31,6 +31,14 @@ against these modules. Cross-module FKs only against these.
 
 (Mirror `get_permissions()`. Roles → permissions live in the manifest.)
 
+## Tools exposed
+
+Agent tools from `tools.py` (wrap services, never duplicate logic).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `<name>` | READ/WRITE/DESTRUCTIVE | `<Service.method>` | `<module>.foo.read` |
+
 ## Events emitted
 
 | Event | When | Payload keys |

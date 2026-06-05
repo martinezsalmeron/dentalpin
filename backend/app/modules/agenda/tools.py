@@ -1,0 +1,130 @@
+"""Agent tools for the agenda module.
+
+Thin wrappers over :class:`AppointmentService` — no business logic here.
+Every tool filters by ``ctx.clinic_id`` and declares the same RBAC string
+as the HTTP routes. Write tools accept ``ctx.supervisor_id`` (the human
+in the loop) as the acting user for audit columns. See
+``docs/technical/copilot-agentic-architecture.md`` §3.
+
+``find_free_slots`` is intentionally absent: free-slot computation lives
+in the ``schedules`` module, which will register its own tool. Agenda
+does not reach across that boundary.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, time
+from datetime import date as date_cls
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
+
+from app.core.agents import AgentContext, Tool, ToolCategory
+
+from .service import AppointmentService, InvalidTransitionError
+
+
+class DayOverviewArgs(BaseModel):
+    date: date_cls = Field(description="Día a consultar (YYYY-MM-DD).")
+
+
+class BookAppointmentArgs(BaseModel):
+    patient_id: UUID
+    professional_id: UUID
+    start_time: datetime
+    end_time: datetime
+    cabinet: str | None = Field(default=None, max_length=50)
+
+
+class CancelAppointmentArgs(BaseModel):
+    appointment_id: UUID
+
+
+def _appt_summary(appt) -> dict:
+    patient = appt.patient
+    return {
+        "id": str(appt.id),
+        "patient_id": str(appt.patient_id) if appt.patient_id else None,
+        "patient_name": f"{patient.first_name} {patient.last_name}" if patient else None,
+        "professional_id": str(appt.professional_id) if appt.professional_id else None,
+        "start_time": appt.start_time.isoformat() if appt.start_time else None,
+        "end_time": appt.end_time.isoformat() if appt.end_time else None,
+        "status": appt.status,
+        "cabinet": appt.cabinet,
+    }
+
+
+async def _get_day_overview(ctx: AgentContext, params: DayOverviewArgs) -> dict:
+    start = datetime.combine(params.date, time.min, tzinfo=UTC)
+    end = datetime.combine(params.date, time.max, tzinfo=UTC)
+    items, total = await AppointmentService.list_appointments(
+        ctx.db, ctx.clinic_id, start_date=start, end_date=end
+    )
+    return {
+        "date": params.date.isoformat(),
+        "total": total,
+        "appointments": [_appt_summary(a) for a in items],
+    }
+
+
+async def _book_appointment(ctx: AgentContext, params: BookAppointmentArgs) -> dict:
+    try:
+        appt = await AppointmentService.create_appointment(
+            ctx.db,
+            ctx.clinic_id,
+            params.model_dump(exclude_none=True),
+            created_by=ctx.supervisor_id,
+        )
+    except IntegrityError:
+        # Slot conflict. Roll back the failed insert so the session stays
+        # usable for the rest of the turn; surface a structured error the
+        # model can explain instead of a raw 500.
+        await ctx.db.rollback()
+        return {"error": "slot_conflict", "detail": "El hueco solicitado no está disponible."}
+    return {"id": str(appt.id), "start_time": appt.start_time.isoformat(), "status": appt.status}
+
+
+async def _cancel_appointment(ctx: AgentContext, params: CancelAppointmentArgs) -> dict:
+    appt = await AppointmentService.get_appointment(ctx.db, ctx.clinic_id, params.appointment_id)
+    if appt is None:
+        return {"error": "not_found"}
+    try:
+        appt = await AppointmentService.cancel_appointment(
+            ctx.db, appt, changed_by=ctx.supervisor_id
+        )
+    except InvalidTransitionError:
+        return {
+            "error": "not_cancellable",
+            "detail": f"Una cita en estado '{appt.status}' no se puede cancelar.",
+        }
+    return {"id": str(appt.id), "status": appt.status}
+
+
+def get_tools() -> list[Tool]:
+    return [
+        Tool(
+            name="get_day_overview",
+            description="Listar las citas de la clínica para un día concreto.",
+            parameters=DayOverviewArgs,
+            handler=_get_day_overview,
+            permissions=["agenda.appointments.read"],
+            category=ToolCategory.READ,
+        ),
+        Tool(
+            name="book_appointment",
+            description="Reservar una cita. Requiere confirmación del usuario.",
+            parameters=BookAppointmentArgs,
+            handler=_book_appointment,
+            permissions=["agenda.appointments.write"],
+            category=ToolCategory.WRITE,
+        ),
+        Tool(
+            name="cancel_appointment",
+            description="Cancelar una cita existente. Acción destructiva: requiere confirmación.",
+            parameters=CancelAppointmentArgs,
+            handler=_cancel_appointment,
+            permissions=["agenda.appointments.write"],
+            category=ToolCategory.DESTRUCTIVE,
+        ),
+    ]
