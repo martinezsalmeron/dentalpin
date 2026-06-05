@@ -36,6 +36,18 @@ class CopilotModule(BaseModule):
             "assistant": ["chat", "history.read"],
             "receptionist": ["chat", "history.read"],
         },
+        "frontend": {
+            "layer_path": "frontend",
+            "navigation": [
+                {
+                    "label": "nav.copilot",
+                    "icon": "i-lucide-sparkles",
+                    "to": "/copilot",
+                    "permission": "copilot.chat",
+                    "order": 90,
+                },
+            ],
+        },
     }
 
     def get_models(self) -> list:

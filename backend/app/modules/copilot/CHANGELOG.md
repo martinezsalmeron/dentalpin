@@ -10,4 +10,9 @@
   per-clinic provider/model/budget settings, and per-clinic token budget.
   Conversations link to a core `agent_sessions` row so tool calls audit
   to `agent_audit_logs`. Mandatory PHI redaction; OpenAI provider only in
-  v1. Frontend Nuxt layer pending. `auto_install=False`, `removable=True`.
+  v1. `auto_install=False`, `removable=True`.
+- feat(copilot): Nuxt layer — global `<CopilotMount>` (FAB + slide-over,
+  Cmd/Ctrl+K) mounted via the new host `app.overlays` slot, a `/copilot`
+  page, streaming chat over `fetch`+`ReadableStream` (`useCopilotStream`),
+  tool-call chips and inline confirmation cards (`useCopilot`). Mobile-
+  first, ES default + EN parity, permission-gated by `copilot.chat`.
