@@ -38,7 +38,7 @@ class CreatePatientArgs(BaseModel):
 
 def _summary(patient) -> dict:
     return {
-        "id": str(patient.id),
+        "id": patient.id,
         "full_name": f"{patient.first_name} {patient.last_name}",
         "phone": patient.phone,
         "email": patient.email,
@@ -58,7 +58,7 @@ async def _get_patient(ctx: AgentContext, params: GetPatientArgs) -> dict:
     if patient is None:
         return {"error": "not_found"}
     data = _summary(patient)
-    data["date_of_birth"] = patient.date_of_birth.isoformat() if patient.date_of_birth else None
+    data["date_of_birth"] = patient.date_of_birth
     data["do_not_contact"] = patient.do_not_contact
     return data
 
@@ -67,7 +67,7 @@ async def _create_patient(ctx: AgentContext, params: CreatePatientArgs) -> dict:
     patient = await PatientService.create_patient(
         ctx.db, ctx.clinic_id, params.model_dump(exclude_none=True)
     )
-    return {"id": str(patient.id), "full_name": f"{patient.first_name} {patient.last_name}"}
+    return {"id": patient.id, "full_name": f"{patient.first_name} {patient.last_name}"}
 
 
 def get_tools() -> list[Tool]:

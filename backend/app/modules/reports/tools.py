@@ -15,8 +15,6 @@ forbids surfacing their difference.
 from __future__ import annotations
 
 from datetime import date as date_cls
-from decimal import Decimal
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -35,27 +33,16 @@ class TopClientsArgs(BaseModel):
     limit: int = Field(default=10, ge=1, le=50)
 
 
-def _floats(obj: Any) -> Any:
-    """Coerce Decimals to float so the result is JSONB-safe."""
-    if isinstance(obj, Decimal):
-        return float(obj)
-    if isinstance(obj, dict):
-        return {k: _floats(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_floats(v) for v in obj]
-    return obj
-
-
 async def _billing_report(ctx: AgentContext, params: PeriodArgs) -> dict:
     summary = await BillingReportService.get_summary(
         ctx.db, ctx.clinic_id, params.date_from, params.date_to
     )
     # Invoice axis only — drop paid / pending / overdue (the off-books diff).
     return {
-        "date_from": params.date_from.isoformat(),
-        "date_to": params.date_to.isoformat(),
-        "total_invoiced": float(summary.get("total_invoiced", 0)),
-        "invoice_count": int(summary.get("invoice_count", 0)),
+        "date_from": params.date_from,
+        "date_to": params.date_to,
+        "total_invoiced": summary.get("total_invoiced", 0),
+        "invoice_count": summary.get("invoice_count", 0),
     }
 
 
@@ -71,10 +58,9 @@ async def _top_clients_by_billing(ctx: AgentContext, params: TopClientsArgs) -> 
 
 
 async def _scheduling_report(ctx: AgentContext, params: PeriodArgs) -> dict:
-    summary = await SchedulingReportService.get_summary(
+    return await SchedulingReportService.get_summary(
         ctx.db, ctx.clinic_id, params.date_from, params.date_to
     )
-    return _floats(summary)
 
 
 def get_tools() -> list[Tool]:

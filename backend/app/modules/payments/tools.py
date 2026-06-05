@@ -40,12 +40,12 @@ async def _payments_summary(ctx: AgentContext, params: PeriodArgs) -> dict:
     )
     # Collection axis only — drop patient_credit_total / clinic_receivable_total.
     return {
-        "date_from": params.date_from.isoformat(),
-        "date_to": params.date_to.isoformat(),
+        "date_from": params.date_from,
+        "date_to": params.date_to,
         "currency": s.currency,
-        "total_collected": float(s.total_collected),
-        "total_refunded": float(s.total_refunded),
-        "net_collected": float(s.net_collected),
+        "total_collected": s.total_collected,
+        "total_refunded": s.total_refunded,
+        "net_collected": s.net_collected,
         "payment_count": s.payment_count,
         "refund_count": s.refund_count,
     }
@@ -55,9 +55,7 @@ async def _collections_by_method(ctx: AgentContext, params: PeriodArgs) -> dict:
     rows = await PaymentReportsService.by_method(
         ctx.db, ctx.clinic_id, params.date_from, params.date_to
     )
-    return {
-        "methods": [{"method": r.method, "total": float(r.total), "count": r.count} for r in rows]
-    }
+    return {"methods": [{"method": r.method, "total": r.total, "count": r.count} for r in rows]}
 
 
 def get_tools() -> list[Tool]:

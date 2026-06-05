@@ -53,12 +53,12 @@ class CancelAppointmentArgs(BaseModel):
 def _appt_summary(appt) -> dict:
     patient = appt.patient
     return {
-        "id": str(appt.id),
-        "patient_id": str(appt.patient_id) if appt.patient_id else None,
+        "id": appt.id,
+        "patient_id": appt.patient_id,
         "patient_name": f"{patient.first_name} {patient.last_name}" if patient else None,
-        "professional_id": str(appt.professional_id) if appt.professional_id else None,
-        "start_time": appt.start_time.isoformat() if appt.start_time else None,
-        "end_time": appt.end_time.isoformat() if appt.end_time else None,
+        "professional_id": appt.professional_id,
+        "start_time": appt.start_time,
+        "end_time": appt.end_time,
         "status": appt.status,
         "cabinet": appt.cabinet,
     }
@@ -73,9 +73,7 @@ async def _get_appointment(ctx: AgentContext, params: GetAppointmentArgs) -> dic
 
 async def _list_cabinets(ctx: AgentContext, params: NoArgs) -> dict:
     cabinets = await CabinetService.list_cabinets(ctx.db, ctx.clinic_id)
-    return {
-        "cabinets": [{"id": str(c.id), "name": c.name, "is_active": c.is_active} for c in cabinets]
-    }
+    return {"cabinets": [{"id": c.id, "name": c.name, "is_active": c.is_active} for c in cabinets]}
 
 
 async def _get_day_overview(ctx: AgentContext, params: DayOverviewArgs) -> dict:
@@ -85,7 +83,7 @@ async def _get_day_overview(ctx: AgentContext, params: DayOverviewArgs) -> dict:
         ctx.db, ctx.clinic_id, start_date=start, end_date=end
     )
     return {
-        "date": params.date.isoformat(),
+        "date": params.date,
         "total": total,
         "appointments": [_appt_summary(a) for a in items],
     }
@@ -105,7 +103,7 @@ async def _book_appointment(ctx: AgentContext, params: BookAppointmentArgs) -> d
         # model can explain instead of a raw 500.
         await ctx.db.rollback()
         return {"error": "slot_conflict", "detail": "El hueco solicitado no está disponible."}
-    return {"id": str(appt.id), "start_time": appt.start_time.isoformat(), "status": appt.status}
+    return {"id": appt.id, "start_time": appt.start_time, "status": appt.status}
 
 
 async def _cancel_appointment(ctx: AgentContext, params: CancelAppointmentArgs) -> dict:
@@ -121,7 +119,7 @@ async def _cancel_appointment(ctx: AgentContext, params: CancelAppointmentArgs) 
             "error": "not_cancellable",
             "detail": f"Una cita en estado '{appt.status}' no se puede cancelar.",
         }
-    return {"id": str(appt.id), "status": appt.status}
+    return {"id": appt.id, "status": appt.status}
 
 
 def get_tools() -> list[Tool]:

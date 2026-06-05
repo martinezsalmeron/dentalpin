@@ -34,7 +34,7 @@ async def _get_patient_timeline(ctx: AgentContext, params: PatientTimelineArgs) 
                 "event_type": e.event_type,
                 "category": e.event_category,
                 "title": e.title,
-                "occurred_at": e.occurred_at.isoformat() if e.occurred_at else None,
+                "occurred_at": e.occurred_at,
             }
             for e in entries
         ],

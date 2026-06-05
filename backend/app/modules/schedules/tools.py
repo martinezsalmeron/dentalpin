@@ -33,12 +33,8 @@ async def _get_availability(ctx: AgentContext, params: AvailabilityArgs) -> dict
     tz_name, ranges = await AvailabilityService.resolve(
         ctx.db, ctx.clinic_id, params.date, params.date, params.professional_id
     )
-    open_windows = [
-        {"start": r.start.isoformat(), "end": r.end.isoformat()}
-        for r in ranges
-        if r.state == "open"
-    ]
-    return {"date": params.date.isoformat(), "timezone": tz_name, "open_windows": open_windows}
+    open_windows = [{"start": r.start, "end": r.end} for r in ranges if r.state == "open"]
+    return {"date": params.date, "timezone": tz_name, "open_windows": open_windows}
 
 
 def get_tools() -> list[Tool]:
