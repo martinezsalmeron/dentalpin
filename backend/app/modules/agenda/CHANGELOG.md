@@ -8,6 +8,8 @@
   `AppointmentService`; clinic-scoped; RBAC via existing
   `agenda.appointments.*`. `find_free_slots` deferred to `schedules`.
   Issue #81 Layer B.
+- feat(agents): add `get_appointment` (READ) and `list_cabinets` (READ)
+  tools. Issue #81 P0 batch.
 
 - fix(modal): suppress spurious "Se detectaron solapamientos" toast
   after creating an appointment. ``useAppointments.createAppointment``

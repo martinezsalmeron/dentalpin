@@ -6,9 +6,10 @@ as the HTTP routes. Write tools accept ``ctx.supervisor_id`` (the human
 in the loop) as the acting user for audit columns. See
 ``docs/technical/copilot-agentic-architecture.md`` §3.
 
-``find_free_slots`` is intentionally absent: free-slot computation lives
-in the ``schedules`` module, which will register its own tool. Agenda
-does not reach across that boundary.
+Availability is intentionally absent here: open-hours computation lives
+in the ``schedules`` module (``schedules.get_availability``). Agenda does
+not reach across that boundary; the agent combines that tool with
+``get_day_overview`` to find a free gap.
 """
 
 from __future__ import annotations
@@ -22,11 +23,19 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.agents import AgentContext, Tool, ToolCategory
 
-from .service import AppointmentService, InvalidTransitionError
+from .service import AppointmentService, CabinetService, InvalidTransitionError
 
 
 class DayOverviewArgs(BaseModel):
     date: date_cls = Field(description="Día a consultar (YYYY-MM-DD).")
+
+
+class GetAppointmentArgs(BaseModel):
+    appointment_id: UUID
+
+
+class NoArgs(BaseModel):
+    pass
 
 
 class BookAppointmentArgs(BaseModel):
@@ -52,6 +61,20 @@ def _appt_summary(appt) -> dict:
         "end_time": appt.end_time.isoformat() if appt.end_time else None,
         "status": appt.status,
         "cabinet": appt.cabinet,
+    }
+
+
+async def _get_appointment(ctx: AgentContext, params: GetAppointmentArgs) -> dict:
+    appt = await AppointmentService.get_appointment(ctx.db, ctx.clinic_id, params.appointment_id)
+    if appt is None:
+        return {"error": "not_found"}
+    return _appt_summary(appt)
+
+
+async def _list_cabinets(ctx: AgentContext, params: NoArgs) -> dict:
+    cabinets = await CabinetService.list_cabinets(ctx.db, ctx.clinic_id)
+    return {
+        "cabinets": [{"id": str(c.id), "name": c.name, "is_active": c.is_active} for c in cabinets]
     }
 
 
@@ -109,6 +132,22 @@ def get_tools() -> list[Tool]:
             parameters=DayOverviewArgs,
             handler=_get_day_overview,
             permissions=["agenda.appointments.read"],
+            category=ToolCategory.READ,
+        ),
+        Tool(
+            name="get_appointment",
+            description="Obtener los datos de una cita por su id.",
+            parameters=GetAppointmentArgs,
+            handler=_get_appointment,
+            permissions=["agenda.appointments.read"],
+            category=ToolCategory.READ,
+        ),
+        Tool(
+            name="list_cabinets",
+            description="Listar los gabinetes/sillones de la clínica.",
+            parameters=NoArgs,
+            handler=_list_cabinets,
+            permissions=["agenda.cabinets.read"],
             category=ToolCategory.READ,
         ),
         Tool(

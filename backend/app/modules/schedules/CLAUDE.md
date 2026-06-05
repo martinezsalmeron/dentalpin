@@ -31,6 +31,18 @@ frontend calls `/api/v1/schedules/availability` with a fallback.
 `schedules.availability.read`,
 `schedules.analytics.read`.
 
+## Tools exposed
+
+Agent tool in `tools.py` (wraps `AvailabilityService`, no logic duplicated).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `get_availability` | READ | `AvailabilityService.resolve` | `schedules.availability.read` |
+
+Returns **open working windows** for a day (not gaps minus booked
+appointments). The agent combines it with `agenda.get_day_overview` to
+find a truly free slot.
+
 ## Events emitted
 
 None today.

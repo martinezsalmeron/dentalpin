@@ -18,6 +18,18 @@ module is uninstalled, this module simply stops receiving its events.
 
 `patient_timeline.read`.
 
+## Tools exposed
+
+Agent tool in `tools.py` (wraps `TimelineService`, no logic duplicated).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `get_patient_timeline` | READ | `TimelineService.get_timeline` | `patient_timeline.read` |
+
+Returns structured event metadata only (type/category/title/timestamp);
+the free-text `description` + `event_data` are omitted so no
+un-redactable prose reaches the cloud LLM.
+
 ## Events emitted
 
 None.

@@ -107,6 +107,45 @@ async def test_day_overview_empty(db_session, test_clinic) -> None:
     assert res.data["total"] == 0
 
 
+def test_p0_tools_registered() -> None:
+    names = tool_registry.list()
+    for expected in (
+        "schedules.get_availability",
+        "patient_timeline.get_patient_timeline",
+        "agenda.get_appointment",
+        "agenda.list_cabinets",
+    ):
+        assert expected in names
+
+
+@pytest.mark.asyncio
+async def test_list_cabinets(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["agenda.cabinets.read"])
+    res = await tool_registry.call(ctx, "agenda.list_cabinets", {})
+    assert res.ok
+    assert any(c["name"] == "Gabinete 1" for c in res.data["cabinets"])
+
+
+@pytest.mark.asyncio
+async def test_get_availability_runs(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["schedules.availability.read"])
+    res = await tool_registry.call(ctx, "schedules.get_availability", {"date": "2030-01-07"})
+    assert res.ok
+    assert "open_windows" in res.data
+
+
+@pytest.mark.asyncio
+async def test_patient_timeline_empty(db_session, test_clinic) -> None:
+    from uuid import uuid4
+
+    ctx = await _ctx(db_session, test_clinic.id, ["patient_timeline.read"])
+    res = await tool_registry.call(
+        ctx, "patient_timeline.get_patient_timeline", {"patient_id": str(uuid4())}
+    )
+    assert res.ok
+    assert res.data["total"] == 0
+
+
 @pytest.mark.asyncio
 async def test_book_appointment_denied_without_write(db_session, test_clinic) -> None:
     ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.read"])  # no write
