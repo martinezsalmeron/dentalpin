@@ -111,7 +111,7 @@ class ToolRegistry:
         if tool is None:
             raise ToolRegistryError(f"Unknown tool: {qualified_name}")
 
-        decision = guardrails_check(ctx, tool, qualified_name)
+        decision = guardrails_check(ctx, tool, qualified_name, ctx.guardrail_config)
         if decision is GuardrailDecision.BLOCK:
             await AuditService.record(
                 ctx,

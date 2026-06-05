@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     EMAIL_FROM_ADDRESS: str = "noreply@dentalpin.com"
     EMAIL_FROM_NAME: str = "DentalPin"
 
+    # Copilot / agentic layer (app/core/llm/). OpenAI is the only live
+    # provider in v1; per-clinic `copilot_settings` overrides provider +
+    # model. (ANTHROPIC_API_KEY + its model default land with that
+    # provider.)
+    OPENAI_API_KEY: str = ""
+    COPILOT_PROVIDER_DEFAULT: str = "openai"
+    COPILOT_MODEL_CHAT_OPENAI: str = "gpt-4.1"
+    COPILOT_MAX_TOKENS: int = 4096
+    COPILOT_REDACTION_DEFAULT: bool = True
+
     @property
     def allowed_origins_list(self) -> list[str]:
         """Parse ALLOWED_ORIGINS as comma-separated list."""
