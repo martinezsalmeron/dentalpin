@@ -202,6 +202,57 @@ async def test_financial_denied_without_permission(db_session, test_clinic) -> N
     assert "permission denied" in (res.error or "")
 
 
+def test_p1_tools_registered() -> None:
+    names = tool_registry.list()
+    assert "agenda.list_professionals" in names
+    assert "schedules.find_free_slots" in names
+
+
+def test_free_slots_subtract_and_part() -> None:
+    from datetime import UTC, datetime
+
+    from app.modules.schedules.tools import _in_part, _subtract
+
+    s = datetime(2030, 1, 1, 9, 0, tzinfo=UTC)
+    e = datetime(2030, 1, 1, 13, 0, tzinfo=UTC)
+    b0 = datetime(2030, 1, 1, 10, 0, tzinfo=UTC)
+    b1 = datetime(2030, 1, 1, 11, 0, tzinfo=UTC)
+    assert _subtract(s, e, [(b0, b1)]) == [(s, b0), (b1, e)]
+    assert _in_part(datetime(2030, 1, 1, 9, 0, tzinfo=UTC), "morning") is True
+    assert _in_part(datetime(2030, 1, 1, 16, 0, tzinfo=UTC), "morning") is False
+    assert _in_part(datetime(2030, 1, 1, 16, 0, tzinfo=UTC), "any") is True
+
+
+@pytest.mark.asyncio
+async def test_list_professionals_runs(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.read"])
+    res = await tool_registry.call(ctx, "agenda.list_professionals", {})
+    assert res.ok
+    assert isinstance(res.data["professionals"], list)
+
+
+@pytest.mark.asyncio
+async def test_find_free_slots_runs(db_session, test_clinic) -> None:
+    ctx = await _ctx(
+        db_session, test_clinic.id, ["schedules.availability.read", "agenda.appointments.read"]
+    )
+    res = await tool_registry.call(
+        ctx, "schedules.find_free_slots", {"professional_id": str(uuid4())}
+    )
+    assert res.ok
+    assert "slots" in res.data
+
+
+@pytest.mark.asyncio
+async def test_find_free_slots_needs_agenda_permission(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["schedules.availability.read"])  # missing agenda
+    res = await tool_registry.call(
+        ctx, "schedules.find_free_slots", {"professional_id": str(uuid4())}
+    )
+    assert res.ok is False
+    assert "permission denied" in (res.error or "")
+
+
 @pytest.mark.asyncio
 async def test_book_appointment_denied_without_write(db_session, test_clinic) -> None:
     ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.read"])  # no write

@@ -26,6 +26,7 @@ Write tools use `ctx.supervisor_id` (the human in the loop) for audit columns.
 | `get_day_overview` | READ | `AppointmentService.list_appointments` | `agenda.appointments.read` |
 | `get_appointment` | READ | `AppointmentService.get_appointment` | `agenda.appointments.read` |
 | `list_cabinets` | READ | `CabinetService.list_cabinets` | `agenda.cabinets.read` |
+| `list_professionals` | READ | `kanban_service._fetch_professionals` | `agenda.appointments.read` |
 | `book_appointment` | WRITE | `AppointmentService.create_appointment` | `agenda.appointments.write` |
 | `cancel_appointment` | DESTRUCTIVE | `AppointmentService.cancel_appointment` | `agenda.appointments.write` |
 

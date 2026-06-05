@@ -10,6 +10,10 @@
   Issue #81 Layer B.
 - feat(agents): add `get_appointment` (READ) and `list_cabinets` (READ)
   tools. Issue #81 P0 batch.
+- feat(agents): add `list_professionals` (READ) — resolves a
+  professional name → id (reuses `kanban_service._fetch_professionals`).
+  Staff names returned under `professional_name` (outside the redactor
+  PII set) so name resolution works. Issue #81 P1 batch.
 
 - fix(modal): suppress spurious "Se detectaron solapamientos" toast
   after creating an appointment. ``useAppointments.createAppointment``

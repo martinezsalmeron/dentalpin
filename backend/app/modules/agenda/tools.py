@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.agents import AgentContext, Tool, ToolCategory
 
+from .kanban_service import _fetch_professionals
 from .service import AppointmentService, CabinetService, InvalidTransitionError
 
 
@@ -74,6 +75,18 @@ async def _get_appointment(ctx: AgentContext, params: GetAppointmentArgs) -> dic
 async def _list_cabinets(ctx: AgentContext, params: NoArgs) -> dict:
     cabinets = await CabinetService.list_cabinets(ctx.db, ctx.clinic_id)
     return {"cabinets": [{"id": c.id, "name": c.name, "is_active": c.is_active} for c in cabinets]}
+
+
+async def _list_professionals(ctx: AgentContext, params: NoArgs) -> dict:
+    rows = await _fetch_professionals(ctx.db, ctx.clinic_id)
+    # ``professional_name`` is deliberately outside the redactor's PII key
+    # set: staff names are not patient PHI, and the agent must be able to
+    # resolve "Dr. Pérez" → id (impossible if the name is tokenized).
+    return {
+        "professionals": [
+            {"id": pid, "professional_name": f"{first} {last}"} for pid, first, last in rows
+        ]
+    }
 
 
 async def _get_day_overview(ctx: AgentContext, params: DayOverviewArgs) -> dict:
@@ -146,6 +159,14 @@ def get_tools() -> list[Tool]:
             parameters=NoArgs,
             handler=_list_cabinets,
             permissions=["agenda.cabinets.read"],
+            category=ToolCategory.READ,
+        ),
+        Tool(
+            name="list_professionals",
+            description="Listar los profesionales (dentistas/higienistas) de la clínica con su id.",
+            parameters=NoArgs,
+            handler=_list_professionals,
+            permissions=["agenda.appointments.read"],
             category=ToolCategory.READ,
         ),
         Tool(
