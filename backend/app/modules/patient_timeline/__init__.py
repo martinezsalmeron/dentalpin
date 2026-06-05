@@ -56,6 +56,11 @@ class PatientTimelineModule(BaseModule):
     def get_permissions(self) -> list[str]:
         return ["read"]
 
+    def get_tools(self) -> list:
+        from . import tools
+
+        return tools.get_tools()
+
     def get_event_handlers(self) -> dict[str, Any]:
         """Populate the timeline from other modules' events."""
         return {

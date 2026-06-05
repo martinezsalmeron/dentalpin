@@ -105,13 +105,14 @@ class ToolRegistry:
         from app.core.agents.guardrails import GuardrailDecision
         from app.core.agents.guardrails import check as guardrails_check
         from app.core.agents.service import ApprovalService, AuditService
+        from app.core.agents.tooling import jsonify
         from app.core.auth.permissions import permission_matches
 
         tool = self._tools.get(qualified_name)
         if tool is None:
             raise ToolRegistryError(f"Unknown tool: {qualified_name}")
 
-        decision = guardrails_check(ctx, tool, qualified_name)
+        decision = guardrails_check(ctx, tool, qualified_name, ctx.guardrail_config)
         if decision is GuardrailDecision.BLOCK:
             await AuditService.record(
                 ctx,
@@ -172,16 +173,17 @@ class ToolRegistry:
         t0 = time.monotonic()
         try:
             raw = await tool.handler(ctx, validated)
+            data = jsonify(raw)
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             await AuditService.record(
                 ctx,
                 qualified_name,
                 arguments,
-                result=_safe_json(raw),
+                result=data,
                 status="SUCCESS",
                 execution_time_ms=elapsed_ms,
             )
-            return ToolResult(ok=True, data=raw, execution_time_ms=elapsed_ms)
+            return ToolResult(ok=True, data=data, execution_time_ms=elapsed_ms)
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             await AuditService.record(
@@ -194,20 +196,6 @@ class ToolRegistry:
             )
             logger.exception("Tool %s raised", qualified_name)
             return ToolResult(ok=False, error=str(exc), execution_time_ms=elapsed_ms)
-
-
-def _safe_json(value: Any) -> Any:
-    """Coerce arbitrary return values into something JSONB-safe.
-
-    Pydantic models are dumped; other objects fall back to their repr.
-    """
-    from pydantic import BaseModel
-
-    if value is None or isinstance(value, (str, int, float, bool, list, dict)):
-        return value
-    if isinstance(value, BaseModel):
-        return value.model_dump(mode="json")
-    return {"repr": repr(value)}
 
 
 # Global singleton

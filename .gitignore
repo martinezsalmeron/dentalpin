@@ -65,3 +65,4 @@ proyecto_open_source_dental.docx
 # DPMF export files contain real patient data — never commit
 *.dpm
 *.dpmf
+test-results/

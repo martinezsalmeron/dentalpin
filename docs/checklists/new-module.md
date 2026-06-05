@@ -45,6 +45,21 @@ For deeper rationale on any line, follow the link.
 - [ ] Subscribers registered via `get_event_handlers()`
 - [ ] No direct imports of services from modules outside `depends` — use the event bus (ADR 0003)
 
+## Agent tools
+
+Every module is agent-addressable. Expose the operations an AI agent should be able to drive.
+
+- [ ] `backend/app/modules/<name>/tools.py` with a `get_tools() -> list[Tool]`, returned by the module class's `get_tools()`
+- [ ] Each handler **wraps an existing service method** — no business logic duplicated
+- [ ] Each handler filters by `ctx.clinic_id` (multi-tenancy — same rule as routers)
+- [ ] Handlers return **native values** (UUID/Decimal/datetime/Pydantic) — `jsonify` at the chokepoint coerces; no manual `str()`/`.isoformat()`/`float()`
+- [ ] PII fields use redactor-known keys (`full_name`, `phone`, `email`, `dni`, `*_id`) so they tokenize before reaching the cloud
+- [ ] `permissions=[...]` matches the gating RBAC string the HTTP route uses
+- [ ] `category` set conservatively: `WRITE` for mutations, `DESTRUCTIVE` for deletes / irreversible side-effects
+- [ ] `exposes_free_text=True` on any tool returning free prose (excluded from the cloud LLM path under redaction)
+- [ ] Tools listed under "Tools exposed" in the module CLAUDE.md
+- [ ] See [`docs/technical/copilot-agentic-architecture.md`](../technical/copilot-agentic-architecture.md) §3
+
 ## Frontend layer
 
 - [ ] `backend/app/modules/<name>/frontend/` exists with `nuxt.config.ts`, `pages/`, `components/`

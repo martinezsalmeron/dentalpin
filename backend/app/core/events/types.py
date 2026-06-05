@@ -210,3 +210,11 @@ class EventType:
     RECALL_COMPLETED = "recall.completed"
     RECALL_SNOOZED = "recall.snoozed"
     RECALL_CANCELLED = "recall.cancelled"
+
+    # Copilot events (copilot module — conversational agent, issue #81).
+    # Tool invocations already land in ``agent_audit_logs``; these surface
+    # session lifecycle + budget so analytics/dashboards can subscribe.
+    COPILOT_SESSION_STARTED = "copilot.session.started"
+    COPILOT_SESSION_ENDED = "copilot.session.ended"
+    COPILOT_TOOL_INVOKED = "copilot.tool.invoked"
+    COPILOT_BUDGET_THRESHOLD_REACHED = "copilot.budget.threshold_reached"

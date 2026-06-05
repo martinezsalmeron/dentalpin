@@ -80,3 +80,8 @@ class AgendaModule(BaseModule):
             "cabinets.read",
             "cabinets.write",
         ]
+
+    def get_tools(self) -> list:
+        from . import tools
+
+        return tools.get_tools()

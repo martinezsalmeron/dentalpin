@@ -45,6 +45,10 @@ class Tool:
     handler: ToolHandler
     permissions: list[str] = field(default_factory=list)
     category: ToolCategory = ToolCategory.READ
+    # When ``True`` the tool returns free-form prose (e.g. a note
+    # summary) that may carry un-redactable PHI. The orchestrator
+    # excludes such tools from the cloud path while redaction is on.
+    exposes_free_text: bool = False
 
 
 @dataclass

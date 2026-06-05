@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- feat(agents): expose `tools.py` for the copilot agentic layer —
+  `get_day_overview` (READ), `book_appointment` (WRITE),
+  `cancel_appointment` (DESTRUCTIVE). Thin wrappers over
+  `AppointmentService`; clinic-scoped; RBAC via existing
+  `agenda.appointments.*`. `find_free_slots` deferred to `schedules`.
+  Issue #81 Layer B.
+- feat(agents): add `get_appointment` (READ) and `list_cabinets` (READ)
+  tools. Issue #81 P0 batch.
+- feat(agents): add `list_professionals` (READ) — resolves a
+  professional name → id (reuses `kanban_service._fetch_professionals`).
+  Staff names returned under `professional_name` (outside the redactor
+  PII set) so name resolution works. Issue #81 P1 batch.
+
 - fix(modal): suppress spurious "Se detectaron solapamientos" toast
   after creating an appointment. ``useAppointments.createAppointment``
   mutates the shared ``appointments`` array (same reactive instance the

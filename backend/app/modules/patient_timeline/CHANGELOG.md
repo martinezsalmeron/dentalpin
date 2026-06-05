@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- feat(agents): expose `tools.py` — `get_patient_timeline` (READ)
+  wrapping `TimelineService.get_timeline`. Returns structured event
+  metadata only (type/category/title/timestamp); free-text description +
+  event_data omitted so no un-redactable prose reaches the cloud LLM.
+  Issue #81 P0 batch.
+
 - perf(list): drop the ``select_from(query.subquery())`` count
   anti-pattern in ``TimelineService.get_timeline``; count now runs
   directly over the indexed ``(clinic_id, patient_id)`` filter.

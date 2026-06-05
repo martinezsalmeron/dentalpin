@@ -19,6 +19,51 @@ class BillingReportService:
     """Service for billing reports."""
 
     @staticmethod
+    async def top_clients_by_billing(
+        db: AsyncSession,
+        clinic_id: UUID,
+        date_from: date,
+        date_to: date,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Top patients by gross invoiced amount in a period.
+
+        **Invoice axis only.** Sums issued invoice totals; never references
+        payments. Keep this single-axis so it cannot surface the
+        invoiced-vs-collected difference (off-books rule).
+        """
+        from app.modules.patients.models import Patient
+
+        result = await db.execute(
+            select(
+                Invoice.patient_id,
+                func.concat(Patient.first_name, " ", Patient.last_name).label("patient_name"),
+                func.coalesce(func.sum(Invoice.total), Decimal("0")).label("total_invoiced"),
+                func.count(Invoice.id).label("invoice_count"),
+            )
+            .join(Patient, Patient.id == Invoice.patient_id)
+            .where(
+                Invoice.clinic_id == clinic_id,
+                Invoice.status.notin_(["draft", "voided"]),
+                Invoice.issue_date >= date_from,
+                Invoice.issue_date <= date_to,
+                Invoice.deleted_at.is_(None),
+            )
+            .group_by(Invoice.patient_id, Patient.first_name, Patient.last_name)
+            .order_by(desc("total_invoiced"))
+            .limit(limit)
+        )
+        return [
+            {
+                "patient_id": str(row.patient_id),
+                "patient_name": row.patient_name,
+                "total_invoiced": float(row.total_invoiced),
+                "invoice_count": int(row.invoice_count),
+            }
+            for row in result.all()
+        ]
+
+    @staticmethod
     async def get_patient_summary(
         db: AsyncSession,
         clinic_id: UUID,

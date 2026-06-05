@@ -35,6 +35,10 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `clinical_notes.diagnosis_created` | `EventType.CLINICAL_NOTE_DIAGNOSIS_CREATED` | — | `patient_timeline` |
 | `clinical_notes.plan_created` | `EventType.CLINICAL_NOTE_PLAN_CREATED` | — | `patient_timeline` |
 | `clinical_notes.treatment_created` | `EventType.CLINICAL_NOTE_TREATMENT_CREATED` | — | `patient_timeline` |
+| `copilot.budget.threshold_reached` | `EventType.COPILOT_BUDGET_THRESHOLD_REACHED` | — | — |
+| `copilot.session.ended` | `EventType.COPILOT_SESSION_ENDED` | `copilot` | — |
+| `copilot.session.started` | `EventType.COPILOT_SESSION_STARTED` | `copilot` | — |
+| `copilot.tool.invoked` | `EventType.COPILOT_TOOL_INVOKED` | — | — |
 | `credit_note.issued` | `EventType.CREDIT_NOTE_ISSUED` | — | — |
 | `document.archived` | `EventType.DOCUMENT_ARCHIVED` | — | — |
 | `document.deleted` | `EventType.DOCUMENT_DELETED` | `media` | — |
@@ -291,6 +295,32 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Publishers:** _none in tree — declared but unused_
 - **Subscribers:**
   - `patient_timeline`
+
+### `copilot.budget.threshold_reached`
+
+- **Constant:** `EventType.COPILOT_BUDGET_THRESHOLD_REACHED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `copilot.session.ended`
+
+- **Constant:** `EventType.COPILOT_SESSION_ENDED`
+- **Publishers:**
+  - `copilot` — `backend/app/modules/copilot/router.py:185`
+- **Subscribers:** —
+
+### `copilot.session.started`
+
+- **Constant:** `EventType.COPILOT_SESSION_STARTED`
+- **Publishers:**
+  - `copilot` — `backend/app/modules/copilot/router.py:125`
+- **Subscribers:** —
+
+### `copilot.tool.invoked`
+
+- **Constant:** `EventType.COPILOT_TOOL_INVOKED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
 
 ### `credit_note.issued`
 
@@ -571,7 +601,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.PERIODONTOGRAM_SNAPSHOT_CLOSED`
 - **Publishers:**
-  - `periodontogram` — `backend/app/modules/periodontogram/service.py:371`
+  - `periodontogram` — `backend/app/modules/periodontogram/service.py:374`
 - **Subscribers:** —
 
 ### `recall.cancelled`

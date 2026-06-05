@@ -105,6 +105,11 @@ class SchedulesModule(BaseModule):
             "analytics.read",
         ]
 
+    def get_tools(self) -> list:
+        from . import tools
+
+        return tools.get_tools()
+
     def get_event_handlers(self) -> dict:
         return {
             "appointment.scheduled": on_appointment_scheduled,

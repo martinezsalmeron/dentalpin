@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "copilot": "Copiloto"
+  },
+  "copilot": {
+    "title": "Copiloto",
+    "open": "Abrir copiloto",
+    "empty": "Pregúntame sobre pacientes, agenda o pídeme que agende una cita.",
+    "placeholder": "Escribe tu mensaje…",
+    "send": "Enviar",
+    "thinking": "Pensando…",
+    "you": "Tú",
+    "assistant": "Copiloto",
+    "tool": {
+      "running": "Ejecutando {name}…",
+      "done": "{name} completado",
+      "failed": "{name} falló"
+    },
+    "confirm": {
+      "title": "Confirmar acción",
+      "body": "El copiloto quiere ejecutar {name}.",
+      "approve": "Confirmar",
+      "reject": "Cancelar",
+      "approved": "Confirmado",
+      "rejected": "Cancelado"
+    },
+    "budgetExceeded": "Se ha alcanzado el límite de uso mensual del copiloto.",
+    "error": "Ha ocurrido un error.",
+    "page": {
+      "title": "Copiloto",
+      "subtitle": "Tu asistente de clínica, con tus permisos."
+    }
+  }
+}

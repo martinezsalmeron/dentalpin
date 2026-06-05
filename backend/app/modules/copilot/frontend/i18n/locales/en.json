@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "copilot": "Copilot"
+  },
+  "copilot": {
+    "title": "Copilot",
+    "open": "Open copilot",
+    "empty": "Ask me about patients, the schedule, or to book an appointment.",
+    "placeholder": "Type your message…",
+    "send": "Send",
+    "thinking": "Thinking…",
+    "you": "You",
+    "assistant": "Copilot",
+    "tool": {
+      "running": "Running {name}…",
+      "done": "{name} done",
+      "failed": "{name} failed"
+    },
+    "confirm": {
+      "title": "Confirm action",
+      "body": "The copilot wants to run {name}.",
+      "approve": "Confirm",
+      "reject": "Cancel",
+      "approved": "Confirmed",
+      "rejected": "Cancelled"
+    },
+    "budgetExceeded": "The monthly copilot usage limit has been reached.",
+    "error": "Something went wrong.",
+    "page": {
+      "title": "Copilot",
+      "subtitle": "Your clinic assistant, scoped to your permissions."
+    }
+  }
+}

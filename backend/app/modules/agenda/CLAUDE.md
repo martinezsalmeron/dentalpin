@@ -16,6 +16,23 @@ surface (appointments CRUD, transitions, cabinet assignments, kanban).
 
 `agenda.appointments.{read,write}`, `agenda.cabinets.{read,write}`.
 
+## Tools exposed
+
+Agent tools in `tools.py` (wrap `AppointmentService`, no logic duplicated).
+Write tools use `ctx.supervisor_id` (the human in the loop) for audit columns.
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `get_day_overview` | READ | `AppointmentService.list_appointments` | `agenda.appointments.read` |
+| `get_appointment` | READ | `AppointmentService.get_appointment` | `agenda.appointments.read` |
+| `list_cabinets` | READ | `CabinetService.list_cabinets` | `agenda.cabinets.read` |
+| `list_professionals` | READ | `kanban_service._fetch_professionals` | `agenda.appointments.read` |
+| `book_appointment` | WRITE | `AppointmentService.create_appointment` | `agenda.appointments.write` |
+| `cancel_appointment` | DESTRUCTIVE | `AppointmentService.cancel_appointment` | `agenda.appointments.write` |
+
+`find_free_slots` is intentionally **not** here — free-slot computation belongs to
+`schedules`, which will register its own tool. Agenda does not cross that boundary.
+
 ## Frontend slots exposed
 
 - `appointment.completed.followup` — rendered by `AppointmentQuickActions.vue`

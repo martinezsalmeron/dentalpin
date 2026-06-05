@@ -129,5 +129,12 @@ export const PERMISSIONS = {
   periodontogram: {
     read: 'periodontogram.read',
     write: 'periodontogram.write'
+  },
+  copilot: {
+    chat: 'copilot.chat',
+    historyRead: 'copilot.history.read',
+    historyReadAll: 'copilot.history.read_all',
+    supervise: 'copilot.supervise',
+    configure: 'copilot.configure'
   }
 } as const

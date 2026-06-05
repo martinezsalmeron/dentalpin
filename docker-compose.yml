@@ -26,6 +26,9 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
       STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-/app/storage}
+      # Copilot agentic layer (app/core/llm/). Set OPENAI_API_KEY in .env
+      # (gitignored). Empty default keeps the stack bootable without it.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "8000:8000"
     depends_on:

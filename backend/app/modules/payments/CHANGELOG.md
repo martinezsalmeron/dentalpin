@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- feat(agents): expose `tools.py` — `payments_summary`,
+  `collections_by_method` (READ). Off-books: **collection-axis only**
+  (gross collected/refunded; never receivable/credit/pending). Issue #81
+  P0 batch.
+
 - chore(migration ``pay_0003``): drop the ``ck_earned_amount_nonneg``
   check on ``patient_earned_entries``. Migration imports need to land
   Gesdén's ``Nota Económica`` credit-note rows (negative

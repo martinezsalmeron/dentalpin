@@ -25,6 +25,16 @@ whole system.
 `patients.read`, `patients.write` (declared relative; registry
 namespaces them).
 
+## Tools exposed
+
+Agent tools in `tools.py` (wrap `PatientService`, no logic duplicated).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `search_patients` | READ | `PatientService.list_patients` | `patients.read` |
+| `get_patient` | READ | `PatientService.get_patient` | `patients.read` |
+| `create_patient` | WRITE | `PatientService.create_patient` | `patients.write` |
+
 ## Events emitted
 
 | Event | When | Payload keys |

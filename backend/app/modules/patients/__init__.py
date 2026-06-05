@@ -56,3 +56,8 @@ class PatientsModule(BaseModule):
 
     def get_permissions(self) -> list[str]:
         return ["read", "write"]
+
+    def get_tools(self) -> list:
+        from . import tools
+
+        return tools.get_tools()

@@ -15,6 +15,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `budget` | 0.1.0 | official | patients, catalog, odontogram | auto | no | 5 | 7 | 4 | yes |
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 0 | yes |
 | `clinical_notes` | 0.2.0 | official | patients, odontogram, treatment_plan, media, agenda | auto | no | 2 | 0 | 0 | yes |
+| `copilot` | 0.1.0 | official | — | manual | yes | 5 | 2 | 0 | yes |
 | `media` | 0.2.0 | official | patients | auto | no | 4 | 7 | 1 | yes |
 | `migration_import` | 0.1.0 | official | patients, patients_clinical, clinical_notes, agenda, schedules, recalls, catalog, budget, odontogram, treatment_plan, billing, payments, media | manual | yes | 4 | 5 | 0 | yes |
 | `notifications` | 0.1.0 | official | patients, agenda, budget, billing, catalog | auto | no | 8 | 0 | 6 | yes |
@@ -143,6 +144,28 @@ Polymorphic clinical notes (administrative, diagnosis, treatment, treatment plan
 - **Events emitted:** —
 - **Events consumed:** —
 - **Module CLAUDE.md:** [`backend/app/modules/clinical_notes/CLAUDE.md`](../backend/app/modules/clinical_notes/CLAUDE.md)
+
+### `copilot` — v0.1.0
+
+Conversational AI agent over DentalPin, scoped to the caller's permissions.
+
+- **Author:** DentalPin Core Team
+- **License:** BSL-1.1
+- **Category:** official
+- **Install policy:** installable=True · auto_install=False · removable=True
+- **Depends:** —
+- **Frontend layer:** `frontend`
+- **Permissions:**
+  - `copilot.chat`
+  - `copilot.configure`
+  - `copilot.history.read`
+  - `copilot.history.read_all`
+  - `copilot.supervise`
+- **Events emitted:**
+  - `copilot.session.ended`
+  - `copilot.session.started`
+- **Events consumed:** —
+- **Module CLAUDE.md:** [`backend/app/modules/copilot/CLAUDE.md`](../backend/app/modules/copilot/CLAUDE.md)
 
 ### `media` — v0.2.0
 

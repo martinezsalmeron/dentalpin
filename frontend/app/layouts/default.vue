@@ -365,6 +365,16 @@ function isActive(to: string): boolean {
         />
         <slot />
       </main>
+
+      <!--
+        Global overlay slot for agent surfaces (the copilot drawer, and
+        future voice). Registered components teleport to <body>; nothing
+        renders inline here. The layout knows nothing about them.
+      -->
+      <ModuleSlot
+        name="app.overlays"
+        :ctx="{}"
+      />
     </div>
   </div>
 </template>

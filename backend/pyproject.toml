@@ -44,6 +44,10 @@ dependencies = [
     # .dpm.zst.enc). cryptography (already above) handles AES-256-GCM
     # + scrypt for the DPME envelope.
     "zstandard>=0.22.0",
+    # copilot agentic layer: OpenAI is the only live LLM provider in v1
+    # (app/core/llm/). The Provider protocol is vendor-agnostic, so
+    # Anthropic/Ollama slot in later without touching callers.
+    "openai>=1.40",
 ]
 
 [project.optional-dependencies]
@@ -71,6 +75,7 @@ schedules = "app.modules.schedules:SchedulesModule"
 recalls = "app.modules.recalls:RecallsModule"
 verifactu = "app.modules.verifactu:VerifactuModule"
 migration_import = "app.modules.migration_import:MigrationImportModule"
+copilot = "app.modules.copilot:CopilotModule"
 
 [tool.setuptools.packages.find]
 where = ["."]

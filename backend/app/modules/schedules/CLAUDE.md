@@ -31,6 +31,22 @@ frontend calls `/api/v1/schedules/availability` with a fallback.
 `schedules.availability.read`,
 `schedules.analytics.read`.
 
+## Tools exposed
+
+Agent tool in `tools.py` (wraps `AvailabilityService`, no logic duplicated).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `get_availability` | READ | `AvailabilityService.resolve` | `schedules.availability.read` |
+| `find_free_slots` | READ | `AvailabilityService.resolve` + agenda appointments | `schedules.availability.read` + `agenda.appointments.read` |
+
+`get_availability` returns **open working windows** for a day (not gaps
+minus appointments). `find_free_slots` does the real thing: it subtracts
+the professional's booked appointments from those windows and returns
+discrete bookable slots (nearest first, filterable by duration /
+part-of-day / window). It reads agenda appointments directly — allowed
+because `agenda` is in `manifest.depends`.
+
 ## Events emitted
 
 None today.

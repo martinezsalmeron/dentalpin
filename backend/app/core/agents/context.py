@@ -10,6 +10,7 @@ from uuid import UUID
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from app.core.agents.guardrails import GuardrailConfig
     from app.core.agents.memory import AgentMemory
     from app.core.agents.tools.registry import ToolRegistry
 
@@ -45,6 +46,10 @@ class AgentContext:
     memory: AgentMemory | None = None
     supervisor_id: UUID | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Per-session guardrail override. Surfaces that gate writes
+    # themselves (e.g. copilot's inline confirmation) pass a config that
+    # disables the approval-queue triggers. ``None`` → module default.
+    guardrail_config: GuardrailConfig | None = None
 
 
 @dataclass

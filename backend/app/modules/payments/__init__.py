@@ -79,6 +79,11 @@ class PaymentsModule(BaseModule):
     def get_permissions(self) -> list[str]:
         return ["record.read", "record.write", "record.refund", "reports.read"]
 
+    def get_tools(self) -> list:
+        from . import tools
+
+        return tools.get_tools()
+
     def get_event_handlers(self) -> dict:
         return {
             EventType.ODONTOGRAM_TREATMENT_PERFORMED: on_treatment_performed,
