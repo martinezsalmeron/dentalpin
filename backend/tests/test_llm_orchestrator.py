@@ -290,6 +290,16 @@ def test_factory_rejects_unsupported_provider() -> None:
         get_provider("anthropic")
 
 
+def test_openai_name_roundtrip() -> None:
+    # OpenAI rejects dots in function names; the provider maps . <-> -.
+    from app.core.llm.openai_provider import _from_openai_name, _to_openai_name
+
+    for qualified in ("patients.search_patients", "agenda.get_day_overview"):
+        safe = _to_openai_name(qualified)
+        assert "." not in safe
+        assert _from_openai_name(safe) == qualified
+
+
 def test_openai_provider_requires_key() -> None:
     # The factory falls back to settings.OPENAI_API_KEY, so test the
     # provider's own guard directly with no key available.

@@ -59,7 +59,7 @@ class OpenAIProvider:
             "stream_options": {"include_usage": True},
         }
         if tools:
-            kwargs["tools"] = tools
+            kwargs["tools"] = [_sanitize_tool_schema(t) for t in tools]
             kwargs["parallel_tool_calls"] = False
 
         # index -> {"id": str, "name": str, "args": str}
@@ -100,11 +100,28 @@ class OpenAIProvider:
         for slot in pending.values():
             yield ToolUse(
                 id=slot["id"],
-                name=slot["name"],
+                name=_from_openai_name(slot["name"]),
                 input=_parse_args(slot["args"]),
             )
 
         yield Done(stop_reason=stop_reason)
+
+
+# OpenAI restricts function names to ``^[a-zA-Z0-9_-]+$``, but our tool
+# registry namespaces with a dot (``patients.search_patients``). Tool /
+# module names are snake_case with no hyphens, so ``.`` <-> ``-`` is a
+# lossless bijection confined to this provider.
+def _to_openai_name(qualified: str) -> str:
+    return qualified.replace(".", "-")
+
+
+def _from_openai_name(safe: str) -> str:
+    return safe.replace("-", ".")
+
+
+def _sanitize_tool_schema(tool: dict[str, Any]) -> dict[str, Any]:
+    fn = tool.get("function", {})
+    return {**tool, "function": {**fn, "name": _to_openai_name(fn["name"])}}
 
 
 def _parse_args(raw: str) -> dict[str, Any]:
@@ -137,7 +154,10 @@ def _to_openai_messages(system: str, messages: list[ProviderMessage]) -> list[di
                 {
                     "id": block.id,
                     "type": "function",
-                    "function": {"name": block.name, "arguments": json.dumps(block.input)},
+                    "function": {
+                        "name": _to_openai_name(block.name),
+                        "arguments": json.dumps(block.input),
+                    },
                 }
                 for block in msg.content
                 if isinstance(block, ToolUseBlock)

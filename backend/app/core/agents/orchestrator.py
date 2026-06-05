@@ -161,6 +161,11 @@ async def run_turn(
         outgoing = redactor.redact_outgoing(history)
 
         acc = _Accumulator()
+        # Buffer deltas and only rehydrate/emit at whitespace boundaries: a
+        # redaction token (e.g. NAME_6e5659) has no internal spaces, so it
+        # is always whole within a flushed segment — per-delta rehydration
+        # would miss tokens split across two deltas.
+        buf = ""
         async for ev in provider.complete(
             system=system,
             messages=outgoing,
@@ -170,13 +175,19 @@ async def run_turn(
         ):
             if isinstance(ev, TextDelta):
                 acc.text_parts.append(ev.text)
-                yield Token(redactor.rehydrate(ev.text))
+                buf += ev.text
+                cut = max(buf.rfind(" "), buf.rfind("\n"))
+                if cut >= 0:
+                    seg, buf = buf[: cut + 1], buf[cut + 1 :]
+                    yield Token(redactor.rehydrate(seg))
             elif isinstance(ev, ToolUse):
                 acc.tool_uses.append(ev)
             elif isinstance(ev, Usage):
                 acc.usage = ev
             elif isinstance(ev, Done):
                 acc.stop_reason = ev.stop_reason
+        if buf:
+            yield Token(redactor.rehydrate(buf))
 
         if acc.usage is not None:
             if budget is not None:
