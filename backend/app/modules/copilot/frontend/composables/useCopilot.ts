@@ -43,6 +43,9 @@ export function useCopilot() {
   const messages = useState<CopilotUiMessage[]>('copilot:messages', () => [])
   const busy = useState<boolean>('copilot:busy', () => false)
   const pending = useState<PendingConfirmation | null>('copilot:pending', () => null)
+  // Live activity under the composer: 'working' while a tool runs, 'writing'
+  // once the assistant starts streaming text, null otherwise.
+  const phase = useState<'working' | 'writing' | null>('copilot:phase', () => null)
 
   function toggle() {
     open.value = !open.value
@@ -73,10 +76,12 @@ export function useCopilot() {
 
   function handle(event: string, data: Record<string, unknown>): void {
     if (event === 'token') {
+      phase.value = 'writing'
       const current = lastStreamingAssistant()
       if (current) current.text += String(data.text ?? '')
       else messages.value.push({ kind: 'text', role: 'assistant', text: String(data.text ?? ''), streaming: true })
     } else if (event === 'tool_call') {
+      phase.value = 'working'
       messages.value.push({ kind: 'tool', callId: String(data.call_id), name: String(data.name), status: 'running' })
     } else if (event === 'tool_result') {
       const tool = [...messages.value].reverse().find(
@@ -93,6 +98,7 @@ export function useCopilot() {
       messages.value.push(c)
       pending.value = { callId: c.callId, name: c.name, args: c.args }
     } else if (event === 'done') {
+      phase.value = null
       const current = lastStreamingAssistant()
       if (current) current.streaming = false
     } else if (event === 'budget_exceeded') {
@@ -113,6 +119,7 @@ export function useCopilot() {
       { onEvent: handle, onError: (m) => handle('error', { detail: m }) }
     )
     busy.value = false
+    phase.value = null
   }
 
   async function confirm(callId: string, decision: 'confirm' | 'reject'): Promise<void> {
@@ -129,13 +136,15 @@ export function useCopilot() {
       { onEvent: handle, onError: (m) => handle('error', { detail: m }) }
     )
     busy.value = false
+    phase.value = null
   }
 
   function reset(): void {
     conversationId.value = null
     messages.value = []
     pending.value = null
+    phase.value = null
   }
 
-  return { open, messages, busy, pending, toggle, send, confirm, reset }
+  return { open, messages, busy, pending, phase, toggle, send, confirm, reset }
 }

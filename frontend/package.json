@@ -22,6 +22,8 @@
     "@nuxt/ui": "^4.5.1",
     "@nuxtjs/i18n": "^9.5.0",
     "@types/nprogress": "^0.2.3",
+    "isomorphic-dompurify": "^3.16.0",
+    "marked": "^18.0.5",
     "nprogress": "^0.2.0",
     "nuxt": "^4.4.2",
     "tailwindcss": "^4.2.1",

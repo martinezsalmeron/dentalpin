@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- feat(copilot): UI Fase 0 — rebrand the surface to **"IA"** across i18n
+  (ES/EN), markdown rendering for assistant replies (`CopilotMarkdown`,
+  `marked` + `isomorphic-dompurify`, sanitized), permission-filtered
+  empty-state starter chips (`CopilotSuggestions`), a live activity phase
+  indicator ("Trabajando…/Redactando…" instead of static "Pensando…"), and
+  a privacy trust line under the composer. Frontend-only; no backend or
+  contract changes.
+
 - feat(copilot): initial backend — conversational agent over DentalPin
   (issue #81 Layer C). Tables `copilot_conversations`, `copilot_messages`,
   `copilot_settings` on the `copilot` Alembic branch. SSE chat

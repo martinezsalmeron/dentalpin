@@ -2,7 +2,7 @@
 // The chat surface: scrolling transcript + composer. Used inside the
 // global slide-over and on the standalone /copilot page.
 const { t } = useI18n()
-const { messages, busy, send, confirm } = useCopilot()
+const { messages, busy, phase, send, confirm } = useCopilot()
 
 const input = ref('')
 const listEl = ref<HTMLElement | null>(null)
@@ -13,6 +13,19 @@ async function submit() {
   input.value = ''
   await send(text)
 }
+
+async function onPick(prompt: string) {
+  if (busy.value) return
+  input.value = ''
+  await send(prompt)
+}
+
+const phaseLabel = computed(() => {
+  if (!busy.value) return ''
+  if (phase.value === 'writing') return t('copilot.phase.writing')
+  if (phase.value === 'working') return t('copilot.phase.working')
+  return t('copilot.thinking')
+})
 
 watch(
   () => messages.value.length,
@@ -29,12 +42,10 @@ watch(
       ref="listEl"
       class="flex-1 space-y-3 overflow-y-auto p-1"
     >
-      <p
+      <CopilotSuggestions
         v-if="!messages.length"
-        class="px-2 py-8 text-center text-sm text-muted"
-      >
-        {{ t('copilot.empty') }}
-      </p>
+        @pick="onPick"
+      />
 
       <CopilotMessage
         v-for="(m, i) in messages"
@@ -45,9 +56,13 @@ watch(
 
       <p
         v-if="busy"
-        class="px-2 text-xs text-muted"
+        class="flex items-center gap-2 px-2 text-xs text-muted"
       >
-        {{ t('copilot.thinking') }}
+        <UIcon
+          name="i-lucide-loader-circle"
+          class="animate-spin"
+        />
+        {{ phaseLabel }}
       </p>
     </div>
 

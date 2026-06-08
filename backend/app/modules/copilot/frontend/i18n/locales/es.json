@@ -1,16 +1,43 @@
 {
   "nav": {
-    "copilot": "Copiloto"
+    "copilot": "IA"
   },
   "copilot": {
-    "title": "Copiloto",
-    "open": "Abrir copiloto",
+    "title": "IA",
+    "open": "Abrir IA",
     "empty": "Pregúntame sobre pacientes, agenda o pídeme que agende una cita.",
     "placeholder": "Escribe tu mensaje…",
     "send": "Enviar",
     "thinking": "Pensando…",
     "you": "Tú",
-    "assistant": "Copiloto",
+    "assistant": "IA",
+    "trust": "Tus datos están protegidos · Claude",
+    "phase": {
+      "working": "Trabajando…",
+      "writing": "Redactando…"
+    },
+    "suggest": {
+      "heading": "¿En qué te ayudo?",
+      "cat": {
+        "patients": "Pacientes",
+        "agenda": "Agenda",
+        "reports": "Informes"
+      },
+      "searchPatient": "Buscar un paciente",
+      "patientSummary": "Resumen de un paciente",
+      "freeSlots": "Huecos libres hoy",
+      "bookAppointment": "Agendar una cita",
+      "monthCollections": "Cobros de este mes",
+      "agendaSummary": "Resumen de la agenda",
+      "prompt": {
+        "searchPatient": "Busca un paciente",
+        "patientSummary": "Hazme un resumen de un paciente",
+        "freeSlots": "¿Qué huecos libres hay hoy?",
+        "bookAppointment": "Quiero agendar una cita",
+        "monthCollections": "Resumen de cobros de este mes",
+        "agendaSummary": "Dame un resumen de la agenda de hoy"
+      }
+    },
     "tool": {
       "running": "Ejecutando {name}…",
       "done": "{name} completado",
@@ -18,16 +45,16 @@
     },
     "confirm": {
       "title": "Confirmar acción",
-      "body": "El copiloto quiere ejecutar {name}.",
+      "body": "La IA quiere ejecutar {name}.",
       "approve": "Confirmar",
       "reject": "Cancelar",
       "approved": "Confirmado",
       "rejected": "Cancelado"
     },
-    "budgetExceeded": "Se ha alcanzado el límite de uso mensual del copiloto.",
+    "budgetExceeded": "Se ha alcanzado el límite de uso mensual de la IA.",
     "error": "Ha ocurrido un error.",
     "page": {
-      "title": "Copiloto",
+      "title": "IA",
       "subtitle": "Tu asistente de clínica, con tus permisos."
     }
   }

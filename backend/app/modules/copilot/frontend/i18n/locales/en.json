@@ -1,16 +1,43 @@
 {
   "nav": {
-    "copilot": "Copilot"
+    "copilot": "IA"
   },
   "copilot": {
-    "title": "Copilot",
-    "open": "Open copilot",
+    "title": "IA",
+    "open": "Open IA",
     "empty": "Ask me about patients, the schedule, or to book an appointment.",
     "placeholder": "Type your message…",
     "send": "Send",
     "thinking": "Thinking…",
     "you": "You",
-    "assistant": "Copilot",
+    "assistant": "IA",
+    "trust": "Your data is protected · Claude",
+    "phase": {
+      "working": "Working…",
+      "writing": "Writing…"
+    },
+    "suggest": {
+      "heading": "How can I help?",
+      "cat": {
+        "patients": "Patients",
+        "agenda": "Schedule",
+        "reports": "Reports"
+      },
+      "searchPatient": "Find a patient",
+      "patientSummary": "Summarize a patient",
+      "freeSlots": "Free slots today",
+      "bookAppointment": "Book an appointment",
+      "monthCollections": "This month's collections",
+      "agendaSummary": "Schedule overview",
+      "prompt": {
+        "searchPatient": "Find a patient",
+        "patientSummary": "Give me a summary of a patient",
+        "freeSlots": "What free slots are there today?",
+        "bookAppointment": "I want to book an appointment",
+        "monthCollections": "Summary of this month's collections",
+        "agendaSummary": "Give me an overview of today's schedule"
+      }
+    },
     "tool": {
       "running": "Running {name}…",
       "done": "{name} done",
@@ -18,16 +45,16 @@
     },
     "confirm": {
       "title": "Confirm action",
-      "body": "The copilot wants to run {name}.",
+      "body": "The IA wants to run {name}.",
       "approve": "Confirm",
       "reject": "Cancel",
       "approved": "Confirmed",
       "rejected": "Cancelled"
     },
-    "budgetExceeded": "The monthly copilot usage limit has been reached.",
+    "budgetExceeded": "The monthly IA usage limit has been reached.",
     "error": "Something went wrong.",
     "page": {
-      "title": "Copilot",
+      "title": "IA",
       "subtitle": "Your clinic assistant, scoped to your permissions."
     }
   }

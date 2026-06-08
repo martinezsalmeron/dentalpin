@@ -25,12 +25,20 @@ const toolLabel = computed(() => {
     :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
   >
     <div
-      class="max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm"
+      class="max-w-[85%] rounded-lg px-3 py-2 text-sm"
       :class="
-        message.role === 'user' ? 'bg-primary text-inverted' : 'bg-elevated text-default'
+        message.role === 'user'
+          ? 'whitespace-pre-wrap bg-primary text-inverted'
+          : 'bg-elevated text-default'
       "
     >
-      {{ message.text }}
+      <CopilotMarkdown
+        v-if="message.role === 'assistant'"
+        :text="message.text"
+      />
+      <template v-else>
+        {{ message.text }}
+      </template>
     </div>
   </div>
 
