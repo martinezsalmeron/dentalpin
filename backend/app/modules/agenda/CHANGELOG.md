@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- fix(agenda): the appointments page now refetches its active window when
+  the shared client data bus signals an `agenda` change (e.g. a copilot
+  booking/cancellation), so externally created appointments appear without a
+  manual reload. Deduped the post-save/cancel reload into `reloadActiveView`.
+
 - fix(modal): show the correct duration when editing an appointment. The
   `selectedTreatments` watcher recomputed `formData.duration` from a
   treatment-count heuristic and clobbered the value derived from the

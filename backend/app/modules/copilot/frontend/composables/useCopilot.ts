@@ -39,6 +39,7 @@ export function useCopilot() {
   const api = useApi()
   const route = useRoute()
   const { stream } = useCopilotStream()
+  const dataBus = useDataBus()
 
   const open = useState<boolean>('copilot:open', () => false)
   const conversationId = useState<string | null>('copilot:conversation', () => null)
@@ -173,6 +174,19 @@ export function useCopilot() {
     )
     busy.value = false
     phase.value = null
+
+    // A confirmed write mutated the clinic's data, but the view that owns
+    // it (e.g. the agenda) doesn't know. Announce the mutated module's
+    // namespace on the data bus so its page can refetch. Tool names are
+    // ``{module}.{tool}`` — forward the module namespace, never a hardcoded
+    // consumer, so copilot stays decoupled from every module.
+    const tool = messages.value.find(
+      (m): m is ToolUiMessage => m.kind === 'tool' && m.callId === callId
+    )
+    if (decision === 'confirm' && tool?.status === 'done') {
+      const namespace = tool.name.split('.')[0]
+      if (namespace) dataBus.publish(namespace)
+    }
   }
 
   function reset(): void {

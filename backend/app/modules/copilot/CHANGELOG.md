@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- fix(copilot): after a confirmed write tool, publish the mutated module's
+  namespace on the shared client `useDataBus` so the owning page refetches.
+  Fixes appointments booked via the copilot not appearing in the agenda
+  until a manual reload — the row persisted, but the decoupled agenda view
+  was never told to refresh. Generic: forwards `{module}` from the tool name,
+  no hardcoded consumer.
+
 - fix(copilot): `CopilotSlotCard` reads `find_free_slots`' new `free_windows`
   shape and renders each as a real time range + duration (e.g. "16:00–19:00
   · 3h") instead of a bare start-time chip.

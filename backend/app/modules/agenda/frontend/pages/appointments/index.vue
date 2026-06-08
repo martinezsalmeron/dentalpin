@@ -194,6 +194,21 @@ async function loadWeekAppointments() {
   await fetchAppointments(start, end)
 }
 
+// Reload whichever window the active view is showing. Used both after
+// local mutations and when another surface (e.g. the copilot) signals it
+// changed agenda data.
+async function reloadActiveView() {
+  if (!isMobile.value && viewMode.value === 'week') {
+    await loadWeekAppointments()
+  } else {
+    await loadDayAppointments()
+  }
+}
+
+// The copilot (or any other surface) can book/cancel appointments without
+// this page knowing. Refetch when the data bus signals an ``agenda`` change.
+useDataBus().on('agenda', reloadActiveView)
+
 // Handle week change
 async function handleWeekChange(newStart: Date) {
   currentWeekStart.value = newStart
@@ -451,11 +466,7 @@ async function handleSaved() {
     initialPatientId.value = undefined
     router.replace({ query: {} })
   }
-  if (!isMobile.value && viewMode.value === 'week') {
-    await loadWeekAppointments()
-  } else {
-    await loadDayAppointments()
-  }
+  await reloadActiveView()
 }
 
 // Handle appointment cancelled
@@ -465,11 +476,7 @@ async function handleCancelled() {
     initialPatientId.value = undefined
     router.replace({ query: {} })
   }
-  if (!isMobile.value && viewMode.value === 'week') {
-    await loadWeekAppointments()
-  } else {
-    await loadDayAppointments()
-  }
+  await reloadActiveView()
 }
 
 // Handle appointment move (drag to different day/time)
