@@ -15,7 +15,11 @@ from alembic import op
 revision: str = "cop_0001"
 down_revision: str | None = "0001"
 branch_labels: str | Sequence[str] | None = ("copilot",)
-depends_on: str | Sequence[str] | None = None
+# copilot_conversations.session_id FKs agent_sessions, created by the core
+# `0003_agents_core` migration. Without this edge alembic may run cop_0001
+# (branched off 0001) before 0003 on a clean upgrade, so the FK target
+# doesn't exist yet. depends_on forces the correct order.
+depends_on: str | Sequence[str] | None = "0003"
 
 
 def upgrade() -> None:
