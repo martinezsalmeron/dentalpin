@@ -7,7 +7,7 @@ const { t } = useI18n()
 const { can } = usePermissions()
 const emit = defineEmits<{ pick: [prompt: string] }>()
 
-type Category = 'patients' | 'agenda' | 'reports'
+type Category = 'workflows' | 'patients' | 'agenda' | 'recalls' | 'money' | 'reports'
 
 interface Suggestion {
   id: string
@@ -17,15 +17,22 @@ interface Suggestion {
 }
 
 const ITEMS: Suggestion[] = [
+  // Playbooks (multi-step recipes; gated by the first step's permission).
+  { id: 'dailyBriefing', icon: 'i-lucide-sunrise', cat: 'workflows', permission: PERMISSIONS.appointments.read },
+  { id: 'prepareVisit', icon: 'i-lucide-clipboard-list', cat: 'workflows', permission: PERMISSIONS.patients.read },
+  { id: 'fillGap', icon: 'i-lucide-calendar-search', cat: 'workflows', permission: PERMISSIONS.recalls.read },
   { id: 'searchPatient', icon: 'i-lucide-search', cat: 'patients', permission: PERMISSIONS.patients.read },
   { id: 'patientSummary', icon: 'i-lucide-file-text', cat: 'patients', permission: PERMISSIONS.patients.read },
   { id: 'freeSlots', icon: 'i-lucide-calendar-clock', cat: 'agenda', permission: PERMISSIONS.appointments.read },
   { id: 'bookAppointment', icon: 'i-lucide-calendar-plus', cat: 'agenda', permission: PERMISSIONS.appointments.write },
+  { id: 'dueRecalls', icon: 'i-lucide-phone-call', cat: 'recalls', permission: PERMISSIONS.recalls.read },
+  { id: 'pendingBudgets', icon: 'i-lucide-file-clock', cat: 'money', permission: PERMISSIONS.budget.read },
+  { id: 'recordPayment', icon: 'i-lucide-hand-coins', cat: 'money', permission: PERMISSIONS.payments.recordWrite },
   { id: 'monthCollections', icon: 'i-lucide-banknote', cat: 'reports', permission: PERMISSIONS.payments.reportsRead },
   { id: 'agendaSummary', icon: 'i-lucide-bar-chart-3', cat: 'reports', permission: PERMISSIONS.reports.schedulingRead }
 ]
 
-const CATEGORIES: Category[] = ['patients', 'agenda', 'reports']
+const CATEGORIES: Category[] = ['workflows', 'patients', 'agenda', 'recalls', 'money', 'reports']
 
 const groups = computed(() =>
   CATEGORIES.map((cat) => ({

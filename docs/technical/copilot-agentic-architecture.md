@@ -135,6 +135,20 @@ Additions since v1, newest last:
 | `payments` | `record_payment` | WRITE | `payments.record.write` |
 | `payments` | `patient_payment_history` (collection axis only) | READ | `payments.record.read` |
 
+#### Playbooks (composite capabilities — decision record)
+
+Multi-step workflows (daily briefing, prepare-visit, fill-gap-from-
+recalls) are **prompt-level playbooks**, not composite tools: a
+`_PLAYBOOKS` block appended to the static system prompt in
+`copilot/bridge.py` plus permission-gated suggestion chips in
+`CopilotSuggestions.vue`. Rationale: the model already chains
+registered tools; every step still passes the registry chokepoint
+(RBAC, guardrails, audit, redaction). A composite tool inside copilot
+would need a synthetic context, its own partial-failure handling and a
+second orchestration path to maintain. Revisit only if observed chains
+prove unreliable in practice (repeated retry loops); record evidence
+before changing the approach.
+
 ### 3.3 Contract elevation (so it never drifts)
 - **Root `CLAUDE.md`** "When adding X, do Y" — new row: *New agent-exposed capability* → declare a `Tool` in `<module>/tools.py`, wrap the existing service (no logic dup), set `permissions` to the gating RBAC string and `category` conservatively (DESTRUCTIVE for side-effects / deletes), mark `exposes_free_text=True` if it returns prose, document under "Tools exposed" in the module `CLAUDE.md`.
 - **`docs/checklists/new-module.md`** — add a "Agent tools" section.

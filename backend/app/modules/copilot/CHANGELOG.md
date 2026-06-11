@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- feat(playbooks): system prompt now ships three multi-step playbooks
+  (daily briefing, prepare visit, fill gap from recalls) and the
+  empty-state suggestions gained `workflows`, `recalls` and `money`
+  categories with six new permission-gated chips (ES+EN).
+
 - fix(bridge): `_tool_names_for` now actually excludes `exposes_free_text`
   tools when redaction is enabled (the CLAUDE.md contract promised this but
   no tool had the flag until `recalls.get_recall` landed).

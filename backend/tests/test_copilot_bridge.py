@@ -85,6 +85,17 @@ def test_tool_names_respect_permissions() -> None:
     assert "patients.create_patient" not in read_only  # WRITE needs patients.write
 
 
+def test_system_prompt_keeps_offbooks_rule_and_playbooks() -> None:
+    """The playbook refactor must never drop the off-books sentence."""
+    from app.modules.copilot.bridge import SYSTEM_PROMPT
+
+    assert "ejes contables separados" in SYSTEM_PROMPT
+    assert "NUNCA" in SYSTEM_PROMPT
+    # Playbooks present.
+    assert "Briefing del día" in SYSTEM_PROMPT
+    assert "Cubrir un hueco" in SYSTEM_PROMPT
+
+
 @pytest.mark.asyncio
 async def test_text_turn_persists_messages(db_session, test_clinic) -> None:
     conv, settings_row, user_id, agent_id, session_id = await _setup(db_session, test_clinic.id)
@@ -96,6 +107,34 @@ async def test_text_turn_persists_messages(db_session, test_clinic) -> None:
     assert isinstance(events[-1], Final)
     assert await _count_messages(db_session, conv.id) == 2  # user + assistant
     assert conv.total_input_tokens == 8 and conv.total_output_tokens == 5
+
+
+@pytest.mark.asyncio
+async def test_briefing_playbook_chains_read_tools(db_session, test_clinic) -> None:
+    """Multi-tool READ chain (the daily-briefing playbook shape) terminates."""
+    conv, settings_row, user_id, agent_id, session_id = await _setup(db_session, test_clinic.id)
+    provider = _FakeProvider(
+        [
+            [ToolUse("t1", "agenda.get_day_overview", {"date": "2030-06-01"}), Done("tool_calls")],
+            [ToolUse("t2", "recalls.list_due_recalls", {"overdue": True}), Done("tool_calls")],
+            [
+                ToolUse("t3", "budget.list_budgets", {"status": ["sent"]}),
+                Done("tool_calls"),
+            ],
+            [TextDelta("Briefing: sin citas, sin rellamadas, sin presupuestos."), Done("stop")],
+        ]
+    )
+    events = await _drive(
+        db_session, conv, settings_row, user_id, agent_id, session_id, provider, "briefing del día"
+    )
+    finished = [e for e in events if isinstance(e, ToolCallFinished)]
+    assert [f.name for f in finished] == [
+        "agenda.get_day_overview",
+        "recalls.list_due_recalls",
+        "budget.list_budgets",
+    ]
+    assert all(f.ok for f in finished)
+    assert isinstance(events[-1], Final)
 
 
 @pytest.mark.asyncio

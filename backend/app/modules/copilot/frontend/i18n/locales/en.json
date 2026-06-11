@@ -21,21 +21,36 @@
     "suggest": {
       "heading": "How can I help?",
       "cat": {
+        "workflows": "Workflows",
         "patients": "Patients",
         "agenda": "Schedule",
+        "recalls": "Recalls",
+        "money": "Collections & budgets",
         "reports": "Reports"
       },
+      "dailyBriefing": "Daily briefing",
+      "prepareVisit": "Prepare a visit",
+      "fillGap": "Fill a gap",
       "searchPatient": "Find a patient",
       "patientSummary": "Summarize a patient",
       "freeSlots": "Free slots today",
       "bookAppointment": "Book an appointment",
+      "dueRecalls": "Due recalls",
+      "pendingBudgets": "Unanswered budgets",
+      "recordPayment": "Record a payment",
       "monthCollections": "This month's collections",
       "agendaSummary": "Schedule overview",
       "prompt": {
+        "dailyBriefing": "Give me the daily briefing: today's appointments, overdue recalls and unanswered budgets",
+        "prepareVisit": "Prepare a patient's next visit for me",
+        "fillGap": "A slot opened up in the schedule, who can we call?",
         "searchPatient": "Find a patient",
         "patientSummary": "Give me a summary of a patient",
         "freeSlots": "What free slots are there today?",
         "bookAppointment": "I want to book an appointment",
+        "dueRecalls": "Which recalls are due this month?",
+        "pendingBudgets": "Which budgets are sent and unanswered?",
+        "recordPayment": "I want to record a patient payment",
         "monthCollections": "Summary of this month's collections",
         "agendaSummary": "Give me an overview of today's schedule"
       }

@@ -27,7 +27,7 @@ from .models import CopilotConversation, CopilotSettings
 from .serde import message_from_row
 from .service import ClinicBudgetGuard, ConversationService
 
-SYSTEM_PROMPT = (
+_BASE_PROMPT = (
     "Eres el copiloto de DentalPin, asistente de una clínica dental. "
     "Respondes en español, con concisión y precisión. Usa las herramientas "
     "disponibles para consultar y actuar sobre los datos de la clínica; no "
@@ -39,6 +39,29 @@ SYSTEM_PROMPT = (
     "calcules, restes ni muestres la diferencia entre ellos (deuda, "
     "pendiente, morosidad). Informa cada eje por separado si te lo piden."
 )
+
+# Multi-step recipes the model chains with its own tool calls. The tool
+# list is already filtered per-user (RBAC) and per-redaction; if a step's
+# tool is missing, the model skips it and says so.
+_PLAYBOOKS = (
+    "\n\nGuiones habituales (encadena las herramientas tú mismo; si te "
+    "falta una herramienta para un paso, dilo y continúa con el resto):\n"
+    "- Briefing del día: get_day_overview(hoy) → list_due_recalls(overdue=true) → "
+    "list_budgets(status=['sent']). Resume en tres bloques: citas, llamadas "
+    "pendientes, presupuestos sin respuesta.\n"
+    "- Preparar visita de un paciente: get_patient → su cita (get_appointment "
+    "o get_day_overview) → list_due_recalls(patient_id) → "
+    "list_budgets(patient_id, status=['sent','accepted']) → "
+    "patient_payment_history. Devuelve un resumen de una pantalla. No hay "
+    "herramientas clínicas (odontograma, historia médica): dilo si te lo piden.\n"
+    "- Cubrir un hueco por cancelación: tras cancel_appointment (o si el "
+    "usuario menciona un hueco) → list_due_recalls(overdue=true), prioriza "
+    "priority=high → propón 2-3 candidatos con su teléfono → si el usuario "
+    "elige uno y confirma: book_appointment → log_contact_attempt("
+    "outcome='scheduled', linked_appointment_id=la cita creada)."
+)
+
+SYSTEM_PROMPT = _BASE_PROMPT + _PLAYBOOKS
 
 # Copilot gates writes via inline confirmation (a turn-level pause), so
 # the approval-queue triggers are disabled. Rate limits + denylist stay.

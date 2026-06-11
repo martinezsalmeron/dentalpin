@@ -21,21 +21,36 @@
     "suggest": {
       "heading": "¿En qué te ayudo?",
       "cat": {
+        "workflows": "Flujos",
         "patients": "Pacientes",
         "agenda": "Agenda",
+        "recalls": "Rellamadas",
+        "money": "Cobros y presupuestos",
         "reports": "Informes"
       },
+      "dailyBriefing": "Briefing del día",
+      "prepareVisit": "Preparar una visita",
+      "fillGap": "Cubrir un hueco",
       "searchPatient": "Buscar un paciente",
       "patientSummary": "Resumen de un paciente",
       "freeSlots": "Huecos libres hoy",
       "bookAppointment": "Agendar una cita",
+      "dueRecalls": "Rellamadas pendientes",
+      "pendingBudgets": "Presupuestos sin respuesta",
+      "recordPayment": "Registrar un cobro",
       "monthCollections": "Cobros de este mes",
       "agendaSummary": "Resumen de la agenda",
       "prompt": {
+        "dailyBriefing": "Hazme el briefing del día: citas de hoy, rellamadas vencidas y presupuestos sin respuesta",
+        "prepareVisit": "Prepárame la próxima visita de un paciente",
+        "fillGap": "Se ha quedado un hueco libre en la agenda, ¿a quién podemos llamar?",
         "searchPatient": "Busca un paciente",
         "patientSummary": "Hazme un resumen de un paciente",
         "freeSlots": "¿Qué huecos libres hay hoy?",
         "bookAppointment": "Quiero agendar una cita",
+        "dueRecalls": "¿Qué rellamadas hay pendientes este mes?",
+        "pendingBudgets": "¿Qué presupuestos están enviados y sin respuesta?",
+        "recordPayment": "Quiero registrar un cobro de un paciente",
         "monthCollections": "Resumen de cobros de este mes",
         "agendaSummary": "Dame un resumen de la agenda de hoy"
       }
