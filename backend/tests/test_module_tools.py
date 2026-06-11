@@ -257,6 +257,255 @@ async def test_find_free_slots_needs_agenda_permission(db_session, test_clinic) 
     assert "permission denied" in (res.error or "")
 
 
+async def _appointment_world(db: AsyncSession, clinic_id) -> dict:
+    """Dentist + patient + one scheduled appointment with cabinet."""
+    from datetime import UTC, datetime, timedelta
+    from uuid import uuid4
+
+    from app.core.auth.models import ClinicMembership, User
+    from app.core.auth.service import hash_password
+    from app.modules.agenda.service import AppointmentService
+
+    dentist = User(
+        id=uuid4(),
+        email=f"dentist-{uuid4().hex[:8]}@test.clinic",
+        password_hash=hash_password("TestPass1234"),
+        first_name="Dentist",
+        last_name="Tools",
+        is_active=True,
+    )
+    db.add(dentist)
+    await db.flush()
+    db.add(ClinicMembership(id=uuid4(), user_id=dentist.id, clinic_id=clinic_id, role="dentist"))
+    patient = await PatientService.create_patient(
+        db, clinic_id, {"first_name": "Carla", "last_name": "Citas"}
+    )
+    start = datetime(2031, 3, 3, 10, 0, tzinfo=UTC)
+    appt = await AppointmentService.create_appointment(
+        db,
+        clinic_id,
+        {
+            "patient_id": patient.id,
+            "professional_id": dentist.id,
+            "cabinet": "Gabinete 1",
+            "start_time": start,
+            "end_time": start + timedelta(minutes=30),
+        },
+    )
+    return {"dentist_id": dentist.id, "patient": patient, "appointment": appt, "start": start}
+
+
+def test_management_tools_registered() -> None:
+    names = tool_registry.list()
+    for expected in (
+        "agenda.reschedule_appointment",
+        "agenda.update_appointment_status",
+        "patients.update_patient",
+    ):
+        assert expected in names
+
+
+@pytest.mark.asyncio
+async def test_reschedule_appointment(db_session, test_clinic) -> None:
+    from datetime import timedelta
+
+    world = await _appointment_world(db_session, test_clinic.id)
+    ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.write"])
+    new_start = world["start"] + timedelta(days=1)
+    res = await tool_registry.call(
+        ctx,
+        "agenda.reschedule_appointment",
+        {
+            "appointment_id": str(world["appointment"].id),
+            "start_time": new_start.isoformat(),
+            "end_time": (new_start + timedelta(minutes=30)).isoformat(),
+        },
+    )
+    assert res.ok
+    assert res.data["start_time"].startswith("2031-03-04T10:00")
+
+
+@pytest.mark.asyncio
+async def test_reschedule_slot_conflict(db_session, test_clinic) -> None:
+    from datetime import timedelta
+
+    from app.modules.agenda.service import AppointmentService
+
+    world = await _appointment_world(db_session, test_clinic.id)
+    other_start = world["start"] + timedelta(hours=2)
+    other = await AppointmentService.create_appointment(
+        db_session,
+        test_clinic.id,
+        {
+            "patient_id": world["patient"].id,
+            "professional_id": world["dentist_id"],
+            "cabinet": "Gabinete 1",
+            "start_time": other_start,
+            "end_time": other_start + timedelta(minutes=30),
+        },
+    )
+    ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.write"])
+    # The tool rolls back on conflict; commit first so the rollback can't
+    # wipe the fixtures (in production the session/world rows are already
+    # committed before a turn runs).
+    await db_session.commit()
+    res = await tool_registry.call(
+        ctx,
+        "agenda.reschedule_appointment",
+        {
+            "appointment_id": str(other.id),
+            "start_time": world["start"].isoformat(),
+            "end_time": (world["start"] + timedelta(minutes=30)).isoformat(),
+        },
+    )
+    assert res.ok
+    assert res.data["error"] == "slot_conflict"
+
+
+@pytest.mark.asyncio
+async def test_update_appointment_status_flow(db_session, test_clinic) -> None:
+    world = await _appointment_world(db_session, test_clinic.id)
+    ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.write"])
+    appt_id = str(world["appointment"].id)
+
+    res = await tool_registry.call(
+        ctx,
+        "agenda.update_appointment_status",
+        {"appointment_id": appt_id, "to_status": "confirmed"},
+    )
+    assert res.ok
+    assert res.data["status"] == "confirmed"
+
+    # Invalid: confirmed → completed is not allowed; error carries the
+    # allowed next states so the model can self-correct.
+    res = await tool_registry.call(
+        ctx,
+        "agenda.update_appointment_status",
+        {"appointment_id": appt_id, "to_status": "completed"},
+    )
+    assert res.ok
+    assert res.data["error"] == "invalid_transition"
+    assert "checked_in" in res.data["allowed"]
+
+    # Same-state transition.
+    res = await tool_registry.call(
+        ctx,
+        "agenda.update_appointment_status",
+        {"appointment_id": appt_id, "to_status": "confirmed"},
+    )
+    assert res.ok
+    assert res.data["error"] == "already_in_state"
+
+
+@pytest.mark.asyncio
+async def test_update_appointment_status_cabinet_required(db_session, test_clinic) -> None:
+    from datetime import timedelta
+
+    from app.modules.agenda.service import AppointmentService
+
+    world = await _appointment_world(db_session, test_clinic.id)
+    start = world["start"] + timedelta(days=7)
+    bare = await AppointmentService.create_appointment(
+        db_session,
+        test_clinic.id,
+        {
+            "patient_id": world["patient"].id,
+            "professional_id": world["dentist_id"],
+            "start_time": start,
+            "end_time": start + timedelta(minutes=30),
+        },
+    )
+    ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.write"])
+    res = await tool_registry.call(
+        ctx,
+        "agenda.update_appointment_status",
+        {"appointment_id": str(bare.id), "to_status": "checked_in"},
+    )
+    assert res.ok and res.data["status"] == "checked_in"
+    res = await tool_registry.call(
+        ctx,
+        "agenda.update_appointment_status",
+        {"appointment_id": str(bare.id), "to_status": "in_treatment"},
+    )
+    assert res.ok
+    assert res.data["error"] == "cabinet_required"
+
+
+@pytest.mark.asyncio
+async def test_reschedule_is_clinic_scoped(db_session, test_clinic) -> None:
+    from datetime import timedelta
+
+    from app.core.auth.models import Clinic
+
+    world = await _appointment_world(db_session, test_clinic.id)
+    other = Clinic(id=uuid4(), name="Other Clinic", tax_id="X88888888", settings={})
+    db_session.add(other)
+    await db_session.flush()
+
+    ctx = await _ctx(db_session, other.id, ["agenda.appointments.write"])
+    new_start = world["start"] + timedelta(days=2)
+    res = await tool_registry.call(
+        ctx,
+        "agenda.reschedule_appointment",
+        {
+            "appointment_id": str(world["appointment"].id),
+            "start_time": new_start.isoformat(),
+            "end_time": (new_start + timedelta(minutes=30)).isoformat(),
+        },
+    )
+    assert res.ok
+    assert res.data["error"] == "not_found"
+
+
+@pytest.mark.asyncio
+async def test_reschedule_denied_without_write(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.read"])
+    res = await tool_registry.call(
+        ctx,
+        "agenda.reschedule_appointment",
+        {
+            "appointment_id": str(uuid4()),
+            "start_time": "2031-01-01T10:00:00+00:00",
+            "end_time": "2031-01-01T10:30:00+00:00",
+        },
+    )
+    assert res.ok is False
+    assert "permission denied" in (res.error or "")
+
+
+@pytest.mark.asyncio
+async def test_update_patient_contact(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["patients.read", "patients.write"])
+    created = await tool_registry.call(
+        ctx, "patients.create_patient", {"first_name": "Lucía", "last_name": "Vega"}
+    )
+    assert created.ok
+    res = await tool_registry.call(
+        ctx,
+        "patients.update_patient",
+        {"patient_id": created.data["id"], "phone": "+34611222333"},
+    )
+    assert res.ok
+    assert res.data["phone"] == "+34611222333"
+    assert res.data["full_name"] == "Lucía Vega"
+
+    res = await tool_registry.call(
+        ctx, "patients.update_patient", {"patient_id": created.data["id"]}
+    )
+    assert res.ok
+    assert res.data["error"] == "nothing_to_update"
+
+
+@pytest.mark.asyncio
+async def test_update_patient_denied_without_write(db_session, test_clinic) -> None:
+    ctx = await _ctx(db_session, test_clinic.id, ["patients.read"])
+    res = await tool_registry.call(
+        ctx, "patients.update_patient", {"patient_id": str(uuid4()), "phone": "+34600000000"}
+    )
+    assert res.ok is False
+    assert "permission denied" in (res.error or "")
+
+
 @pytest.mark.asyncio
 async def test_book_appointment_denied_without_write(db_session, test_clinic) -> None:
     ctx = await _ctx(db_session, test_clinic.id, ["agenda.appointments.read"])  # no write

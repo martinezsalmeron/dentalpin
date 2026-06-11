@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- feat(agents): new copilot tool `update_patient` (WRITE) — updates a
+  patient's contact data (phone, email) via `PatientService.update_patient`.
+  Identity fields stay manual.
+
 - fix(search): multi-term patient search. `PatientService.list_patients`
   now splits the `search` string on whitespace and requires **every**
   term to match **some** field (AND across terms, OR across fields),

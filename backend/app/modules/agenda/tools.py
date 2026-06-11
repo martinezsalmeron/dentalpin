@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, time
 from datetime import date as date_cls
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -24,7 +25,14 @@ from sqlalchemy.exc import IntegrityError
 from app.core.agents import AgentContext, Tool, ToolCategory
 
 from .kanban_service import _fetch_professionals
-from .service import AppointmentService, CabinetService, InvalidTransitionError
+from .service import (
+    VALID_TRANSITIONS,
+    AlreadyInStateError,
+    AppointmentService,
+    CabinetRequiredError,
+    CabinetService,
+    InvalidTransitionError,
+)
 
 
 class DayOverviewArgs(BaseModel):
@@ -49,6 +57,22 @@ class BookAppointmentArgs(BaseModel):
 
 class CancelAppointmentArgs(BaseModel):
     appointment_id: UUID
+
+
+class RescheduleAppointmentArgs(BaseModel):
+    appointment_id: UUID
+    start_time: datetime
+    end_time: datetime
+    professional_id: UUID | None = None
+    cabinet: str | None = Field(default=None, max_length=50)
+
+
+class UpdateAppointmentStatusArgs(BaseModel):
+    appointment_id: UUID
+    to_status: Literal["confirmed", "checked_in", "in_treatment", "completed", "no_show"] = Field(
+        description="Nuevo estado. Para cancelar usa cancel_appointment."
+    )
+    note: str | None = Field(default=None, max_length=500)
 
 
 def _appt_summary(appt) -> dict:
@@ -119,6 +143,48 @@ async def _book_appointment(ctx: AgentContext, params: BookAppointmentArgs) -> d
     return {"id": appt.id, "start_time": appt.start_time, "status": appt.status}
 
 
+async def _reschedule_appointment(ctx: AgentContext, params: RescheduleAppointmentArgs) -> dict:
+    appt = await AppointmentService.get_appointment(ctx.db, ctx.clinic_id, params.appointment_id)
+    if appt is None:
+        return {"error": "not_found"}
+    data = params.model_dump(exclude_none=True)
+    data.pop("appointment_id")
+    try:
+        appt = await AppointmentService.update_appointment(
+            ctx.db, appt, data, changed_by=ctx.supervisor_id
+        )
+    except IntegrityError:
+        # update_appointment already rolled the session back.
+        return {"error": "slot_conflict", "detail": "El hueco solicitado no está disponible."}
+    return _appt_summary(appt)
+
+
+async def _update_appointment_status(
+    ctx: AgentContext, params: UpdateAppointmentStatusArgs
+) -> dict:
+    appt = await AppointmentService.get_appointment(ctx.db, ctx.clinic_id, params.appointment_id)
+    if appt is None:
+        return {"error": "not_found"}
+    try:
+        appt = await AppointmentService.transition(
+            ctx.db, appt, params.to_status, changed_by=ctx.supervisor_id, note=params.note
+        )
+    except AlreadyInStateError:
+        return {"error": "already_in_state", "status": appt.status}
+    except InvalidTransitionError:
+        return {
+            "error": "invalid_transition",
+            "status": appt.status,
+            "allowed": sorted(VALID_TRANSITIONS.get(appt.status, set())),
+        }
+    except CabinetRequiredError:
+        return {
+            "error": "cabinet_required",
+            "detail": "Asigna un gabinete antes de pasar la cita a 'in_treatment'.",
+        }
+    return {"id": appt.id, "status": appt.status}
+
+
 async def _cancel_appointment(ctx: AgentContext, params: CancelAppointmentArgs) -> dict:
     appt = await AppointmentService.get_appointment(ctx.db, ctx.clinic_id, params.appointment_id)
     if appt is None:
@@ -174,6 +240,29 @@ def get_tools() -> list[Tool]:
             description="Reservar una cita. Requiere confirmación del usuario.",
             parameters=BookAppointmentArgs,
             handler=_book_appointment,
+            permissions=["agenda.appointments.write"],
+            category=ToolCategory.WRITE,
+        ),
+        Tool(
+            name="reschedule_appointment",
+            description=(
+                "Mover una cita existente a otra fecha/hora (y opcionalmente "
+                "otro profesional o gabinete). Requiere confirmación del usuario."
+            ),
+            parameters=RescheduleAppointmentArgs,
+            handler=_reschedule_appointment,
+            permissions=["agenda.appointments.write"],
+            category=ToolCategory.WRITE,
+        ),
+        Tool(
+            name="update_appointment_status",
+            description=(
+                "Cambiar el estado de una cita (confirmed, checked_in, "
+                "in_treatment, completed, no_show). Para cancelar usa "
+                "cancel_appointment. Requiere confirmación del usuario."
+            ),
+            parameters=UpdateAppointmentStatusArgs,
+            handler=_update_appointment_status,
             permissions=["agenda.appointments.write"],
             category=ToolCategory.WRITE,
         ),

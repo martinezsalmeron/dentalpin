@@ -34,6 +34,10 @@ Agent tools in `tools.py` (wrap `PatientService`, no logic duplicated).
 | `search_patients` | READ | `PatientService.list_patients` | `patients.read` |
 | `get_patient` | READ | `PatientService.get_patient` | `patients.read` |
 | `create_patient` | WRITE | `PatientService.create_patient` | `patients.write` |
+| `update_patient` | WRITE | `PatientService.update_patient` | `patients.write` |
+
+`update_patient` covers contact data only (phone, email) — identity
+fields stay manual.
 
 ## Events emitted
 

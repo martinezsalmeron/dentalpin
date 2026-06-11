@@ -44,6 +44,12 @@ class CreatePatientArgs(BaseModel):
     email: str | None = Field(default=None, max_length=255)
 
 
+class UpdatePatientArgs(BaseModel):
+    patient_id: UUID
+    phone: str | None = Field(default=None, max_length=20)
+    email: str | None = Field(default=None, max_length=255)
+
+
 def _summary(patient) -> dict:
     return {
         "id": patient.id,
@@ -78,6 +84,18 @@ async def _create_patient(ctx: AgentContext, params: CreatePatientArgs) -> dict:
     return {"id": patient.id, "full_name": f"{patient.first_name} {patient.last_name}"}
 
 
+async def _update_patient(ctx: AgentContext, params: UpdatePatientArgs) -> dict:
+    patient = await PatientService.get_patient(ctx.db, ctx.clinic_id, params.patient_id)
+    if patient is None:
+        return {"error": "not_found"}
+    data = params.model_dump(exclude_none=True)
+    data.pop("patient_id")
+    if not data:
+        return {"error": "nothing_to_update"}
+    patient = await PatientService.update_patient(ctx.db, patient, data)
+    return _summary(patient)
+
+
 def get_tools() -> list[Tool]:
     return [
         Tool(
@@ -105,6 +123,17 @@ def get_tools() -> list[Tool]:
             description="Crear un paciente nuevo. Requiere confirmación del usuario.",
             parameters=CreatePatientArgs,
             handler=_create_patient,
+            permissions=["patients.write"],
+            category=ToolCategory.WRITE,
+        ),
+        Tool(
+            name="update_patient",
+            description=(
+                "Actualizar los datos de contacto (teléfono, email) de un "
+                "paciente existente. Requiere confirmación del usuario."
+            ),
+            parameters=UpdatePatientArgs,
+            handler=_update_patient,
             permissions=["patients.write"],
             category=ToolCategory.WRITE,
         ),

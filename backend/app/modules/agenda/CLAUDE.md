@@ -28,7 +28,13 @@ Write tools use `ctx.supervisor_id` (the human in the loop) for audit columns.
 | `list_cabinets` | READ | `CabinetService.list_cabinets` | `agenda.cabinets.read` |
 | `list_professionals` | READ | `kanban_service._fetch_professionals` | `agenda.appointments.read` |
 | `book_appointment` | WRITE | `AppointmentService.create_appointment` | `agenda.appointments.write` |
+| `reschedule_appointment` | WRITE | `AppointmentService.update_appointment` | `agenda.appointments.write` |
+| `update_appointment_status` | WRITE | `AppointmentService.transition` | `agenda.appointments.write` |
 | `cancel_appointment` | DESTRUCTIVE | `AppointmentService.cancel_appointment` | `agenda.appointments.write` |
+
+`update_appointment_status` excludes `cancelled` (that's `cancel_appointment`,
+DESTRUCTIVE). Invalid transitions return the allowed next states from
+`VALID_TRANSITIONS` so the agent can self-correct instead of retry-looping.
 
 `find_free_slots` is intentionally **not** here — free-slot computation belongs to
 `schedules`, which will register its own tool. Agenda does not cross that boundary.

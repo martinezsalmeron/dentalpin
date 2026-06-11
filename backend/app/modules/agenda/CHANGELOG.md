@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- feat(agents): two new copilot tools — `reschedule_appointment` (WRITE,
+  wraps `AppointmentService.update_appointment`, surfaces `slot_conflict`
+  as a structured error) and `update_appointment_status` (WRITE, wraps
+  `transition`; invalid transitions return the allowed next states;
+  `cancelled` stays exclusive to the DESTRUCTIVE `cancel_appointment`).
+
 - fix(agenda): the appointments page now refetches its active window when
   the shared client data bus signals an `agenda` change (e.g. a copilot
   booking/cancellation), so externally created appointments appear without a
