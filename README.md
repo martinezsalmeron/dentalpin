@@ -28,11 +28,32 @@ We're not just building software—we're building the foundation for an ecosyste
 
 Clinics deserve better than closed, expensive software from the last decade. DentalPin is the open alternative.
 
+## ✨ AI Copilot
+
+DentalPin ships with a built-in **agentic AI assistant** that turns the whole clinic into something you can simply talk to. Ask it to find a patient, free up a slot, chase an unanswered budget, or brief you on the day ahead — in plain Spanish or English — and it acts on your real data.
+
+![AI Copilot](docs/screenshots/ia.png)
+
+This isn't a chatbot bolted on top. The Copilot is a true agent that **plans and executes multi-step tasks** by calling the same operations the UI does, across patients, schedule, recalls, budgets, payments, and reports.
+
+- **It does, not just answers.** The agent runs real tools — search patients, book or reschedule appointments, record a payment, pull this month's collections — and chains them to complete a task end to end.
+- **It can never overstep your role.** Every tool call is re-checked against the calling user's RBAC permissions at the execution chokepoint. The Copilot can see and do *exactly* what that user could do through the UI — nothing more, scoped to their clinic.
+- **Your data is protected.** PHI is redacted before anything leaves for the LLM provider: patient names, phones, emails, and IDs are swapped for deterministic tokens, and free-text clinical tools are excluded from the cloud path entirely. Redaction is on by default.
+- **Writes ask first.** Any action that changes data (booking, payments, edits) pauses mid-conversation for your explicit confirmation before it runs.
+- **Guided workflows.** Ready-made playbooks — *Daily briefing*, *Prepare a visit*, *Fill a gap*, *Due recalls*, *Unanswered budgets* — kick off common multi-step jobs in one tap.
+- **Proactive briefings.** Opt in to a deterministic morning digest emailed to your team, summarizing the day's schedule, due recalls, and open budgets — no LLM, no PHI off-site.
+- **Modular by design.** The Copilot consumes tools published by each module through a shared registry; every module contributes its own capabilities, so the agent grows automatically as new modules are installed.
+
+Vendor-agnostic under the hood (an LLM-provider abstraction), with provider, model, and per-clinic token budgets configurable per deployment. Architecture: [docs/technical/copilot-agentic-architecture.md](docs/technical/copilot-agentic-architecture.md).
+
 ## Website
 
 Visit [**dentalpin.com**](https://www.dentalpin.com) for product info, features, and commercial details.
 
 ## Screenshots
+
+### AI Copilot
+![AI Copilot](docs/screenshots/ia.png)
 
 ### Dashboard
 ![Dashboard](docs/screenshots/home.png)
@@ -91,6 +112,14 @@ See [docs/user-manual/demo.md](docs/user-manual/demo.md) for full details on dem
 | Auth | JWT with refresh tokens |
 
 ## Features
+
+### AI Copilot
+- **Agentic Assistant** — Conversational agent that plans and executes multi-step tasks across patients, schedule, recalls, budgets, payments, and reports by calling real operations
+- **RBAC Parity** — Every action re-checked against the user's permissions; the agent can only do what that user could through the UI, scoped to their clinic
+- **PHI Redaction** — Patient identifiers tokenized before reaching the LLM; free-text clinical data stays off the cloud path. On by default
+- **Confirmed Writes** — Data-changing actions pause for explicit user confirmation mid-conversation
+- **Workflows & Digest** — One-tap playbooks (daily briefing, prepare a visit, fill a gap) plus an opt-in proactive morning email digest
+- **Bilingual & Vendor-Agnostic** — Works in Spanish and English; configurable LLM provider, model, and per-clinic token budget
 
 ### Clinical Management
 - **Patient Records** — Complete patient profiles with personal data, contact info, medical history, and notes
