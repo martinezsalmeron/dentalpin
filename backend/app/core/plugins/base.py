@@ -14,6 +14,7 @@ from .manifest import Manifest
 if TYPE_CHECKING:
     from app.core.agents.base import BaseAgent
     from app.core.agents.tools.tool import Tool
+    from app.core.scheduling import ScheduledJob
 
     from .context import ModuleContext
 
@@ -98,6 +99,18 @@ class BaseModule(ABC):
 
         Default is an empty list. Override only if the module ships
         agents itself (as opposed to merely exposing tools).
+        """
+        return []
+
+    # --- Background jobs -------------------------------------------------
+
+    def get_scheduled_jobs(self) -> list[ScheduledJob]:
+        """Return periodic jobs this module wants the scheduler to run.
+
+        Default is an empty list. The scheduler registers jobs only for
+        *installed/registered* modules, so the scheduler no longer imports
+        module task functions directly. See
+        :class:`~app.core.scheduling.ScheduledJob`.
         """
         return []
 

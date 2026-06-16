@@ -11,6 +11,8 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
+from app.core.plugins.registry import module_registry
+from app.core.scheduling import ScheduledJob
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +28,21 @@ def get_scheduler() -> AsyncIOScheduler:
     return scheduler
 
 
+def _build_trigger(job: ScheduledJob) -> CronTrigger | IntervalTrigger:
+    if job.trigger == "cron":
+        return CronTrigger(**job.trigger_args)
+    if job.trigger == "interval":
+        return IntervalTrigger(**job.trigger_args)
+    raise ValueError(f"Unknown trigger '{job.trigger}' for job '{job.id}'")
+
+
 def init_scheduler() -> None:
     """Initialize and start the scheduler.
 
-    Registers all periodic jobs and starts the scheduler.
-    Should be called during application startup.
+    Jobs are collected from the *registered* modules via
+    ``BaseModule.get_scheduled_jobs()`` — the scheduler no longer imports
+    module task functions directly, so an uninstalled module contributes
+    no job (ADR 0014 import-coupling fix).
     """
     global scheduler
 
@@ -39,86 +51,22 @@ def init_scheduler() -> None:
         logger.info("Skipping scheduler initialization in test mode")
         return
 
-    from app.modules.notifications.tasks import process_appointment_reminders
-
     scheduler = get_scheduler()
 
-    # Check if job already exists (in case of hot reload)
-    existing_job = scheduler.get_job("appointment_reminders")
-    if existing_job:
-        logger.info("Scheduler job 'appointment_reminders' already exists, skipping registration")
-    else:
-        # Run appointment reminders every 5 minutes
-        scheduler.add_job(
-            process_appointment_reminders,
-            IntervalTrigger(minutes=5),
-            id="appointment_reminders",
-            name="Process appointment reminders",
-            replace_existing=True,
-        )
-        logger.info("Registered appointment reminders job (every 5 minutes)")
-
-    # Plan/budget workflow cron jobs (docs/workflows/plan-budget-flow-tech-plan.md §6).
-    from app.modules.budget.tasks import (
-        expire_budgets,
-        purge_budget_access_logs,
-        send_budget_reminders,
-    )
-    from app.modules.treatment_plan.tasks import auto_close_expired_plans
-
-    _budget_jobs = [
-        (
-            "expire_budgets",
-            expire_budgets,
-            CronTrigger(hour=2, minute=0),
-            "Mark draft/sent budgets past valid_until as expired (daily 02:00)",
-        ),
-        (
-            "send_budget_reminders",
-            send_budget_reminders,
-            CronTrigger(hour=9, minute=0),
-            "Email patients about pending budgets at 7d/14d milestones (daily 09:00)",
-        ),
-        (
-            "auto_close_expired_plans",
-            auto_close_expired_plans,
-            CronTrigger(hour=3, minute=0),
-            "Close pending plans whose budgets have been expired > N days (daily 03:00)",
-        ),
-        (
-            "purge_budget_access_logs",
-            purge_budget_access_logs,
-            CronTrigger(hour=4, minute=0),
-            "Drop budget_access_logs older than 90 days (daily 04:00)",
-        ),
-    ]
-    # Copilot morning digest — hourly; the task matches each clinic's
-    # digest_hour against the server-local hour and no-ops for clinics
-    # without digest_enabled (covers the uninstalled-module case too).
-    # Scheduler-imports-module tech debt recorded in the proactivity ADR.
-    from app.modules.copilot.tasks import send_morning_digests
-
-    _module_jobs = _budget_jobs + [
-        (
-            "copilot_morning_digests",
-            send_morning_digests,
-            CronTrigger(minute=0),
-            "Send the copilot morning digest to opted-in clinics (hourly gate)",
-        ),
-    ]
-    for job_id, fn, trigger, name in _module_jobs:
-        if scheduler.get_job(job_id):
-            logger.info("Scheduler job '%s' already exists, skipping", job_id)
-            continue
-        scheduler.add_job(
-            fn,
-            trigger,
-            id=job_id,
-            name=name,
-            max_instances=1,
-            replace_existing=True,
-        )
-        logger.info("Registered cron job '%s'", job_id)
+    for module in module_registry.list_modules():
+        for job in module.get_scheduled_jobs():
+            if scheduler.get_job(job.id):
+                logger.info("Scheduler job '%s' already exists, skipping", job.id)
+                continue
+            scheduler.add_job(
+                job.func,
+                _build_trigger(job),
+                id=job.id,
+                name=job.name,
+                max_instances=job.max_instances,
+                replace_existing=True,
+            )
+            logger.info("Registered job '%s' from module '%s'", job.id, module.name)
 
     if not scheduler.running:
         scheduler.start()

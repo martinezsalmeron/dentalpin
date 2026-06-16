@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core.events.types import EventType
 from app.core.plugins import BaseModule
+from app.core.scheduling import ScheduledJob
 from app.database import async_session_maker
 
 from .models import Budget, BudgetAccessLog, BudgetHistory, BudgetItem, BudgetSignature
@@ -93,6 +94,35 @@ class BudgetModule(BaseModule):
             # Workflow extensions split out for fine-grained RBAC.
             "renegotiate",  # Cancel a sent budget to renegotiate
             "accept_in_clinic",  # Capture in-clinic acceptance
+        ]
+
+    def get_scheduled_jobs(self) -> list[ScheduledJob]:
+        # Plan/budget workflow cron jobs
+        # (docs/workflows/plan-budget-flow-tech-plan.md §6).
+        from .tasks import expire_budgets, purge_budget_access_logs, send_budget_reminders
+
+        return [
+            ScheduledJob(
+                id="expire_budgets",
+                func=expire_budgets,
+                trigger="cron",
+                trigger_args={"hour": 2, "minute": 0},
+                name="Mark draft/sent budgets past valid_until as expired (daily 02:00)",
+            ),
+            ScheduledJob(
+                id="send_budget_reminders",
+                func=send_budget_reminders,
+                trigger="cron",
+                trigger_args={"hour": 9, "minute": 0},
+                name="Email patients about pending budgets at 7d/14d milestones (daily 09:00)",
+            ),
+            ScheduledJob(
+                id="purge_budget_access_logs",
+                func=purge_budget_access_logs,
+                trigger="cron",
+                trigger_args={"hour": 4, "minute": 0},
+                name="Drop budget_access_logs older than 90 days (daily 04:00)",
+            ),
         ]
 
     def get_event_handlers(self) -> dict[str, Any]:

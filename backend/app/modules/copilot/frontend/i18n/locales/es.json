@@ -18,6 +18,26 @@
       "working": "Trabajando…",
       "writing": "Redactando…"
     },
+    "tabs": {
+      "pending": "Pendientes",
+      "chat": "Chat"
+    },
+    "pending": {
+      "empty": "No hay nada pendiente. Todo al día.",
+      "unknownPatient": "Paciente desconocido",
+      "group": {
+        "recall": "Rellamadas por gestionar",
+        "budget": "Presupuestos sin respuesta"
+      }
+    },
+    "nudge": {
+      "act": "Revisar",
+      "dismiss": "Descartar",
+      "appointmentCancelled": {
+        "text": "Se canceló la cita de las {time} — se ha liberado un hueco.",
+        "prompt": "Se canceló la cita de las {time}. Busca pacientes de rellamada que puedan ocupar ese hueco."
+      }
+    },
     "suggest": {
       "heading": "¿En qué te ayudo?",
       "cat": {
@@ -64,7 +84,10 @@
         "description": "Cada mañana: citas del día, rellamadas vencidas y presupuestos sin respuesta.",
         "enabled": "Enviar briefing diario",
         "hour": "Hora de envío",
-        "hourHelp": "Hora local del servidor."
+        "hourHelp": "Se interpreta en la zona horaria de la clínica.",
+        "recipients": "Destinatarios",
+        "recipientsHelp": "Cada destinatario recibe su propio briefing, limitado a lo que su rol puede ver.",
+        "recipientsPlaceholder": "Selecciona personal…"
       },
       "engine": {
         "title": "Motor",
@@ -73,6 +96,16 @@
         "redaction": "Anonimización de datos (PHI)",
         "redactionOn": "Activada",
         "redactionOff": "Desactivada"
+      },
+      "metrics": {
+        "title": "Uso",
+        "description": "Últimos {days} días.",
+        "toolCalls": "Llamadas a herramientas",
+        "errorRate": "Tasa de error",
+        "avgLatency": "Latencia media",
+        "conversations": "Conversaciones",
+        "tokenBudget": "Presupuesto mensual de tokens",
+        "topTools": "Herramientas más usadas"
       }
     },
     "tool": {

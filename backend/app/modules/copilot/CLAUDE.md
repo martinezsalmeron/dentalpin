@@ -16,7 +16,11 @@ Routes mounted at `/api/v1/copilot/`.
 - `POST   /sessions/{id}/messages`            — send a turn, **SSE** stream; `copilot.chat`
 - `POST   /sessions/{id}/confirmations/{cid}` — confirm/reject a pending write, **SSE**; `copilot.chat`
 - `POST   /sessions/{id}/end`                 — close; `copilot.chat`
-- `GET    /settings` · `PATCH /settings`      — provider/model/budget; `copilot.configure`
+- `GET    /settings` · `PATCH /settings`      — provider/model/budget/digest; `copilot.configure`
+- `GET    /metrics`                            — usage observability (read-only); `copilot.supervise`
+- `GET    /pending`                            — "Pendientes" feed (read-only, deep-links); `copilot.chat`
+- `GET    /nudges`                             — active proactive nudges (viewer-gated); `copilot.chat`
+- `POST   /nudges/{id}/dismiss`               — dismiss a nudge; `copilot.chat`
 
 SSE events: `token`, `tool_call`, `tool_result`, `confirmation_required`,
 `usage`, `done`, `budget_exceeded`, `error`.
@@ -45,8 +49,18 @@ None — copilot is a consumer, not a provider, of tools.
 | `copilot.session.ended` | conversation closed | `clinic_id`, `conversation_id` |
 | `copilot.digest.sent` | morning digest emailed | `clinic_id`, `recipient_user_id`, `date`, `email_status` |
 
-(`copilot.tool.invoked` / `copilot.budget.threshold_reached` are reserved
-for the dashboards milestone.)
+(`copilot.tool.invoked` / `copilot.budget.threshold_reached` remain
+reserved — the `GET /metrics` dashboard reads `agent_audit_logs` directly
+rather than emitting per-call events.)
+
+## Events consumed
+
+| Event | Handler | Effect |
+|---|---|---|
+| `appointment.cancelled` | `events.on_appointment_cancelled` | create a `copilot_nudges` row ("fill the freed slot from recalls?"), deduped per appointment, same-day TTL |
+
+Subscription only — copilot never imports the publisher (ADR 0003), so
+`depends = []` holds.
 
 ## Lifecycle
 
@@ -71,13 +85,38 @@ for the dashboards milestone.)
 - **SSE owns its DB session.** Streaming endpoints open their own
   `async_session_maker` session for the stream, not `Depends(get_db)`.
 - **Morning digest (proactivity v1).** `tasks.py::send_morning_digests`
-  runs hourly from `app/core/scheduler.py` and emails a deterministic
+  runs hourly — registered via `get_scheduled_jobs()` (the module owns
+  the `ScheduledJob` spec; the scheduler imports nothing) — and emails a deterministic
   (no-LLM) briefing to opted-in clinics
-  (`copilot_settings.digest_enabled/digest_hour/digest_recipient_user_id`,
-  migration `cop_0002`). Data is gathered ONLY via `tool_registry.call()`
-  with the recipient's role permissions — never query other modules'
-  tables from the task. Config UI at `/settings/integrations/copilot`.
-  Design: `docs/technical/copilot/proactivity.md` + ADR 0014.
+  (`copilot_settings.digest_enabled/digest_hour/digest_recipient_user_ids`,
+  migrations `cop_0002`/`cop_0003`). **v2:** `digest_recipient_user_ids`
+  is a JSONB list (one email per recipient, each scoped to that
+  recipient's role) and `digest_hour` is matched against the **clinic's
+  local hour** (`clinics.timezone`), not server-local. The recipient list
+  has no FK — a deleted/expelled user leaves a stale id, which the task
+  skips when it doesn't resolve to an active clinic member. Data is
+  gathered ONLY via `tool_registry.call()` with the recipient's role
+  permissions — never query other modules' tables from the task. Config
+  UI at `/settings/integrations/copilot`. Design:
+  `docs/technical/copilot/proactivity.md` + ADR 0014.
+- **Nudges are event-driven, not LLM.** `events.on_appointment_cancelled`
+  writes a `copilot_nudges` row; the drawer (`CopilotNudges.vue`) renders
+  the localized text + chat prompt from `kind` + `payload` (the row
+  stores no copy, so it stays locale-correct). Deduped per clinic on
+  `dedupe_key`; `expires_at` is the next clinic-local midnight and expired
+  rows are filtered out (no purge needed). `required_permission` gates
+  visibility per viewer. Acting on a nudge sends its prompt as a chat
+  turn and dismisses it.
+- **Usage metrics read `agent_audit_logs`.** `GET /metrics`
+  (`CopilotMetricsService`) joins audit logs to copilot agents
+  (`agents.type == "copilot"`); there's no copilot-owned metrics table.
+- **Pendientes aggregates via tools, not imports** (ADR 0015).
+  `PendingService` calls `recalls.list_due_recalls` / `budget.list_budgets`
+  through the registry with the caller's role — same path as chat/digest,
+  so RBAC parity holds and `depends = []` stays true. It reuses one
+  per-clinic agent + one session (metadata `surface=copilot_pending`) so a
+  drawer open doesn't insert rows each time. Read-only: items deep-link to
+  the owning module; the agent writes nothing here.
 
 ## Related ADRs / docs
 

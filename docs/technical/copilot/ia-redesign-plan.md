@@ -111,7 +111,14 @@ Optional follow-up (small contract change, deferred): enrich `search_patients` w
 visit / next appointment to upgrade `PatientResultCard`. Touches `patients/tools.py` →
 re-run `generate_catalogs.py`, update module CLAUDE.md "Tools exposed".
 
-### Fase 2 — Workspace shell + read-only Pendientes (frontend + light backend reads)
+### Fase 2 — Workspace shell + read-only Pendientes (frontend + light backend reads) — SHIPPED (partial)
+
+> **Status (2026-06-15):** the segmented `[Pendientes | Chat]` shell and a
+> read-only Pendientes feed shipped — overdue recalls + budgets awaiting
+> response, each deep-linking to its module. Aggregation goes through the
+> tool registry per **ADR 0015** (`GET /pending`, `PendingService`,
+> `CopilotPending.vue`). Still deferred: cash-mismatch source (no tool
+> yet) and the "Hecho" filter over `patient_timeline`.
 
 Prove the inbox UX cheaply, before any new write infra.
 
@@ -130,9 +137,9 @@ Backend: thin read endpoints in copilot that aggregate these queries (respecting
 permissions; cross-module reads only via declared `depends` or the modules' own read services /
 tools). No new tables.
 
-Architecture decision (ADR): does the Pendientes aggregator import other modules' read services,
-or call their agent tools, or read via events? Prefer reusing existing **tools** (already
-permission-scoped) or published read APIs over new cross-module imports. Record in an ADR.
+Architecture decision (ADR): **resolved in [ADR 0015](../../adr/0015-copilot-pending-aggregation.md)** —
+the aggregator calls the modules' agent **tools** through the registry with the caller's role
+(RBAC parity, `depends = []` preserved), not direct service imports or an event projection.
 
 ### Fase 3 — Operations engine (new backend: persistence + scan + ranking/drafts)
 

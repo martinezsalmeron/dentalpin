@@ -40,11 +40,20 @@ from .schemas import (
     ConversationResponse,
     MessageCreate,
     MessageResponse,
+    MetricsResponse,
+    NudgeResponse,
+    PendingItem,
     SessionCreate,
     SettingsResponse,
     SettingsUpdate,
 )
-from .service import ConversationService, CopilotSettingsService
+from .service import (
+    ConversationService,
+    CopilotMetricsService,
+    CopilotSettingsService,
+    NudgeService,
+    PendingService,
+)
 
 router = APIRouter()
 
@@ -311,3 +320,49 @@ async def update_settings(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
     return ApiResponse(data=SettingsResponse.model_validate(row))
+
+
+@router.get("/pending", response_model=ApiResponse[list[PendingItem]])
+async def list_pending(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("copilot.chat"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[PendingItem]]:
+    items = await PendingService.get(db, ctx.clinic_id, role=ctx.role, user_id=ctx.user_id)
+    await db.commit()
+    return ApiResponse(data=[PendingItem.model_validate(i) for i in items])
+
+
+@router.get("/nudges", response_model=ApiResponse[list[NudgeResponse]])
+async def list_nudges(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("copilot.chat"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[list[NudgeResponse]]:
+    rows = await NudgeService.list_active(db, ctx.clinic_id, role=ctx.role)
+    return ApiResponse(data=[NudgeResponse.model_validate(n) for n in rows])
+
+
+@router.post("/nudges/{nudge_id}/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+async def dismiss_nudge(
+    nudge_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("copilot.chat"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    ok = await NudgeService.dismiss(db, ctx.clinic_id, nudge_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Nudge not found")
+    await db.commit()
+
+
+@router.get("/metrics", response_model=ApiResponse[MetricsResponse])
+async def get_metrics(
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("copilot.supervise"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    days: int = Query(default=30, ge=1, le=365),
+) -> ApiResponse[MetricsResponse]:
+    data = await CopilotMetricsService.get(db, ctx.clinic_id, window_days=days)
+    await db.commit()
+    return ApiResponse(data=MetricsResponse.model_validate(data))

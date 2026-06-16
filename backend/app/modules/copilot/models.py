@@ -1,6 +1,6 @@
 """Copilot module — conversation persistence + per-clinic config.
 
-Three tables on the ``copilot`` Alembic branch:
+Tables on the ``copilot`` Alembic branch:
 
 * ``copilot_conversations`` — one chat session, linked to a core
   ``agent_sessions`` row so every tool call lands in
@@ -9,6 +9,8 @@ Three tables on the ``copilot`` Alembic branch:
   (the redactor tokenizes only on the way to the provider). The source
   of truth for resuming a suspended turn: an assistant ``tool_use``
   block with no matching ``tool_result`` means "awaiting confirmation".
+* ``copilot_nudges`` — proactive contextual suggestions surfaced in the
+  drawer (event-driven, ADR 0014 §Deferred).
 * ``copilot_settings`` — per-clinic provider/model/budget, lazy-created.
 
 Cross-module FK is limited to ``agent_sessions`` / ``clinics`` / ``users``
@@ -20,7 +22,17 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, SmallInteger, String, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -76,6 +88,40 @@ class CopilotMessage(Base):
     )
 
 
+class CopilotNudge(Base):
+    """A proactive, contextual suggestion surfaced in the copilot drawer
+    (ADR 0014 §Deferred — event-driven nudges).
+
+    Created by an event handler (e.g. ``appointment.cancelled`` → "fill
+    the freed slot from recalls?"). The row stores ``kind`` + ``payload``
+    only; the frontend renders the localized text and the chat prompt, so
+    the nudge is locale-correct without storing copy. Visibility is gated
+    per viewer by ``required_permission`` (NULL = anyone with chat).
+    Deduped per clinic on ``dedupe_key``; expires on ``expires_at`` (a
+    same-day TTL) and is filtered out thereafter — no purge needed for
+    correctness.
+    """
+
+    __tablename__ = "copilot_nudges"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clinics.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(50), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    required_permission: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # pending | dismissed | acted
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    dedupe_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (UniqueConstraint("clinic_id", "dedupe_key", name="uq_copilot_nudge_dedupe"),)
+
+
 class CopilotSettings(Base):
     __tablename__ = "copilot_settings"
 
@@ -88,12 +134,18 @@ class CopilotSettings(Base):
     # NULL → no ceiling.
     monthly_token_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     monthly_cost_limit_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Morning digest (proactivity v1): opt-in deterministic daily email.
+    # Morning digest (proactivity v1 + v2): opt-in deterministic daily email.
     digest_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # digest_hour is interpreted in the clinic's IANA timezone
+    # (``clinics.timezone``), not server-local (v2).
     digest_hour: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=8)
-    digest_recipient_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    # v2: multiple recipients. Stored as a JSONB array of user-id strings
+    # rather than a join table — there's no FK, so a deleted/expelled user
+    # leaves a stale id, but the task already skips ids that don't resolve
+    # to an active clinic member (it must, since each recipient's role
+    # scopes their digest). One email per recipient, each scoped to that
+    # recipient's role permissions (RBAC parity by construction).
+    digest_recipient_user_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     period_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -10,10 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings as app_settings
+from app.core.agents.models import Agent, AgentAuditLog
 from app.core.llm.base import ContentBlock
 
-from .models import CopilotConversation, CopilotMessage, CopilotSettings
+from .models import CopilotConversation, CopilotMessage, CopilotNudge, CopilotSettings
 from .serde import content_to_json
+
+# agent_audit_logs.status values that count as a failed tool call.
+_FAILED_STATUSES = ("FAILED", "BLOCKED")
 
 
 class CopilotSettingsService:
@@ -67,16 +71,304 @@ class CopilotSettingsService:
             "monthly_cost_limit_cents",
             "digest_enabled",
             "digest_hour",
-            "digest_recipient_user_id",
         ):
             if field in data and data[field] is not None:
                 setattr(row, field, data[field])
-        # Enabling the digest without naming a recipient defaults to the
-        # user flipping the switch (v1: single recipient).
-        if data.get("digest_enabled") and row.digest_recipient_user_id is None:
-            row.digest_recipient_user_id = acting_user_id
+        # Recipients (v2): a full-list replacement. ``None`` leaves it
+        # unchanged; ``[]`` clears it. UUIDs are stored as strings (JSONB).
+        if data.get("digest_recipient_user_ids") is not None:
+            ids = [str(u) for u in data["digest_recipient_user_ids"]]
+            await CopilotSettingsService._assert_clinic_members(db, clinic_id, ids)
+            row.digest_recipient_user_ids = ids
+        # Enabling the digest without any recipient defaults to the user
+        # flipping the switch.
+        if data.get("digest_enabled") and not row.digest_recipient_user_ids and acting_user_id:
+            row.digest_recipient_user_ids = [str(acting_user_id)]
         await db.flush()
         return row
+
+    @staticmethod
+    async def _assert_clinic_members(
+        db: AsyncSession, clinic_id: UUID, user_ids: list[str]
+    ) -> None:
+        """Reject recipient ids that aren't active members of the clinic.
+
+        A digest recipient must have a clinic role — the task scopes their
+        email to ``get_role_permissions(role)``. Importing the core
+        membership model is allowed (it's core, not another module).
+        """
+        if not user_ids:
+            return
+        from app.core.auth.models import ClinicMembership
+
+        rows = await db.scalars(
+            select(ClinicMembership.user_id).where(
+                ClinicMembership.clinic_id == clinic_id,
+                ClinicMembership.user_id.in_([UUID(u) for u in user_ids]),
+            )
+        )
+        members = {str(uid) for uid in rows}
+        missing = [u for u in user_ids if u not in members]
+        if missing:
+            raise ValueError(f"Not clinic members: {', '.join(missing)}")
+
+
+class NudgeService:
+    """Proactive contextual nudges (ADR 0014 §Deferred). Clinic-scoped."""
+
+    @staticmethod
+    async def create(
+        db: AsyncSession,
+        *,
+        clinic_id: UUID,
+        kind: str,
+        dedupe_key: str,
+        payload: dict[str, Any],
+        expires_at: datetime,
+        required_permission: str | None = None,
+    ) -> CopilotNudge | None:
+        """Insert a nudge, or return None if one with the same dedupe_key
+        already exists for the clinic (idempotent against event replays)."""
+        existing = await db.scalar(
+            select(CopilotNudge.id).where(
+                CopilotNudge.clinic_id == clinic_id,
+                CopilotNudge.dedupe_key == dedupe_key,
+            )
+        )
+        if existing is not None:
+            return None
+        nudge = CopilotNudge(
+            clinic_id=clinic_id,
+            kind=kind,
+            dedupe_key=dedupe_key,
+            payload=payload,
+            required_permission=required_permission,
+            expires_at=expires_at,
+        )
+        db.add(nudge)
+        await db.flush()
+        return nudge
+
+    @staticmethod
+    async def list_active(db: AsyncSession, clinic_id: UUID, *, role: str) -> list[CopilotNudge]:
+        """Pending, non-expired nudges the viewer's role is allowed to act on."""
+        from app.core.auth.permissions import has_permission
+
+        rows = (
+            (
+                await db.execute(
+                    select(CopilotNudge)
+                    .where(
+                        CopilotNudge.clinic_id == clinic_id,
+                        CopilotNudge.status == "pending",
+                        CopilotNudge.expires_at > datetime.now(UTC),
+                    )
+                    .order_by(CopilotNudge.created_at.desc())
+                    .limit(20)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return [
+            n
+            for n in rows
+            if n.required_permission is None or has_permission(role, n.required_permission)
+        ]
+
+    @staticmethod
+    async def dismiss(db: AsyncSession, clinic_id: UUID, nudge_id: UUID) -> bool:
+        nudge = await db.get(CopilotNudge, nudge_id)
+        if nudge is None or nudge.clinic_id != clinic_id:
+            return False
+        nudge.status = "dismissed"
+        await db.flush()
+        return True
+
+
+class PendingService:
+    """Read-only "Pendientes" feed (IA redesign Fase 2).
+
+    Aggregates open work the caller can act on — overdue recalls and
+    budgets awaiting a response — by calling the **same tools** the chat
+    and digest use, through the registry with the caller's role
+    permissions (RBAC parity by construction; ADR 0015). No new tables,
+    no cross-module imports — copilot's ``depends = []`` holds. Each item
+    deep-links to the owning module; the agent performs no writes here.
+    """
+
+    @staticmethod
+    async def _context(db: AsyncSession, clinic_id: UUID, role: str, user_id: UUID):
+        from app.core.agents.context import AgentContext, AgentMode
+        from app.core.agents.models import AgentSession
+        from app.core.agents.service import AgentService
+        from app.core.agents.tools.registry import tool_registry
+        from app.core.auth.permissions import get_role_permissions
+
+        from .bridge import COPILOT_GUARDRAILS
+
+        agent = await db.scalar(
+            select(Agent).where(Agent.clinic_id == clinic_id, Agent.type == "copilot").limit(1)
+        )
+        if agent is None:
+            agent = await AgentService.create_agent(
+                db, clinic_id, name="Copilot", type="copilot", mode="autonomous"
+            )
+        # Reuse a single per-clinic "pending" session so a drawer open
+        # doesn't insert a session row every time.
+        session = await db.scalar(
+            select(AgentSession)
+            .where(
+                AgentSession.agent_id == agent.id,
+                AgentSession.session_metadata.op("->>")("surface") == "copilot_pending",
+            )
+            .limit(1)
+        )
+        if session is None:
+            session = await AgentService.start_session(
+                db,
+                agent_id=agent.id,
+                clinic_id=clinic_id,
+                supervisor_id=user_id,
+                metadata={"surface": "copilot_pending"},
+            )
+        return AgentContext(
+            agent_id=agent.id,
+            session_id=session.id,
+            clinic_id=clinic_id,
+            mode=AgentMode.AUTONOMOUS,
+            permissions=get_role_permissions(role),
+            tools=tool_registry,
+            db=db,
+            supervisor_id=user_id,
+            guardrail_config=COPILOT_GUARDRAILS,
+        )
+
+    @staticmethod
+    async def get(
+        db: AsyncSession, clinic_id: UUID, *, role: str, user_id: UUID
+    ) -> list[dict[str, Any]]:
+        from app.core.agents.tools.registry import tool_registry
+
+        ctx = await PendingService._context(db, clinic_id, role, user_id)
+
+        async def call(name: str, args: dict) -> dict | None:
+            if name not in tool_registry.list():
+                return None  # module uninstalled
+            res = await tool_registry.call(ctx, name, args)
+            return res.data if res.ok else None  # permission denied → omit
+
+        items: list[dict[str, Any]] = []
+
+        recalls = await call("recalls.list_due_recalls", {"overdue": True})
+        for r in (recalls or {}).get("recalls", []):
+            items.append(
+                {
+                    "kind": "recall",
+                    "id": str(r.get("id")),
+                    "patient_id": (str(r["patient_id"]) if r.get("patient_id") else None),
+                    "title": r.get("patient_name"),
+                    "reason": r.get("reason"),
+                    "priority": r.get("priority"),
+                    "link": "/recalls",
+                }
+            )
+
+        budgets = await call("budget.list_budgets", {"status": ["sent"]})
+        for b in (budgets or {}).get("budgets", []):
+            items.append(
+                {
+                    "kind": "budget",
+                    "id": str(b.get("id")),
+                    "patient_id": (str(b["patient_id"]) if b.get("patient_id") else None),
+                    "title": b.get("patient_name"),
+                    "number": b.get("number"),
+                    "amount": b.get("total"),
+                    "link": f"/budgets/{b.get('id')}",
+                }
+            )
+
+        return items
+
+
+class CopilotMetricsService:
+    """Read-only observability over copilot usage (issue: dashboards).
+
+    Aggregates the existing ``agent_audit_logs`` (filtered to copilot
+    agents) plus ``copilot_settings`` budget counters — no new table. All
+    queries are clinic-scoped.
+    """
+
+    @staticmethod
+    async def get(db: AsyncSession, clinic_id: UUID, *, window_days: int = 30) -> dict[str, Any]:
+        window_days = min(max(window_days, 1), 365)
+        cutoff = datetime.now(UTC) - timedelta(days=window_days)
+        failed = AgentAuditLog.status.in_(_FAILED_STATUSES)
+
+        def _scoped(stmt):
+            return stmt.join(Agent, Agent.id == AgentAuditLog.agent_id).where(
+                Agent.type == "copilot",
+                AgentAuditLog.clinic_id == clinic_id,
+                AgentAuditLog.created_at >= cutoff,
+            )
+
+        totals = (
+            await db.execute(
+                _scoped(
+                    select(
+                        func.count().label("total"),
+                        func.count().filter(failed).label("failed"),
+                        func.avg(AgentAuditLog.execution_time_ms).label("avg_ms"),
+                    ).select_from(AgentAuditLog)
+                )
+            )
+        ).one()
+
+        tool_rows = (
+            await db.execute(
+                _scoped(
+                    select(
+                        AgentAuditLog.tool_name,
+                        func.count().label("calls"),
+                        func.count().filter(failed).label("errors"),
+                    ).select_from(AgentAuditLog)
+                )
+                .group_by(AgentAuditLog.tool_name)
+                .order_by(func.count().desc())
+                .limit(10)
+            )
+        ).all()
+
+        conversations = await db.scalar(
+            select(func.count())
+            .select_from(CopilotConversation)
+            .where(
+                CopilotConversation.clinic_id == clinic_id,
+                CopilotConversation.created_at >= cutoff,
+            )
+        )
+
+        settings_row = await CopilotSettingsService.get_or_create(db, clinic_id)
+        used = settings_row.period_input_tokens + settings_row.period_output_tokens
+        limit = settings_row.monthly_token_limit
+        total = int(totals.total or 0)
+
+        return {
+            "window_days": window_days,
+            "total_tool_calls": total,
+            "failed_tool_calls": int(totals.failed or 0),
+            "error_rate": (int(totals.failed or 0) / total) if total else 0.0,
+            "avg_execution_ms": int(totals.avg_ms or 0),
+            "conversations": int(conversations or 0),
+            "top_tools": [
+                {"tool_name": r.tool_name, "calls": int(r.calls), "errors": int(r.errors)}
+                for r in tool_rows
+            ],
+            "period_input_tokens": settings_row.period_input_tokens,
+            "period_output_tokens": settings_row.period_output_tokens,
+            "monthly_token_limit": limit,
+            "token_usage_pct": (used / limit) if limit else None,
+        }
 
 
 class ConversationService:

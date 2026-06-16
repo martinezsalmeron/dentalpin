@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- refactor(scheduler): declare the budget cron jobs (`expire_budgets`,
+  `send_budget_reminders`, `purge_budget_access_logs`) via
+  `get_scheduled_jobs()` instead of being imported by name in
+  `app/core/scheduler.py`.
+
 - feat(agents): expose `tools.py` for the copilot agentic layer —
   `list_budgets`, `get_budget` (READ), `send_budget` (DESTRUCTIVE; emails
   the patient). Thin wrappers over `BudgetService`/`BudgetWorkflowService`;

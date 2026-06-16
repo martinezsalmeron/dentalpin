@@ -3,10 +3,14 @@
 Decision record: [ADR 0014](../../adr/0014-copilot-proactivity.md).
 Architecture context: [copilot-agentic-architecture.md](../copilot-agentic-architecture.md).
 
-## What ships in v1
+## What ships
 
-An opt-in daily email per clinic ("Briefing del día") with three
-sections, each omitted when empty or when the recipient lacks the
+v1: an opt-in daily email per clinic ("Briefing del día"). v2 (migration
+`cop_0003`) makes it **multi-recipient** — `digest_recipient_user_ids` is
+a list, one email per recipient, each scoped to that recipient's role —
+and makes `digest_hour` **clinic-timezone aware** (`clinics.timezone`).
+
+Three sections, each omitted when empty or when the recipient lacks the
 permission:
 
 | Section | Tool called | Permission |
@@ -23,9 +27,9 @@ locale resolved from `clinics.settings.communication_language`.
 
 | Piece | Where |
 |---|---|
-| Settings columns | `copilot_settings.digest_enabled / digest_hour / digest_recipient_user_id` (migration `cop_0002`) |
+| Settings columns | `copilot_settings.digest_enabled / digest_hour / digest_recipient_user_ids` (migrations `cop_0002`, `cop_0003`) |
 | Task | `backend/app/modules/copilot/tasks.py` → `send_morning_digests()` |
-| Scheduling | `app/core/scheduler.py`, job `copilot_morning_digests`, hourly at minute 0; the task matches `digest_hour` against the server-local hour |
+| Scheduling | declared via `CopilotModule.get_scheduled_jobs()` (job `copilot_morning_digests`, hourly at minute 0); the task matches `digest_hour` against the **clinic's local hour** (`clinics.timezone`) |
 | Config UI | `/settings/integrations/copilot` (`CopilotSettingsPanel.vue`, registered via `useSettingsRegistry`) |
 | Event | `copilot.digest.sent` `{clinic_id, recipient_user_id, date, email_status}` |
 
@@ -43,7 +47,16 @@ locale resolved from `clinics.settings.communication_language`.
 
 ## Open items
 
-- Clinic-timezone-aware `digest_hour` (currently server-local; same
-  caveat as budget reminder crons). Revisit with ADR 0012 multi-tenancy.
-- Multi-recipient / per-role digests (v2).
-- Event-driven nudges — designed in ADR 0014 §Deferred, not built.
+- ~~Clinic-timezone-aware `digest_hour`~~ — done (v2). The task converts
+  "now" into each clinic's `clinics.timezone` before matching the hour,
+  and passes the clinic-local date to the digest.
+- ~~Multi-recipient / per-role digests~~ — done (v2). Recipients are a
+  JSONB list (no FK; the task skips ids that no longer resolve to an
+  active member). Each recipient gets a digest scoped to their role.
+- Per-recipient hour / per-recipient section selection — not built; one
+  `digest_hour` per clinic still.
+- ~~Event-driven nudges~~ — built. `appointment.cancelled` →
+  `copilot_nudges` ("fill the freed slot from recalls?"), surfaced as a
+  drawer banner. See the `copilot_nudges` table, `events.py`, and
+  `CopilotNudges.vue`. Only the cancellation nudge ships so far; other
+  triggers (e.g. cash mismatch, due recalls) can be added as handlers.

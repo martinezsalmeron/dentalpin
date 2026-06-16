@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- refactor(scheduler): declare the ``appointment_reminders`` interval job
+  via ``get_scheduled_jobs()`` instead of being imported by name in
+  ``app/core/scheduler.py``.
 - refactor(types): drop the ``as unknown as Record<string, unknown>`` cast pattern (4 sites) in ``useNotificationSettings`` now that ``useApi`` accepts ``object`` payloads.
 - fix(isolation): declare ``catalog`` in ``manifest.depends`` — the
   email-template handlers and the preview endpoint already imported

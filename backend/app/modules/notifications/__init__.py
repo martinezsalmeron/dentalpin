@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.core.events.types import EventType
 from app.core.plugins import BaseModule
+from app.core.scheduling import ScheduledJob
 
 from .models import (
     ClinicNotificationSettings,
@@ -60,6 +61,19 @@ class NotificationsModule(BaseModule):
 
     def get_router(self) -> APIRouter:
         return router
+
+    def get_scheduled_jobs(self) -> list[ScheduledJob]:
+        from .tasks import process_appointment_reminders
+
+        return [
+            ScheduledJob(
+                id="appointment_reminders",
+                func=process_appointment_reminders,
+                trigger="interval",
+                trigger_args={"minutes": 5},
+                name="Process appointment reminders (every 5 minutes)",
+            ),
+        ]
 
     def get_permissions(self) -> list[str]:
         return [

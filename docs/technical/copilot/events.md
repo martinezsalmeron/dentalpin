@@ -14,6 +14,7 @@ Per-module slice of [`docs/events-catalog.md`](../../events-catalog.md)
 |-------|------|--------------|
 | `copilot.session.started` | A chat session is created (`POST /sessions`). | `clinic_id`, `conversation_id`, `user_id` |
 | `copilot.session.ended` | A chat session is closed (`POST /sessions/{id}/end`). | `clinic_id`, `conversation_id` |
+| `copilot.digest.sent` | The morning digest is emailed to a recipient. | `clinic_id`, `recipient_user_id`, `date`, `email_status` |
 
 `copilot.tool.invoked` and `copilot.budget.threshold_reached` are declared
 in `EventType` but reserved for the dashboards milestone — not published
@@ -21,7 +22,9 @@ in v1. (Every tool call is already recorded in `agent_audit_logs`.)
 
 ## Subscribed
 
-_This module does not subscribe to any events._
+| Event | Handler | Effect |
+|-------|---------|--------|
+| `appointment.cancelled` | `events.on_appointment_cancelled` | Create a `copilot_nudges` row ("fill the freed slot from recalls?"), deduped per appointment with a same-day TTL. Subscription only — no import of the publisher (ADR 0003). |
 
 ## Adding a new event
 

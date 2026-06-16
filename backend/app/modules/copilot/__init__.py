@@ -11,9 +11,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.core.events.types import EventType
 from app.core.plugins import BaseModule
+from app.core.scheduling import ScheduledJob
 
-from .models import CopilotConversation, CopilotMessage, CopilotSettings
+from .models import CopilotConversation, CopilotMessage, CopilotNudge, CopilotSettings
 from .router import router
 
 
@@ -51,10 +53,17 @@ class CopilotModule(BaseModule):
     }
 
     def get_models(self) -> list:
-        return [CopilotConversation, CopilotMessage, CopilotSettings]
+        return [CopilotConversation, CopilotMessage, CopilotNudge, CopilotSettings]
 
     def get_router(self) -> APIRouter:
         return router
+
+    def get_event_handlers(self) -> dict:
+        # Proactive nudges (ADR 0014 §Deferred). Subscription only — no
+        # cross-module import, so depends = [] holds (ADR 0003).
+        from .events import on_appointment_cancelled
+
+        return {EventType.APPOINTMENT_CANCELLED: on_appointment_cancelled}
 
     def get_permissions(self) -> list[str]:
         # Registry namespaces → copilot.chat, copilot.history.read, etc.
@@ -63,3 +72,18 @@ class CopilotModule(BaseModule):
     def get_tools(self) -> list:
         # Copilot consumes tools; it exposes none of its own.
         return []
+
+    def get_scheduled_jobs(self) -> list[ScheduledJob]:
+        # Morning digest — hourly gate; the task matches each clinic's
+        # digest_hour against the current hour and no-ops otherwise.
+        from .tasks import send_morning_digests
+
+        return [
+            ScheduledJob(
+                id="copilot_morning_digests",
+                func=send_morning_digests,
+                trigger="cron",
+                trigger_args={"minute": 0},
+                name="Send the copilot morning digest to opted-in clinics (hourly gate)",
+            ),
+        ]

@@ -18,6 +18,26 @@
       "working": "Working…",
       "writing": "Writing…"
     },
+    "tabs": {
+      "pending": "To do",
+      "chat": "Chat"
+    },
+    "pending": {
+      "empty": "Nothing pending. You're all caught up.",
+      "unknownPatient": "Unknown patient",
+      "group": {
+        "recall": "Recalls to follow up",
+        "budget": "Budgets awaiting response"
+      }
+    },
+    "nudge": {
+      "act": "Look into it",
+      "dismiss": "Dismiss",
+      "appointmentCancelled": {
+        "text": "The {time} appointment was cancelled — a slot just opened up.",
+        "prompt": "The {time} appointment was cancelled. Find recall patients who could fill that slot."
+      }
+    },
     "suggest": {
       "heading": "How can I help?",
       "cat": {
@@ -64,7 +84,10 @@
         "description": "Every morning: today's appointments, overdue recalls and unanswered budgets.",
         "enabled": "Send daily briefing",
         "hour": "Send hour",
-        "hourHelp": "Server-local hour."
+        "hourHelp": "Interpreted in the clinic's timezone.",
+        "recipients": "Recipients",
+        "recipientsHelp": "Each recipient gets their own briefing, limited to what their role can see.",
+        "recipientsPlaceholder": "Select staff…"
       },
       "engine": {
         "title": "Engine",
@@ -73,6 +96,16 @@
         "redaction": "PHI redaction",
         "redactionOn": "Enabled",
         "redactionOff": "Disabled"
+      },
+      "metrics": {
+        "title": "Usage",
+        "description": "Last {days} days.",
+        "toolCalls": "Tool calls",
+        "errorRate": "Error rate",
+        "avgLatency": "Avg. latency",
+        "conversations": "Conversations",
+        "tokenBudget": "Monthly token budget",
+        "topTools": "Most-used tools"
       }
     },
     "tool": {

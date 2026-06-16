@@ -12,7 +12,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 |-------|----------|------------|-------------|
 | `agenda.visit_note_updated` | `EventType.AGENDA_VISIT_NOTE_UPDATED` | `agenda` | `patient_timeline` |
 | `appointment.cabinet_changed` | `EventType.APPOINTMENT_CABINET_CHANGED` | `agenda` | — |
-| `appointment.cancelled` | `EventType.APPOINTMENT_CANCELLED` | — | `notifications`, `patient_timeline`, `recalls`, `schedules` |
+| `appointment.cancelled` | `EventType.APPOINTMENT_CANCELLED` | — | `copilot`, `notifications`, `patient_timeline`, `recalls`, `schedules` |
 | `appointment.checked_in` | `EventType.APPOINTMENT_CHECKED_IN` | — | `patient_timeline` |
 | `appointment.completed` | `EventType.APPOINTMENT_COMPLETED` | — | `patient_timeline`, `recalls`, `treatment_plan` |
 | `appointment.confirmed` | `EventType.APPOINTMENT_CONFIRMED` | — | `patient_timeline` |
@@ -122,6 +122,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Constant:** `EventType.APPOINTMENT_CANCELLED`
 - **Publishers:** _none in tree — declared but unused_
 - **Subscribers:**
+  - `copilot`
   - `notifications`
   - `patient_timeline`
   - `recalls`

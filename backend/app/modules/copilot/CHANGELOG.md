@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+- feat(pending): "Pendientes" feed (IA redesign Fase 2, ADR 0015). New
+  read-only `GET /pending` aggregates overdue recalls + budgets awaiting
+  response through the tool registry with the caller's role (RBAC parity;
+  no new tables, `depends = []` holds). Drawer gains a [Pendientes | Chat]
+  segmented control (`CopilotPending.vue` + `CopilotDrawer.vue`); each row
+  deep-links to the owning module. Cash-mismatch and the "Hecho"/done
+  timeline filter are deferred until their tools exist.
+
+- feat(nudges): event-driven proactive nudges (ADR 0014 §Deferred). New
+  `copilot_nudges` table (`cop_0004`); `appointment.cancelled` →
+  "fill the freed slot from recalls?" nudge, deduped per appointment with
+  a same-day TTL and per-viewer permission gating. New endpoints
+  `GET /nudges` + `POST /nudges/{id}/dismiss` (`copilot.chat`); drawer
+  renders banners (`CopilotNudges.vue`) whose text/prompt are localized
+  client-side from `kind` + `payload`. Subscription only — `depends = []`
+  holds.
+
+- feat(observability): `GET /copilot/metrics` (gated by `copilot.supervise`)
+  — read-only usage dashboard aggregating `agent_audit_logs` (filtered to
+  copilot agents) for tool-call counts, error rate, average latency,
+  conversation count, top tools, and monthly token-budget usage. No new
+  table. Surfaced as a "Usage" card on the settings panel.
+
+- feat(digest): morning digest v2 — multi-recipient + clinic-timezone
+  aware. `copilot_settings.digest_recipient_user_id` (single FK) becomes
+  `digest_recipient_user_ids` (JSONB list, migration `cop_0003`); the
+  task sends one email per recipient, each scoped to that recipient's
+  role, and matches `digest_hour` against the clinic's local hour
+  (`clinics.timezone`) instead of server-local. Settings PATCH validates
+  recipients are clinic members; the settings panel gains a recipient
+  multi-select.
+
+- refactor(scheduler): declare the morning-digest job via
+  `get_scheduled_jobs()` instead of being imported by name in
+  `app/core/scheduler.py`. The scheduler now registers jobs only for
+  loaded modules, so an uninstalled copilot contributes no job (resolves
+  the import-coupling tech debt noted in ADR 0014).
+
 - fix(settings): `CopilotSettingsService.update` validated `OPENAI_API_KEY`
   even when the PATCH did not touch `provider`, breaking digest-only opt-in
   on deployments without a key (CI). Now validates only on provider change.

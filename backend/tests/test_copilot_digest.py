@@ -11,12 +11,12 @@ fixtures must be committed before invoking it.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
@@ -40,6 +40,13 @@ async def _dispose_global_pool():
     await engine.dispose()
 
 
+async def _set_clinic_tz(db: AsyncSession, clinic_id, tz: str) -> None:
+    await db.execute(
+        text("UPDATE clinics SET timezone = :tz WHERE id = :id"), {"tz": tz, "id": clinic_id}
+    )
+    await db.commit()
+
+
 @pytest.mark.asyncio
 async def test_settings_patch_enables_digest_and_defaults_recipient(
     client: AsyncClient, auth_headers: dict, test_clinic
@@ -55,7 +62,7 @@ async def test_settings_patch_enables_digest_and_defaults_recipient(
     assert data["digest_hour"] == 7
     # Recipient defaults to the user who flipped the switch.
     me = await client.get("/api/v1/auth/me", headers=auth_headers)
-    assert data["digest_recipient_user_id"] == me.json()["data"]["user"]["id"]
+    assert data["digest_recipient_user_ids"] == [me.json()["data"]["user"]["id"]]
 
 
 @pytest.mark.asyncio
@@ -123,24 +130,27 @@ async def test_digest_sends_for_enabled_clinic(
 
     from uuid import UUID
 
+    # Pin the clinic to UTC so the hour gate is unambiguous (the digest
+    # hour is interpreted in the clinic's timezone, v2).
+    await _set_clinic_tz(db_session, test_clinic.id, "UTC")
     row = await CopilotSettingsService.update(
         db_session,
         test_clinic.id,
         {"digest_enabled": True, "digest_hour": 8},
         acting_user_id=UUID(user_id),
     )
-    assert row.digest_recipient_user_id is not None
+    assert row.digest_recipient_user_ids == [user_id]
     await db_session.commit()
 
     seen: list[dict] = []
     event_bus.subscribe(EventType.COPILOT_DIGEST_SENT, lambda data: seen.append(data))
 
     # Hour mismatch → nothing.
-    await send_morning_digests(datetime(2032, 1, 5, 9, 0))
+    await send_morning_digests(datetime(2032, 1, 5, 9, 0, tzinfo=UTC))
     assert seen == []
 
     # Hour match → one digest, event published.
-    await send_morning_digests(datetime(2032, 1, 5, 8, 0))
+    await send_morning_digests(datetime(2032, 1, 5, 8, 0, tzinfo=UTC))
     assert len(seen) == 1
     assert seen[0]["clinic_id"] == str(test_clinic.id)
     assert seen[0]["recipient_user_id"] == user_id
@@ -157,6 +167,7 @@ async def test_digest_audit_trail_lands_in_agent_logs(
     from app.core.agents.models import AgentAuditLog
 
     me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    await _set_clinic_tz(db_session, test_clinic.id, "UTC")
     await CopilotSettingsService.update(
         db_session,
         test_clinic.id,
@@ -165,7 +176,7 @@ async def test_digest_audit_trail_lands_in_agent_logs(
     )
     await db_session.commit()
 
-    await send_morning_digests(datetime(2032, 1, 6, 6, 0))
+    await send_morning_digests(datetime(2032, 1, 6, 6, 0, tzinfo=UTC))
 
     names = list(
         await db_session.scalars(
@@ -175,3 +186,98 @@ async def test_digest_audit_trail_lands_in_agent_logs(
     assert "agenda.get_day_overview" in names
     assert "recalls.list_due_recalls" in names
     assert "budget.list_budgets" in names
+
+
+@pytest.mark.asyncio
+async def test_digest_hour_is_clinic_timezone(
+    db_session: AsyncSession, client: AsyncClient, auth_headers: dict, test_clinic
+) -> None:
+    """The hour gate compares against the clinic's local hour, not UTC."""
+    from uuid import UUID
+
+    me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    user_id = me.json()["data"]["user"]["id"]
+    # Fixed UTC+5 offset (no DST) → 06:00 UTC is 11:00 local.
+    await _set_clinic_tz(db_session, test_clinic.id, "Etc/GMT-5")
+    await CopilotSettingsService.update(
+        db_session,
+        test_clinic.id,
+        {"digest_enabled": True, "digest_hour": 11},
+        acting_user_id=UUID(user_id),
+    )
+    await db_session.commit()
+
+    seen: list[dict] = []
+    event_bus.subscribe(EventType.COPILOT_DIGEST_SENT, lambda data: seen.append(data))
+
+    # 11:00 UTC would match a naive server-local gate but is 16:00 local.
+    await send_morning_digests(datetime(2032, 1, 6, 11, 0, tzinfo=UTC))
+    assert seen == []
+
+    # 06:00 UTC == 11:00 in the clinic's timezone → fires.
+    await send_morning_digests(datetime(2032, 1, 6, 6, 0, tzinfo=UTC))
+    assert len(seen) == 1
+
+
+@pytest.mark.asyncio
+async def test_digest_sends_one_email_per_recipient(
+    db_session: AsyncSession, client: AsyncClient, auth_headers: dict, test_clinic
+) -> None:
+    """Two recipients → two digests, each scoped to its own user."""
+    from uuid import UUID, uuid4
+
+    from app.core.auth.models import ClinicMembership, User
+    from app.core.auth.service import hash_password
+
+    me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    admin_id = me.json()["data"]["user"]["id"]
+
+    # A second clinic member.
+    other = User(
+        id=uuid4(),
+        email="recall.staff@demo.clinic",
+        password_hash=hash_password("TestPass1234"),
+        first_name="Reca",
+        last_name="Staff",
+        is_active=True,
+    )
+    db_session.add(other)
+    await db_session.flush()
+    db_session.add(
+        ClinicMembership(
+            id=uuid4(), user_id=other.id, clinic_id=test_clinic.id, role="receptionist"
+        )
+    )
+    await _set_clinic_tz(db_session, test_clinic.id, "UTC")
+    await CopilotSettingsService.update(
+        db_session,
+        test_clinic.id,
+        {
+            "digest_enabled": True,
+            "digest_hour": 8,
+            "digest_recipient_user_ids": [admin_id, str(other.id)],
+        },
+        acting_user_id=UUID(admin_id),
+    )
+    await db_session.commit()
+
+    seen: list[dict] = []
+    event_bus.subscribe(EventType.COPILOT_DIGEST_SENT, lambda data: seen.append(data))
+    await send_morning_digests(datetime(2032, 1, 5, 8, 0, tzinfo=UTC))
+    recipients = {e["recipient_user_id"] for e in seen}
+    assert recipients == {admin_id, str(other.id)}
+
+
+@pytest.mark.asyncio
+async def test_settings_patch_rejects_non_member_recipient(
+    client: AsyncClient, auth_headers: dict, test_clinic
+) -> None:
+    from uuid import uuid4
+
+    res = await client.patch(
+        "/api/v1/copilot/settings",
+        json={"digest_enabled": True, "digest_recipient_user_ids": [str(uuid4())]},
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+    assert "clinic members" in res.text.lower()

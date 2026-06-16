@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- refactor(scheduler): declare the ``auto_close_expired_plans`` cron job
+  via ``get_scheduled_jobs()`` instead of being imported by name in
+  ``app/core/scheduler.py``.
+
 - feat(ux): ``PlanDetailView`` wires the new ``PlanNotesTimeline``
   ``item-hover`` event into the existing ``hoveredItemId`` highlight
   pipeline, so hovering or focusing a note in the timeline pulses the

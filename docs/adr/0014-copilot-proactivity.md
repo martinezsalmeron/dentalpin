@@ -59,21 +59,26 @@ Clarifications:
 
 ### Bad / accepted debt
 
-- `app/core/scheduler.py` imports module task functions (copilot,
+- ~~`app/core/scheduler.py` imports module task functions (copilot,
   budget, notifications, treatment_plan) even when a module is
-  uninstalled. The copilot job no-ops without `digest_enabled` rows,
-  but the import coupling is real. A registry-driven job registration
-  (modules declare jobs in their manifest) is the structural fix —
-  tracked as tech debt, applies to all four modules.
+  uninstalled.~~ **Resolved.** Modules now declare jobs via
+  `BaseModule.get_scheduled_jobs()` (returning
+  `app.core.scheduling.ScheduledJob` specs); the scheduler iterates the
+  *registered* modules and imports no task functions itself, so an
+  uninstalled module contributes no job. Applied to all four modules.
 - Server-local `digest_hour` is wrong for clinics in other timezones.
   Acceptable for the current deployment; revisit with multi-tenancy
   (ADR 0012).
 
-## Deferred (designed, not built)
+## Built since (event-driven nudges)
 
-Event-driven nudges: copilot subscribes to `appointment.cancelled`,
-persists a short-lived `copilot_nudges` row, and the drawer renders a
-contextual chip ("Se canceló la cita de las 10:00, ¿busco candidatos de
-recall?") feeding the fill-gap playbook. Needs dedupe, same-day expiry
-and per-user permission gating. Build only after the digest proves the
-proactive channel is read.
+Event-driven nudges shipped: copilot subscribes to `appointment.cancelled`
+and persists a short-lived `copilot_nudges` row; the drawer renders a
+contextual banner ("Se canceló la cita de las 10:00…") whose prompt feeds
+the fill-gap playbook. Implemented as designed — dedupe per appointment
+(`uq_copilot_nudge_dedupe`), same-day expiry (`expires_at` = next
+clinic-local midnight, expired rows filtered out), and per-viewer
+permission gating (`required_permission`, here `recalls.read`). Text and
+prompt are rendered client-side from `kind` + `payload` so the row stores
+no locale-specific copy. Only the cancellation trigger ships so far;
+further triggers are additional handlers under the same table/contract.

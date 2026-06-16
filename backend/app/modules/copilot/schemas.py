@@ -54,9 +54,52 @@ class SettingsResponse(BaseModel):
     monthly_cost_limit_cents: int | None
     digest_enabled: bool
     digest_hour: int
-    digest_recipient_user_id: UUID | None
+    digest_recipient_user_ids: list[UUID]
     period_input_tokens: int
     period_output_tokens: int
+
+
+class PendingItem(BaseModel):
+    kind: Literal["recall", "budget"]
+    id: str
+    patient_id: str | None = None
+    title: str | None = None
+    link: str
+    # kind-specific extras (reason/priority for recalls, number/amount for budgets)
+    reason: str | None = None
+    priority: str | None = None
+    number: str | None = None
+    amount: float | None = None
+
+
+class NudgeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    kind: str
+    payload: dict[str, Any]
+    created_at: datetime
+    expires_at: datetime
+
+
+class ToolStat(BaseModel):
+    tool_name: str
+    calls: int
+    errors: int
+
+
+class MetricsResponse(BaseModel):
+    window_days: int
+    total_tool_calls: int
+    failed_tool_calls: int
+    error_rate: float
+    avg_execution_ms: int
+    conversations: int
+    top_tools: list[ToolStat]
+    period_input_tokens: int
+    period_output_tokens: int
+    monthly_token_limit: int | None
+    token_usage_pct: float | None
 
 
 class SettingsUpdate(BaseModel):
@@ -67,4 +110,6 @@ class SettingsUpdate(BaseModel):
     monthly_cost_limit_cents: int | None = None
     digest_enabled: bool | None = None
     digest_hour: int | None = Field(default=None, ge=0, le=23)
-    digest_recipient_user_id: UUID | None = None
+    # v2: full replacement of the recipient list. None = leave unchanged;
+    # [] = clear all recipients (effectively mutes the digest).
+    digest_recipient_user_ids: list[UUID] | None = None

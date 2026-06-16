@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,36 +67,46 @@ async def _clinic_name(db: AsyncSession, clinic_id: UUID) -> str:
     return name or "DentalPin"
 
 
-async def _digest_context(db: AsyncSession, row: CopilotSettings, today: date) -> dict | None:
-    """Gather digest data via the registry, or None when undeliverable."""
-    if row.digest_recipient_user_id is None:
-        return None
-    user = await db.get(User, row.digest_recipient_user_id)
+async def _clinic_tz(db: AsyncSession, clinic_id: UUID) -> ZoneInfo:
+    """Clinic IANA timezone (``clinics.timezone``), UTC on miss."""
+    name = await db.scalar(text("SELECT timezone FROM clinics WHERE id = :id"), {"id": clinic_id})
+    try:
+        return ZoneInfo(name) if name else ZoneInfo("UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo("UTC")
+
+
+async def _digest_context(
+    db: AsyncSession, clinic_id: UUID, user_id: UUID, today: date
+) -> dict | None:
+    """Gather digest data for one recipient via the registry, scoped to
+    that recipient's role permissions, or None when undeliverable."""
+    user = await db.get(User, user_id)
     if user is None or not user.is_active or not user.email:
         return None
     role = await db.scalar(
         select(ClinicMembership.role).where(
             ClinicMembership.user_id == user.id,
-            ClinicMembership.clinic_id == row.clinic_id,
+            ClinicMembership.clinic_id == clinic_id,
         )
     )
     if role is None:
         return None
 
     agent = await AgentService.create_agent(
-        db, row.clinic_id, name="Copilot digest", type="copilot", mode="autonomous"
+        db, clinic_id, name="Copilot digest", type="copilot", mode="autonomous"
     )
     session = await AgentService.start_session(
         db,
         agent_id=agent.id,
-        clinic_id=row.clinic_id,
+        clinic_id=clinic_id,
         supervisor_id=user.id,
         metadata={"surface": "copilot_digest"},
     )
     ctx = AgentContext(
         agent_id=agent.id,
         session_id=session.id,
-        clinic_id=row.clinic_id,
+        clinic_id=clinic_id,
         mode=AgentMode.AUTONOMOUS,
         permissions=get_role_permissions(role),
         tools=tool_registry,
@@ -129,35 +140,46 @@ async def _send_for_clinic(clinic_id: UUID, today: date, sem: asyncio.Semaphore)
     async with sem, async_session_maker() as db:
         try:
             row = await db.get(CopilotSettings, clinic_id)
-            if row is None or not row.digest_enabled:
-                return
-            context = await _digest_context(db, row, today)
-            if context is None:
-                logger.info("copilot digest: clinic %s undeliverable, skipped", clinic_id)
+            if row is None or not row.digest_enabled or not row.digest_recipient_user_ids:
                 return
             locale = await _clinic_locale(db, clinic_id)
             clinic_name = await _clinic_name(db, clinic_id)
-            recipient: User = context.pop("recipient")
-            result = await EmailService().send_templated(
-                to_email=recipient.email,
-                to_name=f"{recipient.first_name} {recipient.last_name}",
-                template_key="copilot_morning_digest",
-                subject=_SUBJECT.get(locale, _SUBJECT["es"]).format(clinic_name=clinic_name),
-                locale=locale,
-                context={**context, "clinic_name": clinic_name},
-                db=db,
-                clinic_id=clinic_id,
-            )
-            await db.commit()
-            await event_bus.publish(
-                EventType.COPILOT_DIGEST_SENT,
-                {
-                    "clinic_id": str(clinic_id),
-                    "recipient_user_id": str(recipient.id),
-                    "date": today.isoformat(),
-                    "email_status": result.status.value,
-                },
-            )
+            subject = _SUBJECT.get(locale, _SUBJECT["es"]).format(clinic_name=clinic_name)
+            # One email per recipient, each scoped to that recipient's role.
+            for raw_id in row.digest_recipient_user_ids:
+                try:
+                    user_id = UUID(str(raw_id))
+                except (ValueError, TypeError):
+                    continue
+                context = await _digest_context(db, clinic_id, user_id, today)
+                if context is None:
+                    logger.info(
+                        "copilot digest: clinic %s recipient %s undeliverable, skipped",
+                        clinic_id,
+                        raw_id,
+                    )
+                    continue
+                recipient: User = context.pop("recipient")
+                result = await EmailService().send_templated(
+                    to_email=recipient.email,
+                    to_name=f"{recipient.first_name} {recipient.last_name}",
+                    template_key="copilot_morning_digest",
+                    subject=subject,
+                    locale=locale,
+                    context={**context, "clinic_name": clinic_name},
+                    db=db,
+                    clinic_id=clinic_id,
+                )
+                await db.commit()
+                await event_bus.publish(
+                    EventType.COPILOT_DIGEST_SENT,
+                    {
+                        "clinic_id": str(clinic_id),
+                        "recipient_user_id": str(recipient.id),
+                        "date": today.isoformat(),
+                        "email_status": result.status.value,
+                    },
+                )
         except Exception as exc:
             logger.error("copilot digest failed for clinic %s: %s", clinic_id, exc, exc_info=True)
             await db.rollback()
@@ -165,21 +187,28 @@ async def _send_for_clinic(clinic_id: UUID, today: date, sem: asyncio.Semaphore)
 
 async def send_morning_digests(now: datetime | None = None) -> None:
     """Hourly entry point: send the digest to clinics whose ``digest_hour``
-    matches the current (server-local) hour."""
-    now = now or datetime.now()
+    matches the current hour **in the clinic's own timezone** (v2). The
+    "today" passed to each clinic is its local date, too."""
+    now_utc = now or datetime.now(UTC)
+    if now_utc.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=UTC)
     async with async_session_maker() as db:
-        clinic_ids = list(
-            await db.scalars(
-                select(CopilotSettings.clinic_id).where(
-                    CopilotSettings.digest_enabled.is_(True),
-                    CopilotSettings.digest_hour == now.hour,
+        rows = (
+            await db.execute(
+                select(CopilotSettings.clinic_id, CopilotSettings.digest_hour).where(
+                    CopilotSettings.digest_enabled.is_(True)
                 )
             )
-        )
-    if not clinic_ids:
+        ).all()
+        due: list[tuple[UUID, date]] = []
+        for clinic_id, digest_hour in rows:
+            local_now = now_utc.astimezone(await _clinic_tz(db, clinic_id))
+            if local_now.hour == digest_hour:
+                due.append((clinic_id, local_now.date()))
+    if not due:
         return
     sem = asyncio.Semaphore(_CLINIC_CONCURRENCY)
     await asyncio.gather(
-        *(_send_for_clinic(cid, now.date(), sem) for cid in clinic_ids),
+        *(_send_for_clinic(cid, today, sem) for cid, today in due),
         return_exceptions=False,
     )

@@ -14,6 +14,7 @@ from fastapi import APIRouter
 
 from app.core.events.types import EventType
 from app.core.plugins import BaseModule
+from app.core.scheduling import ScheduledJob
 
 from .models import (
     PlannedTreatmentItem,
@@ -91,6 +92,19 @@ class TreatmentPlanModule(BaseModule):
 
     def get_router(self) -> APIRouter:
         return router
+
+    def get_scheduled_jobs(self) -> list[ScheduledJob]:
+        from .tasks import auto_close_expired_plans
+
+        return [
+            ScheduledJob(
+                id="auto_close_expired_plans",
+                func=auto_close_expired_plans,
+                trigger="cron",
+                trigger_args={"hour": 3, "minute": 0},
+                name="Close pending plans whose budgets have been expired > N days (daily 03:00)",
+            ),
+        ]
 
     def get_permissions(self) -> list[str]:
         return [
