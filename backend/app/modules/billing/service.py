@@ -742,6 +742,48 @@ class InvoiceService:
         return invoices, total
 
     @staticmethod
+    async def list_for_export(
+        db: AsyncSession,
+        clinic_id: UUID,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        statuses: list[str] | None = None,
+    ) -> list[Invoice]:
+        """Fetch issued invoices for accountant export, items + allocated
+        payments eager-loaded.
+
+        Not paginated — an accounting period (month/quarter/year) is
+        bounded and fits in memory. Drafts are always excluded (they are
+        not fiscal documents). When ``statuses`` is given it further
+        narrows the set; otherwise all non-draft invoices are returned.
+        """
+        conditions = [
+            Invoice.clinic_id == clinic_id,
+            Invoice.deleted_at.is_(None),
+            Invoice.status != "draft",
+        ]
+        if statuses:
+            conditions.append(Invoice.status.in_(statuses))
+        if date_from:
+            conditions.append(Invoice.issue_date >= date_from)
+        if date_to:
+            conditions.append(Invoice.issue_date <= date_to)
+
+        query = (
+            select(Invoice)
+            .where(*conditions)
+            .options(
+                joinedload(Invoice.patient),
+                joinedload(Invoice.series),
+                selectinload(Invoice.items),
+                selectinload(Invoice.invoice_payments).joinedload(InvoicePayment.payment),
+            )
+            .order_by(Invoice.issue_date, Invoice.invoice_number)
+        )
+        result = await db.execute(query)
+        return list(result.scalars().unique().all())
+
+    @staticmethod
     async def get_invoice(
         db: AsyncSession,
         clinic_id: UUID,

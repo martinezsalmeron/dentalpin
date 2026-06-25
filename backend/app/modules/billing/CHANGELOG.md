@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- feat(service): add `InvoiceService.list_for_export(clinic_id, date_from,
+  date_to, statuses)` — non-paginated read returning non-draft invoices
+  with items + allocated payments eager-loaded, for the new
+  `accounting_export` module's gestoría hand-off. Read-only API on
+  billing's own data; consumers never import billing models.
+
 - feat(agents): expose `tools.py` for the copilot agentic layer —
   `list_invoices`, `get_invoice` (READ ONLY, `include_payments=False`).
   Invoice axis only per the off-books boundary; no issuing/voiding tools.
