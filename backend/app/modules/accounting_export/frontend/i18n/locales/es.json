@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "accountingExport": "Exportar a gestoría"
+  },
+  "accountingExport": {
+    "title": "Exportar a gestoría",
+    "subtitle": "Descarga facturas y cobros del periodo para enviárselos a tu gestoría.",
+    "period": "Periodo",
+    "from": "Desde",
+    "to": "Hasta",
+    "presets": {
+      "currentMonth": "Mes actual",
+      "previousMonth": "Mes anterior",
+      "currentQuarter": "Trimestre actual",
+      "previousQuarter": "Trimestre anterior",
+      "yearToDate": "Año en curso",
+      "custom": "Personalizado"
+    },
+    "actions": {
+      "preview": "Previsualizar",
+      "download": "Descargar (.zip)"
+    },
+    "counters": {
+      "invoices": "Facturas",
+      "payments": "Cobros",
+      "base": "Base",
+      "total": "Total"
+    },
+    "cols": {
+      "numero": "Número",
+      "fecha_emision": "Fecha",
+      "cliente": "Cliente",
+      "nif": "NIF",
+      "base": "Base",
+      "cuota_iva": "IVA",
+      "total": "Total",
+      "estado": "Estado"
+    }
+  }
+}

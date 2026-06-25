@@ -136,5 +136,9 @@ export const PERMISSIONS = {
     historyReadAll: 'copilot.history.read_all',
     supervise: 'copilot.supervise',
     configure: 'copilot.configure'
+  },
+  accountingExport: {
+    read: 'accounting_export.export.read',
+    run: 'accounting_export.export.run'
   }
 } as const

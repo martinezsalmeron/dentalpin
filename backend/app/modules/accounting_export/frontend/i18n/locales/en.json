@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "accountingExport": "Accountant export"
+  },
+  "accountingExport": {
+    "title": "Accountant export",
+    "subtitle": "Download the period's invoices and payments to hand off to your accountant.",
+    "period": "Period",
+    "from": "From",
+    "to": "To",
+    "presets": {
+      "currentMonth": "Current month",
+      "previousMonth": "Previous month",
+      "currentQuarter": "Current quarter",
+      "previousQuarter": "Previous quarter",
+      "yearToDate": "Year to date",
+      "custom": "Custom"
+    },
+    "actions": {
+      "preview": "Preview",
+      "download": "Download (.zip)"
+    },
+    "counters": {
+      "invoices": "Invoices",
+      "payments": "Payments",
+      "base": "Base",
+      "total": "Total"
+    },
+    "cols": {
+      "numero": "Number",
+      "fecha_emision": "Date",
+      "cliente": "Customer",
+      "nif": "Tax ID",
+      "base": "Base",
+      "cuota_iva": "VAT",
+      "total": "Total",
+      "estado": "Status"
+    }
+  }
+}
