@@ -12,78 +12,82 @@ async def test_health_check(client: AsyncClient) -> None:
     assert response.json()["status"] == "healthy"
 
 
+_SETUP_PAYLOAD = {
+    "admin_first_name": "Admin",
+    "admin_last_name": "User",
+    "admin_email": "admin@example.com",
+    "admin_password": "SecurePass123",
+    "clinic_name": "My Clinic",
+    "clinic_tax_id": "B12345678",
+}
+
+
 @pytest.mark.asyncio
-async def test_register_user(client: AsyncClient) -> None:
-    """Test user registration."""
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "newuser@example.com",
-            "password": "SecurePass123",
-            "first_name": "New",
-            "last_name": "User",
-        },
-    )
-    assert response.status_code == 200
+async def test_setup_status(client: AsyncClient) -> None:
+    """setup/status flips to initialized once the first account exists."""
+    before = await client.get("/api/v1/auth/setup/status")
+    assert before.status_code == 200
+    assert before.json()["data"]["initialized"] is False
+
+    response = await client.post("/api/v1/auth/setup", json=_SETUP_PAYLOAD)
+    assert response.status_code == 201
+
+    after = await client.get("/api/v1/auth/setup/status")
+    assert after.json()["data"]["initialized"] is True
+
+
+@pytest.mark.asyncio
+async def test_setup_creates_admin_and_clinic(client: AsyncClient) -> None:
+    """First-run setup returns a working admin token tied to a new clinic."""
+    response = await client.post("/api/v1/auth/setup", json=_SETUP_PAYLOAD)
+    assert response.status_code == 201
     data = response.json()
     assert "access_token" in data
     assert "refresh_token" in data
     assert data["token_type"] == "bearer"
 
-
-@pytest.mark.asyncio
-async def test_register_duplicate_email(client: AsyncClient) -> None:
-    """Test that duplicate email registration fails."""
-    user_data = {
-        "email": "duplicate@example.com",
-        "password": "SecurePass123",
-        "first_name": "First",
-        "last_name": "User",
-    }
-
-    # First registration should succeed
-    response = await client.post("/api/v1/auth/register", json=user_data)
-    assert response.status_code == 200
-
-    # Second registration should fail
-    response = await client.post("/api/v1/auth/register", json=user_data)
-    assert response.status_code == 409
-    assert "already registered" in response.json()["message"]
+    me = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {data['access_token']}"},
+    )
+    assert me.status_code == 200
+    body = me.json()["data"]
+    assert body["user"]["email"] == "admin@example.com"
+    assert body["clinics"][0]["name"] == "My Clinic"
+    assert body["clinics"][0]["role"] == "admin"
 
 
 @pytest.mark.asyncio
-async def test_register_weak_password(client: AsyncClient) -> None:
-    """Test that weak passwords are rejected."""
+async def test_setup_rejected_when_initialized(client: AsyncClient) -> None:
+    """Once the system has an account, setup is closed (409)."""
+    first = await client.post("/api/v1/auth/setup", json=_SETUP_PAYLOAD)
+    assert first.status_code == 201
+
+    second = await client.post(
+        "/api/v1/auth/setup",
+        json={**_SETUP_PAYLOAD, "admin_email": "other@example.com"},
+    )
+    assert second.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_setup_weak_password(client: AsyncClient) -> None:
+    """Weak admin passwords are rejected."""
     response = await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "user@example.com",
-            "password": "weak",
-            "first_name": "Test",
-            "last_name": "User",
-        },
+        "/api/v1/auth/setup",
+        json={**_SETUP_PAYLOAD, "admin_password": "weak"},
     )
     assert response.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_login(client: AsyncClient) -> None:
-    """Test user login."""
-    # First register
-    await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "login@example.com",
-            "password": "SecurePass123",
-            "first_name": "Login",
-            "last_name": "User",
-        },
-    )
+    """Test user login after first-run setup."""
+    await client.post("/api/v1/auth/setup", json=_SETUP_PAYLOAD)
 
-    # Then login
     response = await client.post(
         "/api/v1/auth/login",
-        data={"username": "login@example.com", "password": "SecurePass123"},
+        data={"username": "admin@example.com", "password": "SecurePass123"},
     )
     assert response.status_code == 200
     data = response.json()

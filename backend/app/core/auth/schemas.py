@@ -5,13 +5,20 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
-class UserRegister(BaseModel):
-    """Schema for user registration."""
+def _validate_iana_timezone(value: str | None) -> str | None:
+    """Reject anything that isn't a valid IANA timezone id."""
+    if value is None:
+        return value
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-    email: EmailStr
-    password: str = Field(min_length=8)
-    first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
+    try:
+        ZoneInfo(value)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError(
+            f"Invalid timezone '{value}'. Must be an IANA id "
+            "(e.g. 'Europe/Madrid', 'America/New_York')."
+        ) from exc
+    return value
 
 
 class UserLogin(BaseModel):
@@ -85,18 +92,7 @@ class ClinicMetadataUpdate(BaseModel):
     @field_validator("timezone")
     @classmethod
     def validate_timezone(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
-        try:
-            ZoneInfo(value)
-        except ZoneInfoNotFoundError as exc:
-            raise ValueError(
-                f"Invalid timezone '{value}'. Must be an IANA id "
-                "(e.g. 'Europe/Madrid', 'America/New_York')."
-            ) from exc
-        return value
+        return _validate_iana_timezone(value)
 
 
 class _ClinicCabinetBrief(BaseModel):
@@ -200,3 +196,30 @@ class ProfessionalResponse(BaseModel):
     role: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- First-time setup (issue #85) --------------------------------------
+
+
+class SetupStatusResponse(BaseModel):
+    """Whether the system has already been initialized (has any user)."""
+
+    initialized: bool
+
+
+class SystemSetup(BaseModel):
+    """First-run payload: create the first admin account + its clinic."""
+
+    admin_first_name: str = Field(min_length=1, max_length=100)
+    admin_last_name: str = Field(min_length=1, max_length=100)
+    admin_email: EmailStr
+    admin_password: str = Field(min_length=8)
+    clinic_name: str = Field(min_length=1, max_length=200)
+    clinic_tax_id: str = Field(min_length=1, max_length=20)
+    timezone: str | None = Field(default=None, max_length=64)
+    currency: str | None = Field(default=None, pattern="^[A-Z]{3}$")
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        return _validate_iana_timezone(value)

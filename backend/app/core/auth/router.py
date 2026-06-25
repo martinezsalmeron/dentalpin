@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,10 +27,11 @@ from .schemas import (
     ClinicResponse,
     MeResponse,
     ProfessionalResponse,
+    SetupStatusResponse,
+    SystemSetup,
     TokenRefresh,
     TokenResponse,
     UserCreate,
-    UserRegister,
     UserResponse,
     UserUpdate,
     UserWithRoleResponse,
@@ -74,48 +75,71 @@ async def _refresh_rate_key(request: Request) -> str:
     return get_remote_address(request)
 
 
-@router.post("/register", response_model=TokenResponse)
-@limiter.limit("3/hour")
-async def register(
+@router.get("/setup/status", response_model=ApiResponse[SetupStatusResponse])
+async def setup_status(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[SetupStatusResponse]:
+    """Whether the system already has an account (drives the first-run wizard)."""
+    count = await db.scalar(select(func.count()).select_from(User))
+    return ApiResponse(data=SetupStatusResponse(initialized=bool(count)))
+
+
+@router.post("/setup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/hour")
+async def setup(
     request: Request,
-    data: UserRegister,
+    data: SystemSetup,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TokenResponse:
-    """Register a new user account."""
-    # Validate password strength
-    is_valid, error_msg = validate_password_strength(data.password)
+    """First-run: create the first admin account and its clinic, then log them in.
+
+    Self-closing: once any user exists the system is initialized and this
+    endpoint returns 409.
+    """
+    # ponytail: guard por count==0; una carrera entre dos setups simultáneos es
+    # despreciable en un arranque de operador único. Subir a constraint/lock solo
+    # si esto se vuelve multi-tenant self-serve.
+    existing = await db.scalar(select(func.count()).select_from(User))
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="System already initialized",
+        )
+
+    is_valid, error_msg = validate_password_strength(data.admin_password)
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=error_msg,
         )
 
-    # Check if email already exists
-    result = await db.execute(select(User).where(User.email == data.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
+    clinic = Clinic(
+        name=data.clinic_name,
+        tax_id=data.clinic_tax_id,
+        timezone=data.timezone or "Europe/Madrid",
+        currency=data.currency or "EUR",
+    )
+    db.add(clinic)
+    await db.flush()
 
-    # Create user
     user = User(
-        email=data.email,
-        password_hash=hash_password(data.password),
-        first_name=data.first_name,
-        last_name=data.last_name,
+        email=data.admin_email,
+        password_hash=hash_password(data.admin_password),
+        first_name=data.admin_first_name,
+        last_name=data.admin_last_name,
     )
     db.add(user)
     await db.flush()
 
-    # Generate tokens
-    access_token = create_access_token(user.id, token_version=user.token_version)
+    db.add(ClinicMembership(user_id=user.id, clinic_id=clinic.id, role="admin"))
+    await db.commit()
+
+    access_token = create_access_token(
+        user.id, clinic_id=clinic.id, token_version=user.token_version
+    )
     refresh_token = create_refresh_token(user.id, token_version=user.token_version)
 
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-    )
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/login", response_model=TokenResponse)

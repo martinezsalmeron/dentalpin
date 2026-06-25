@@ -8,7 +8,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth.models import Clinic, ClinicMembership
+from app.core.auth.models import Clinic, ClinicMembership, User
+from app.core.auth.service import create_access_token, hash_password
 from app.core.plugins.db_models import ModuleOperationLog, ModuleRecord
 from app.core.plugins.service import ModuleService
 from app.core.plugins.state import ModuleState
@@ -25,20 +26,15 @@ async def _register_and_assign(
     email: str,
     role: str,
 ) -> str:
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": email,
-            "password": "TestPass1234",
-            "first_name": "Test",
-            "last_name": "User",
-        },
+    user = User(
+        id=uuid4(),
+        email=email,
+        password_hash=hash_password("TestPass1234"),
+        first_name="Test",
+        last_name="User",
     )
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-
-    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
-    user_id = me.json()["data"]["user"]["id"]
+    db_session.add(user)
+    await db_session.flush()
 
     clinic = Clinic(
         id=uuid4(),
@@ -52,14 +48,14 @@ async def _register_and_assign(
 
     membership = ClinicMembership(
         id=uuid4(),
-        user_id=user_id,
+        user_id=user.id,
         clinic_id=clinic.id,
         role=role,
     )
     db_session.add(membership)
     await db_session.commit()
 
-    return token
+    return create_access_token(user.id, clinic_id=clinic.id, token_version=user.token_version)
 
 
 async def _seed_log_rows(db_session: AsyncSession, module_name: str, count: int) -> None:

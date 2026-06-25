@@ -11,7 +11,22 @@ frontend as a Nuxt layer under its own Python package.
 
 ## [Unreleased]
 
+### Added
+
+- **First-time setup assistant** (issue #85). A fresh install (no users)
+  now bootstraps from the UI: `GET /api/v1/auth/setup/status` reports
+  whether the system is initialized, and `POST /api/v1/auth/setup`
+  atomically creates the first clinic + admin user + admin membership and
+  returns tokens. The endpoint is self-closing (409 once any account
+  exists). The frontend redirects unauthenticated visitors of an empty
+  system to a 2-step `/setup` wizard (admin account → clinic basics);
+  remaining configuration is handled by the existing onboarding checklist.
+
 ### Changed
+
+- Removed the public `POST /api/v1/auth/register` endpoint. It created
+  orphan users with no clinic membership (unusable, and unused by the UI);
+  the first-run setup assistant replaces it.
 
 - Alembic history squashed. The 29-migration main-linear chain
   inherited from Fase A collapsed into one `0001_core_initial` for

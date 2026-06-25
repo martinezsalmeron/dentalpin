@@ -134,20 +134,19 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient) -> dict[str, str]:
-    """Register a test user and return auth headers."""
-    # Register user
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "test@example.com",
-            "password": "TestPass1234",
-            "first_name": "Test",
-            "last_name": "User",
-        },
+async def auth_headers(db_session: AsyncSession) -> dict[str, str]:
+    """Create a test user directly in the DB and return auth headers."""
+    from app.core.auth.service import create_access_token, hash_password
+
+    user = User(
+        email="test@example.com",
+        password_hash=hash_password("TestPass1234"),
+        first_name="Test",
+        last_name="User",
     )
-    assert response.status_code == 200
-    token = response.json()["access_token"]
+    db_session.add(user)
+    await db_session.commit()
+    token = create_access_token(user.id, token_version=user.token_version)
     return {"Authorization": f"Bearer {token}"}
 
 
