@@ -67,11 +67,12 @@ from app.modules.catalog.models import (  # noqa: F401
 )
 from app.modules.media.models import Document, MediaAttachment  # noqa: F401
 from app.modules.notifications.models import (  # noqa: F401
+    ClinicChannelSettings,
     ClinicNotificationSettings,
     ClinicSmtpSettings,
-    EmailLog,
-    EmailTemplate,
+    CommunicationMessage,
     NotificationPreference,
+    NotificationTemplate,
 )
 from app.modules.odontogram.models import (  # noqa: F401
     OdontogramHistory,

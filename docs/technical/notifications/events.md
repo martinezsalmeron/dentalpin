@@ -12,18 +12,27 @@ Per-module slice of [`docs/events-catalog.md`](../../events-catalog.md)
 
 ## Published
 
-_This module does not publish any events._
+Published by the gateway (`gateway.py`) across the outbox lifecycle:
+
+| Event | When |
+|-------|------|
+| `notification.queued` | A message is enqueued for delivery. |
+| `notification.sent` | An adapter delivered the message. |
+| `notification.failed` | A send attempt failed (will retry until `max_attempts`). |
+| `notification.delivered` | Vendor webhook reports delivered/read. |
+| `notification.reply_received` | Inbound reply logged (vendor webhook, Phase 2). |
+| `email.sent` / `email.failed` | **Legacy, dual-published** for `channel=email` only, one release, so `patient_timeline` keeps working. |
 
 ## Subscribed
 
 | Event | Handler | Effect |
 |-------|---------|--------|
-| `appointment.cancelled` | _Handler module path._ | _What it does in response._ |
-| `appointment.scheduled` | _Handler module path._ | _What it does in response._ |
-| `budget.accepted` | _Handler module path._ | _What it does in response._ |
-| `budget.sent` | _Handler module path._ | _What it does in response._ |
-| `invoice.sent` | _Handler module path._ | _What it does in response._ |
-| `patient.created` | _Handler module path._ | _What it does in response._ |
+| `appointment.scheduled` | `handlers.on_appointment_scheduled` | Enqueue `appointment_confirmation`. |
+| `appointment.cancelled` | `handlers.on_appointment_cancelled` | Enqueue `appointment_cancelled`. |
+| `patient.created` | `handlers.on_patient_created` | Enqueue `welcome`. |
+| `budget.sent` | `handlers.on_budget_sent` | Enqueue `budget_sent` (only when `send_method=email`). |
+| `budget.accepted` | `handlers.on_budget_accepted` | Enqueue `budget_accepted`. |
+| `invoice.sent` | `handlers.on_invoice_sent` | Enqueue `invoice_sent` (only when `send_method=email`). |
 
 ## Adding a new event
 

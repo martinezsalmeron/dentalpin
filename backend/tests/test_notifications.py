@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.notifications.models import (
-    EmailTemplate,
+    NotificationTemplate,
 )
 from app.modules.notifications.service import NotificationService
 
@@ -207,7 +207,7 @@ async def test_cannot_delete_system_template(
     # First create a system template in DB
     from uuid import uuid4
 
-    system_template = EmailTemplate(
+    system_template = NotificationTemplate(
         id=uuid4(),
         clinic_id=None,
         template_key="system_test",

@@ -1085,6 +1085,7 @@ export interface NotificationPreference {
   patient_id?: string
   user_id?: string
   email_enabled: boolean
+  whatsapp_enabled: boolean
   preferences: Record<string, boolean>
   preferred_locale: string
   created_at: string
@@ -1093,6 +1094,7 @@ export interface NotificationPreference {
 
 export interface NotificationPreferenceUpdate {
   email_enabled?: boolean
+  whatsapp_enabled?: boolean
   preferences?: Record<string, boolean>
   preferred_locale?: string
 }
@@ -1101,6 +1103,7 @@ export interface NotificationTypeSettings {
   auto_send: boolean
   enabled: boolean
   hours_before?: number
+  channels?: string[]
 }
 
 export interface ClinicNotificationSettings {
@@ -1118,16 +1121,19 @@ export interface ClinicNotificationSettingsUpdate {
 export interface EmailLog {
   id: string
   clinic_id: string
-  recipient_email: string
+  channel: string
+  to_address: string
   patient_id?: string
   template_key: string
-  subject: string
-  status: 'pending' | 'sent' | 'failed' | 'skipped'
-  provider: string
+  subject?: string
+  status: 'queued' | 'sending' | 'sent' | 'failed' | 'skipped' | 'delivered' | 'read'
+  attempts: number
+  provider?: string
   provider_message_id?: string
   error_message?: string
   created_at: string
   sent_at?: string
+  delivered_at?: string
   triggered_by_event?: string
 }
 

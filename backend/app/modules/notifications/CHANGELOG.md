@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- feat(multichannel): turn the email-only module into a channel-agnostic
+  gateway. New ``channels/`` package (``ChannelAdapter`` protocol,
+  ``OutboundMessage``/``AdapterResult``, idempotent ``channel_registry``,
+  built-in ``EmailAdapter``). Vendor modules register adapters at import
+  time. See ADR 0016.
+- feat(outbox): ``gateway.NotificationGateway.enqueue`` persists a ``queued``
+  row (no network in-request) and a ``dispatch_outbox`` scheduled job
+  (every 45s) sends with ``FOR UPDATE SKIP LOCKED`` + exponential backoff.
+  ``do_not_contact`` is now a hard block on every channel.
+- refactor(models): ``email_logs`` → ``communication_messages`` (outbox +
+  audit in one table, ``channel``/``attempts``/``next_attempt_at``/
+  ``dedup_key``/delivery timestamps); ``email_templates`` →
+  ``notification_templates`` (``channel`` + ``provider_template_name`` for
+  WhatsApp HSM); per-channel WhatsApp opt-in on ``notification_preferences``;
+  new generic ``clinic_channel_settings``. Alembic ``notif_0002`` (data
+  preserved, ``channel`` backfilled to ``email``).
+- refactor(send-path): handlers, the reminder cron, and the manual-send
+  route now ``enqueue`` instead of sending synchronously; the reminder
+  dedup moved from a ``context_data["appointment_id"]`` scan to a
+  ``dedup_key`` unique index. Removed the dead ``send_notification``/
+  ``create_log`` service methods.
+- feat(events): ``notification.queued/sent/failed/delivered/reply_received``.
+  ``EMAIL_SENT/FAILED`` are dual-published for ``channel=email`` for one
+  release so ``patient_timeline`` keeps working unchanged.
+- feat(agents): ``tools.py`` exposes ``send_notification`` (WRITE) wrapping
+  the gateway; respects consent, never bypasses ``do_not_contact``.
 - refactor(scheduler): declare the ``appointment_reminders`` interval job
   via ``get_scheduled_jobs()`` instead of being imported by name in
   ``app/core/scheduler.py``.
