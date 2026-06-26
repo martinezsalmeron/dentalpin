@@ -14,6 +14,8 @@ from .gateway import NotificationGateway
 from .schemas import (
     ClinicNotificationSettingsResponse,
     ClinicNotificationSettingsUpdate,
+    ConversationMessageResponse,
+    ConversationReplyRequest,
     EmailLogResponse,
     EmailTemplateCreate,
     EmailTemplateResponse,
@@ -496,6 +498,67 @@ async def send_notification(
             log_id=msg.id if msg else None,
         )
     )
+
+
+# ============================================================================
+# Conversation Endpoints (patient message thread + reply)
+# ============================================================================
+
+
+@router.get(
+    "/conversations/{patient_id}",
+    response_model=ApiResponse[list[ConversationMessageResponse]],
+)
+async def get_conversation(
+    patient_id: UUID,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("notifications.logs.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    channel: str | None = Query(default=None, max_length=20),
+) -> ApiResponse[list[ConversationMessageResponse]]:
+    """Return a patient's message thread (inbound + outbound), oldest first."""
+    messages = await NotificationService.list_conversation(
+        db, ctx.clinic_id, patient_id, channel=channel
+    )
+    return ApiResponse(data=[ConversationMessageResponse.model_validate(m) for m in messages])
+
+
+@router.post(
+    "/conversations/{patient_id}/reply",
+    response_model=ApiResponse[ConversationMessageResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def reply_to_conversation(
+    patient_id: UUID,
+    data: ConversationReplyRequest,
+    ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
+    _: Annotated[None, Depends(require_permission("notifications.send"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ApiResponse[ConversationMessageResponse]:
+    """Send a free-form reply to the patient (within the 24h session window)."""
+    msg = await NotificationGateway.enqueue(
+        db,
+        ctx.clinic_id,
+        "reply",
+        context={},
+        patient_id=patient_id,
+        channels=[data.channel],
+        message_kind="session",
+        body_text=data.body,
+        force_send=True,
+        triggered_by_user_id=ctx.user.id,
+    )
+    if msg is None or msg.status == "skipped":
+        reason = msg.error_message if msg else "no se pudo enviar"
+        # Most common: the 24h free-form window is closed → needs a template.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se puede responder en texto libre: la ventana de 24h está "
+                f"cerrada o el canal no está disponible ({reason})."
+            ),
+        )
+    return ApiResponse(data=ConversationMessageResponse.model_validate(msg))
 
 
 # ============================================================================

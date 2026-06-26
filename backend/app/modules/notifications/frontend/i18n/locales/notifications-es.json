@@ -1,0 +1,11 @@
+{
+  "notifications": {
+    "conversation": {
+      "title": "Conversación de WhatsApp",
+      "empty": "Sin mensajes todavía.",
+      "placeholder": "Escribe una respuesta…",
+      "replyError": "No se pudo enviar la respuesta",
+      "windowClosed": "La ventana de 24h está cerrada. Usa una plantilla para reabrir la conversación."
+    }
+  }
+}

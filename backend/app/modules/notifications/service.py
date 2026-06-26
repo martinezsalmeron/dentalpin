@@ -207,6 +207,51 @@ class NotificationService:
         await db.delete(template)
         await db.commit()
 
+    @staticmethod
+    async def upsert_provider_template(
+        db: AsyncSession,
+        clinic_id: UUID,
+        *,
+        template_key: str,
+        locale: str,
+        provider_template_name: str,
+        provider_template_status: str,
+        channel: str = "whatsapp",
+    ) -> NotificationTemplate:
+        """Map a notification type to a provider (e.g. WhatsApp HSM) template.
+
+        Public seam so a vendor module (whatsapp_kapso) can register the
+        approved-template mapping the gateway resolves, without touching the
+        notifications tables directly. Idempotent per
+        ``(clinic, key, locale, channel)``.
+        """
+        tmpl = (
+            await db.execute(
+                select(NotificationTemplate).where(
+                    NotificationTemplate.clinic_id == clinic_id,
+                    NotificationTemplate.template_key == template_key,
+                    NotificationTemplate.locale == locale,
+                    NotificationTemplate.channel == channel,
+                )
+            )
+        ).scalar_one_or_none()
+        if tmpl is None:
+            tmpl = NotificationTemplate(
+                clinic_id=clinic_id,
+                template_key=template_key,
+                locale=locale,
+                channel=channel,
+                is_system=False,
+                is_active=True,
+            )
+            db.add(tmpl)
+        tmpl.provider_template_name = provider_template_name
+        tmpl.provider_template_status = provider_template_status
+        tmpl.is_active = True
+        await db.commit()
+        await db.refresh(tmpl)
+        return tmpl
+
     # ========================================================================
     # Notification Preferences
     # ========================================================================
@@ -511,6 +556,30 @@ class NotificationService:
         items = list(result.scalars().all())
 
         return items, total
+
+    @staticmethod
+    async def list_conversation(
+        db: AsyncSession,
+        clinic_id: UUID,
+        patient_id: UUID,
+        channel: str | None = None,
+        limit: int = 200,
+    ) -> list[CommunicationMessage]:
+        """Return a patient's message thread (inbound + outbound) in order."""
+        conditions = [
+            CommunicationMessage.clinic_id == clinic_id,
+            CommunicationMessage.patient_id == patient_id,
+        ]
+        if channel:
+            conditions.append(CommunicationMessage.channel == channel)
+        query = (
+            select(CommunicationMessage)
+            .where(*conditions)
+            .order_by(CommunicationMessage.created_at.asc())
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        return list(result.scalars().all())
 
     # ========================================================================
     # Consent gate (used by the gateway)

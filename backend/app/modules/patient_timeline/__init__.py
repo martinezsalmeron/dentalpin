@@ -93,6 +93,7 @@ class PatientTimelineModule(BaseModule):
             # Communications
             EventType.EMAIL_SENT: events.on_email_sent,
             EventType.EMAIL_FAILED: events.on_email_failed,
+            EventType.NOTIFICATION_REPLY_RECEIVED: events.on_notification_reply_received,
             # Medical history
             EventType.PATIENT_MEDICAL_UPDATED: events.on_medical_updated,
             # Documents + photos

@@ -118,6 +118,10 @@ export const PERMISSIONS = {
     write: 'recalls.write',
     delete: 'recalls.delete'
   },
+  whatsappKapso: {
+    settingsRead: 'whatsapp_kapso.settings.read',
+    settingsWrite: 'whatsapp_kapso.settings.write'
+  },
   schedules: {
     clinicHoursRead: 'schedules.clinic_hours.read',
     clinicHoursWrite: 'schedules.clinic_hours.write',

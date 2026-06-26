@@ -1,0 +1,38 @@
+{
+  "whatsapp_kapso": {
+    "settings": {
+      "title": "WhatsApp (Kapso)",
+      "description": "Conecta el número de WhatsApp de la clínica vía Kapso para enviar y recibir mensajes."
+    },
+    "connection": "Conexión",
+    "verified": "Verificado",
+    "notVerified": "Sin verificar",
+    "apiKey": "API key de Kapso",
+    "phoneNumberId": "Phone number ID",
+    "businessAccountId": "Business account ID",
+    "businessAccountHelp": "Necesario para sincronizar las plantillas aprobadas.",
+    "displayPhone": "Número visible",
+    "webhookSecret": "Secret del webhook",
+    "secretStored": "Guardado. Déjalo vacío para no cambiarlo.",
+    "webhook": "Webhook",
+    "webhookHelp": "Pega esta URL en la configuración de webhooks de Kapso para recibir estados y respuestas.",
+    "copy": "Copiar",
+    "copied": "URL copiada",
+    "templates": "Plantillas",
+    "sync": "Sincronizar",
+    "noTemplates": "Sin plantillas aprobadas. Sincroniza para traerlas de Kapso.",
+    "notificationType": "Tipo de notificación",
+    "template": "Plantilla",
+    "map": "Asociar",
+    "mapped": "Plantilla asociada",
+    "mapError": "No se pudo asociar la plantilla",
+    "test": "Prueba de envío",
+    "sendTest": "Enviar prueba",
+    "testOk": "Mensaje de prueba enviado",
+    "testFail": "Fallo al enviar la prueba",
+    "saved": "Configuración guardada",
+    "saveError": "No se pudo guardar",
+    "synced": "Sincronizadas {n} plantillas",
+    "syncError": "No se pudo sincronizar"
+  }
+}

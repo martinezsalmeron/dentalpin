@@ -1,0 +1,38 @@
+{
+  "whatsapp_kapso": {
+    "settings": {
+      "title": "WhatsApp (Kapso)",
+      "description": "Connect the clinic's WhatsApp number via Kapso to send and receive messages."
+    },
+    "connection": "Connection",
+    "verified": "Verified",
+    "notVerified": "Not verified",
+    "apiKey": "Kapso API key",
+    "phoneNumberId": "Phone number ID",
+    "businessAccountId": "Business account ID",
+    "businessAccountHelp": "Needed to sync approved templates.",
+    "displayPhone": "Display number",
+    "webhookSecret": "Webhook secret",
+    "secretStored": "Stored. Leave empty to keep it unchanged.",
+    "webhook": "Webhook",
+    "webhookHelp": "Paste this URL into Kapso's webhook settings to receive statuses and replies.",
+    "copy": "Copy",
+    "copied": "URL copied",
+    "templates": "Templates",
+    "sync": "Sync",
+    "noTemplates": "No approved templates. Sync to fetch them from Kapso.",
+    "notificationType": "Notification type",
+    "template": "Template",
+    "map": "Map",
+    "mapped": "Template mapped",
+    "mapError": "Could not map the template",
+    "test": "Test send",
+    "sendTest": "Send test",
+    "testOk": "Test message sent",
+    "testFail": "Failed to send the test",
+    "saved": "Settings saved",
+    "saveError": "Could not save",
+    "synced": "Synced {n} templates",
+    "syncError": "Could not sync"
+  }
+}
