@@ -21,7 +21,7 @@ from app.modules.treatment_plan import TreatmentPlanModule
 
 def test_modules_declare_their_jobs() -> None:
     expected = {
-        NotificationsModule: {"appointment_reminders"},
+        NotificationsModule: {"appointment_reminders", "notifications_dispatch_outbox"},
         BudgetModule: {"expire_budgets", "send_budget_reminders", "purge_budget_access_logs"},
         TreatmentPlanModule: {"auto_close_expired_plans"},
         CopilotModule: {"copilot_morning_digests"},

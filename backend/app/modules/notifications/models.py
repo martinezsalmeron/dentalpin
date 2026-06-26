@@ -257,7 +257,9 @@ class CommunicationMessage(Base, TimestampMixin):
 
     # Routing
     channel: Mapped[str] = mapped_column(String(20), default="email")
-    to_address: Mapped[str] = mapped_column(String(255))  # email or E.164 phone
+    # outbound (we send) | inbound (patient replied) — the conversation thread.
+    direction: Mapped[str] = mapped_column(String(20), default="outbound")
+    to_address: Mapped[str] = mapped_column(String(255))  # email or E.164 phone (the counterparty)
     patient_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("patients.id"), index=True, default=None
     )
@@ -266,6 +268,9 @@ class CommunicationMessage(Base, TimestampMixin):
     template_key: Mapped[str] = mapped_column(String(100))
     message_kind: Mapped[str] = mapped_column(String(20), default="template")  # template | session
     subject: Mapped[str | None] = mapped_column(String(255), default=None)
+    # Literal text for inbound messages and free-form (session) outbound sends.
+    # Template outbound renders from the template, so this stays NULL there.
+    body_text: Mapped[str | None] = mapped_column(Text, default=None)
 
     # Lifecycle
     status: Mapped[str] = mapped_column(
@@ -308,6 +313,14 @@ class CommunicationMessage(Base, TimestampMixin):
         Index("idx_communication_messages_template", "template_key"),
         # Drives the dispatch poll.
         Index("idx_communication_messages_dispatch", "status", "next_attempt_at"),
+        # Conversation thread read: messages for a patient on a channel, in order.
+        Index(
+            "idx_communication_messages_thread",
+            "clinic_id",
+            "patient_id",
+            "channel",
+            "created_at",
+        ),
         # Idempotency: at most one row per (clinic, dedup_key) when set.
         Index(
             "uq_communication_messages_dedup",

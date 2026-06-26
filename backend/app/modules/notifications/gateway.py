@@ -8,11 +8,12 @@ sends with retry/backoff.
 """
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import EventType, event_bus
@@ -25,11 +26,23 @@ logger = logging.getLogger(__name__)
 
 _BACKOFF_CAP_SECONDS = 3600
 _DISPATCH_BATCH = 50
+_SESSION_WINDOW = timedelta(hours=24)
 
 
 def _backoff_seconds(attempts: int) -> int:
     """Exponential backoff with cap: 1m, 2m, 4m, … ≤ 1h."""
     return min(60 * (2 ** max(0, attempts - 1)), _BACKOFF_CAP_SECONDS)
+
+
+def _session_window_open(prefs) -> bool:
+    """True when the patient's 24h free-form session window is still open
+    (i.e. they sent us an inbound message less than 24h ago)."""
+    last = getattr(prefs, "last_inbound_at", None) if prefs is not None else None
+    if last is None:
+        return False
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=UTC)
+    return datetime.now(UTC) - last < _SESSION_WINDOW
 
 
 def _sanitize(context: dict[str, Any]) -> dict[str, Any]:
@@ -51,6 +64,8 @@ class NotificationGateway:
         to_address: str | None = None,
         channels: list[str] | None = None,
         force_send: bool = False,
+        message_kind: str | None = None,
+        body_text: str | None = None,
         triggered_by_event: str | None = None,
         triggered_by_user_id: UUID | None = None,
         dedup_key: str | None = None,
@@ -120,7 +135,15 @@ class NotificationGateway:
             db, clinic_id, notification_type
         )
         resolved = await NotificationGateway._resolve_channel(
-            db, clinic_id, notification_type, patient, prefs, locale, requested, to_address
+            db,
+            clinic_id,
+            notification_type,
+            patient,
+            prefs,
+            locale,
+            requested,
+            to_address,
+            message_kind,
         )
         if resolved is None:
             return await NotificationGateway._skip(
@@ -133,14 +156,17 @@ class NotificationGateway:
                 triggered_by_event,
                 triggered_by_user_id,
             )
-        channel, addr, message_kind, _provider_template = resolved
+        channel, addr, resolved_kind, _provider_template = resolved
 
         # Subject is resolved now (email) for the logs view; the body is
-        # (re)rendered at dispatch time.
-        template = await NotificationService.get_template(
-            db, clinic_id, notification_type, locale, channel=channel.value
-        )
-        subject = template.subject if template else None
+        # (re)rendered at dispatch time. Session (free-form) sends carry the
+        # literal text in body_text and need no template.
+        subject = None
+        if resolved_kind == "template":
+            template = await NotificationService.get_template(
+                db, clinic_id, notification_type, locale, channel=channel.value
+            )
+            subject = template.subject if template else None
 
         msg = CommunicationMessage(
             clinic_id=clinic_id,
@@ -148,8 +174,9 @@ class NotificationGateway:
             to_address=addr,
             patient_id=patient_id,
             template_key=notification_type,
-            message_kind=message_kind,
+            message_kind=resolved_kind,
             subject=subject,
+            body_text=body_text,
             status="queued",
             # stash the resolved locale so dispatch renders in the right language
             context_data=_sanitize({**context, "locale": locale}),
@@ -218,10 +245,13 @@ class NotificationGateway:
         # updated_at is older than N minutes back to 'failed'.
         await db.commit()
 
-        # (Re)render the template for this channel at send time.
-        template = await NotificationService.get_template(
-            db, msg.clinic_id, msg.template_key, _locale_of(msg), channel=msg.channel
-        )
+        # Template sends (re)render from the template at send time; session
+        # (free-form) sends carry the literal text in msg.body_text.
+        template = None
+        if msg.message_kind == "template":
+            template = await NotificationService.get_template(
+                db, msg.clinic_id, msg.template_key, _locale_of(msg), channel=msg.channel
+            )
         outbound = OutboundMessage(
             channel=Channel(msg.channel),
             to_address=msg.to_address,
@@ -235,7 +265,7 @@ class NotificationGateway:
             provider_template_name=template.provider_template_name if template else None,
             subject=template.subject if template else msg.subject,
             body_html=template.body_html if template else None,
-            body_text=template.body_text if template else None,
+            body_text=(template.body_text if template else None) or msg.body_text,
         )
 
         result = await adapter.send(db, outbound)
@@ -292,6 +322,112 @@ class NotificationGateway:
             await NotificationGateway._publish(msg, EventType.NOTIFICATION_DELIVERED)
         return msg
 
+    # ------------------------------------------------------------------ inbound
+    @staticmethod
+    async def record_inbound_reply(
+        db: AsyncSession,
+        clinic_id: UUID,
+        *,
+        channel: str,
+        from_address: str,
+        body: str,
+        patient_id: UUID | None = None,
+        provider_message_id: str | None = None,
+        occurred_at: datetime | None = None,
+    ) -> CommunicationMessage | None:
+        """Record an inbound patient message as an `inbound` thread row.
+
+        Idempotent on ``provider_message_id`` (the vendor's message id), opens
+        the 24h session window (``last_inbound_at``), and publishes
+        ``NOTIFICATION_REPLY_RECEIVED``. Returns ``None`` on a duplicate.
+        """
+        if provider_message_id:
+            dup = (
+                await db.execute(
+                    select(CommunicationMessage.id).where(
+                        CommunicationMessage.clinic_id == clinic_id,
+                        CommunicationMessage.dedup_key == provider_message_id,
+                    )
+                )
+            ).first()
+            if dup:
+                return None
+
+        occurred = occurred_at or datetime.now(UTC)
+        msg = CommunicationMessage(
+            clinic_id=clinic_id,
+            channel=channel,
+            direction="inbound",
+            to_address=from_address,
+            patient_id=patient_id,
+            template_key="inbound",
+            message_kind="session",
+            status="received",
+            body_text=body,
+            provider=channel,
+            provider_message_id=provider_message_id,
+            dedup_key=provider_message_id,
+            sent_at=occurred,
+        )
+        db.add(msg)
+        # Open the 24h free-form window so staff can reply.
+        if patient_id:
+            prefs = await NotificationService.get_or_create_patient_preferences(
+                db, clinic_id, patient_id
+            )
+            prefs.last_inbound_at = occurred
+        await db.commit()
+        await db.refresh(msg)
+
+        await event_bus.publish(
+            EventType.NOTIFICATION_REPLY_RECEIVED,
+            {
+                "clinic_id": str(clinic_id),
+                "patient_id": str(patient_id) if patient_id else None,
+                "message_id": str(msg.id),
+                "channel": channel,
+                "from_address": from_address,
+                "reply_text": body,
+                "occurred_at": occurred.isoformat(),
+            },
+        )
+        return msg
+
+    @staticmethod
+    async def resolve_patient_by_phone(db: AsyncSession, clinic_id: UUID, phone: str):
+        """Resolve a clinic patient by phone, ignoring formatting.
+
+        Exact match first, then a last-9-digits match so ``+34 600 11 22 33``
+        finds a patient stored as ``600112233``. Clinic-scoped.
+        """
+        from app.modules.patients.models import Patient
+
+        exact = (
+            await db.execute(
+                select(Patient).where(Patient.clinic_id == clinic_id, Patient.phone == phone)
+            )
+        ).scalar_one_or_none()
+        if exact:
+            return exact
+
+        digits = re.sub(r"\D", "", phone or "")
+        if len(digits) < 6:
+            return None
+        suffix = digits[-9:]
+        return (
+            (
+                await db.execute(
+                    select(Patient).where(
+                        Patient.clinic_id == clinic_id,
+                        Patient.phone.is_not(None),
+                        func.regexp_replace(Patient.phone, r"\D", "", "g").like(f"%{suffix}"),
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+
     # ------------------------------------------------------------------ helpers
     @staticmethod
     async def _load_patient(db: AsyncSession, clinic_id: UUID, patient_id: UUID | None):
@@ -319,7 +455,15 @@ class NotificationGateway:
 
     @staticmethod
     async def _resolve_channel(
-        db, clinic_id, notification_type, patient, prefs, locale, requested, to_address
+        db,
+        clinic_id,
+        notification_type,
+        patient,
+        prefs,
+        locale,
+        requested,
+        to_address,
+        requested_kind=None,
     ):
         for name in requested:
             try:
@@ -340,7 +484,17 @@ class NotificationGateway:
 
             if channel == Channel.WHATSAPP:
                 addr = patient.phone if patient else None
-                if not addr or not (prefs and prefs.whatsapp_enabled):
+                if not addr:
+                    continue
+                # Free-form reply: allowed only inside the 24h session window
+                # the patient's last inbound message opened. No opt-in needed
+                # (the patient initiated), no template required.
+                if requested_kind == "session":
+                    if _session_window_open(prefs):
+                        return channel, addr, "session", None
+                    continue
+                # Proactive: requires opt-in + an approved Meta template (HSM).
+                if not (prefs and prefs.whatsapp_enabled):
                     continue
                 tmpl = await NotificationService.get_template(
                     db, clinic_id, notification_type, locale, channel="whatsapp"

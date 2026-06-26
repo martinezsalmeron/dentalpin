@@ -114,6 +114,10 @@ from app.modules.treatment_plan.models import (  # noqa: F401
     PlannedTreatmentItem,
     TreatmentPlan,
 )
+from app.modules.whatsapp_kapso.models import (  # noqa: F401
+    WhatsappKapsoSettings,
+    WhatsappKapsoTemplate,
+)
 
 ALEMBIC_DIR = Path(__file__).parent
 BACKEND_ROOT = ALEMBIC_DIR.parent

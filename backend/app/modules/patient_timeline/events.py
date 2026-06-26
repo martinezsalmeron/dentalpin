@@ -502,6 +502,22 @@ async def on_email_sent(data: dict) -> None:
     )
 
 
+async def on_notification_reply_received(data: dict) -> None:
+    await _record(
+        event_type=EventType.NOTIFICATION_REPLY_RECEIVED,
+        event_category="communication",
+        source_table="communication_messages",
+        data=data,
+        source_id_key="message_id",
+        title="Respuesta recibida por WhatsApp",
+        description=data.get("reply_text"),
+        event_data={
+            "channel": data.get("channel"),
+            "from_address": data.get("from_address"),
+        },
+    )
+
+
 async def on_email_failed(data: dict) -> None:
     subject = data.get("subject") or data.get("template_key") or "email"
     await _record(

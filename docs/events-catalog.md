@@ -66,7 +66,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `notification.delivered` | `EventType.NOTIFICATION_DELIVERED` | — | — |
 | `notification.failed` | `EventType.NOTIFICATION_FAILED` | — | — |
 | `notification.queued` | `EventType.NOTIFICATION_QUEUED` | — | — |
-| `notification.reply_received` | `EventType.NOTIFICATION_REPLY_RECEIVED` | — | — |
+| `notification.reply_received` | `EventType.NOTIFICATION_REPLY_RECEIVED` | `notifications` | `patient_timeline` |
 | `notification.sent` | `EventType.NOTIFICATION_SENT` | — | — |
 | `odontogram.condition.changed` | `EventType.ODONTOGRAM_CONDITION_CHANGED` | — | — |
 | `odontogram.surface.updated` | `EventType.ODONTOGRAM_SURFACE_UPDATED` | — | — |
@@ -367,7 +367,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.EMAIL_FAILED`
 - **Publishers:**
-  - `notifications` — `backend/app/modules/notifications/gateway.py:408`
+  - `notifications` — `backend/app/modules/notifications/gateway.py:544`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -375,7 +375,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.EMAIL_SENT`
 - **Publishers:**
-  - `notifications` — `backend/app/modules/notifications/gateway.py:406`
+  - `notifications` — `backend/app/modules/notifications/gateway.py:542`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -521,8 +521,10 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 ### `notification.reply_received`
 
 - **Constant:** `EventType.NOTIFICATION_REPLY_RECEIVED`
-- **Publishers:** _none in tree — declared but unused_
-- **Subscribers:** —
+- **Publishers:**
+  - `notifications` — `backend/app/modules/notifications/gateway.py:375`
+- **Subscribers:**
+  - `patient_timeline`
 
 ### `notification.sent`
 

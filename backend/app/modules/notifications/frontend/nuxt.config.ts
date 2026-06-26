@@ -6,5 +6,12 @@
 export default defineNuxtConfig({
   components: [
     { path: './components', pathPrefix: false }
-  ]
+  ],
+  i18n: {
+    locales: [
+      { code: 'en', file: 'notifications-en.json' },
+      { code: 'es', file: 'notifications-es.json' }
+    ],
+    langDir: 'locales'
+  }
 })

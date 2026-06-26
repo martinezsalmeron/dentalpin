@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- feat(conversation): inbound replies + bidirectional WhatsApp (Phase 2A,
+  ADR 0017). ``communication_messages`` gains ``direction`` (outbound/inbound)
+  and ``body_text``; it is now the full per-patient thread (Alembic
+  ``notif_0003``). New gateway methods ``record_inbound_reply`` (idempotent,
+  opens the 24h window via ``last_inbound_at``, publishes
+  ``notification.reply_received``) and ``resolve_patient_by_phone``. The
+  channel resolver allows free-form (``message_kind="session"``) WhatsApp only
+  inside the 24h window. New conversation API (``GET /conversations/{patient_id}``,
+  ``POST /conversations/{patient_id}/reply``) + ``ConversationThread`` card on
+  the patient summary. New ``NotificationService.upsert_provider_template``
+  public seam so vendor modules can register HSM template mappings.
+
 - feat(multichannel): turn the email-only module into a channel-agnostic
   gateway. New ``channels/`` package (``ChannelAdapter`` protocol,
   ``OutboundMessage``/``AdapterResult``, idempotent ``channel_registry``,

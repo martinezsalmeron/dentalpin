@@ -181,6 +181,38 @@ class EmailLogResponse(BaseModel):
 
 
 # ============================================================================
+# Conversation Schemas
+# ============================================================================
+
+
+class ConversationMessageResponse(BaseModel):
+    """One message in a patient conversation thread (inbound or outbound)."""
+
+    id: UUID
+    channel: str
+    direction: str  # outbound | inbound
+    message_kind: str  # template | session
+    status: str
+    subject: str | None
+    body_text: str | None
+    template_key: str
+    error_message: str | None
+    created_at: datetime
+    sent_at: datetime | None
+    delivered_at: datetime | None
+    read_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class ConversationReplyRequest(BaseModel):
+    """Free-form reply to a patient within the channel's session window."""
+
+    channel: str = Field(default="whatsapp", max_length=20)
+    body: str = Field(..., min_length=1, max_length=4096)
+
+
+# ============================================================================
 # Manual Send Schemas
 # ============================================================================
 
