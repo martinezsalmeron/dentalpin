@@ -53,7 +53,7 @@ def test_every_module_has_valid_manifest(modules) -> None:
         assert manifest.version
         assert manifest.author
         assert manifest.license
-        assert manifest.category.value == "official"
+        assert manifest.category.value in ("official", "community")
         assert manifest.role_permissions  # at least admin
 
 

@@ -85,7 +85,7 @@ def get_tools() -> list[Tool]:
             ),
             parameters=SendNotificationArgs,
             handler=_send_notification,
-            permissions=["send"],
+            permissions=["notifications.send"],
             category=ToolCategory.WRITE,
         ),
     ]
