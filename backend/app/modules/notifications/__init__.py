@@ -6,12 +6,14 @@ from app.core.events.types import EventType
 from app.core.plugins import BaseModule
 from app.core.scheduling import ScheduledJob
 
+from . import channels  # noqa: F401 — registers the built-in EmailAdapter at import
 from .models import (
+    ClinicChannelSettings,
     ClinicNotificationSettings,
     ClinicSmtpSettings,
-    EmailLog,
-    EmailTemplate,
+    CommunicationMessage,
     NotificationPreference,
+    NotificationTemplate,
 )
 from .router import router
 
@@ -52,18 +54,24 @@ class NotificationsModule(BaseModule):
 
     def get_models(self) -> list:
         return [
-            EmailTemplate,
+            NotificationTemplate,
             NotificationPreference,
             ClinicNotificationSettings,
+            ClinicChannelSettings,
             ClinicSmtpSettings,
-            EmailLog,
+            CommunicationMessage,
         ]
 
     def get_router(self) -> APIRouter:
         return router
 
+    def get_tools(self) -> list:
+        from . import tools
+
+        return tools.get_tools()
+
     def get_scheduled_jobs(self) -> list[ScheduledJob]:
-        from .tasks import process_appointment_reminders
+        from .tasks import dispatch_outbox, process_appointment_reminders
 
         return [
             ScheduledJob(
@@ -72,6 +80,13 @@ class NotificationsModule(BaseModule):
                 trigger="interval",
                 trigger_args={"minutes": 5},
                 name="Process appointment reminders (every 5 minutes)",
+            ),
+            ScheduledJob(
+                id="notifications_dispatch_outbox",
+                func=dispatch_outbox,
+                trigger="interval",
+                trigger_args={"seconds": 45},
+                name="Dispatch the notifications outbox (every 45s)",
             ),
         ]
 

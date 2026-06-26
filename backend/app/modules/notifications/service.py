@@ -2,22 +2,19 @@
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.email import EmailResult, email_service
-from app.core.email.providers.base import EmailStatus
-from app.core.events import EventType, event_bus
 
 from .models import (
     ClinicNotificationSettings,
     ClinicSmtpSettings,
-    EmailLog,
-    EmailTemplate,
+    CommunicationMessage,
     NotificationPreference,
+    NotificationTemplate,
 )
 
 # Default locale used for patient-facing communications when neither a
@@ -69,7 +66,7 @@ class NotificationService:
         page_size: int = 20,
         locale: str | None = None,
         include_system: bool = True,
-    ) -> tuple[list[EmailTemplate], int]:
+    ) -> tuple[list[NotificationTemplate], int]:
         """List email templates for a clinic.
 
         Returns clinic-specific templates and optionally system templates.
@@ -80,23 +77,26 @@ class NotificationService:
         if include_system:
             # Include system templates and clinic templates
             conditions.append(
-                (EmailTemplate.clinic_id == clinic_id) | (EmailTemplate.clinic_id.is_(None))
+                (NotificationTemplate.clinic_id == clinic_id)
+                | (NotificationTemplate.clinic_id.is_(None))
             )
         else:
-            conditions.append(EmailTemplate.clinic_id == clinic_id)
+            conditions.append(NotificationTemplate.clinic_id == clinic_id)
 
         if locale:
-            conditions.append(EmailTemplate.locale == locale)
+            conditions.append(NotificationTemplate.locale == locale)
 
         # Count total
-        count_query = select(func.count()).select_from(EmailTemplate)
+        count_query = select(func.count()).select_from(NotificationTemplate)
         for condition in conditions:
             count_query = count_query.where(condition)
         total_result = await db.execute(count_query)
         total = total_result.scalar() or 0
 
         # Get items
-        query = select(EmailTemplate).order_by(EmailTemplate.template_key, EmailTemplate.locale)
+        query = select(NotificationTemplate).order_by(
+            NotificationTemplate.template_key, NotificationTemplate.locale
+        )
         for condition in conditions:
             query = query.where(condition)
 
@@ -112,18 +112,20 @@ class NotificationService:
         clinic_id: UUID,
         template_key: str,
         locale: str = "es",
-    ) -> EmailTemplate | None:
-        """Get a template by key and locale.
+        channel: str = "email",
+    ) -> NotificationTemplate | None:
+        """Get a template by key, locale and channel.
 
         Priority: clinic-specific > system template.
         """
         # First try clinic-specific
         result = await db.execute(
-            select(EmailTemplate).where(
-                EmailTemplate.clinic_id == clinic_id,
-                EmailTemplate.template_key == template_key,
-                EmailTemplate.locale == locale,
-                EmailTemplate.is_active == True,  # noqa: E712
+            select(NotificationTemplate).where(
+                NotificationTemplate.clinic_id == clinic_id,
+                NotificationTemplate.template_key == template_key,
+                NotificationTemplate.locale == locale,
+                NotificationTemplate.channel == channel,
+                NotificationTemplate.is_active == True,  # noqa: E712
             )
         )
         template = result.scalar_one_or_none()
@@ -132,11 +134,12 @@ class NotificationService:
 
         # Fallback to system template
         result = await db.execute(
-            select(EmailTemplate).where(
-                EmailTemplate.clinic_id.is_(None),
-                EmailTemplate.template_key == template_key,
-                EmailTemplate.locale == locale,
-                EmailTemplate.is_active == True,  # noqa: E712
+            select(NotificationTemplate).where(
+                NotificationTemplate.clinic_id.is_(None),
+                NotificationTemplate.template_key == template_key,
+                NotificationTemplate.locale == locale,
+                NotificationTemplate.channel == channel,
+                NotificationTemplate.is_active == True,  # noqa: E712
             )
         )
         return result.scalar_one_or_none()
@@ -146,12 +149,13 @@ class NotificationService:
         db: AsyncSession,
         clinic_id: UUID,
         template_id: UUID,
-    ) -> EmailTemplate | None:
+    ) -> NotificationTemplate | None:
         """Get a template by ID."""
         result = await db.execute(
-            select(EmailTemplate).where(
-                EmailTemplate.id == template_id,
-                (EmailTemplate.clinic_id == clinic_id) | (EmailTemplate.clinic_id.is_(None)),
+            select(NotificationTemplate).where(
+                NotificationTemplate.id == template_id,
+                (NotificationTemplate.clinic_id == clinic_id)
+                | (NotificationTemplate.clinic_id.is_(None)),
             )
         )
         return result.scalar_one_or_none()
@@ -161,9 +165,9 @@ class NotificationService:
         db: AsyncSession,
         clinic_id: UUID,
         data: dict,
-    ) -> EmailTemplate:
+    ) -> NotificationTemplate:
         """Create a new email template for a clinic."""
-        template = EmailTemplate(
+        template = NotificationTemplate(
             clinic_id=clinic_id,
             is_system=False,
             **data,
@@ -176,9 +180,9 @@ class NotificationService:
     @staticmethod
     async def update_template(
         db: AsyncSession,
-        template: EmailTemplate,
+        template: NotificationTemplate,
         data: dict,
-    ) -> EmailTemplate:
+    ) -> NotificationTemplate:
         """Update an email template."""
         if template.is_system:
             raise ValueError("Cannot modify system templates")
@@ -194,7 +198,7 @@ class NotificationService:
     @staticmethod
     async def delete_template(
         db: AsyncSession,
-        template: EmailTemplate,
+        template: NotificationTemplate,
     ) -> None:
         """Delete an email template."""
         if template.is_system:
@@ -479,26 +483,26 @@ class NotificationService:
         patient_id: UUID | None = None,
         status: str | None = None,
         template_key: str | None = None,
-    ) -> tuple[list[EmailLog], int]:
+    ) -> tuple[list[CommunicationMessage], int]:
         """List email logs with optional filters."""
-        conditions = [EmailLog.clinic_id == clinic_id]
+        conditions = [CommunicationMessage.clinic_id == clinic_id]
 
         if patient_id:
-            conditions.append(EmailLog.patient_id == patient_id)
+            conditions.append(CommunicationMessage.patient_id == patient_id)
         if status:
-            conditions.append(EmailLog.status == status)
+            conditions.append(CommunicationMessage.status == status)
         if template_key:
-            conditions.append(EmailLog.template_key == template_key)
+            conditions.append(CommunicationMessage.template_key == template_key)
 
         # Count total
-        count_query = select(func.count()).select_from(EmailLog)
+        count_query = select(func.count()).select_from(CommunicationMessage)
         for condition in conditions:
             count_query = count_query.where(condition)
         total_result = await db.execute(count_query)
         total = total_result.scalar() or 0
 
         # Get items
-        query = select(EmailLog).order_by(EmailLog.created_at.desc())
+        query = select(CommunicationMessage).order_by(CommunicationMessage.created_at.desc())
         for condition in conditions:
             query = query.where(condition)
 
@@ -508,65 +512,8 @@ class NotificationService:
 
         return items, total
 
-    @staticmethod
-    async def create_log(
-        db: AsyncSession,
-        clinic_id: UUID,
-        recipient_email: str,
-        template_key: str,
-        subject: str,
-        status: str,
-        provider: str,
-        patient_id: UUID | None = None,
-        provider_message_id: str | None = None,
-        error_message: str | None = None,
-        triggered_by_event: str | None = None,
-        triggered_by_user_id: UUID | None = None,
-        context_data: dict | None = None,
-    ) -> EmailLog:
-        """Create an email log entry."""
-        log = EmailLog(
-            clinic_id=clinic_id,
-            recipient_email=recipient_email,
-            patient_id=patient_id,
-            template_key=template_key,
-            subject=subject,
-            status=status,
-            provider=provider,
-            provider_message_id=provider_message_id,
-            error_message=error_message,
-            triggered_by_event=triggered_by_event,
-            triggered_by_user_id=triggered_by_user_id,
-            context_data=context_data,
-            sent_at=datetime.now(UTC) if status == "sent" else None,
-        )
-        db.add(log)
-        await db.commit()
-        await db.refresh(log)
-
-        # Broadcast to the event bus so the patient_timeline (and any other
-        # listener) can record the communication without querying email_logs.
-        bus_event = EventType.EMAIL_SENT if log.status == "sent" else EventType.EMAIL_FAILED
-        await event_bus.publish(
-            bus_event,
-            {
-                "clinic_id": str(log.clinic_id),
-                "patient_id": str(log.patient_id) if log.patient_id else None,
-                "email_log_id": str(log.id),
-                "template_key": log.template_key,
-                "subject": log.subject,
-                "recipient_email": log.recipient_email,
-                "status": log.status,
-                "error_message": log.error_message,
-                "occurred_at": (log.sent_at or log.created_at).isoformat()
-                if (log.sent_at or log.created_at)
-                else None,
-            },
-        )
-        return log
-
     # ========================================================================
-    # Send Email
+    # Consent gate (used by the gateway)
     # ========================================================================
 
     @staticmethod
@@ -607,118 +554,6 @@ class NotificationService:
                     return False, f"patient_opted_out_of_{notification_type}"
 
         return True, "ok"
-
-    @staticmethod
-    async def send_notification(
-        db: AsyncSession,
-        clinic_id: UUID,
-        notification_type: str,
-        to_email: str,
-        context: dict[str, Any],
-        patient_id: UUID | None = None,
-        triggered_by_event: str | None = None,
-        triggered_by_user_id: UUID | None = None,
-        force_send: bool = False,
-    ) -> EmailResult:
-        """Send a notification email.
-
-        Args:
-            db: Database session.
-            clinic_id: Clinic ID.
-            notification_type: Type of notification (e.g., 'appointment_confirmation').
-            to_email: Recipient email address.
-            context: Template context variables.
-            patient_id: Patient ID (optional).
-            triggered_by_event: Event that triggered this email (optional).
-            triggered_by_user_id: User who triggered manual send (optional).
-            force_send: Skip preference checks (for manual send).
-
-        Returns:
-            EmailResult with status.
-        """
-        # Check if should send (unless forced)
-        if not force_send:
-            should_send, reason = await NotificationService.should_send_notification(
-                db, clinic_id, notification_type, patient_id
-            )
-            if not should_send:
-                logger.info(
-                    f"Skipping notification {notification_type}: {reason}",
-                    extra={"clinic_id": str(clinic_id), "patient_id": str(patient_id)},
-                )
-                # Log the skipped email
-                await NotificationService.create_log(
-                    db=db,
-                    clinic_id=clinic_id,
-                    recipient_email=to_email,
-                    template_key=notification_type,
-                    subject=f"[SKIPPED] {notification_type}",
-                    status="skipped",
-                    provider=email_service.get_provider_name(),
-                    patient_id=patient_id,
-                    error_message=reason,
-                    triggered_by_event=triggered_by_event,
-                    triggered_by_user_id=triggered_by_user_id,
-                )
-                return EmailResult(
-                    status=EmailStatus.SKIPPED,
-                    provider=email_service.get_provider_name(),
-                    error_message=reason,
-                )
-
-        # Resolve locale: clinic-wide default (settings.communication_language)
-        # → patient preference override when present.
-        locale = await resolve_clinic_communication_locale(db, clinic_id)
-        if patient_id:
-            prefs = await NotificationService.get_patient_preferences(db, clinic_id, patient_id)
-            if prefs and prefs.preferred_locale:
-                locale = prefs.preferred_locale
-
-        # Get template
-        template = await NotificationService.get_template(db, clinic_id, notification_type, locale)
-
-        # Build subject from template or use default
-        subject = template.subject if template else f"Notificación: {notification_type}"
-
-        # Get custom template content if available
-        template_html = template.body_html if template else None
-        template_text = template.body_text if template else None
-
-        # Send email (use clinic-specific SMTP if configured)
-        result = await email_service.send_templated(
-            to_email=to_email,
-            to_name=context.get("patient_name"),
-            template_key=notification_type,
-            locale=locale,
-            context=context,
-            subject=subject,
-            template_html=template_html,
-            template_text=template_text,
-            db=db,
-            clinic_id=clinic_id,
-        )
-
-        # Sanitize context for logging (remove sensitive data)
-        safe_context = {k: v for k, v in context.items() if k not in ["password", "token"]}
-
-        # Log the email
-        await NotificationService.create_log(
-            db=db,
-            clinic_id=clinic_id,
-            recipient_email=to_email,
-            template_key=notification_type,
-            subject=subject,
-            status="sent" if result.is_success else "failed",
-            provider=result.provider,
-            patient_id=patient_id,
-            provider_message_id=result.message_id,
-            error_message=result.error_message,
-            triggered_by_event=triggered_by_event,
-            triggered_by_user_id=triggered_by_user_id,
-            context_data=safe_context,
-        )
-
-        return result
 
     @staticmethod
     async def test_email_connection(to_email: str) -> EmailResult:

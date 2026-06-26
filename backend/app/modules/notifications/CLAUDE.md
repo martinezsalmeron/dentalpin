@@ -1,7 +1,26 @@
 # Notifications module
 
-Email templates, preferences, SMTP, event-driven sending. Heavy
-subscriber.
+Multi-channel notification **gateway**: our own communications logic
+(channel resolution, consent, templates, outbox, logging) with pluggable
+adapters that put a rendered message on the wire. Email ships built-in;
+WhatsApp arrives via the `whatsapp_kapso` community module (Phase 2).
+Heavy subscriber + now a publisher. See ADR 0016.
+
+## Architecture
+
+- `channels/` — the **public contract** vendor modules import:
+  `ChannelAdapter` protocol, `OutboundMessage`/`AdapterResult`, `Channel`
+  enum, and the idempotent `channel_registry` (pre-loads `EmailAdapter`).
+  A vendor module `depends=["notifications"]` and calls
+  `channel_registry.register(...)` at import time.
+- `gateway.py` — `NotificationGateway.enqueue` (consent gate → channel
+  resolution → persist `queued` row → publish) and `dispatch_outbox`
+  (the scheduled sender, retry + backoff). **No network in a request.**
+- `service.py` — CRUD for templates/preferences/settings/SMTP + the
+  `should_send_notification` consent check. No send path here anymore.
+- Tables: `communication_messages` (outbox + audit), `notification_templates`,
+  `notification_preferences`, `clinic_notification_settings`,
+  `clinic_channel_settings`, `clinic_smtp_settings`.
 
 ## Public API
 
@@ -20,9 +39,24 @@ settings, logs).
 `notifications.settings.{read,write}`,
 `notifications.logs.read`.
 
+## Tools exposed
+
+Agent tool in `tools.py` (wraps `NotificationGateway`, no logic duplicated).
+
+| Tool | Category | Wraps | Permission |
+|---|---|---|---|
+| `send_notification` | WRITE | `NotificationGateway.enqueue` | `notifications.send` |
+
+Structured params only (cloud-eligible under redaction). Enqueues through
+the full consent path — never bypasses `do_not_contact`.
+
 ## Events emitted
 
-None.
+- `notification.queued` / `notification.sent` / `notification.failed` /
+  `notification.delivered` / `notification.reply_received`.
+- `email.sent` / `email.failed` — **legacy, dual-published** for
+  `channel=email` only, for one release, so `patient_timeline` keeps
+  recording email comms until it migrates to the generic events.
 
 ## Events consumed
 

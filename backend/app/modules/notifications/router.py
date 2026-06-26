@@ -10,6 +10,7 @@ from app.core.auth.dependencies import ClinicContext, get_clinic_context, requir
 from app.core.schemas import ApiResponse, PaginatedApiResponse
 from app.database import get_db
 
+from .gateway import NotificationGateway
 from .schemas import (
     ClinicNotificationSettingsResponse,
     ClinicNotificationSettingsUpdate,
@@ -465,34 +466,36 @@ async def send_notification(
             detail="Could not determine recipient email address",
         )
 
-    # Send the notification (force_send=True to bypass auto_send check)
-    result = await NotificationService.send_notification(
+    # Enqueue the notification (force_send=True to bypass auto_send check).
+    # Delivery happens asynchronously via the outbox dispatch job.
+    msg = await NotificationGateway.enqueue(
         db=db,
         clinic_id=ctx.clinic_id,
         notification_type=data.notification_type,
-        to_email=patient_email,
         context=context,
         patient_id=patient.id if patient else None,
+        to_address=patient_email,
         triggered_by_user_id=ctx.user.id,
         force_send=True,
     )
 
-    if result.is_success:
+    if msg is not None and msg.status == "queued":
         return ApiResponse(
             data=ManualSendResponse(
                 success=True,
-                message="Email enviado correctamente",
-                log_id=None,  # Could return the log ID if needed
+                message="Notificación encolada para envío",
+                log_id=msg.id,
             )
         )
-    else:
-        return ApiResponse(
-            data=ManualSendResponse(
-                success=False,
-                message=f"Error al enviar email: {result.error_message}",
-                log_id=None,
-            )
+
+    reason = msg.error_message if msg else "no se pudo encolar"
+    return ApiResponse(
+        data=ManualSendResponse(
+            success=False,
+            message=f"No se pudo enviar: {reason}",
+            log_id=msg.id if msg else None,
         )
+    )
 
 
 # ============================================================================

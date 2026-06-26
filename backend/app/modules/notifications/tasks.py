@@ -15,6 +15,23 @@ from app.database import async_session_maker
 logger = logging.getLogger(__name__)
 
 
+async def dispatch_outbox() -> None:
+    """Scheduled tick: send a batch of due queued/failed messages.
+
+    Thin wrapper around ``NotificationGateway.dispatch_outbox`` that owns the
+    DB session. Network I/O happens here (in the scheduler), never in a request.
+    """
+    from app.modules.notifications.gateway import NotificationGateway
+
+    try:
+        async with async_session_maker() as db:
+            sent = await NotificationGateway.dispatch_outbox(db)
+            if sent:
+                logger.debug("Outbox dispatch tick processed %d message(s)", sent)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Outbox dispatch tick failed: %s", exc, exc_info=True)
+
+
 async def process_appointment_reminders() -> None:
     """Process and send appointment reminders.
 
@@ -28,8 +45,8 @@ async def process_appointment_reminders() -> None:
     """
     from app.core.auth.models import Clinic, User
     from app.modules.agenda.models import Appointment
-    from app.modules.notifications.models import ClinicNotificationSettings, EmailLog
-    from app.modules.notifications.service import NotificationService
+    from app.modules.notifications.gateway import NotificationGateway
+    from app.modules.notifications.models import ClinicNotificationSettings
     from app.modules.patients.models import Patient
 
     logger.debug("Processing appointment reminders...")
@@ -82,24 +99,6 @@ async def process_appointment_reminders() -> None:
                 clinic = result.scalar_one_or_none()
 
                 for appointment in appointments:
-                    # Check if reminder was already sent for this appointment
-                    result = await db.execute(
-                        select(EmailLog.id).where(
-                            and_(
-                                EmailLog.clinic_id == clinic_id,
-                                EmailLog.template_key == "appointment_reminder",
-                                EmailLog.status == "sent",
-                                # Check context_data for appointment_id
-                                EmailLog.context_data["appointment_id"].astext
-                                == str(appointment.id),
-                            )
-                        )
-                    )
-                    already_sent = result.scalar_one_or_none()
-                    if already_sent:
-                        reminders_skipped += 1
-                        continue
-
                     # Get patient
                     result = await db.execute(
                         select(Patient).where(Patient.id == appointment.patient_id)
@@ -133,27 +132,26 @@ async def process_appointment_reminders() -> None:
                         "appointment_id": str(appointment.id),  # For duplicate check
                     }
 
-                    # Send reminder
-                    result = await NotificationService.send_notification(
+                    # Enqueue reminder — dedup_key keeps the 5-min re-runs idempotent
+                    # (replaces the old context_data["appointment_id"] log scan).
+                    msg = await NotificationGateway.enqueue(
                         db=db,
                         clinic_id=clinic_id,
                         notification_type="appointment_reminder",
-                        to_email=patient.email,
                         context=context,
                         patient_id=patient.id,
+                        to_address=patient.email,
                         triggered_by_event="scheduler.appointment_reminder",
                         force_send=True,  # Skip preference check (already checked auto_send)
+                        dedup_key=f"appointment_reminder:{appointment.id}",
                     )
 
-                    if result.is_success:
+                    if msg is None or msg.status == "skipped":
+                        reminders_skipped += 1
+                    else:
                         reminders_sent += 1
                         logger.info(
-                            f"Sent reminder for appointment {appointment.id} to {patient.email}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Failed to send reminder for appointment {appointment.id}: "
-                            f"{result.error_message}"
+                            f"Queued reminder for appointment {appointment.id} to {patient.email}"
                         )
 
         if reminders_sent > 0 or reminders_skipped > 0:
@@ -179,7 +177,7 @@ async def send_single_reminder(appointment_id: UUID, clinic_id: UUID) -> bool:
     """
     from app.core.auth.models import Clinic, User
     from app.modules.agenda.models import Appointment
-    from app.modules.notifications.service import NotificationService
+    from app.modules.notifications.gateway import NotificationGateway
     from app.modules.patients.models import Patient
 
     try:
@@ -231,19 +229,20 @@ async def send_single_reminder(appointment_id: UUID, clinic_id: UUID) -> bool:
                 "appointment_id": str(appointment.id),
             }
 
-            # Send reminder (force_send to bypass auto_send check)
-            send_result = await NotificationService.send_notification(
+            # Enqueue reminder (force_send to bypass auto_send check)
+            msg = await NotificationGateway.enqueue(
                 db=db,
                 clinic_id=clinic_id,
                 notification_type="appointment_reminder",
-                to_email=patient.email,
                 context=context,
                 patient_id=patient.id,
+                to_address=patient.email,
                 triggered_by_event="manual.appointment_reminder",
                 force_send=True,
+                dedup_key=f"appointment_reminder:{appointment.id}",
             )
 
-            return send_result.is_success
+            return msg is not None and msg.status != "skipped"
 
     except Exception as e:
         logger.error(f"Error sending single reminder: {e}", exc_info=True)

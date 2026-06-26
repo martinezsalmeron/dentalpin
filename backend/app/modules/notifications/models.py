@@ -1,4 +1,15 @@
-"""Notifications module database models."""
+"""Notifications module database models (multi-channel).
+
+Generalized from email-only to a channel-agnostic gateway:
+- ``NotificationTemplate`` (was ``EmailTemplate``) carries a ``channel`` and,
+  for WhatsApp, a Meta/Kapso approved-template name.
+- ``CommunicationMessage`` (was ``EmailLog``) is BOTH the outbox queue row
+  and the immutable-ish audit record, across every channel.
+- ``NotificationPreference`` gains per-channel WhatsApp opt-in + the 24h
+  session-window marker.
+- ``ClinicChannelSettings`` (new) records which adapter handles which
+  channel per clinic (no secrets — those live in the vendor module).
+"""
 
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -13,6 +24,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -24,42 +36,44 @@ if TYPE_CHECKING:
     from app.modules.patients.models import Patient
 
 
-class EmailTemplate(Base, TimestampMixin):
-    """Customizable email template.
+class NotificationTemplate(Base, TimestampMixin):
+    """Customizable notification template, per channel.
 
-    Templates can be defined at system level (clinic_id=None) or
-    customized per clinic. When sending, clinic-specific templates
-    take precedence over system templates.
+    Templates can be system-level (clinic_id=None) or per-clinic. For
+    ``channel='email'`` the ``subject``/``body_html`` are used; for
+    ``channel='whatsapp'`` the ``provider_template_name`` (a Meta-approved
+    HSM) is used and ``variables`` holds the ordered substitution list.
     """
 
-    __tablename__ = "email_templates"
+    __tablename__ = "notification_templates"
 
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     clinic_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("clinics.id"), index=True, default=None
     )  # NULL = system template
 
-    # Template identification
-    template_key: Mapped[str] = mapped_column(
-        String(100), index=True
-    )  # e.g., "appointment_confirmation"
+    # Identification
+    channel: Mapped[str] = mapped_column(String(20), default="email", index=True)
+    template_key: Mapped[str] = mapped_column(String(100), index=True)
     locale: Mapped[str] = mapped_column(String(5), default="es")  # es, en
 
-    # Content
-    subject: Mapped[str] = mapped_column(String(255))
-    body_html: Mapped[str] = mapped_column(Text)
+    # Email content (ignored for non-email channels)
+    subject: Mapped[str | None] = mapped_column(String(255), default=None)
+    body_html: Mapped[str | None] = mapped_column(Text, default=None)
     body_text: Mapped[str | None] = mapped_column(Text, default=None)
 
+    # WhatsApp / provider-template content (ignored for email)
+    provider_template_name: Mapped[str | None] = mapped_column(String(200), default=None)
+    provider_template_status: Mapped[str | None] = mapped_column(
+        String(20), default=None
+    )  # approved, pending, rejected
+
     # Metadata
-    variables: Mapped[dict | None] = mapped_column(
-        JSONB, default=None
-    )  # Available template variables
-    description: Mapped[str | None] = mapped_column(
-        String(500), default=None
-    )  # Template description
+    variables: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    description: Mapped[str | None] = mapped_column(String(500), default=None)
 
     # Flags
-    is_system: Mapped[bool] = mapped_column(Boolean, default=False)  # System = not editable
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
@@ -67,18 +81,21 @@ class EmailTemplate(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint(
-            "clinic_id", "template_key", "locale", name="uq_email_template_clinic_key_locale"
+            "clinic_id",
+            "template_key",
+            "locale",
+            "channel",
+            name="uq_notification_template_clinic_key_locale_channel",
         ),
-        Index("idx_email_templates_clinic", "clinic_id"),
-        Index("idx_email_templates_key", "template_key"),
+        Index("idx_notification_templates_clinic", "clinic_id"),
+        Index("idx_notification_templates_key", "template_key"),
     )
 
 
 class NotificationPreference(Base, TimestampMixin):
     """Notification preferences for patients or users.
 
-    Stores opt-in/opt-out settings for different notification types.
-    Either patient_id or user_id should be set, not both.
+    Stores opt-in/opt-out settings. Either patient_id or user_id is set.
     """
 
     __tablename__ = "notification_preferences"
@@ -92,10 +109,17 @@ class NotificationPreference(Base, TimestampMixin):
     )
     user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), index=True, default=None)
 
-    # Global email toggle
+    # Channel master toggles
     email_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    # WhatsApp uses patients.phone as the number; this flag is the opt-in.
+    whatsapp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    whatsapp_opt_in_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    # Last inbound message timestamp — opens the 24h free-form session window.
+    last_inbound_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
-    # Per-type preferences
+    # Per-type preferences (channel-agnostic opt-in)
     preferences: Mapped[dict] = mapped_column(
         JSONB,
         default=lambda: {
@@ -116,9 +140,7 @@ class NotificationPreference(Base, TimestampMixin):
     patient: Mapped["Patient | None"] = relationship(foreign_keys=[patient_id])
 
     __table_args__ = (
-        # A patient can only have one preference record per clinic
         UniqueConstraint("clinic_id", "patient_id", name="uq_notification_pref_clinic_patient"),
-        # A user can only have one preference record per clinic
         UniqueConstraint("clinic_id", "user_id", name="uq_notification_pref_clinic_user"),
         Index("idx_notification_preferences_clinic", "clinic_id"),
         Index("idx_notification_preferences_patient", "patient_id"),
@@ -129,8 +151,9 @@ class NotificationPreference(Base, TimestampMixin):
 class ClinicNotificationSettings(Base, TimestampMixin):
     """Clinic-level notification settings.
 
-    Configures which notifications are auto-sent vs manual,
-    and general notification behavior for the clinic.
+    Each notification type carries ``enabled``/``auto_send`` and an ordered
+    ``channels`` fallback list. Defaults stay email-only so existing clinics
+    are unchanged until they enable WhatsApp.
     """
 
     __tablename__ = "clinic_notification_settings"
@@ -138,41 +161,68 @@ class ClinicNotificationSettings(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), unique=True, index=True)
 
-    # Per-notification-type settings
     settings: Mapped[dict] = mapped_column(
         JSONB,
         default=lambda: {
-            "appointment_confirmation": {"auto_send": True, "enabled": True},
-            "appointment_cancelled": {"auto_send": True, "enabled": True},
-            "appointment_reminder": {"auto_send": True, "enabled": True, "hours_before": 24},
-            "budget_sent": {"auto_send": False, "enabled": True},  # Manual
-            "budget_accepted": {"auto_send": True, "enabled": True},
-            "welcome": {"auto_send": False, "enabled": True},  # Manual
+            "appointment_confirmation": {
+                "auto_send": True,
+                "enabled": True,
+                "channels": ["email"],
+            },
+            "appointment_cancelled": {"auto_send": True, "enabled": True, "channels": ["email"]},
+            "appointment_reminder": {
+                "auto_send": True,
+                "enabled": True,
+                "hours_before": 24,
+                "channels": ["email"],
+            },
+            "budget_sent": {"auto_send": False, "enabled": True, "channels": ["email"]},
+            "budget_accepted": {"auto_send": True, "enabled": True, "channels": ["email"]},
+            "welcome": {"auto_send": False, "enabled": True, "channels": ["email"]},
         },
     )
 
-    # Relationships
     clinic: Mapped["Clinic"] = relationship(foreign_keys=[clinic_id])
 
     __table_args__ = (Index("idx_clinic_notification_settings_clinic", "clinic_id"),)
 
 
-class ClinicSmtpSettings(Base, TimestampMixin):
-    """SMTP configuration per clinic.
+class ClinicChannelSettings(Base, TimestampMixin):
+    """Which adapter handles which channel for a clinic. NO secrets here.
 
-    Stores SMTP server settings for sending emails from a specific clinic.
-    Passwords are encrypted using Fernet symmetric encryption.
+    Generic and reusable by any future vendor (Twilio, telephony). Vendor
+    credentials live in the vendor module's own table.
     """
+
+    __tablename__ = "clinic_channel_settings"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
+
+    channel: Mapped[str] = mapped_column(String(20))  # email, whatsapp, ...
+    adapter_name: Mapped[str] = mapped_column(String(50))  # e.g. "whatsapp_kapso"
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    config: Mapped[dict | None] = mapped_column(JSONB, default=None)  # non-secret display config
+
+    clinic: Mapped["Clinic"] = relationship(foreign_keys=[clinic_id])
+
+    __table_args__ = (
+        UniqueConstraint("clinic_id", "channel", name="uq_clinic_channel_settings_clinic_channel"),
+        Index("idx_clinic_channel_settings_clinic", "clinic_id"),
+    )
+
+
+class ClinicSmtpSettings(Base, TimestampMixin):
+    """SMTP configuration per clinic (Fernet-encrypted password)."""
 
     __tablename__ = "clinic_smtp_settings"
 
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), unique=True, index=True)
 
-    # Provider selection: smtp, console, disabled
-    provider: Mapped[str] = mapped_column(String(20), default="smtp")
+    provider: Mapped[str] = mapped_column(String(20), default="smtp")  # smtp, console, disabled
 
-    # SMTP Configuration
     host: Mapped[str | None] = mapped_column(String(255), default=None)
     port: Mapped[int] = mapped_column(Integer, default=587)
     username: Mapped[str | None] = mapped_column(String(255), default=None)
@@ -180,79 +230,90 @@ class ClinicSmtpSettings(Base, TimestampMixin):
     use_tls: Mapped[bool] = mapped_column(Boolean, default=True)
     use_ssl: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Sender defaults
     from_email: Mapped[str | None] = mapped_column(String(255), default=None)
     from_name: Mapped[str | None] = mapped_column(String(255), default=None)
 
-    # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
-    # Relationships
     clinic: Mapped["Clinic"] = relationship(foreign_keys=[clinic_id])
 
     __table_args__ = (Index("idx_clinic_smtp_settings_clinic", "clinic_id"),)
 
 
-class EmailLog(Base):
-    """Audit log for sent emails.
+class CommunicationMessage(Base, TimestampMixin):
+    """Outbox queue row AND audit record for one outbound message.
 
-    Records all email send attempts for auditing and troubleshooting.
+    Lifecycle: ``queued`` → ``sending`` → ``sent`` → (``delivered``/``read``)
+    or ``failed`` (retried up to ``max_attempts``) or ``skipped`` (consent /
+    no viable channel). One source of truth across all channels.
     """
 
-    __tablename__ = "email_logs"
+    __tablename__ = "communication_messages"
 
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     clinic_id: Mapped[UUID] = mapped_column(ForeignKey("clinics.id"), index=True)
 
-    # Recipient info
-    recipient_email: Mapped[str] = mapped_column(String(255))
+    # Routing
+    channel: Mapped[str] = mapped_column(String(20), default="email")
+    to_address: Mapped[str] = mapped_column(String(255))  # email or E.164 phone
     patient_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("patients.id"), index=True, default=None
     )
 
-    # Template info
+    # Content reference
     template_key: Mapped[str] = mapped_column(String(100))
-    subject: Mapped[str] = mapped_column(String(255))
+    message_kind: Mapped[str] = mapped_column(String(20), default="template")  # template | session
+    subject: Mapped[str | None] = mapped_column(String(255), default=None)
 
-    # Status
-    status: Mapped[str] = mapped_column(String(20), index=True)  # pending, sent, failed, skipped
+    # Lifecycle
+    status: Mapped[str] = mapped_column(
+        String(20), default="queued", index=True
+    )  # queued, sending, sent, failed, skipped, delivered, read
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=5)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     # Provider info
-    provider: Mapped[str] = mapped_column(String(50))  # smtp, sendgrid, console
+    provider: Mapped[str | None] = mapped_column(String(50), default=None)
     provider_message_id: Mapped[str | None] = mapped_column(String(255), default=None)
-
-    # Error tracking
     error_message: Mapped[str | None] = mapped_column(Text, default=None)
 
-    # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now()
-    )
+    # Idempotency
+    dedup_key: Mapped[str | None] = mapped_column(String(200), default=None)
+
+    # Timestamps (created_at/updated_at via TimestampMixin)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     # Event tracking
-    triggered_by_event: Mapped[str | None] = mapped_column(
-        String(100), default=None
-    )  # Event that triggered this email
+    triggered_by_event: Mapped[str | None] = mapped_column(String(100), default=None)
     triggered_by_user_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id"), index=True, default=None
-    )  # User who triggered manual send
+    )
 
-    # Context data for debugging
-    context_data: Mapped[dict | None] = mapped_column(
-        JSONB, default=None
-    )  # Template context (sanitized)
+    # Sanitized template context for debugging
+    context_data: Mapped[dict | None] = mapped_column(JSONB, default=None)
 
-    # Relationships
     clinic: Mapped["Clinic"] = relationship(foreign_keys=[clinic_id])
     patient: Mapped["Patient | None"] = relationship(foreign_keys=[patient_id])
 
     __table_args__ = (
-        Index("idx_email_logs_clinic", "clinic_id"),
-        Index("idx_email_logs_status", "status"),
-        Index("idx_email_logs_created_at", "created_at"),
-        Index("idx_email_logs_patient", "patient_id"),
-        Index("idx_email_logs_template", "template_key"),
+        Index("idx_communication_messages_clinic", "clinic_id"),
+        Index("idx_communication_messages_status", "status"),
+        Index("idx_communication_messages_created_at", "created_at"),
+        Index("idx_communication_messages_patient", "patient_id"),
+        Index("idx_communication_messages_template", "template_key"),
+        # Drives the dispatch poll.
+        Index("idx_communication_messages_dispatch", "status", "next_attempt_at"),
+        # Idempotency: at most one row per (clinic, dedup_key) when set.
+        Index(
+            "uq_communication_messages_dedup",
+            "clinic_id",
+            "dedup_key",
+            unique=True,
+            postgresql_where=text("dedup_key IS NOT NULL"),
+        ),
     )

@@ -31,7 +31,7 @@ class NotificationHandlers:
     async def _handle_appointment_scheduled(data: dict[str, Any]) -> None:
         """Async handler for appointment scheduled."""
         from app.modules.agenda.models import Appointment
-        from app.modules.notifications.service import NotificationService
+        from app.modules.notifications.gateway import NotificationGateway
         from app.modules.patients.models import Patient
 
         try:
@@ -89,11 +89,11 @@ class NotificationHandlers:
                 }
 
                 # Send notification
-                await NotificationService.send_notification(
+                await NotificationGateway.enqueue(
                     db=db,
                     clinic_id=clinic_id,
                     notification_type="appointment_confirmation",
-                    to_email=patient.email,
+                    to_address=patient.email,
                     context=context,
                     patient_id=patient.id,
                     triggered_by_event="appointment.scheduled",
@@ -114,7 +114,7 @@ class NotificationHandlers:
     async def _handle_appointment_cancelled(data: dict[str, Any]) -> None:
         """Async handler for appointment cancelled."""
         from app.modules.agenda.models import Appointment
-        from app.modules.notifications.service import NotificationService
+        from app.modules.notifications.gateway import NotificationGateway
         from app.modules.patients.models import Patient
 
         try:
@@ -168,11 +168,11 @@ class NotificationHandlers:
                     "clinic_phone": clinic.phone if clinic else None,
                 }
 
-                await NotificationService.send_notification(
+                await NotificationGateway.enqueue(
                     db=db,
                     clinic_id=clinic_id,
                     notification_type="appointment_cancelled",
-                    to_email=patient.email,
+                    to_address=patient.email,
                     context=context,
                     patient_id=patient.id,
                     triggered_by_event="appointment.cancelled",
@@ -192,7 +192,7 @@ class NotificationHandlers:
     @staticmethod
     async def _handle_patient_created(data: dict[str, Any]) -> None:
         """Async handler for patient created."""
-        from app.modules.notifications.service import NotificationService
+        from app.modules.notifications.gateway import NotificationGateway
         from app.modules.patients.models import Patient
 
         try:
@@ -220,11 +220,11 @@ class NotificationHandlers:
                     "clinic_address": clinic.address if clinic else None,
                 }
 
-                await NotificationService.send_notification(
+                await NotificationGateway.enqueue(
                     db=db,
                     clinic_id=clinic_id,
                     notification_type="welcome",
-                    to_email=patient.email,
+                    to_address=patient.email,
                     context=context,
                     patient_id=patient.id,
                     triggered_by_event="patient.created",
@@ -249,7 +249,7 @@ class NotificationHandlers:
         Manual sends (printed/handed) don't trigger email.
         """
         from app.modules.budget.models import Budget, BudgetItem
-        from app.modules.notifications.service import NotificationService
+        from app.modules.notifications.gateway import NotificationGateway
         from app.modules.patients.models import Patient
 
         # Only send email if explicitly requested
@@ -329,11 +329,11 @@ class NotificationHandlers:
                     "clinic_phone": clinic.phone if clinic else None,
                 }
 
-                await NotificationService.send_notification(
+                await NotificationGateway.enqueue(
                     db=db,
                     clinic_id=clinic_id,
                     notification_type="budget_sent",
-                    to_email=patient.email,
+                    to_address=patient.email,
                     context=context,
                     patient_id=patient.id,
                     triggered_by_event="budget.sent",
@@ -358,7 +358,7 @@ class NotificationHandlers:
         Manual sends don't trigger email.
         """
         from app.modules.billing.models import Invoice, InvoiceItem
-        from app.modules.notifications.service import NotificationService
+        from app.modules.notifications.gateway import NotificationGateway
         from app.modules.patients.models import Patient
 
         # Only send email if explicitly requested
@@ -433,11 +433,11 @@ class NotificationHandlers:
                     "clinic_address": clinic.address if clinic else None,
                 }
 
-                await NotificationService.send_notification(
+                await NotificationGateway.enqueue(
                     db=db,
                     clinic_id=clinic_id,
                     notification_type="invoice_sent",
-                    to_email=patient.email,
+                    to_address=patient.email,
                     context=context,
                     patient_id=patient.id,
                     triggered_by_event="invoice.sent",
@@ -458,7 +458,7 @@ class NotificationHandlers:
     async def _handle_budget_accepted(data: dict[str, Any]) -> None:
         """Async handler for budget accepted."""
         from app.modules.budget.models import Budget
-        from app.modules.notifications.service import NotificationService
+        from app.modules.notifications.gateway import NotificationGateway
         from app.modules.patients.models import Patient
 
         try:
@@ -495,11 +495,11 @@ class NotificationHandlers:
                     "clinic_phone": clinic.phone if clinic else None,
                 }
 
-                await NotificationService.send_notification(
+                await NotificationGateway.enqueue(
                     db=db,
                     clinic_id=clinic_id,
                     notification_type="budget_accepted",
-                    to_email=patient.email,
+                    to_address=patient.email,
                     context=context,
                     patient_id=patient.id,
                     triggered_by_event="budget.accepted",

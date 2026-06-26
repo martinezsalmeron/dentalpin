@@ -64,9 +64,19 @@ class EventType:
     # sent_at). Only fired when ``budget_reminders_enabled`` for the clinic.
     BUDGET_REMINDER_SENT = "budget.reminder_sent"
 
-    # Email events
+    # Email events (legacy — kept for one release; see NOTIFICATION_* below).
+    # The notifications gateway dual-publishes these for channel=="email" so
+    # patient_timeline keeps working until it migrates to the generic events.
     EMAIL_SENT = "email.sent"
     EMAIL_FAILED = "email.failed"
+
+    # Notification (multi-channel) lifecycle events — published by the
+    # notifications gateway across every channel (email, whatsapp, …).
+    NOTIFICATION_QUEUED = "notification.queued"
+    NOTIFICATION_SENT = "notification.sent"
+    NOTIFICATION_FAILED = "notification.failed"
+    NOTIFICATION_DELIVERED = "notification.delivered"
+    NOTIFICATION_REPLY_RECEIVED = "notification.reply_received"
 
     # Invoice events
     INVOICE_CREATED = "invoice.created"

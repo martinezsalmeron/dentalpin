@@ -19,7 +19,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `copilot` | 0.1.0 | official | — | auto | yes | 5 | 3 | 1 | yes |
 | `media` | 0.2.0 | official | patients | auto | no | 4 | 7 | 1 | yes |
 | `migration_import` | 0.1.0 | official | patients, patients_clinical, clinical_notes, agenda, schedules, recalls, catalog, budget, odontogram, treatment_plan, billing, payments, media | manual | yes | 4 | 5 | 0 | yes |
-| `notifications` | 0.1.0 | official | patients, agenda, budget, billing, catalog | auto | no | 8 | 0 | 6 | yes |
+| `notifications` | 0.1.0 | official | patients, agenda, budget, billing, catalog | auto | no | 8 | 2 | 6 | yes |
 | `odontogram` | 0.3.0 | official | patients, catalog | auto | no | 4 | 4 | 0 | yes |
 | `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 34 | yes |
 | `patients` | 0.1.0 | official | — | auto | no | 2 | 3 | 0 | yes |
@@ -257,7 +257,9 @@ Email templates, preferences, SMTP, event-driven sending.
   - `notifications.settings.write`
   - `notifications.templates.read`
   - `notifications.templates.write`
-- **Events emitted:** —
+- **Events emitted:**
+  - `email.failed`
+  - `email.sent`
 - **Events consumed:**
   - `appointment.cancelled`
   - `appointment.scheduled`

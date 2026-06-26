@@ -44,8 +44,8 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `document.archived` | `EventType.DOCUMENT_ARCHIVED` | — | — |
 | `document.deleted` | `EventType.DOCUMENT_DELETED` | `media` | — |
 | `document.uploaded` | `EventType.DOCUMENT_UPLOADED` | `media` | `patient_timeline` |
-| `email.failed` | `EventType.EMAIL_FAILED` | — | `patient_timeline` |
-| `email.sent` | `EventType.EMAIL_SENT` | — | `patient_timeline` |
+| `email.failed` | `EventType.EMAIL_FAILED` | `notifications` | `patient_timeline` |
+| `email.sent` | `EventType.EMAIL_SENT` | `notifications` | `patient_timeline` |
 | `invoice.cancelled` | `EventType.INVOICE_CANCELLED` | — | — |
 | `invoice.created` | `EventType.INVOICE_CREATED` | — | — |
 | `invoice.issued` | `EventType.INVOICE_ISSUED` | `billing` | `patient_timeline` |
@@ -63,6 +63,11 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `migration.job.completed` | `EventType.MIGRATION_JOB_COMPLETED` | `migration_import` | — |
 | `migration.job.failed` | `EventType.MIGRATION_JOB_FAILED` | `migration_import` | — |
 | `migration.job.started` | `EventType.MIGRATION_JOB_STARTED` | `migration_import` | — |
+| `notification.delivered` | `EventType.NOTIFICATION_DELIVERED` | — | — |
+| `notification.failed` | `EventType.NOTIFICATION_FAILED` | — | — |
+| `notification.queued` | `EventType.NOTIFICATION_QUEUED` | — | — |
+| `notification.reply_received` | `EventType.NOTIFICATION_REPLY_RECEIVED` | — | — |
+| `notification.sent` | `EventType.NOTIFICATION_SENT` | — | — |
 | `odontogram.condition.changed` | `EventType.ODONTOGRAM_CONDITION_CHANGED` | — | — |
 | `odontogram.surface.updated` | `EventType.ODONTOGRAM_SURFACE_UPDATED` | — | — |
 | `odontogram.tooth.updated` | `EventType.ODONTOGRAM_TOOTH_UPDATED` | — | — |
@@ -361,14 +366,16 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 ### `email.failed`
 
 - **Constant:** `EventType.EMAIL_FAILED`
-- **Publishers:** _none in tree — declared but unused_
+- **Publishers:**
+  - `notifications` — `backend/app/modules/notifications/gateway.py:408`
 - **Subscribers:**
   - `patient_timeline`
 
 ### `email.sent`
 
 - **Constant:** `EventType.EMAIL_SENT`
-- **Publishers:** _none in tree — declared but unused_
+- **Publishers:**
+  - `notifications` — `backend/app/modules/notifications/gateway.py:406`
 - **Subscribers:**
   - `patient_timeline`
 
@@ -491,6 +498,36 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Constant:** `EventType.MIGRATION_JOB_STARTED`
 - **Publishers:**
   - `migration_import` — `backend/app/modules/migration_import/events.py:26`
+- **Subscribers:** —
+
+### `notification.delivered`
+
+- **Constant:** `EventType.NOTIFICATION_DELIVERED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `notification.failed`
+
+- **Constant:** `EventType.NOTIFICATION_FAILED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `notification.queued`
+
+- **Constant:** `EventType.NOTIFICATION_QUEUED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `notification.reply_received`
+
+- **Constant:** `EventType.NOTIFICATION_REPLY_RECEIVED`
+- **Publishers:** _none in tree — declared but unused_
+- **Subscribers:** —
+
+### `notification.sent`
+
+- **Constant:** `EventType.NOTIFICATION_SENT`
+- **Publishers:** _none in tree — declared but unused_
 - **Subscribers:** —
 
 ### `odontogram.condition.changed`

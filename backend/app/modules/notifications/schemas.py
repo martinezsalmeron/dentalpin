@@ -14,10 +14,12 @@ class EmailTemplateBase(BaseModel):
     """Base schema for email templates."""
 
     template_key: str = Field(..., max_length=100)
+    channel: str = Field(default="email", max_length=20)
     locale: str = Field(default="es", max_length=5)
-    subject: str = Field(..., max_length=255)
-    body_html: str
+    subject: str | None = Field(default=None, max_length=255)
+    body_html: str | None = None
     body_text: str | None = None
+    provider_template_name: str | None = Field(default=None, max_length=200)
     variables: dict | None = None
     description: str | None = Field(default=None, max_length=500)
     is_active: bool = True
@@ -61,6 +63,7 @@ class NotificationPreferenceBase(BaseModel):
     """Base schema for notification preferences."""
 
     email_enabled: bool = True
+    whatsapp_enabled: bool = False
     preferences: dict = Field(
         default_factory=lambda: {
             "appointment_confirmation": True,
@@ -85,6 +88,7 @@ class NotificationPreferenceUpdate(BaseModel):
     """Schema for updating notification preferences."""
 
     email_enabled: bool | None = None
+    whatsapp_enabled: bool | None = None
     preferences: dict | None = None
     preferred_locale: str | None = Field(default=None, max_length=5)
 
@@ -113,6 +117,7 @@ class NotificationTypeSettings(BaseModel):
     auto_send: bool = True
     enabled: bool = True
     hours_before: int | None = None  # For reminders
+    channels: list[str] | None = None  # Ordered fallback, e.g. ["whatsapp", "email"]
 
 
 class ClinicNotificationSettingsBase(BaseModel):
@@ -153,20 +158,23 @@ class ClinicNotificationSettingsResponse(ClinicNotificationSettingsBase):
 
 
 class EmailLogResponse(BaseModel):
-    """Schema for email log response."""
+    """Schema for a communication-message (outbox + audit) response."""
 
     id: UUID
     clinic_id: UUID
-    recipient_email: str
+    channel: str
+    to_address: str
     patient_id: UUID | None
     template_key: str
-    subject: str
+    subject: str | None
     status: str
-    provider: str
+    attempts: int
+    provider: str | None
     provider_message_id: str | None
     error_message: str | None
     created_at: datetime
     sent_at: datetime | None
+    delivered_at: datetime | None
     triggered_by_event: str | None
 
     model_config = {"from_attributes": True}
