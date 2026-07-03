@@ -273,7 +273,11 @@ class PatientService:
 
         await event_bus.publish(
             EventType.PATIENT_UPDATED,
-            {"patient_id": str(patient.id), "changes": list(data.keys())},
+            {
+                "patient_id": str(patient.id),
+                "clinic_id": str(patient.clinic_id),
+                "changes": list(data.keys()),
+            },
         )
         return patient
 
@@ -284,6 +288,6 @@ class PatientService:
 
         await event_bus.publish(
             EventType.PATIENT_ARCHIVED,
-            {"patient_id": str(patient.id)},
+            {"patient_id": str(patient.id), "clinic_id": str(patient.clinic_id)},
         )
         return patient

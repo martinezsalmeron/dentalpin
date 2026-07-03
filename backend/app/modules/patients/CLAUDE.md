@@ -44,8 +44,8 @@ fields stay manual.
 | Event | When | Payload keys |
 |---|---|---|
 | `patient.created` | `PatientService.create` succeeds | `patient_id`, `clinic_id` |
-| `patient.updated` | `PatientService.update` succeeds | `patient_id`, `changes` |
-| `patient.archived` | `PatientService.archive` (soft-delete) | `patient_id` |
+| `patient.updated` | `PatientService.update` succeeds | `patient_id`, `clinic_id`, `changes` |
+| `patient.archived` | `PatientService.archive` (soft-delete) | `patient_id`, `clinic_id` |
 
 See `service.py:113`, `service.py:131`, `service.py:142`.
 

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- fix(events): include `clinic_id` in the `patient.archived` and
+  `patient.updated` payloads (audit event-bus #11, #95). Every event
+  must carry the tenant per the multi-tenancy convention; the omission
+  broke the media archive cascade and forced the recalls handler into an
+  unscoped query.
+
 - feat(agents): new copilot tool `update_patient` (WRITE) — updates a
   patient's contact data (phone, email) via `PatientService.update_patient`.
   Identity fields stay manual.
