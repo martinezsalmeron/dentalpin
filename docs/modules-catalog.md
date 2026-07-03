@@ -11,25 +11,25 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | Module | Version | Category | Depends | Install | Removable | Permissions | Emits | Consumes | FE layer |
 |--------|---------|----------|---------|---------|-----------|-------------|-------|----------|----------|
 | `accounting_export` | 0.1.0 | official | billing, payments | manual | yes | 2 | 0 | 0 | yes |
-| `agenda` | 0.4.0 | official | patients, catalog, odontogram | auto | no | 4 | 5 | 0 | yes |
+| `agenda` | 0.4.0 | official | patients, catalog, odontogram | auto | no | 4 | 11 | 0 | yes |
 | `billing` | 0.1.0 | official | patients, catalog, budget, payments | auto | no | 3 | 3 | 1 | yes |
 | `budget` | 0.1.0 | official | patients, catalog, odontogram | auto | no | 5 | 7 | 4 | yes |
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 0 | yes |
-| `clinical_notes` | 0.2.0 | official | patients, odontogram, treatment_plan, media, agenda | auto | no | 2 | 0 | 0 | yes |
+| `clinical_notes` | 0.2.0 | official | patients, odontogram, treatment_plan, media, agenda | auto | no | 2 | 6 | 0 | yes |
 | `copilot` | 0.1.0 | official | — | auto | yes | 5 | 3 | 1 | yes |
 | `media` | 0.2.0 | official | patients | auto | no | 4 | 7 | 1 | yes |
 | `migration_import` | 0.1.0 | official | patients, patients_clinical, clinical_notes, agenda, schedules, recalls, catalog, budget, odontogram, treatment_plan, billing, payments, media | manual | yes | 4 | 5 | 0 | yes |
-| `notifications` | 0.1.0 | official | patients, agenda, budget, billing, catalog | auto | no | 8 | 3 | 6 | yes |
-| `odontogram` | 0.3.0 | official | patients, catalog | auto | no | 4 | 4 | 0 | yes |
+| `notifications` | 0.1.0 | official | patients, agenda, budget, billing, catalog | auto | no | 8 | 7 | 6 | yes |
+| `odontogram` | 0.3.0 | official | patients, catalog | auto | no | 4 | 7 | 0 | yes |
 | `patient_timeline` | 0.1.0 | official | patients | auto | no | 1 | 0 | 35 | yes |
 | `patients` | 0.1.0 | official | — | auto | no | 2 | 3 | 0 | yes |
-| `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 2 | 0 | yes |
+| `patients_clinical` | 0.1.0 | official | patients | auto | no | 4 | 1 | 0 | yes |
 | `payments` | 0.1.0 | official | patients, budget | auto | no | 4 | 3 | 2 | yes |
 | `periodontogram` | 0.1.0 | official | patients, odontogram | manual | yes | 2 | 1 | 2 | yes |
 | `recalls` | 0.1.0 | official | patients, agenda | auto | yes | 3 | 4 | 5 | yes |
 | `reports` | 0.1.0 | official | patients, agenda, catalog, budget, billing, payments | auto | no | 3 | 0 | 0 | yes |
 | `schedules` | 0.1.0 | official | agenda | auto | yes | 8 | 0 | 3 | yes |
-| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 22 | 5 | yes |
+| `treatment_plan` | 0.1.0 | official | patients, agenda, odontogram, catalog, budget, media | auto | no | 5 | 13 | 5 | yes |
 | `verifactu` | 0.1.0 | official | billing, catalog | manual | yes | 5 | 1 | 1 | yes |
 | `whatsapp_kapso` | 0.1.0 | community | notifications, patients | manual | yes | 2 | 0 | 0 | yes |
 
@@ -70,6 +70,12 @@ Appointments, scheduling, cabinets.
 - **Events emitted:**
   - `agenda.visit_note_updated`
   - `appointment.cabinet_changed`
+  - `appointment.cancelled`
+  - `appointment.checked_in`
+  - `appointment.completed`
+  - `appointment.confirmed`
+  - `appointment.in_treatment`
+  - `appointment.no_show`
   - `appointment.scheduled`
   - `appointment.status_changed`
   - `appointment.updated`
@@ -160,7 +166,13 @@ Polymorphic clinical notes (administrative, diagnosis, treatment, treatment plan
 - **Permissions:**
   - `clinical_notes.notes.read`
   - `clinical_notes.notes.write`
-- **Events emitted:** —
+- **Events emitted:**
+  - `clinical_notes.administrative_created`
+  - `clinical_notes.appointment_administrative_created`
+  - `clinical_notes.appointment_clinical_created`
+  - `clinical_notes.diagnosis_created`
+  - `clinical_notes.plan_created`
+  - `clinical_notes.treatment_created`
 - **Events consumed:** —
 - **Module CLAUDE.md:** [`backend/app/modules/clinical_notes/CLAUDE.md`](../backend/app/modules/clinical_notes/CLAUDE.md)
 
@@ -261,7 +273,11 @@ Email templates, preferences, SMTP, event-driven sending.
 - **Events emitted:**
   - `email.failed`
   - `email.sent`
+  - `notification.delivered`
+  - `notification.failed`
+  - `notification.queued`
   - `notification.reply_received`
+  - `notification.sent`
 - **Events consumed:**
   - `appointment.cancelled`
   - `appointment.scheduled`
@@ -287,6 +303,9 @@ Dental charting, tooth state, clinical treatments.
   - `odontogram.treatments.write`
   - `odontogram.write`
 - **Events emitted:**
+  - `odontogram.condition.changed`
+  - `odontogram.surface.updated`
+  - `odontogram.tooth.updated`
   - `odontogram.treatment.added`
   - `odontogram.treatment.deleted`
   - `odontogram.treatment.performed`
