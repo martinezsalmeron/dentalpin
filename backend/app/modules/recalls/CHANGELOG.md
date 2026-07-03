@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- fix(security): reject `create` when `patient_id` belongs to another
+  clinic (audit multi-tenancy #1, #95). Previously the recall was
+  inserted with the caller's `clinic_id` but no check that the patient
+  was theirs, and the list/export join had no `Patient.clinic_id`
+  predicate — so a caller could point a recall at a foreign patient and
+  read that patient's name/phone back. `create` now 404s on a foreign
+  patient (HTTP and copilot tool paths), and the list join is scoped to
+  `Patient.clinic_id` as defense in depth.
+
 - feat(agents): expose `tools.py` for the copilot agentic layer —
   `list_due_recalls`, `get_recall` (READ; the latter `exposes_free_text`),
   `create_recall`, `log_contact_attempt`, `snooze_recall`,

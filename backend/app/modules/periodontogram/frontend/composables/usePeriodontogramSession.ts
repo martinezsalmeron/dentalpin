@@ -155,7 +155,7 @@ export function usePeriodontogramSession() {
   async function discardDraft(snapshotId: string): Promise<void> {
     saving.value = true
     try {
-      await api.delete(`/api/v1/periodontogram/snapshots/${snapshotId}`)
+      await api.del(`/api/v1/periodontogram/snapshots/${snapshotId}`)
       dirty.value = false
     } finally {
       saving.value = false

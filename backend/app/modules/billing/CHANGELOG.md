@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- fix(migrations): add the invoice-number uniqueness backstop that the
+  `Invoice` model comment already claimed existed (audit S3/C3, #93).
+  New migration `bil_0005` creates two partial unique indexes —
+  `ix_invoices_clinic_number_unique` on `(clinic_id, invoice_number)`
+  and `ix_invoices_series_sequential_unique` on
+  `(series_id, sequential_number)`, both `WHERE … IS NOT NULL` so drafts
+  don't collide. Duplicate fiscal numbers are now rejected at the DB
+  level, not just by the (serialized) generator. Model `__table_args__`
+  updated to declare the indexes; misleading comment removed.
+
 - feat(service): add `InvoiceService.list_for_export(clinic_id, date_from,
   date_to, statuses)` — non-paginated read returning non-draft invoices
   with items + allocated payments eager-loaded, for the new

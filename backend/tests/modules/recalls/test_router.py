@@ -60,6 +60,52 @@ async def test_create_then_duplicate_guard_updates_existing(
 
 
 @pytest.mark.asyncio
+async def test_create_recall_for_foreign_patient_rejected(
+    client: AsyncClient,
+    auth_headers: dict,
+    test_clinic: Clinic,
+    db_session: AsyncSession,
+):
+    """A recall may not be created against a patient in another clinic —
+    that would leak the foreign patient's name/phone back through the
+    list/export (audit multi-tenancy #1)."""
+    from uuid import uuid4
+
+    other_clinic = Clinic(
+        id=uuid4(),
+        name="Other",
+        tax_id="B77777777",
+        address={"street": "x", "city": "y"},
+        settings={},
+    )
+    db_session.add(other_clinic)
+    foreign_patient = Patient(
+        id=uuid4(),
+        clinic_id=other_clinic.id,
+        first_name="Foreign",
+        last_name="Patient",
+        phone="+34600000000",
+    )
+    db_session.add(foreign_patient)
+    await db_session.commit()
+
+    res = await client.post(
+        "/api/v1/recalls/",
+        json={
+            "patient_id": str(foreign_patient.id),
+            "due_month": "2026-08-01",
+            "reason": "hygiene",
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 404, res.text
+
+    # And the caller's list stays empty — nothing leaked.
+    lst = await client.get("/api/v1/recalls/?page_size=10", headers=auth_headers)
+    assert lst.json()["total"] == 0
+
+
+@pytest.mark.asyncio
 async def test_log_attempt_auto_transitions_status(
     client: AsyncClient, auth_headers: dict, test_patient: Patient
 ):

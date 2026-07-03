@@ -115,12 +115,15 @@ async def create_recall(
     _: Annotated[None, Depends(require_permission("recalls.write"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[RecallResponse]:
-    recall, _created = await RecallService.create(
-        db,
-        clinic_id=ctx.clinic_id,
-        data=data.model_dump(),
-        recommended_by=ctx.user_id,
-    )
+    try:
+        recall, _created = await RecallService.create(
+            db,
+            clinic_id=ctx.clinic_id,
+            data=data.model_dump(),
+            recommended_by=ctx.user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await db.commit()
     return ApiResponse(data=_serialise(recall))
 

@@ -17,6 +17,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -180,8 +181,6 @@ class Invoice(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        # Note: uq_invoice_clinic_number replaced with partial unique index in migration
-        # ix_invoices_clinic_number_unique (WHERE invoice_number IS NOT NULL)
         Index("idx_invoices_clinic", "clinic_id"),
         Index("idx_invoices_clinic_patient", "clinic_id", "patient_id"),
         Index("idx_invoices_clinic_status", "clinic_id", "status"),
@@ -190,6 +189,24 @@ class Invoice(Base, TimestampMixin):
         Index("idx_invoices_budget", "budget_id"),
         Index("idx_invoices_credit_note_for", "credit_note_for_id"),
         Index("idx_invoices_series", "series_id"),
+        # Fiscal uniqueness backstop (bil_0005). Partial — drafts carry
+        # NULL identifiers and must not collide. Enforced at the DB level
+        # because number generation being serialized on the series row
+        # lock is not, by itself, a guarantee against duplicates.
+        Index(
+            "ix_invoices_clinic_number_unique",
+            "clinic_id",
+            "invoice_number",
+            unique=True,
+            postgresql_where=text("invoice_number IS NOT NULL"),
+        ),
+        Index(
+            "ix_invoices_series_sequential_unique",
+            "series_id",
+            "sequential_number",
+            unique=True,
+            postgresql_where=text("series_id IS NOT NULL AND sequential_number IS NOT NULL"),
+        ),
     )
 
 

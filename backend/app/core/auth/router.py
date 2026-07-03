@@ -373,6 +373,24 @@ async def create_user(
             detail=error_msg,
         )
 
+    # Resolve the target clinic. A caller may only create a membership in
+    # a clinic they administer themselves — otherwise an admin of clinic A
+    # could mint an admin membership in clinic B by passing its id.
+    clinic_id = data.clinic_id if data.clinic_id else ctx.clinic_id
+    if clinic_id != ctx.clinic_id:
+        caller_is_admin = await db.execute(
+            select(ClinicMembership.id).where(
+                ClinicMembership.user_id == ctx.user_id,
+                ClinicMembership.clinic_id == clinic_id,
+                ClinicMembership.role == "admin",
+            )
+        )
+        if caller_is_admin.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not administer the target clinic",
+            )
+
     # Check if email already exists
     result = await db.execute(select(User).where(User.email == data.email))
     if result.scalar_one_or_none():
@@ -392,7 +410,6 @@ async def create_user(
     await db.flush()
 
     # Create clinic membership
-    clinic_id = data.clinic_id if data.clinic_id else ctx.clinic_id
     membership = ClinicMembership(
         user_id=user.id,
         clinic_id=clinic_id,

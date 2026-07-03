@@ -1,16 +1,20 @@
 """Media module - document and file management."""
 
+import logging
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import EventType
 from app.core.plugins import BaseModule
+from app.database import async_session_maker
 
 from .models import Document, MediaAttachment
 from .router import router
 from .service import DocumentService
+
+logger = logging.getLogger(__name__)
 
 
 class MediaModule(BaseModule):
@@ -63,11 +67,29 @@ class MediaModule(BaseModule):
             EventType.PATIENT_ARCHIVED: self._on_patient_archived,
         }
 
-    async def _on_patient_archived(self, db: AsyncSession, data: dict) -> None:
-        """Cascade soft-delete documents when patient is archived."""
-        from uuid import UUID
+    async def _on_patient_archived(self, data: dict) -> None:
+        """Cascade soft-archive of a patient's documents when they are
+        archived.
 
-        patient_id = UUID(data["patient_id"])
-        clinic_id = UUID(data["clinic_id"])
+        The event bus calls handlers as ``handler(data)`` and publishes
+        before the request commits, so this opens its own session and
+        commits independently (same pattern as the recalls handler).
+        """
+        patient_id = data.get("patient_id")
+        clinic_id = data.get("clinic_id")
+        if not patient_id or not clinic_id:
+            logger.error(
+                "media._on_patient_archived: missing patient_id/clinic_id in payload: %r",
+                data,
+            )
+            return
 
-        await DocumentService.archive_patient_documents(db, clinic_id, patient_id)
+        async with async_session_maker() as db:
+            try:
+                await DocumentService.archive_patient_documents(
+                    db, UUID(str(clinic_id)), UUID(str(patient_id))
+                )
+                await db.commit()
+            except Exception as exc:
+                logger.error("media._on_patient_archived failed: %s", exc, exc_info=True)
+                await db.rollback()

@@ -115,26 +115,36 @@ cd frontend && npm run lint
 
 Source of truth: `backend/app/core/auth/permissions.py`.
 
+Roles get **core** grants from `ROLE_PERMISSIONS` plus **module** grants
+merged at runtime from each module's `manifest.role_permissions` (prefixed
+with the module name) via `get_role_permissions()`. The core table is
+deliberately small — clinical/module permissions live in the modules:
+
 ```python
 ROLE_PERMISSIONS: Final[dict[str, list[str]]] = {
-    "admin": ["*"],
-    "dentist": ["clinical.*"],
-    "hygienist": ["clinical.patients.read", "clinical.appointments.*"],
-    "assistant": ["clinical.patients.*", "clinical.appointments.*"],
-    "receptionist": ["clinical.patients.*", "clinical.appointments.*"],
+    "admin": ["*"],                                # wildcard — every namespace
+    "dentist": ["agents.view", "agents.supervise"],
+    "hygienist": [],
+    "assistant": [],
+    "receptionist": [],
 }
+# A module manifest contributes, e.g.:
+#   role_permissions = {"receptionist": ["patients.read", "patients.write"]}
+# → merged in as "patients.read" / "patients.write" for receptionist.
 ```
 
-Wildcards: `*` = all; `module.*` = all in that module.
+Wildcards: `*` = all; `module.*` = all in that module. Matching strips the
+trailing `.*` to a dotted prefix, so `billing.*` matches `billing.x.y` but
+not `billing_x.y`.
 
-**Backend — protect endpoints:**
+**Backend — protect endpoints:** (permission strings are module-prefixed)
 ```python
 from app.core.auth.dependencies import get_clinic_context, require_permission
 
 @router.get("/patients")
 async def list_patients(
     ctx: Annotated[ClinicContext, Depends(get_clinic_context)],
-    _: Annotated[None, Depends(require_permission("clinical.patients.read"))],
+    _: Annotated[None, Depends(require_permission("patients.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     ...
@@ -158,7 +168,7 @@ if (can(PERMISSIONS.patients.write)) { /* ... */ }
 </UButton>
 ```
 
-Adding a permission: add to role mapping → module `get_permissions()` → `require_permission()` on endpoint → `config/permissions.ts` → use via `usePermissions().can(PERMISSIONS.x.y)`.
+Adding a permission: return it from the module's `get_permissions()` (unprefixed) → grant it to roles in the module's `manifest.role_permissions` → `require_permission("module.resource.action")` on the endpoint → add to `config/permissions.ts` → use via `usePermissions().can(PERMISSIONS.x.y)`. (Core-level permissions like `admin.*`/`agents.*` are the exception — those live in `ROLE_PERMISSIONS`/`CORE_PERMISSIONS`.)
 
 ---
 
