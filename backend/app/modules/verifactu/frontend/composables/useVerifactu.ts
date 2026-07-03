@@ -209,7 +209,7 @@ export const useVerifactu = () => {
       return r.data
     },
     async listQueue(state?: string) {
-      const r = await api.get<ApiResponse<VerifactuQueueItem[]>>('/api/v1/verifactu/queue', { params: state ? { state } : undefined })
+      const r = await api.get<ApiResponse<VerifactuQueueItem[]>>('/api/v1/verifactu/queue', { query: state ? { state } : undefined })
       return r.data
     },
     async retryRecord(id: string, opts: { regenerate?: boolean } = {}) {

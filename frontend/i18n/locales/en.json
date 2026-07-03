@@ -461,7 +461,8 @@
     },
     "messages": {
       "updated": "Dental chart updated",
-      "error": "Error updating dental chart"
+      "error": "Error updating dental chart",
+      "loadError": "Couldn't load the dental chart"
     },
     "actions": {
       "save": "Save",

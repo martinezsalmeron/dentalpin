@@ -65,6 +65,7 @@ const toast = useToast()
 
 const {
   loading,
+  error,
   fetchOdontogram,
   fetchPatientHistory,
   getToothRecord,
@@ -181,12 +182,16 @@ const pendingTreatment = computed(() => {
 // Lifecycle
 // ============================================================================
 
-onMounted(async () => {
+async function loadAll(patientId: string) {
   await Promise.all([
-    fetchOdontogram(props.patientId),
-    fetchTreatments(props.patientId),
-    fetchTimeline(props.patientId)
+    fetchOdontogram(patientId),
+    fetchTreatments(patientId),
+    fetchTimeline(patientId)
   ])
+}
+
+onMounted(async () => {
+  await loadAll(props.patientId)
   window.addEventListener('keydown', handleKeydown)
 })
 
@@ -707,6 +712,21 @@ defineExpose({
         class="w-8 h-8 animate-spin text-subtle"
       />
     </div>
+
+    <!-- Load error — never fall through to a fabricated healthy mouth. -->
+    <UAlert
+      v-else-if="error"
+      icon="i-lucide-triangle-alert"
+      color="error"
+      variant="subtle"
+      :title="t('odontogram.messages.loadError')"
+      :actions="[{
+        label: t('common.retry'),
+        color: 'error',
+        variant: 'soft',
+        onClick: () => loadAll(props.patientId)
+      }]"
+    />
 
     <!-- Chart -->
     <div

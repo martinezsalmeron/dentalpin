@@ -489,7 +489,8 @@
     },
     "messages": {
       "updated": "Odontograma actualizado",
-      "error": "Error al actualizar odontograma"
+      "error": "Error al actualizar odontograma",
+      "loadError": "No se pudo cargar el odontograma"
     },
     "actions": {
       "save": "Guardar",

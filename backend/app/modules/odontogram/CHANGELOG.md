@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- fix(frontend): render an error state with retry when the odontogram
+  fetch fails, instead of falling through to a fabricated all-healthy
+  32-tooth chart (audit S5, #95). Adds `odontogram.messages.loadError`.
+
 - feat(ux): ``DiagnosisMode`` now publishes a ``treatmentsToothById`` map
   and an ``onTeethHover`` callback through the
   ``odontogram.diagnosis.sidebar`` slot ctx, so the clinical-notes

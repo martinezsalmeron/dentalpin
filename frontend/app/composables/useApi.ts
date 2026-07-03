@@ -10,9 +10,25 @@ interface UseApiOptions {
   body?: object | null
   headers?: Record<string, string>
   skipAuth?: boolean
+  // Query-string params appended to the path. Undefined/null values are
+  // skipped. Provided because $fetch's own ``query`` was not wired here,
+  // so callers that passed ``{ params: … }`` had it silently dropped
+  // (e.g. the Veri*Factu queue tabs all rendered the same list).
+  query?: Record<string, string | number | boolean | undefined | null>
   // Optional AbortSignal so callers can cancel in-flight requests
   // (debounced lookups, component unmount, etc.).
   signal?: AbortSignal
+}
+
+function _withQuery(path: string, query?: UseApiOptions['query']): string {
+  if (!query) return path
+  const qs = new URLSearchParams()
+  for (const [k, v] of Object.entries(query)) {
+    if (v !== undefined && v !== null) qs.set(k, String(v))
+  }
+  const s = qs.toString()
+  if (!s) return path
+  return path.includes('?') ? `${path}&${s}` : `${path}?${s}`
 }
 
 export function useApi() {
@@ -30,7 +46,7 @@ export function useApi() {
     path: string,
     options: UseApiOptions = {}
   ): Promise<T> {
-    const { skipAuth, method, body, headers: optionHeaders, signal } = options
+    const { skipAuth, method, body, headers: optionHeaders, signal, query } = options
 
     const headers: Record<string, string> = {
       ...(optionHeaders || {})
@@ -41,8 +57,10 @@ export function useApi() {
       headers.Authorization = `Bearer ${auth.accessToken.value}`
     }
 
+    const url = _withQuery(path, query)
+
     try {
-      return await $fetch<T>(path, {
+      return await $fetch<T>(url, {
         baseURL: apiBaseUrl.value,
         timeout: 10000, // 10 seconds
         method,
@@ -67,7 +85,7 @@ export function useApi() {
         if (refreshed) {
           // Retry the request with new token
           headers.Authorization = `Bearer ${auth.accessToken.value}`
-          return await $fetch<T>(path, {
+          return await $fetch<T>(url, {
             baseURL: apiBaseUrl.value,
             method,
             body,
