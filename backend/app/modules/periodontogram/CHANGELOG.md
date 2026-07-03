@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- fix(frontend): call `api.del` instead of the non-existent `api.delete`
+  when discarding a draft (audit frontend #1, #95). `useApi` exposes
+  `del`, so `discardDraft` threw a TypeError before any request fired —
+  and the one-draft-per-patient unique index then blocked starting any
+  new session for that patient.
+
 - feat(ui): dark mode support across the whole periodontogram surface.
   SEPA profile strip, tooth silhouettes, implant fixture, site
   markers, arch tables, indices banner, history banner and empty
