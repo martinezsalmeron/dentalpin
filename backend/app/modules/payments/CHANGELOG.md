@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- fix(security): lock the payment row `FOR UPDATE` before the refund
+  cap check (audit S3/C1, #97). Two concurrent refunds could both read
+  `already_refunded` before either inserted, letting Σrefund exceed
+  `payment.amount` and driving `net_paid` negative. The row lock
+  serializes them so the cap holds.
+
 - feat(agents): two new copilot tools — `record_payment` (WRITE, wraps
   `workflow.record_payment`, allocation-sum errors surfaced structurally)
   and `patient_payment_history` (READ, collection axis only: drops
