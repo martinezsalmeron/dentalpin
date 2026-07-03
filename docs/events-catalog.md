@@ -587,7 +587,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.PATIENT_ARCHIVED`
 - **Publishers:**
-  - `patients` — `backend/app/modules/patients/service.py:285`
+  - `patients` — `backend/app/modules/patients/service.py:289`
 - **Subscribers:**
   - `media`
   - `periodontogram`
@@ -656,21 +656,21 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.RECALL_CANCELLED`
 - **Publishers:**
-  - `recalls` — `backend/app/modules/recalls/service.py:354`
+  - `recalls` — `backend/app/modules/recalls/service.py:376`
 - **Subscribers:** —
 
 ### `recall.completed`
 
 - **Constant:** `EventType.RECALL_COMPLETED`
 - **Publishers:**
-  - `recalls` — `backend/app/modules/recalls/service.py:371`
+  - `recalls` — `backend/app/modules/recalls/service.py:393`
 - **Subscribers:** —
 
 ### `recall.created`
 
 - **Constant:** `EventType.RECALL_CREATED`
 - **Publishers:**
-  - `recalls` — `backend/app/modules/recalls/service.py:276`
+  - `recalls` — `backend/app/modules/recalls/service.py:298`
 - **Subscribers:** —
 
 ### `recall.due`
@@ -683,7 +683,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.RECALL_SNOOZED`
 - **Publishers:**
-  - `recalls` — `backend/app/modules/recalls/service.py:334`
+  - `recalls` — `backend/app/modules/recalls/service.py:356`
 - **Subscribers:** —
 
 ### `tenant.resolved`

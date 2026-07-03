@@ -18,8 +18,20 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.models import Clinic, User
-from app.modules.billing.models import Invoice
+from app.modules.billing.models import Invoice, InvoiceSeries
 from app.modules.patients.models import Patient
+
+
+async def _make_series(db: AsyncSession, clinic: Clinic):
+    series = InvoiceSeries(
+        id=uuid4(),
+        clinic_id=clinic.id,
+        prefix="FAC",
+        series_type="invoice",
+    )
+    db.add(series)
+    await db.flush()
+    return series.id
 
 
 @pytest_asyncio.fixture
@@ -79,7 +91,7 @@ async def test_duplicate_series_sequential_rejected(
     test_user_id,
     db_session: AsyncSession,
 ) -> None:
-    series_id = uuid4()
+    series_id = await _make_series(db_session, test_clinic)
     db_session.add(
         _issued_invoice(
             test_clinic,
