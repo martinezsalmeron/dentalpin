@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- fix(frontend): the queue tabs (Pendientes/Rechazadas/Fallos) rendered
+  the same unfiltered list — `listQueue` passed `{ params }`, which
+  `useApi` dropped. Switched to the new `useApi` `query` option so the
+  `?state=` filter is actually sent (audit S5, #95).
+
 - refactor(perms): migrate hardcoded ``can('verifactu.{settings.read, settings.configure, queue.manage, records.read, environment.promote}')`` strings across the settings pages, queue, ``InvoiceVerifactuSlot`` and ``RejectedGlobalBanner`` to the typed ``PERMISSIONS.verifactu.*`` (new entries in the host permissions config).
 - refactor(errors): switch ``catch (e: any)`` to ``catch (e: unknown)`` across ``producer`` / ``queue`` / ``vat-mapping`` / ``certificate`` / settings index / ``InvoiceVerifactuSlot`` and route messages through the shared ``errorMessage`` / ``errorStatus`` helpers.
 - chore(migrations): isolate ``vfy_0001`` from the main upgrade
