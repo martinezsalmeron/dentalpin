@@ -98,7 +98,14 @@ class RecallService:
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[Recall], int]:
-        conditions = [Recall.clinic_id == clinic_id]
+        # Both predicates matter: Recall.clinic_id scopes the rows, and
+        # Patient.clinic_id keeps the join from ever surfacing a foreign
+        # patient's name/phone if a stray cross-clinic recall exists
+        # (defense in depth behind create()'s patient-clinic guard).
+        conditions = [
+            Recall.clinic_id == clinic_id,
+            Patient.clinic_id == clinic_id,
+        ]
 
         if not filters.include_archived_patients:
             conditions.append(Patient.status != "archived")
@@ -239,7 +246,22 @@ class RecallService:
         Returns ``(recall, created)`` — ``created`` is False when the
         duplicate guard updated an existing row instead of inserting.
         Publishes ``recall.created`` only when ``created`` is True.
+
+        Raises ``ValueError`` if ``patient_id`` does not belong to
+        ``clinic_id`` — otherwise a caller (HTTP or copilot tool) could
+        create a recall pointing at another clinic's patient and read
+        that patient's name/phone back through the list/export (audit
+        multi-tenancy #1).
         """
+        patient_in_clinic = await db.execute(
+            select(Patient.id).where(
+                Patient.id == data["patient_id"],
+                Patient.clinic_id == clinic_id,
+            )
+        )
+        if patient_in_clinic.scalar_one_or_none() is None:
+            raise ValueError("Patient not found in this clinic")
+
         existing = await RecallService.find_pending_for(
             db, clinic_id, data["patient_id"], data["reason"]
         )
