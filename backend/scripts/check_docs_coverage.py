@@ -162,7 +162,19 @@ HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 ROUTER_DECORATOR_RE = re.compile(
     r"@router\.(?P<method>get|post|put|patch|delete)\(\s*[\"'](?P<path>[^\"']*)[\"']",
 )
-PUBLISH_RE = re.compile(r"event_bus\.publish\(\s*(?:EventType\.[A-Z_]+|[\"'](?P<lit>[\w.]+)[\"'])")
+# First arg of an event_bus.publish(...) call. Captures the four shapes a
+# module can publish through so the "events.md required" rule below fires
+# for enum-based and dynamic publishers too, not just string literals
+# (audit S4, #94 — the old regex only had a group for the literal case,
+# so EventType.X publishers were invisible and the rule never triggered).
+PUBLISH_RE = re.compile(
+    r"event_bus\.publish\(\s*(?:"
+    r"EventType\.(?P<const>[A-Z_]+)"
+    r"|(?P<enum>[A-Z]\w*\.[A-Z_]+)"
+    r"|[\"'](?P<lit>[\w.]+)[\"']"
+    r"|(?P<var>[a-z_]\w*)"
+    r")"
+)
 
 
 def _scan_module_endpoints(mod_dir: Path, mount_prefix: str) -> list[tuple[str, str]]:
@@ -188,9 +200,14 @@ def _scan_module_publishers(mod_dir: Path) -> set[str]:
         if "event_bus.publish" not in text:
             continue
         for match in PUBLISH_RE.finditer(text):
-            lit = match.group("lit")
-            if lit:
-                out.add(lit)
+            token = (
+                match.group("const")
+                or match.group("lit")
+                or match.group("enum")
+                or match.group("var")
+            )
+            if token:
+                out.add(token)
     return out
 
 

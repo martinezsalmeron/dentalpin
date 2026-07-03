@@ -79,32 +79,60 @@ from app.core.plugins.loader import discover_modules  # noqa: E402
 # Event publisher discovery (regex over source — good enough, no AST needed)
 # ---------------------------------------------------------------------------
 
-# Matches:
-#   event_bus.publish(EventType.PATIENT_CREATED, ...)
-#   event_bus.publish("patient.created", ...)
-#   await event_bus.publish(EventType.X, ...)
-PUBLISH_RE = re.compile(
-    r"event_bus\.publish\(\s*(?:EventType\.(?P<const>[A-Z_]+)|[\"'](?P<lit>[\w.]+)[\"'])"
-)
+# Captures the first argument of an ``event_bus.publish(...)`` call —
+# ``\s*`` spans newlines so multi-line calls work. The arg is one of:
+#   EventType.PATIENT_CREATED     -> dotted constant on the EventType enum
+#   OdontogramEventType.TOOTH_...  -> dotted constant on a module-local enum
+#   "patient.created"             -> string literal
+#   specific / event_name         -> a bare identifier (dynamic dispatch)
+PUBLISH_ARG_RE = re.compile(r"event_bus\.publish\(\s*(?P<arg>[A-Za-z_][\w.]*|[\"'][\w.]+[\"'])")
+# Any ``<Enum>.<CONST>`` reference, and any local ``CONST = "dotted.value"``
+# assignment (module-local event enums like ``OdontogramEventType``).
+ENUM_REF_RE = re.compile(r"\b([A-Za-z_]\w*)\.([A-Z][A-Z0-9_]*)\b")
+LOCAL_CONST_RE = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*[\"']([\w.]+)[\"']", re.MULTILINE)
 
 
-def _event_value(name_or_const: str) -> str | None:
-    """Return the string event name from a constant name or literal."""
-    if hasattr(EventType, name_or_const):
-        value = getattr(EventType, name_or_const)
-        return value if isinstance(value, str) else None
-    # Already a literal value.
-    return name_or_const
+def _known_event_values() -> set[str]:
+    return {
+        v
+        for v in (getattr(EventType, a) for a in dir(EventType) if not a.startswith("_"))
+        if isinstance(v, str)
+    }
+
+
+def _resolve_token(arg: str, local_consts: dict[str, str]) -> str | None:
+    """Resolve a publish first-arg token to its event value, or None if it
+    is a bare identifier (dynamic dispatch that must be handled separately)."""
+    if arg[0] in "\"'":
+        return arg.strip("\"'")
+    if "." in arg:
+        cls, _, const = arg.rpartition(".")
+        if cls == "EventType":
+            value = getattr(EventType, const, None)
+            return value if isinstance(value, str) else None
+        # Module-local enum (e.g. OdontogramEventType.SURFACE_UPDATED):
+        # resolve by the constant's same-file string assignment.
+        return local_consts.get(const)
+    return None  # bare identifier → dynamic
 
 
 def _scan_publishers() -> dict[str, list[tuple[str, str, int]]]:
     """Walk source files, return {event_value: [(module, relpath, lineno)]}.
 
-    ``module`` is the module name when the file lives under
-    ``backend/app/modules/<name>/``; otherwise the segment after
-    ``backend/app/`` (e.g. ``core/agents``) for visibility into core.
+    Handles three publish shapes so the catalog never falsely reports a
+    live event as unpublished (audit S4, #94):
+      1. ``publish(EventType.X, ...)`` / string literal — direct.
+      2. ``publish(ModuleEnum.X, ...)`` — resolved via the constant's
+         same-file string assignment.
+      3. ``publish(<var>, ...)`` — dynamic dispatch (agenda status map,
+         clinical_notes note-type map, notifications gateway). Every event
+         constant *referenced in that file* is attributed to its module.
+
+    ``module`` is the module name for files under
+    ``backend/app/modules/<name>/``; otherwise ``core:<segment>``.
     """
-    publishers: dict[str, list[tuple[str, str, int]]] = defaultdict(list)
+    known_values = _known_event_values()
+    publishers: set[tuple[str, str, str, int]] = set()
     roots = [MODULES_ROOT, BACKEND_ROOT / "app" / "core"]
 
     for root in roots:
@@ -116,16 +144,44 @@ def _scan_publishers() -> dict[str, list[tuple[str, str, int]]]:
                 continue
             relpath = path.relative_to(REPO_ROOT).as_posix()
             module_name = _module_name_for(path)
-            for match in PUBLISH_RE.finditer(text):
-                lineno = text.count("\n", 0, match.start()) + 1
-                event = _event_value(match.group("const") or match.group("lit"))
-                if event is None:
-                    continue
-                publishers[event].append((module_name, relpath, lineno))
 
-    for entries in publishers.values():
-        entries.sort()
-    return publishers
+            # Same-file constant table (module-local event enums).
+            local_consts = {
+                name: value for name, value in LOCAL_CONST_RE.findall(text) if value in known_values
+            }
+
+            has_dynamic = False
+            for match in PUBLISH_ARG_RE.finditer(text):
+                lineno = text.count("\n", 0, match.start()) + 1
+                value = _resolve_token(match.group("arg"), local_consts)
+                if value is not None:
+                    publishers.add((value, module_name, relpath, lineno))
+                else:
+                    has_dynamic = True
+
+            if has_dynamic:
+                # Attribute every event constant referenced anywhere in the
+                # file — the dispatch variable is fed from these.
+                for m in re.finditer(r"EventType\.([A-Z_]+)", text):
+                    value = getattr(EventType, m.group(1), None)
+                    if isinstance(value, str):
+                        lineno = text.count("\n", 0, m.start()) + 1
+                        publishers.add((value, module_name, relpath, lineno))
+                for m in ENUM_REF_RE.finditer(text):
+                    value = local_consts.get(m.group(2))
+                    if value is not None:
+                        lineno = text.count("\n", 0, m.start()) + 1
+                        publishers.add((value, module_name, relpath, lineno))
+
+    result: dict[str, list[tuple[str, str, int]]] = defaultdict(list)
+    seen: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for value, module_name, relpath, lineno in sorted(publishers):
+        # One row per (event, module, file) — keep the earliest line.
+        if (module_name, relpath) in seen[value]:
+            continue
+        seen[value].add((module_name, relpath))
+        result[value].append((module_name, relpath, lineno))
+    return result
 
 
 def _module_name_for(path: Path) -> str:
