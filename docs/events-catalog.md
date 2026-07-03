@@ -418,7 +418,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.INVOICE_SENT`
 - **Publishers:**
-  - `billing` — `backend/app/modules/billing/router.py:681`
+  - `billing` — `backend/app/modules/billing/router.py:697`
 - **Subscribers:**
   - `notifications`
 
@@ -635,7 +635,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 
 - **Constant:** `EventType.PAYMENT_REFUNDED`
 - **Publishers:**
-  - `payments` — `backend/app/modules/payments/workflow.py:324`
+  - `payments` — `backend/app/modules/payments/workflow.py:329`
 - **Subscribers:**
   - `billing`
 

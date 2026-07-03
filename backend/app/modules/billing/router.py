@@ -581,11 +581,27 @@ async def issue_invoice(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ApiResponse[InvoiceResponse]:
     """Issue an invoice or credit note (transition from draft to issued)."""
+    from sqlalchemy import select
+
+    from .models import Invoice
+
     invoice = await InvoiceService.get_invoice(
         db, ctx.clinic_id, invoice_id, include_items=True, include_payments=False
     )
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Serialize concurrent issue of the same draft (audit S3/C4, #97): lock
+    # the row and refresh status, so a second request sees the committed
+    # "issued" state and the workflow's draft-only guard rejects it —
+    # instead of both burning a sequential number + chaining a duplicate
+    # AEAT record.
+    await db.execute(
+        select(Invoice.id)
+        .where(Invoice.id == invoice_id, Invoice.clinic_id == ctx.clinic_id)
+        .with_for_update()
+    )
+    await db.refresh(invoice, attribute_names=["status"])
 
     # If this is a credit note, load the original invoice for the hook
     original_invoice = None
@@ -839,9 +855,11 @@ async def apply_payment_to_invoice(
     # Lazy imports: billing imports payments (depends), but payments
     # doesn't import billing — keeping the top-level imports clean
     # prevents circular initialisation through catalog/budget.
+    from sqlalchemy import select
+
     from app.modules.payments.workflow import PaymentWorkflowError, record_payment
 
-    from .models import InvoicePayment
+    from .models import Invoice, InvoicePayment
 
     invoice = await InvoiceService.get_invoice(
         db, ctx.clinic_id, invoice_id, include_items=False, include_payments=False
@@ -853,6 +871,15 @@ async def apply_payment_to_invoice(
             status_code=400,
             detail=f"Cannot record payment for invoice with status '{invoice.status}'",
         )
+
+    # Serialize concurrent payments against this invoice (audit S3/C2, #97):
+    # lock the invoice row so two requests can't both read the full balance
+    # and each record a payment, over-collecting past the total.
+    await db.execute(
+        select(Invoice.id)
+        .where(Invoice.id == invoice_id, Invoice.clinic_id == ctx.clinic_id)
+        .with_for_update()
+    )
 
     total_paid, balance_due = await compute_paid_summary(db, ctx.clinic_id, invoice_id)
     if payload.amount > balance_due:

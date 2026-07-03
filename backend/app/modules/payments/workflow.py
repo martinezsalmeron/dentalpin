@@ -278,6 +278,11 @@ async def refund_payment(
     if amount <= 0:
         raise PaymentWorkflowError("Refund amount must be > 0")
 
+    # Serialize concurrent refunds on the same payment (audit S3/C1, #97):
+    # lock the payment row so the sum-and-cap check below can't race with
+    # another refund and let Σrefund exceed payment.amount.
+    await db.execute(select(Payment.id).where(Payment.id == payment.id).with_for_update())
+
     result = await db.execute(
         select(func.coalesce(func.sum(Refund.amount), Decimal("0"))).where(
             Refund.payment_id == payment.id
