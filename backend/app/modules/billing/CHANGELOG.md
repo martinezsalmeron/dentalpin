@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- fix(security): lock the invoice row `FOR UPDATE` on the payment and
+  issue endpoints (audit S3/C2 + C4, #97). Two concurrent payments could
+  both read the full `balance_due` and over-collect past the total; two
+  concurrent issues of one draft could both pass the draft-only guard,
+  burning a sequential number and chaining a duplicate AEAT record. The
+  issue path also refreshes `status` under the lock so the second caller
+  sees `issued`. Guard tests in `test_issue_and_payment_guards`.
+
 - fix(migrations): add the invoice-number uniqueness backstop that the
   `Invoice` model comment already claimed existed (audit S3/C3, #93).
   New migration `bil_0005` creates two partial unique indexes —
