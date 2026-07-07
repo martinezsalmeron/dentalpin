@@ -50,6 +50,10 @@ Vendor-agnostic under the hood (an LLM-provider abstraction), with provider, mod
 
 Visit [**dentalpin.com**](https://www.dentalpin.com) for product info, features, and commercial details.
 
+## Community
+
+Join our [**Telegram channel**](https://t.me/dentalpin) for support, installation help, and questions.
+
 ## Screenshots
 
 ### AI Copilot
