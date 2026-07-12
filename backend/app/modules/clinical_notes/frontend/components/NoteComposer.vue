@@ -110,10 +110,11 @@ async function refreshTemplates() {
 }
 
 function applyTemplate(tpl: NoteTemplate) {
+  const resolvedBody = t(tpl.body_i18n_key) || tpl.body
   if (body.value.trim()) {
-    body.value = `${body.value.trim()}\n\n${tpl.body}`
+    body.value = `${body.value.trim()}\n\n${resolvedBody}`
   } else {
-    body.value = tpl.body
+    body.value = resolvedBody
   }
 }
 
@@ -200,7 +201,7 @@ watch(category, refreshTemplates)
           <button
             type="button"
             class="ml-1"
-            :aria-label="t('actions.remove', 'Quitar')"
+            :aria-label="t('actions.remove')"
             @click="removeAttached(doc.id)"
           >
             <UIcon
