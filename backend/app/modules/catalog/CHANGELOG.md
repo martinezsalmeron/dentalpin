@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- i18n: add French translations to seed data (Moroccan VAT rates).
+
 - feat(tools): expose `list_catalog_items` + `get_catalog_item` READ
   agent tools (wrap `CatalogService`) so the copilot can read the
   treatment catalog — name, code, category, price, duration, scope.

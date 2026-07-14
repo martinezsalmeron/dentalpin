@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- i18n: add French locale (`fr.json`); Moroccan patient name seed data.
+
 - fix(events): include `clinic_id` in the `patient.archived` and
   `patient.updated` payloads (audit event-bus #11, #95). Every event
   must carry the tenant per the multi-tenancy convention; the omission

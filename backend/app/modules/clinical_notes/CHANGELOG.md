@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- i18n: add French translations to seed data; add `body_i18n_key` to
+  template responses. Simplified label resolution in service layer:
+  removed `_resolve_catalog_by_type` and `lang` parameter from feed
+  endpoints; labels now resolve via `["es","en","fr"]` fallback from
+  catalog `names` dict, returning empty string when `catalog_item_id`
+  is NULL. Date formatting in NoteCard, PlanNotesTimeline, and
+  PatientClinicalNotesByPlan now uses locale-aware
+  `toLocaleString(locale)` to respect the active language.
+
 - feat(appointment-owner): add ``owner_type='appointment'`` with two
   new ``note_type`` values (``appointment_clinical`` +
   ``appointment_administrative``) so notes can attach to a

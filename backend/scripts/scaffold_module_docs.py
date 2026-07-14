@@ -69,11 +69,10 @@ from check_docs_coverage import (  # noqa: E402
 
 from app.core.plugins.loader import discover_modules  # noqa: E402
 
-LOCALE_LABELS = {"en": "English", "es": "Español", "fr": "Français"}
+LOCALE_LABELS = {"en": "English", "es": "Español"}
 STUB_NOTE_BY_LOCALE = {
     "en": "_Scaffolded stub — replace with proper documentation when this module is next touched._",
     "es": "_Esqueleto generado automáticamente — reemplazar con documentación real cuando se toque este módulo._",
-    "fr": "_Bogue généré automatiquement — remplacer par une documentation réelle lors de la prochaine modification de ce module._",
 }
 
 
