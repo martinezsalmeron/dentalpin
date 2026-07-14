@@ -26,7 +26,8 @@
     "menu": "Menú",
     "openMenu": "Abrir menú",
     "close": "Cerrar",
-    "toggleSidebar": "Alternar barra lateral"
+    "toggleSidebar": "Alternar barra lateral",
+    "defaultClinicName": "Clínica"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -1190,7 +1191,9 @@
         "scheduled": "Operación programada. Aplica los cambios para completarla.",
         "applied": "Cambios aplicados correctamente."
       }
-    }
+    },
+    "navLabel": "Categorías de ajustes",
+    "attentionRequired": "Atención requerida"
   },
   "selector": {
     "recentPatients": "Pacientes recientes",
@@ -1299,7 +1302,8 @@
     "yesterday": "Ayer",
     "copied": "Copiado al portapapeles",
     "copy": "Copiar",
-    "copyFailed": "No se pudo copiar"
+    "copyFailed": "No se pudo copiar",
+    "durationMinutes": "{value} min"
   },
   "cabinet": {
     "toast": {

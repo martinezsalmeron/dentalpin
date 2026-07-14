@@ -20,7 +20,9 @@
       "discardTitle": "Abandonner le brouillon",
       "discardDescription": "Toutes les données saisies dans cette session seront supprimées. Cette action est irréversible.",
       "discardButton": "Abandonner",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "closeSession": "Clôturer la session",
+      "discardDraft": "Abandonner le brouillon"
     },
     "indices": {
       "bop": "Saignement",
@@ -77,9 +79,6 @@
       "loadFailed": "Impossible de charger le parodontogramme.",
       "saveFailed": "Impossible d'enregistrer la modification.",
       "checkConnection": "Vérifiez votre connexion et réessayez."
-    },
-    "chart": {
-      "ariaLabel": "Parodontogramme — arcades supérieure et inférieure"
     }
   }
 }

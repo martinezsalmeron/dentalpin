@@ -20,7 +20,9 @@
       "discardTitle": "Discard draft",
       "discardDescription": "All data entered in this session will be deleted. This action cannot be undone.",
       "discardButton": "Discard",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "closeSession": "Close session",
+      "discardDraft": "Discard draft"
     },
     "indices": {
       "bop": "Bleeding",
@@ -77,9 +79,6 @@
       "loadFailed": "Could not load the periodontogram.",
       "saveFailed": "Could not save the change.",
       "checkConnection": "Check your connection and try again."
-    },
-    "chart": {
-      "ariaLabel": "Periodontogram — upper and lower arches"
     }
   }
 }
