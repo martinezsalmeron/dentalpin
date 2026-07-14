@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- i18n: add French locale (`fr.json`); Moroccan patient name seed data.
+- i18n: replace hardcoded strings in patient components with `$t()`
+  calls; add French patient names/contacts to demo seed data.
 
 - fix(events): include `clinic_id` in the `patient.archived` and
   `patient.updated` payloads (audit event-bus #11, #95). Every event

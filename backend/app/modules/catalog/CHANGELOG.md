@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- i18n: add French translations to seed data (Moroccan VAT rates).
+- i18n: add French names/descriptions to seed data (categories,
+  treatment items, session labels, VAT type names).
 
 - feat(tools): expose `list_catalog_items` + `get_catalog_item` READ
   agent tools (wrap `CatalogService`) so the copilot can read the

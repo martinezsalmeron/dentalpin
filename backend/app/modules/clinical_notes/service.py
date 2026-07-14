@@ -596,7 +596,9 @@ def _build_linked(
         treatment = treatments_by_id.get(note.owner_id)
         teeth = [t.tooth_number for t in (treatment.teeth or [])] if treatment else []
         catalog = treatment.catalog_item if treatment else None
-        label = _resolve_label(catalog.names if catalog else None) or ""
+        label = _resolve_label(catalog.names if catalog else None) or (
+            treatment.clinical_type if treatment else None
+        )
         return {
             "kind": "treatment",
             "id": note.owner_id,
@@ -787,7 +789,7 @@ async def list_grouped_for_patient(
                     _resolve_label(
                         treatment.catalog_item.names if treatment.catalog_item else None,
                     )
-                    or ""
+                    or treatment.clinical_type
                 )
                 teeth = [t.tooth_number for t in (treatment.teeth or [])]
             treatment_groups.append(
