@@ -36,206 +36,152 @@ from .models import (
     ClinicalNote,
 )
 
-# UI strings stay in Spanish per project convention (CLAUDE.md).
+# Translation dicts resolved via t() at seed time — after set_language().
 _ADMIN_BODIES = (
-    t(
-        {
-            "es": "Prefiere citas por la tarde. Avisar 24h antes para confirmar.",
-            "en": "Prefers afternoon appointments. Notify 24h before to confirm.",
-            "fr": "Préfère les rendez-vous l'après-midi. Prévenir 24h avant pour confirmer.",
-        }
-    ),
-    t(
-        {
-            "es": "Llamar siempre al móvil; no responde al fijo.",
-            "en": "Always call mobile; does not answer landline.",
-            "fr": "Appeler toujours le portable ; ne répond pas au fixe.",
-        }
-    ),
-    t(
-        {
-            "es": "Pago habitual con tarjeta. Solicita factura simplificada.",
-            "en": "Usually pays by card. Requests simplified invoice.",
-            "fr": "Paiement habituel par carte. Demande une facture simplifiée.",
-        }
-    ),
-    t(
-        {
-            "es": "Acude acompañado/a de un familiar; documentar consentimiento.",
-            "en": "Attends with a family member; document consent.",
-            "fr": "Vient accompagné(e) d'un membre de la famille ; documenter le consentement.",
-        }
-    ),
-    t(
-        {
-            "es": "Idioma preferido para comunicaciones: español.",
-            "en": "Preferred language for communications: Spanish.",
-            "fr": "Langue préférée pour les communications : espagnol.",
-        }
-    ),
-    t(
-        {
-            "es": "Solicita recordatorio por WhatsApp el día anterior.",
-            "en": "Requests WhatsApp reminder the day before.",
-            "fr": "Demande un rappel par WhatsApp la veille.",
-        }
-    ),
-    t(
-        {
-            "es": "Tiene movilidad reducida; reservar cabinete accesible.",
-            "en": "Has reduced mobility; reserve accessible room.",
-            "fr": "Mobilité réduite ; réserver le cabinet accessible.",
-        }
-    ),
+    {
+        "es": "Prefiere citas por la tarde. Avisar 24h antes para confirmar.",
+        "en": "Prefers afternoon appointments. Notify 24h before to confirm.",
+        "fr": "Préfère les rendez-vous l'après-midi. Prévenir 24h avant pour confirmer.",
+    },
+    {
+        "es": "Llamar siempre al móvil; no responde al fijo.",
+        "en": "Always call mobile; does not answer landline.",
+        "fr": "Appeler toujours le portable ; ne répond pas au fixe.",
+    },
+    {
+        "es": "Pago habitual con tarjeta. Solicita factura simplificada.",
+        "en": "Usually pays by card. Requests simplified invoice.",
+        "fr": "Paiement habituel par carte. Demande une facture simplifiée.",
+    },
+    {
+        "es": "Acude acompañado/a de un familiar; documentar consentimiento.",
+        "en": "Attends with a family member; document consent.",
+        "fr": "Vient accompagné(e) d'un membre de la famille ; documenter le consentement.",
+    },
+    {
+        "es": "Idioma preferido para comunicaciones: español.",
+        "en": "Preferred language for communications: Spanish.",
+        "fr": "Langue préférée pour les communications : espagnol.",
+    },
+    {
+        "es": "Solicita recordatorio por WhatsApp el día anterior.",
+        "en": "Requests WhatsApp reminder the day before.",
+        "fr": "Demande un rappel par WhatsApp la veille.",
+    },
+    {
+        "es": "Tiene movilidad reducida; reservar cabinete accesible.",
+        "en": "Has reduced mobility; reserve accessible room.",
+        "fr": "Mobilité réduite ; réserver le cabinet accessible.",
+    },
 )
 
 _DIAGNOSIS_BODIES = (
-    t(
-        {
-            "es": "Caries oclusal incipiente; valorar empaste en próxima visita.",
-            "en": "Incipient occlusal caries; evaluate filling at next visit.",
-            "fr": "Carie occlusale naissante ; évaluer l'obturation à la prochaine visite.",
-        }
-    ),
-    t(
-        {
-            "es": "Movilidad grado I y sospecha de absceso periapical. Solicitar radiografía periapical.",
-            "en": "Grade I mobility and suspected periapical abscess. Request periapical X-ray.",
-            "fr": "Mobilité grade I et suspicion d'abcès périapical. Demander une radiographie périapicale.",
-        }
-    ),
-    t(
-        {
-            "es": "Sensibilidad al frío en el cuadrante; descartar recesión gingival.",
-            "en": "Cold sensitivity in quadrant; rule out gingival recession.",
-            "fr": "Sensibilité au froid dans le quadrant ; éliminer la récession gingivale.",
-        }
-    ),
-    t(
-        {
-            "es": "Bruxismo evidente con desgaste oclusal generalizado. Considerar férula de descarga.",
-            "en": "Evident bruxism with generalized occlusal wear. Consider occlusal splint.",
-            "fr": "Bruxisme évident avec usure occlusale généralisée. Envisager une gouttière d'occlusion.",
-        }
-    ),
-    t(
-        {
-            "es": "Encía inflamada con sangrado al sondaje. Refuerzo de higiene oral.",
-            "en": "Inflamed gums with bleeding on probing. Oral hygiene reinforcement.",
-            "fr": "Gencives enflammées avec saignement au sondage. Renforcement de l'hygiène buccale.",
-        }
-    ),
-    t(
-        {
-            "es": "Restauración antigua filtrada; recomendar sustitución.",
-            "en": "Leaky old restoration; recommend replacement.",
-            "fr": "Obturation ancienne fuyante ; recommander le remplacement.",
-        }
-    ),
-    t(
-        {
-            "es": "Tercer molar incluido sin sintomatología actual; mantener en observación.",
-            "en": "Impacted third molar, currently asymptomatic; keep under observation.",
-            "fr": "Troisième molaire inclus, actuellement asymptomatique ; maintenir sous observation.",
-        }
-    ),
+    {
+        "es": "Caries oclusal incipiente; valorar empaste en próxima visita.",
+        "en": "Incipient occlusal caries; evaluate filling at next visit.",
+        "fr": "Carie occlusale naissante ; évaluer l'obturation à la prochaine visite.",
+    },
+    {
+        "es": "Movilidad grado I y sospecha de absceso periapical. Solicitar radiografía periapical.",
+        "en": "Grade I mobility and suspected periapical abscess. Request periapical X-ray.",
+        "fr": "Mobilité grade I et suspicion d'abcès périapical. Demander une radiographie périapicale.",
+    },
+    {
+        "es": "Sensibilidad al frío en el cuadrante; descartar recesión gingival.",
+        "en": "Cold sensitivity in quadrant; rule out gingival recession.",
+        "fr": "Sensibilité au froid dans le quadrant ; éliminer la récession gingivale.",
+    },
+    {
+        "es": "Bruxismo evidente con desgaste oclusal generalizado. Considerar férula de descarga.",
+        "en": "Evident bruxism with generalized occlusal wear. Consider occlusal splint.",
+        "fr": "Bruxisme évident avec usure occlusale généralisée. Envisager une gouttière d'occlusion.",
+    },
+    {
+        "es": "Encía inflamada con sangrado al sondaje. Refuerzo de higiene oral.",
+        "en": "Inflamed gums with bleeding on probing. Oral hygiene reinforcement.",
+        "fr": "Gencives enflammées avec saignement au sondage. Renforcement de l'hygiène buccale.",
+    },
+    {
+        "es": "Restauración antigua filtrada; recomendar sustitución.",
+        "en": "Leaky old restoration; recommend replacement.",
+        "fr": "Obturation ancienne fuyante ; recommander le remplacement.",
+    },
+    {
+        "es": "Tercer molar incluido sin sintomatología actual; mantener en observación.",
+        "en": "Impacted third molar, currently asymptomatic; keep under observation.",
+        "fr": "Troisième molaire inclus, actuellement asymptomatique ; maintenir sous observation.",
+    },
 )
 
 _TREATMENT_BODIES = (
-    t(
-        {
-            "es": "Se aplica anestesia local (articaína 4% con epinefrina 1:100.000) sin incidencias.",
-            "en": "Local anesthesia applied (articaine 4% with epinephrine 1:100,000) without incident.",
-            "fr": "Anesthésie locale appliquée (articaine 4% avec épinéphrine 1:100 000) sans incident.",
-        }
-    ),
-    t(
-        {
-            "es": "Apertura cameral e irrigación con hipoclorito sódico al 5,25%. Localizados 3 conductos.",
-            "en": "Chamber access and irrigation with 5.25% sodium hypochlorite. 3 canals located.",
-            "fr": "Ouverture pulpaire et irrigation à l'hypochlorite de sodium 5,25 %. 3 canaux localisés.",
-        }
-    ),
-    t(
-        {
-            "es": "Adaptación marginal correcta tras pulido. Paciente refiere ausencia de molestias.",
-            "en": "Correct marginal adaptation after polishing. Patient reports no discomfort.",
-            "fr": "Adaptation marginale correcte après polissage. Patient déclare absence de gêne.",
-        }
-    ),
-    t(
-        {
-            "es": "Se coloca dique de goma para aislamiento absoluto. Buena cooperación del paciente.",
-            "en": "Rubber dam placed for absolute isolation. Good patient cooperation.",
-            "fr": "Digue en place pour l'isolement absolu. Bonne coopération du patient.",
-        }
-    ),
-    t(
-        {
-            "es": "Se recomienda cita de control en dos semanas para revisar oclusión.",
-            "en": "Follow-up appointment recommended in two weeks to check occlusion.",
-            "fr": "Rendez-vous de contrôle recommandé dans deux semaines pour vérifier l'occlusion.",
-        }
-    ),
-    t(
-        {
-            "es": "Procedimiento sin complicaciones. Indicaciones postoperatorias entregadas.",
-            "en": "Procedure without complications. Post-operative instructions given.",
-            "fr": "Procédure sans complications. Consignes post-opératoires remises.",
-        }
-    ),
-    t(
-        {
-            "es": "Cementado definitivo con cemento de ionómero de vidrio. Ajuste oclusal verificado.",
-            "en": "Permanent cementation with glass ionomer cement. Occlusal adjustment verified.",
-            "fr": "Cimentation définitive au ciment verre ionomère. Réglage occlusal vérifié.",
-        }
-    ),
+    {
+        "es": "Se aplica anestesia local (articaína 4% con epinefrina 1:100.000) sin incidencias.",
+        "en": "Local anesthesia applied (articaine 4% with epinephrine 1:100,000) without incident.",
+        "fr": "Anesthésie locale appliquée (articaine 4% avec épinéphrine 1:100 000) sans incident.",
+    },
+    {
+        "es": "Apertura cameral e irrigación con hipoclorito sódico al 5,25%. Localizados 3 conductos.",
+        "en": "Chamber access and irrigation with 5.25% sodium hypochlorite. 3 canals located.",
+        "fr": "Ouverture pulpaire et irrigation à l'hypochlorite de sodium 5,25 %. 3 canaux localisés.",
+    },
+    {
+        "es": "Adaptación marginal correcta tras pulido. Paciente refiere ausencia de molestias.",
+        "en": "Correct marginal adaptation after polishing. Patient reports no discomfort.",
+        "fr": "Adaptation marginale correcte après polissage. Patient déclare absence de gêne.",
+    },
+    {
+        "es": "Se coloca dique de goma para aislamiento absoluto. Buena cooperación del paciente.",
+        "en": "Rubber dam placed for absolute isolation. Good patient cooperation.",
+        "fr": "Digue en place pour l'isolement absolu. Bonne coopération du patient.",
+    },
+    {
+        "es": "Se recomienda cita de control en dos semanas para revisar oclusión.",
+        "en": "Follow-up appointment recommended in two weeks to check occlusion.",
+        "fr": "Rendez-vous de contrôle recommandé dans deux semaines pour vérifier l'occlusion.",
+    },
+    {
+        "es": "Procedimiento sin complicaciones. Indicaciones postoperatorias entregadas.",
+        "en": "Procedure without complications. Post-operative instructions given.",
+        "fr": "Procédure sans complications. Consignes post-opératoires remises.",
+    },
+    {
+        "es": "Cementado definitivo con cemento de ionómero de vidrio. Ajuste oclusal verificado.",
+        "en": "Permanent cementation with glass ionomer cement. Occlusal adjustment verified.",
+        "fr": "Cimentation définitive au ciment verre ionomère. Réglage occlusal vérifié.",
+    },
 )
 
 _PLAN_BODIES = (
-    t(
-        {
-            "es": "Plan acordado con el paciente. Priorizar tratamientos urgentes en cuadrante superior derecho.",
-            "en": "Plan agreed with patient. Prioritize urgent treatments in the upper right quadrant.",
-            "fr": "Plan convenu avec le patient. Prioriser les traitements urgents dans le quadrant supérieur droit.",
-        }
-    ),
-    t(
-        {
-            "es": "Paciente solicita financiación; gestionar opción a 6 meses sin intereses.",
-            "en": "Patient requests financing; arrange 6-month interest-free option.",
-            "fr": "Patient demande un financement ; organiser l'option 6 mois sans intérêts.",
-        }
-    ),
-    t(
-        {
-            "es": "Se acuerda iniciar fase higiénica antes de los tratamientos restauradores.",
-            "en": "Hygiene phase agreed before restorative treatments.",
-            "fr": "Phase d'hygiène convenue avant les traitements restaurateurs.",
-        }
-    ),
-    t(
-        {
-            "es": "Pendiente de presentación al cónyuge; confirmará aceptación tras consulta familiar.",
-            "en": "Pending presentation to spouse; will confirm acceptance after family consultation.",
-            "fr": "En attente de présentation au conjoint ; confirmera l'acceptation après consultation familiale.",
-        }
-    ),
-    t(
-        {
-            "es": "Se aplica descuento del 10% por tratamiento integral.",
-            "en": "10% discount applied for comprehensive treatment.",
-            "fr": "Remise de 10 % appliquée pour le traitement global.",
-        }
-    ),
-    t(
-        {
-            "es": "Paciente prefiere posponer la fase estética hasta después del verano.",
-            "en": "Patient prefers to postpone the aesthetic phase until after summer.",
-            "fr": "Patient préfère reporter la phase esthétique après l'été.",
-        }
-    ),
+    {
+        "es": "Plan acordado con el paciente. Priorizar tratamientos urgentes en cuadrante superior derecho.",
+        "en": "Plan agreed with patient. Prioritize urgent treatments in the upper right quadrant.",
+        "fr": "Plan convenu avec le patient. Prioriser les traitements urgents dans le quadrant supérieur droit.",
+    },
+    {
+        "es": "Paciente solicita financiación; gestionar opción a 6 meses sin intereses.",
+        "en": "Patient requests financing; arrange 6-month interest-free option.",
+        "fr": "Patient demande un financement ; organiser l'option 6 mois sans intérêts.",
+    },
+    {
+        "es": "Se acuerda iniciar fase higiénica antes de los tratamientos restauradores.",
+        "en": "Hygiene phase agreed before restorative treatments.",
+        "fr": "Phase d'hygiène convenue avant les traitements restaurateurs.",
+    },
+    {
+        "es": "Pendiente de presentación al cónyuge; confirmará aceptación tras consulta familiar.",
+        "en": "Pending presentation to spouse; will confirm acceptance after family consultation.",
+        "fr": "En attente de présentation au conjoint ; confirmera l'acceptation après consultation familiale.",
+    },
+    {
+        "es": "Se aplica descuento del 10% por tratamiento integral.",
+        "en": "10% discount applied for comprehensive treatment.",
+        "fr": "Remise de 10 % appliquée pour le traitement global.",
+    },
+    {
+        "es": "Paciente prefiere posponer la fase estética hasta después del verano.",
+        "en": "Patient prefers to postpone the aesthetic phase until after summer.",
+        "fr": "Patient préfère reporter la phase esthétique après l'été.",
+    },
 )
 
 
@@ -285,7 +231,7 @@ async def seed_clinical_notes_demo(
                 owner_type=NOTE_OWNER_PATIENT,
                 owner_id=patient.id,
                 tooth_number=None,
-                body=_ADMIN_BODIES[cursor % len(_ADMIN_BODIES)],
+                body=t(_ADMIN_BODIES[cursor % len(_ADMIN_BODIES)]),
                 author_id=author(cursor),
                 created_at=admin_at,
                 updated_at=admin_at,
@@ -302,7 +248,7 @@ async def seed_clinical_notes_demo(
                 owner_type=NOTE_OWNER_PATIENT,
                 owner_id=patient.id,
                 tooth_number=tooth_by_patient.get(patient.id),
-                body=_DIAGNOSIS_BODIES[cursor % len(_DIAGNOSIS_BODIES)],
+                body=t(_DIAGNOSIS_BODIES[cursor % len(_DIAGNOSIS_BODIES)]),
                 author_id=author(cursor),
                 created_at=diag_at,
                 updated_at=diag_at,
@@ -328,7 +274,7 @@ async def seed_clinical_notes_demo(
                 owner_type=NOTE_OWNER_PLAN,
                 owner_id=plan.id,
                 tooth_number=None,
-                body=_PLAN_BODIES[cursor % len(_PLAN_BODIES)],
+                body=t(_PLAN_BODIES[cursor % len(_PLAN_BODIES)]),
                 author_id=author(cursor),
                 created_at=plan_at,
                 updated_at=plan_at,
@@ -355,7 +301,7 @@ async def seed_clinical_notes_demo(
                 owner_type=NOTE_OWNER_TREATMENT,
                 owner_id=tx.id,
                 tooth_number=None,
-                body=_TREATMENT_BODIES[cursor % len(_TREATMENT_BODIES)],
+                body=t(_TREATMENT_BODIES[cursor % len(_TREATMENT_BODIES)]),
                 author_id=author(cursor),
                 created_at=tx_at,
                 updated_at=tx_at,

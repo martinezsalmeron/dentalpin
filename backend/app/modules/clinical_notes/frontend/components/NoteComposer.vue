@@ -80,7 +80,7 @@ function attachmentIcon(doc: Document): string {
   return 'i-lucide-paperclip'
 }
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { metaFor } = useNoteTypeMeta()
 const { listTemplates } = useClinicalNotes()
 
@@ -110,7 +110,7 @@ async function refreshTemplates() {
 }
 
 function applyTemplate(tpl: NoteTemplate) {
-  const resolvedBody = t(tpl.body_i18n_key) || tpl.body
+  const resolvedBody = te(tpl.body_i18n_key) ? t(tpl.body_i18n_key) : tpl.body
   if (body.value.trim()) {
     body.value = `${body.value.trim()}\n\n${resolvedBody}`
   } else {
