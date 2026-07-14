@@ -81,10 +81,18 @@ def get_clinic_data() -> dict:
     """Get clinic data in current language."""
     return {
         "id": CLINIC_ID,
-        "name": t({"es": "Clínica Dental Demo", "en": "Demo Dental Clinic", "fr": "Clinique Dentaire Démo"}),
+        "name": t(
+            {
+                "es": "Clínica Dental Demo",
+                "en": "Demo Dental Clinic",
+                "fr": "Clinique Dentaire Démo",
+            }
+        ),
         "tax_id": t({"es": "B12345678", "en": "12-3456789", "fr": "12-3456789"}),
         "address": {
-            "street": t({"es": "Calle Gran Vía 123", "en": "123 Main Street", "fr": "123 Rue Principale"}),
+            "street": t(
+                {"es": "Calle Gran Vía 123", "en": "123 Main Street", "fr": "123 Rue Principale"}
+            ),
             "city": t({"es": "Madrid", "en": "New York", "fr": "Paris"}),
             "postal_code": t({"es": "28013", "en": "10001", "fr": "75001"}),
             "country": t({"es": "España", "en": "USA", "fr": "France"}),
@@ -104,8 +112,14 @@ def get_clinic_data() -> dict:
             },
         },
         "cabinets": [
-            {"name": t({"es": "Gabinete 1", "en": "Room 1", "fr": "Cabinet 1"}), "color": "#3B82F6"},
-            {"name": t({"es": "Gabinete 2", "en": "Room 2", "fr": "Cabinet 2"}), "color": "#10B981"},
+            {
+                "name": t({"es": "Gabinete 1", "en": "Room 1", "fr": "Cabinet 1"}),
+                "color": "#3B82F6",
+            },
+            {
+                "name": t({"es": "Gabinete 2", "en": "Room 2", "fr": "Cabinet 2"}),
+                "color": "#10B981",
+            },
         ],
     }
 
@@ -262,7 +276,11 @@ PATIENTS_I18N = [
             "notes": "Traitement d'orthodontie en cours.",
         },
         "phone": {"es": "+34 612 345 002", "en": "+1 (212) 555-0002", "fr": "+33 6 12 34 56 02"},
-        "email": {"es": "lucia.rodriguez@email.com", "en": "olivia.wilson@email.com", "fr": "lea.laurent@email.com"},
+        "email": {
+            "es": "lucia.rodriguez@email.com",
+            "en": "olivia.wilson@email.com",
+            "fr": "lea.laurent@email.com",
+        },
         "date_of_birth": date(2010, 7, 22),
         "emergency_contact": {
             "es": {
@@ -299,7 +317,11 @@ PATIENTS_I18N = [
         "en": {"first_name": "James", "last_name": "Anderson", "notes": None},
         "fr": {"first_name": "Lucas", "last_name": "Rousseau", "notes": None},
         "phone": {"es": "+34 612 345 003", "en": "+1 (212) 555-0003", "fr": "+33 6 12 34 56 03"},
-        "email": {"es": "miguel.gonzalez@email.com", "en": "james.anderson@email.com", "fr": "lucas.rousseau@email.com"},
+        "email": {
+            "es": "miguel.gonzalez@email.com",
+            "en": "james.anderson@email.com",
+            "fr": "lucas.rousseau@email.com",
+        },
         "date_of_birth": date(1998, 11, 8),
         "emergency_contact": {
             "es": {
@@ -347,7 +369,11 @@ PATIENTS_I18N = [
             "notes": "Sensibilité dentaire. Utiliser l'anesthésie avec précaution.",
         },
         "phone": {"es": "+34 612 345 004", "en": "+1 (212) 555-0004", "fr": "+33 6 12 34 56 04"},
-        "email": {"es": "carmen.diaz@email.com", "en": "emma.taylor@email.com", "fr": "chloe.bertrand@email.com"},
+        "email": {
+            "es": "carmen.diaz@email.com",
+            "en": "emma.taylor@email.com",
+            "fr": "chloe.bertrand@email.com",
+        },
         "date_of_birth": date(1995, 5, 30),
         "emergency_contact": {
             "es": {
@@ -377,7 +403,11 @@ PATIENTS_I18N = [
                 {
                     "name": {"es": "Látex", "en": "Latex", "fr": "Latex"},
                     "severity": "medium",
-                    "reaction": {"es": "Irritación cutánea", "en": "Skin irritation", "fr": "Irritation cutanée"},
+                    "reaction": {
+                        "es": "Irritación cutánea",
+                        "en": "Skin irritation",
+                        "fr": "Irritation cutanée",
+                    },
                 },
             ],
             "adverse_reactions_to_anesthesia": True,
@@ -422,7 +452,11 @@ PATIENTS_I18N = [
             "notes": "Enceinte (troisième trimestre). Éviter les radiographies.",
         },
         "phone": {"es": "+34 612 345 006", "en": "+1 (212) 555-0006", "fr": "+33 6 12 34 56 06"},
-        "email": {"es": "elena.ruiz@email.com", "en": "sophia.martinez@email.com", "fr": "manon.lefebvre@email.com"},
+        "email": {
+            "es": "elena.ruiz@email.com",
+            "en": "sophia.martinez@email.com",
+            "fr": "manon.lefebvre@email.com",
+        },
         "date_of_birth": date(1985, 9, 3),
         "emergency_contact": {
             "es": {
@@ -472,7 +506,11 @@ PATIENTS_I18N = [
             "notes": "Diabétique de type 2. Surveillance de la cicatrisation.",
         },
         "phone": {"es": "+34 612 345 007", "en": "+1 (212) 555-0007", "fr": "+33 6 12 34 56 07"},
-        "email": {"es": "javier.sanchez@email.com", "en": "daniel.garcia@email.com", "fr": "nicolas.simon@email.com"},
+        "email": {
+            "es": "javier.sanchez@email.com",
+            "en": "daniel.garcia@email.com",
+            "fr": "nicolas.simon@email.com",
+        },
         "date_of_birth": date(1980, 12, 25),
         "emergency_contact": {
             "es": {
@@ -501,7 +539,11 @@ PATIENTS_I18N = [
             "allergies": [],
             "systemic_diseases": [
                 {
-                    "name": {"es": "Diabetes Mellitus Tipo 2", "en": "Type 2 Diabetes Mellitus", "fr": "Diabète de type 2"},
+                    "name": {
+                        "es": "Diabetes Mellitus Tipo 2",
+                        "en": "Type 2 Diabetes Mellitus",
+                        "fr": "Diabète de type 2",
+                    },
                     "is_critical": True,
                     "notes": {
                         "es": "Controlada con metformina. HbA1c: 7.2%",
@@ -567,7 +609,11 @@ PATIENTS_I18N = [
             "notes": "Allergique à la pénicilline.",
         },
         "phone": {"es": "+34 612 345 009", "en": "+1 (212) 555-0009", "fr": "+33 6 12 34 56 09"},
-        "email": {"es": "francisco.garcia@email.com", "en": "alexander.clark@email.com", "fr": "guillaume.laurent@email.com"},
+        "email": {
+            "es": "francisco.garcia@email.com",
+            "en": "alexander.clark@email.com",
+            "fr": "guillaume.laurent@email.com",
+        },
         "date_of_birth": date(1975, 4, 9),
         "emergency_contact": {
             "es": {
@@ -602,7 +648,11 @@ PATIENTS_I18N = [
                 {
                     "name": {"es": "Amoxicilina", "en": "Amoxicillin", "fr": "Amoxicilline"},
                     "severity": "high",
-                    "reaction": {"es": "Urticaria severa", "en": "Severe urticaria", "fr": "Urticaire sévère"},
+                    "reaction": {
+                        "es": "Urticaria severa",
+                        "en": "Severe urticaria",
+                        "fr": "Urticaire sévère",
+                    },
                 },
             ],
             "systemic_diseases": [],
@@ -626,7 +676,11 @@ PATIENTS_I18N = [
             "notes": "Hypertendue. Vérifier la tension avant les soins.",
         },
         "phone": {"es": "+34 612 345 010", "en": "+1 (212) 555-0010", "fr": "+33 6 12 34 56 10"},
-        "email": {"es": "rosa.martinez@email.com", "en": "charlotte.lewis@email.com", "fr": "sophie.garnier@email.com"},
+        "email": {
+            "es": "rosa.martinez@email.com",
+            "en": "charlotte.lewis@email.com",
+            "fr": "sophie.garnier@email.com",
+        },
         "date_of_birth": date(1970, 8, 21),
         "emergency_contact": {
             "es": {
@@ -655,7 +709,11 @@ PATIENTS_I18N = [
             "allergies": [],
             "systemic_diseases": [
                 {
-                    "name": {"es": "Hipertensión Arterial", "en": "Arterial Hypertension", "fr": "Hypertension artérielle"},
+                    "name": {
+                        "es": "Hipertensión Arterial",
+                        "en": "Arterial Hypertension",
+                        "fr": "Hypertension artérielle",
+                    },
                     "is_critical": True,
                     "notes": {
                         "es": "Tratamiento con enalapril 10mg/día. PA habitual: 130/85",
@@ -715,14 +773,22 @@ PATIENTS_I18N = [
                 {
                     "name": {"es": "Yodo", "en": "Iodine", "fr": "Iode"},
                     "severity": "medium",
-                    "reaction": {"es": "Erupción cutánea", "en": "Skin rash", "fr": "Éruption cutanée"},
+                    "reaction": {
+                        "es": "Erupción cutánea",
+                        "en": "Skin rash",
+                        "fr": "Éruption cutanée",
+                    },
                 },
             ],
             "systemic_diseases": [
                 {
                     "name": {"es": "Artrosis", "en": "Osteoarthritis", "fr": "Arthrose"},
                     "is_critical": False,
-                    "notes": {"es": "Afecta movilidad cervical", "en": "Affects cervical mobility", "fr": "Affecte la mobilité cervicale"},
+                    "notes": {
+                        "es": "Afecta movilidad cervical",
+                        "en": "Affects cervical mobility",
+                        "fr": "Affecte la mobilité cervicale",
+                    },
                 },
             ],
         },
@@ -803,7 +869,11 @@ PATIENTS_I18N = [
             "notes": "Prend des anticoagulants. Coordonné avec le médecin avant extractions.",
         },
         "phone": {"es": "+34 612 345 013", "en": "+1 (212) 555-0013", "fr": "+33 6 12 34 56 13"},
-        "email": {"es": "joseluis.munoz@email.com", "en": "richard.allen@email.com", "fr": "pierre.roux@email.com"},
+        "email": {
+            "es": "joseluis.munoz@email.com",
+            "en": "richard.allen@email.com",
+            "fr": "pierre.roux@email.com",
+        },
         "date_of_birth": date(1950, 3, 28),
         "emergency_contact": {
             "es": {
@@ -835,7 +905,11 @@ PATIENTS_I18N = [
             "inr_value": 2.5,
             "systemic_diseases": [
                 {
-                    "name": {"es": "Fibrilación Auricular", "en": "Atrial Fibrillation", "fr": "Fibrillation auriculaire"},
+                    "name": {
+                        "es": "Fibrilación Auricular",
+                        "en": "Atrial Fibrillation",
+                        "fr": "Fibrillation auriculaire",
+                    },
                     "is_critical": True,
                     "notes": {
                         "es": "Anticoagulado. Requiere control INR antes de procedimientos.",
@@ -939,7 +1013,11 @@ PATIENTS_I18N = [
             ],
             "systemic_diseases": [
                 {
-                    "name": {"es": "Insuficiencia Renal Crónica", "en": "Chronic Kidney Disease", "fr": "Insuffisance rénale chronique"},
+                    "name": {
+                        "es": "Insuficiencia Renal Crónica",
+                        "en": "Chronic Kidney Disease",
+                        "fr": "Insuffisance rénale chronique",
+                    },
                     "is_critical": True,
                     "notes": {
                         "es": "Estadio 3. Ajustar dosis de medicamentos.",
@@ -948,9 +1026,17 @@ PATIENTS_I18N = [
                     },
                 },
                 {
-                    "name": {"es": "Diabetes Mellitus Tipo 2", "en": "Type 2 Diabetes Mellitus", "fr": "Diabète de type 2"},
+                    "name": {
+                        "es": "Diabetes Mellitus Tipo 2",
+                        "en": "Type 2 Diabetes Mellitus",
+                        "fr": "Diabète de type 2",
+                    },
                     "is_critical": True,
-                    "notes": {"es": "Insulinodependiente", "en": "Insulin-dependent", "fr": "Insulino-dépendant"},
+                    "notes": {
+                        "es": "Insulinodependiente",
+                        "en": "Insulin-dependent",
+                        "fr": "Insulino-dépendant",
+                    },
                 },
             ],
         },
@@ -1460,9 +1546,30 @@ PAYMENT_IDS = [UUID(f"fd00bc99-9c0b-4ef8-bb6d-6bb9bd380{i:03x}") for i in range(
 
 # Appointment visuals + duration by catalog_code prefix. Ordered most-specific first.
 _APPT_LOOK_BY_PREFIX: list[tuple[str, dict]] = [
-    ("DX-VISIT", {"name": {"es": "Revisión", "en": "Checkup", "fr": "Contrôle"}, "duration": 30, "color": "#3B82F6"}),
-    ("DX-RX", {"name": {"es": "Radiografía", "en": "X-ray", "fr": "Radiographie"}, "duration": 30, "color": "#60A5FA"}),
-    ("DX", {"name": {"es": "Diagnóstico", "en": "Diagnosis", "fr": "Diagnostique"}, "duration": 30, "color": "#3B82F6"}),
+    (
+        "DX-VISIT",
+        {
+            "name": {"es": "Revisión", "en": "Checkup", "fr": "Contrôle"},
+            "duration": 30,
+            "color": "#3B82F6",
+        },
+    ),
+    (
+        "DX-RX",
+        {
+            "name": {"es": "Radiografía", "en": "X-ray", "fr": "Radiographie"},
+            "duration": 30,
+            "color": "#60A5FA",
+        },
+    ),
+    (
+        "DX",
+        {
+            "name": {"es": "Diagnóstico", "en": "Diagnosis", "fr": "Diagnostique"},
+            "duration": 30,
+            "color": "#3B82F6",
+        },
+    ),
     (
         "PREV",
         {
@@ -1471,40 +1578,106 @@ _APPT_LOOK_BY_PREFIX: list[tuple[str, dict]] = [
             "color": "#10B981",
         },
     ),
-    ("REST-CROWN", {"name": {"es": "Corona", "en": "Crown", "fr": "Couronne"}, "duration": 60, "color": "#A855F7"}),
-    ("REST-VEN", {"name": {"es": "Carilla", "en": "Veneer", "fr": "Facette"}, "duration": 60, "color": "#F472B6"}),
-    ("REST-COMP", {"name": {"es": "Empaste", "en": "Filling", "fr": "Plombage"}, "duration": 45, "color": "#F59E0B"}),
+    (
+        "REST-CROWN",
+        {
+            "name": {"es": "Corona", "en": "Crown", "fr": "Couronne"},
+            "duration": 60,
+            "color": "#A855F7",
+        },
+    ),
+    (
+        "REST-VEN",
+        {
+            "name": {"es": "Carilla", "en": "Veneer", "fr": "Facette"},
+            "duration": 60,
+            "color": "#F472B6",
+        },
+    ),
+    (
+        "REST-COMP",
+        {
+            "name": {"es": "Empaste", "en": "Filling", "fr": "Plombage"},
+            "duration": 45,
+            "color": "#F59E0B",
+        },
+    ),
     (
         "REST",
-        {"name": {"es": "Restauración", "en": "Restoration", "fr": "Restauration"}, "duration": 45, "color": "#F59E0B"},
+        {
+            "name": {"es": "Restauración", "en": "Restoration", "fr": "Restauration"},
+            "duration": 45,
+            "color": "#F59E0B",
+        },
     ),
     (
         "SURG-EXT",
-        {"name": {"es": "Extracción", "en": "Extraction", "fr": "Extraction"}, "duration": 60, "color": "#EF4444"},
+        {
+            "name": {"es": "Extracción", "en": "Extraction", "fr": "Extraction"},
+            "duration": 60,
+            "color": "#EF4444",
+        },
     ),
-    ("SURG", {"name": {"es": "Cirugía", "en": "Surgery", "fr": "Chirurgie"}, "duration": 60, "color": "#DC2626"}),
+    (
+        "SURG",
+        {
+            "name": {"es": "Cirugía", "en": "Surgery", "fr": "Chirurgie"},
+            "duration": 60,
+            "color": "#DC2626",
+        },
+    ),
     (
         "ENDO-MULTI",
         {
-            "name": {"es": "Endodoncia multirradicular", "en": "Multi-root canal", "fr": "Endodontie multiradiculaire"},
+            "name": {
+                "es": "Endodoncia multirradicular",
+                "en": "Multi-root canal",
+                "fr": "Endodontie multiradiculaire",
+            },
             "duration": 90,
             "color": "#8B5CF6",
         },
     ),
     (
         "ENDO",
-        {"name": {"es": "Endodoncia", "en": "Root canal", "fr": "Endodontie"}, "duration": 75, "color": "#8B5CF6"},
+        {
+            "name": {"es": "Endodoncia", "en": "Root canal", "fr": "Endodontie"},
+            "duration": 75,
+            "color": "#8B5CF6",
+        },
     ),
     (
         "PERIO",
-        {"name": {"es": "Periodoncia", "en": "Periodontics", "fr": "Parodontie"}, "duration": 60, "color": "#14B8A6"},
+        {
+            "name": {"es": "Periodoncia", "en": "Periodontics", "fr": "Parodontie"},
+            "duration": 60,
+            "color": "#14B8A6",
+        },
     ),
     (
         "EST-BLAN",
-        {"name": {"es": "Blanqueamiento", "en": "Whitening", "fr": "Blanchiment"}, "duration": 60, "color": "#06B6D4"},
+        {
+            "name": {"es": "Blanqueamiento", "en": "Whitening", "fr": "Blanchiment"},
+            "duration": 60,
+            "color": "#06B6D4",
+        },
     ),
-    ("EST", {"name": {"es": "Estética", "en": "Aesthetics", "fr": "Esthétique"}, "duration": 45, "color": "#06B6D4"}),
-    ("PROT", {"name": {"es": "Prótesis", "en": "Prosthesis", "fr": "Prothèse"}, "duration": 90, "color": "#84CC16"}),
+    (
+        "EST",
+        {
+            "name": {"es": "Estética", "en": "Aesthetics", "fr": "Esthétique"},
+            "duration": 45,
+            "color": "#06B6D4",
+        },
+    ),
+    (
+        "PROT",
+        {
+            "name": {"es": "Prótesis", "en": "Prosthesis", "fr": "Prothèse"},
+            "duration": 90,
+            "color": "#84CC16",
+        },
+    ),
 ]
 
 
@@ -1513,7 +1686,11 @@ def _appt_look_for(code: str) -> dict:
     for prefix, meta in _APPT_LOOK_BY_PREFIX:
         if code.startswith(prefix):
             return meta
-    return {"name": {"es": "Tratamiento", "en": "Treatment", "fr": "Traitement"}, "duration": 45, "color": "#64748B"}
+    return {
+        "name": {"es": "Tratamiento", "en": "Treatment", "fr": "Traitement"},
+        "duration": 45,
+        "color": "#64748B",
+    }
 
 
 # PATIENT_JOURNEYS: one entry per patient captures the full clinical narrative.
@@ -1535,7 +1712,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 0,
             "status": "active",
-            "title": {"es": "Plan preventivo infantil", "en": "Pediatric preventive plan", "fr": "Plan préventif pédiatrique"},
+            "title": {
+                "es": "Plan preventivo infantil",
+                "en": "Pediatric preventive plan",
+                "fr": "Plan préventif pédiatrique",
+            },
             "diagnosis_notes": {
                 "es": "Primera visita. Revisión pediátrica.",
                 "en": "First visit. Pediatric checkup.",
@@ -1559,7 +1740,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 1,
             "status": "active",
-            "title": {"es": "Tratamiento conservador", "en": "Conservative treatment", "fr": "Traitement conservateur"},
+            "title": {
+                "es": "Tratamiento conservador",
+                "en": "Conservative treatment",
+                "fr": "Traitement conservateur",
+            },
             "diagnosis_notes": {
                 "es": "Caries en molares inferiores deciduos.",
                 "en": "Caries on lower deciduous molars.",
@@ -1584,7 +1769,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 2,
             "status": "pending",
-            "title": {"es": "Revisión y limpieza", "en": "Checkup and cleaning", "fr": "Contrôle et détartrage"},
+            "title": {
+                "es": "Revisión y limpieza",
+                "en": "Checkup and cleaning",
+                "fr": "Contrôle et détartrage",
+            },
             "diagnosis_notes": {
                 "es": "Paciente joven, buen estado general.",
                 "en": "Young patient, good general condition.",
@@ -1600,7 +1789,11 @@ PATIENT_JOURNEYS = [
             "status": "draft",
             "global_discount": None,
             "signature": False,
-            "notes": {"es": "Borrador pendiente de revisión", "en": "Draft pending review", "fr": "Brouillon en attente de révision"},
+            "notes": {
+                "es": "Borrador pendiente de revisión",
+                "en": "Draft pending review",
+                "fr": "Brouillon en attente de révision",
+            },
         },
         "appointments": [],
         "invoice": {
@@ -1608,7 +1801,11 @@ PATIENT_JOURNEYS = [
             "status": "draft",
             "payments": [],
             "covers": [0, 1],
-            "notes": {"es": "Borrador - pendiente de emitir", "en": "Draft - pending issuance", "fr": "Brouillon - en attente d'émission"},
+            "notes": {
+                "es": "Borrador - pendiente de emitir",
+                "en": "Draft - pending issuance",
+                "fr": "Brouillon - en attente d'émission",
+            },
         },
     },
     # Patient 3 — Carmen / Emma (pending plan with sent budget, surfaces in
@@ -1618,7 +1815,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 3,
             "status": "pending",
-            "title": {"es": "Plan de tratamiento inicial", "en": "Initial treatment plan", "fr": "Plan de traitement initial"},
+            "title": {
+                "es": "Plan de tratamiento inicial",
+                "en": "Initial treatment plan",
+                "fr": "Plan de traitement initial",
+            },
             "diagnosis_notes": {
                 "es": "Paciente con sensibilidad dental. Requiere empaste en molar.",
                 "en": "Patient with dental sensitivity. Requires filling on molar.",
@@ -1667,7 +1868,11 @@ PATIENT_JOURNEYS = [
             "status": "accepted",
             "global_discount": {"type": "percentage", "value": 5},
             "signature": True,
-            "notes": {"es": "Aceptado, pendiente de agendar", "en": "Accepted, pending scheduling", "fr": "Accepté, en attente de planification"},
+            "notes": {
+                "es": "Aceptado, pendiente de agendar",
+                "en": "Accepted, pending scheduling",
+                "fr": "Accepté, en attente de planification",
+            },
         },
         # No appointments — surfaces in bandeja tab "Sin cita".
         "appointments": [],
@@ -1678,7 +1883,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 5,
             "status": "active",
-            "title": {"es": "Diagnóstico y restauración", "en": "Diagnosis and restoration", "fr": "Diagnostic et restauration"},
+            "title": {
+                "es": "Diagnóstico y restauración",
+                "en": "Diagnosis and restoration",
+                "fr": "Diagnostic et restauration",
+            },
             "diagnosis_notes": {
                 "es": "Embarazada. Evitar radiografías no esenciales.",
                 "en": "Pregnant. Avoid non-essential x-rays.",
@@ -1710,7 +1919,11 @@ PATIENT_JOURNEYS = [
             "status": "partial",
             "payments": [{"method": "card", "percent": 50}],
             "covers": [0, 1, 2],
-            "notes": {"es": "Pago parcial recibido", "en": "Partial payment received", "fr": "Paiement partiel reçu"},
+            "notes": {
+                "es": "Pago parcial recibido",
+                "en": "Partial payment received",
+                "fr": "Paiement partiel reçu",
+            },
         },
     },
     # Patient 6 — Javier / Daniel (diabetic; accepted+signed budget, paid invoice)
@@ -1719,7 +1932,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 6,
             "status": "active",
-            "title": {"es": "Endodoncia y corona", "en": "Root canal and crown", "fr": "Endodontie et couronne"},
+            "title": {
+                "es": "Endodoncia y corona",
+                "en": "Root canal and crown",
+                "fr": "Endodontie et couronne",
+            },
             "diagnosis_notes": {
                 "es": "Paciente diabético. Control especial de cicatrización.",
                 "en": "Diabetic patient. Special healing monitoring.",
@@ -1752,7 +1969,11 @@ PATIENT_JOURNEYS = [
             "status": "paid",
             "payments": [{"method": "bank_transfer", "percent": 100}],
             "covers": [0, 1],
-            "notes": {"es": "Pagado por transferencia", "en": "Paid by bank transfer", "fr": "Payé par virement"},
+            "notes": {
+                "es": "Pagado por transferencia",
+                "en": "Paid by bank transfer",
+                "fr": "Payé par virement",
+            },
         },
     },
     # Patient 7 — Isabel / Mia (rejected budget, no invoice)
@@ -1767,7 +1988,11 @@ PATIENT_JOURNEYS = [
                 "en": "Patient rejected aesthetic veneers due to pricing.",
                 "fr": "Patiente a rejeté les facettes esthétiques en raison du prix.",
             },
-            "title": {"es": "Plan estético rechazado", "en": "Rejected aesthetic plan", "fr": "Plan esthétique rejeté"},
+            "title": {
+                "es": "Plan estético rechazado",
+                "en": "Rejected aesthetic plan",
+                "fr": "Plan esthétique rejeté",
+            },
             "diagnosis_notes": {
                 "es": "Control semestral. Paciente rechazó carillas estéticas.",
                 "en": "Bi-annual checkup. Patient rejected aesthetic veneers.",
@@ -1806,7 +2031,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 8,
             "status": "active",
-            "title": {"es": "Tratamiento periodontal", "en": "Periodontal treatment", "fr": "Traitement parodontal"},
+            "title": {
+                "es": "Tratamiento periodontal",
+                "en": "Periodontal treatment",
+                "fr": "Traitement parodontal",
+            },
             "diagnosis_notes": {
                 "es": "ALÉRGICO A PENICILINA. Usar alternativas.",
                 "en": "ALLERGIC TO PENICILLIN. Use alternatives.",
@@ -1823,7 +2052,11 @@ PATIENT_JOURNEYS = [
             "status": "accepted",
             "global_discount": {"type": "absolute", "value": 50},
             "signature": True,
-            "notes": {"es": "Alérgico a penicilina", "en": "Allergic to penicillin", "fr": "Allergique à la pénicilline"},
+            "notes": {
+                "es": "Alérgico a penicilina",
+                "en": "Allergic to penicillin",
+                "fr": "Allergique à la pénicilline",
+            },
         },
         "appointments": [
             {"week": "past", "covers": [0], "status": "completed"},
@@ -1838,7 +2071,11 @@ PATIENT_JOURNEYS = [
                 {"method": "card", "percent": 60},
             ],
             "covers": [0, 1],
-            "notes": {"es": "Pagado en dos plazos", "en": "Paid in two installments", "fr": "Payé en deux tranches"},
+            "notes": {
+                "es": "Pagado en dos plazos",
+                "en": "Paid in two installments",
+                "fr": "Payé en deux tranches",
+            },
         },
     },
     # Patient 9 — Rosa / Charlotte (hypertensive; accepted+signed, paid invoice)
@@ -1847,7 +2084,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 9,
             "status": "active",
-            "title": {"es": "Rehabilitación oral", "en": "Oral rehabilitation", "fr": "Réhabilitation bucco-dentaire"},
+            "title": {
+                "es": "Rehabilitación oral",
+                "en": "Oral rehabilitation",
+                "fr": "Réhabilitation bucco-dentaire",
+            },
             "diagnosis_notes": {
                 "es": "Hipertensa - verificar presión antes de procedimientos.",
                 "en": "Hypertensive - check blood pressure before procedures.",
@@ -1870,7 +2111,11 @@ PATIENT_JOURNEYS = [
             "status": "accepted",
             "global_discount": {"type": "percentage", "value": 10},
             "signature": True,
-            "notes": {"es": "Tratamiento en curso", "en": "Treatment in progress", "fr": "Traitement en cours"},
+            "notes": {
+                "es": "Tratamiento en curso",
+                "en": "Treatment in progress",
+                "fr": "Traitement en cours",
+            },
         },
         "appointments": [
             {"week": "past", "covers": [0], "status": "completed"},
@@ -1882,7 +2127,11 @@ PATIENT_JOURNEYS = [
             "status": "paid",
             "payments": [{"method": "card", "percent": 100}],
             "covers": [0, 1],
-            "notes": {"es": "Primera fase facturada", "en": "First phase billed", "fr": "Première phase facturée"},
+            "notes": {
+                "es": "Primera fase facturada",
+                "en": "First phase billed",
+                "fr": "Première phase facturée",
+            },
         },
     },
     # Patient 10 — Antonio / Robert (completed prosthetic workflow)
@@ -1891,7 +2140,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 10,
             "status": "completed",
-            "title": {"es": "Prótesis parcial superior", "en": "Upper partial denture", "fr": "Prothèse partielle supérieure"},
+            "title": {
+                "es": "Prótesis parcial superior",
+                "en": "Upper partial denture",
+                "fr": "Prothèse partielle supérieure",
+            },
             "diagnosis_notes": {
                 "es": "Prótesis parcial superior entregada y ajustada.",
                 "en": "Upper partial denture delivered and adjusted.",
@@ -1907,7 +2160,11 @@ PATIENT_JOURNEYS = [
             "status": "completed",
             "global_discount": None,
             "signature": True,
-            "notes": {"es": "Prótesis parcial entregada", "en": "Partial denture delivered", "fr": "Prothèse partielle livrée"},
+            "notes": {
+                "es": "Prótesis parcial entregada",
+                "en": "Partial denture delivered",
+                "fr": "Prothèse partielle livrée",
+            },
         },
         "appointments": [
             {"week": "past", "covers": [0], "status": "completed"},
@@ -1931,7 +2188,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 11,
             "status": "active",
-            "title": {"es": "Corona en dos sesiones", "en": "Two-session crown", "fr": "Couronne en deux séances"},
+            "title": {
+                "es": "Corona en dos sesiones",
+                "en": "Two-session crown",
+                "fr": "Couronne en deux séances",
+            },
             "diagnosis_notes": {
                 "es": "Corona metal-cerámica en 36 — cobro fraccionado por sesión.",
                 "en": "Metal-ceramic crown on tooth 36 — billed per session.",
@@ -1959,7 +2220,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 12,
             "status": "completed",
-            "title": {"es": "Endodoncia urgente", "en": "Urgent root canal", "fr": "Endodontie urgente"},
+            "title": {
+                "es": "Endodoncia urgente",
+                "en": "Urgent root canal",
+                "fr": "Endodontie urgente",
+            },
             "diagnosis_notes": {
                 "es": "Endodoncia urgente por absceso. Paciente anticoagulado.",
                 "en": "Urgent root canal due to abscess. Anticoagulated patient.",
@@ -2000,8 +2265,16 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 13,
             "status": "active",
-            "title": {"es": "Evaluación y limpieza", "en": "Evaluation and cleaning", "fr": "Évaluation et détartrage"},
-            "diagnosis_notes": {"es": "Evaluación periódica.", "en": "Periodic evaluation.", "fr": "Évaluation périodique."},
+            "title": {
+                "es": "Evaluación y limpieza",
+                "en": "Evaluation and cleaning",
+                "fr": "Évaluation et détartrage",
+            },
+            "diagnosis_notes": {
+                "es": "Evaluación periódica.",
+                "en": "Periodic evaluation.",
+                "fr": "Évaluation périodique.",
+            },
             "items": [
                 {"catalog_code": "DX-VISIT", "is_global": True},
                 {"catalog_code": "DX-RXPAN", "is_global": True},
@@ -2019,7 +2292,11 @@ PATIENT_JOURNEYS = [
         "plan": {
             "id_idx": 14,
             "status": "active",
-            "title": {"es": "Mantenimiento protésico", "en": "Prosthetic maintenance", "fr": "Entretien prothétique"},
+            "title": {
+                "es": "Mantenimiento protésico",
+                "en": "Prosthetic maintenance",
+                "fr": "Entretien prothétique",
+            },
             "diagnosis_notes": {
                 "es": "Ajustes periódicos de prótesis completa.",
                 "en": "Periodic complete denture adjustments.",
@@ -2655,7 +2932,13 @@ def generate_invoice_series_data() -> list[dict]:
             "id": INVOICE_SERIES_IDS[0],
             "prefix": "FAC",
             "series_type": "invoice",
-            "description": t({"es": "Serie principal de facturas", "en": "Main invoice series", "fr": "Série principale de factures"}),
+            "description": t(
+                {
+                    "es": "Serie principal de facturas",
+                    "en": "Main invoice series",
+                    "fr": "Série principale de factures",
+                }
+            ),
             "current_number": num_invoices + 1,
             "is_default": True,
         },
@@ -2663,7 +2946,9 @@ def generate_invoice_series_data() -> list[dict]:
             "id": INVOICE_SERIES_IDS[1],
             "prefix": "RECT",
             "series_type": "credit_note",
-            "description": t({"es": "Notas de crédito", "en": "Credit notes", "fr": "Notes de crédit"}),
+            "description": t(
+                {"es": "Notas de crédito", "en": "Credit notes", "fr": "Notes de crédit"}
+            ),
             "current_number": 1,
             "is_default": True,
         },
