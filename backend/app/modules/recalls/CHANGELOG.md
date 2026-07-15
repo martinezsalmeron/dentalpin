@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- i18n: correct French wording in seed note (Contrôle mensuel).
+
 - i18n: add French translations to seed data; fix `t()` dict pattern.
 
 - fix(security): reject `create` when `patient_id` belongs to another

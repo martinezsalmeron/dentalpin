@@ -108,7 +108,7 @@ _SCENARIOS = (
         "note": {
             "es": "Revisión mensual de ortodoncia.",
             "en": "Monthly orthodontic review.",
-            "fr": "Revue mensuelle d'orthodontie.",
+            "fr": "Contrôle mensuel d'orthodontie.",
         },
     },
     {

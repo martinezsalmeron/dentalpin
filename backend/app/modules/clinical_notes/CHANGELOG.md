@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- i18n: correct French terminology in `fr.json` (Diagnostic).
+
 - i18n: add French locale (`fr.json`); add French translations to seed
   data; add `body_i18n_key` to template responses so template bodies
   resolve in the active locale. Labels now resolve via

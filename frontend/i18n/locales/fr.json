@@ -375,7 +375,7 @@
     "collect": "Encaisser",
     "viewLedger": "Ouvrir le grand livre",
     "noPayments": "Aucun mouvement",
-    "diagnoses": "Diagnostiques",
+    "diagnoses": "Diagnostics",
     "pending": "non traité",
     "noDiagnoses": "Aucune anomalie en attente",
     "openOdontogram": "Ouvrir l'odontogramme",
@@ -492,12 +492,12 @@
       "categories": {
         "common": "Courant",
         "restorative": "Restauratrice",
-        "diagnostic": "Diagnostique",
+        "diagnostic": "Diagnostic",
         "orthodontic": "Orthodontie",
         "periodontic": "Parodontie",
         "position": "Position",
         "other": "Autre",
-        "diagnostico": "Diagnostique",
+        "diagnostico": "Diagnostic",
         "restauradora": "Restauratrice",
         "cirugia": "Chirurgie",
         "endodoncia": "Endodontie",
@@ -601,7 +601,7 @@
       "clickToEdit": "Cliquer pour modifier"
     },
     "planning": "Planification",
-    "diagnosisMode": "Diagnostique",
+    "diagnosisMode": "Diagnostic",
     "treatmentList": {
       "title": "Liste des traitements",
       "noTreatments": "Aucun traitement enregistré"
@@ -653,7 +653,7 @@
   "clinical": {
     "modes": {
       "history": "Historique",
-      "diagnosis": "Diagnostique",
+      "diagnosis": "Diagnostic",
       "plans": "Plans de traitement",
       "appointments": "Rendez-vous"
     },
@@ -668,7 +668,7 @@
       "noConditions": "Aucune condition enregistrée",
       "startDiagnosis": "Sélectionnez une dent et ajoutez les conditions existantes",
       "generalConditions": "Conditions générales",
-      "readyToCreatePlan": "Diagnostique terminé ?",
+      "readyToCreatePlan": "Diagnostic terminé ?",
       "createPlan": "Créer un plan de traitement",
       "continuePlan": "Continuer le plan « {name} »",
       "selectPlan": "Sélectionner un plan",
@@ -1562,7 +1562,7 @@
       "assignedProfessional": "Professionnel assigné",
       "selectProfessional": "Sélectionner un professionnel",
       "diagnosisNotes": "Notes de diagnostique",
-      "diagnosisNotesPlaceholder": "Diagnostique et observations cliniques...",
+      "diagnosisNotesPlaceholder": "Diagnostic et observations cliniques...",
       "internalNotes": "Notes internes",
       "internalNotesPlaceholder": "Notes visibles uniquement par le personnel..."
     },

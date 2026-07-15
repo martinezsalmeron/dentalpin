@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- i18n: correct French dental terminology in seed data (Contention,
+  Bracket, Scellement de sillons, Fluoration, Diagnostic, ...).
+
 - i18n: add French names/descriptions to seed data (categories,
   treatment items, session labels, VAT type names).
 

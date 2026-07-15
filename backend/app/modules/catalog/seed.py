@@ -63,7 +63,7 @@ VAT_TYPES: list[dict[str, Any]] = [
 CATEGORIES: list[dict[str, Any]] = [
     {
         "key": "diagnostico",
-        "names": {"es": "Diagnóstico", "en": "Diagnostic", "fr": "Diagnostique"},
+        "names": {"es": "Diagnóstico", "en": "Diagnostic", "fr": "Diagnostic"},
         "descriptions": {
             "es": "Servicios de diagnóstico y evaluación",
             "en": "Diagnostic and evaluation services",
@@ -214,7 +214,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "descriptions": {
                 "es": "Consulta inicial con exploración y diagnóstico",
                 "en": "Initial consultation with examination and diagnosis",
-                "fr": "Consulte initiale avec examen et diagnostique",
+                "fr": "Consultation initiale avec examen et diagnostique",
             },
             "treatment_scope": "global_mouth",
             "is_diagnostic": False,
@@ -352,7 +352,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
         },
         {
             "internal_code": "PREV-FLUOR",
-            "names": {"es": "Fluorización", "en": "Fluoride Application", "fr": "Fluoruration"},
+            "names": {"es": "Fluorización", "en": "Fluoride Application", "fr": "Fluoration"},
             "treatment_scope": "global_mouth",
             "default_price": Decimal("25.00"),
             "default_duration_minutes": 15,
@@ -378,7 +378,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Sellador de fosas y fisuras",
                 "en": "Pit and Fissure Sealant",
-                "fr": "Sillonnage des fissures",
+                "fr": "Scellement de sillons et fissures",
             },
             "treatment_scope": "tooth",
             "requires_surfaces": True,
@@ -1028,7 +1028,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
                     "labels": {
                         "es": "Limpieza y conformación",
                         "en": "Cleaning and shaping",
-                        "fr": "Nettoyage et évasage",
+                        "fr": "Nettoyage et mise en forme",
                     },
                     "default_price": Decimal("130.00"),
                 },
@@ -1449,7 +1449,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
         },
         {
             "internal_code": "SURG-FREN",
-            "names": {"es": "Frenectomía", "en": "Frenectomy", "fr": "Frenectomie"},
+            "names": {"es": "Frenectomía", "en": "Frenectomy", "fr": "Frénectomie"},
             "treatment_scope": "tooth",
             "default_price": Decimal("180.00"),
             "default_duration_minutes": 30,
@@ -1658,7 +1658,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Bracket individual (reposición)",
                 "en": "Bracket (replacement)",
-                "fr": "Baguette individuelle (remplacement)",
+                "fr": "Bracket individuel (remplacement)",
             },
             "treatment_scope": "tooth",
             "default_price": Decimal("45.00"),
@@ -1684,7 +1684,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
         },
         {
             "internal_code": "ORTO-RET-FIX",
-            "names": {"es": "Retenedor fijo", "en": "Fixed retainer", "fr": "Relieur fixe"},
+            "names": {"es": "Retenedor fijo", "en": "Fixed retainer", "fr": "Contention fixe"},
             "treatment_scope": "tooth",
             "default_price": Decimal("180.00"),
             "default_duration_minutes": 45,
@@ -1699,7 +1699,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Retenedor removible",
                 "en": "Removable retainer",
-                "fr": "Relieur amovible",
+                "fr": "Contention amovible",
             },
             "treatment_scope": "global_arch",
             "default_price": Decimal("120.00"),
@@ -1728,7 +1728,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Cementado de bracket",
                 "en": "Bracket bonding",
-                "fr": "Collage de baguette",
+                "fr": "Collage de bracket",
             },
             "treatment_scope": "tooth",
             "default_price": Decimal("35.00"),
@@ -1744,7 +1744,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Descementado de brackets",
                 "en": "Bracket removal",
-                "fr": "Désinstallation de bagues",
+                "fr": "Dépose des bagues",
             },
             "treatment_scope": "global_mouth",
             "default_price": Decimal("120.00"),
@@ -1873,7 +1873,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Eliminación de pigmentación",
                 "en": "Pigmentation removal",
-                "fr": "Élimination des pigmentation",
+                "fr": "Élimination des pigmentations",
             },
             "treatment_scope": "global_mouth",
             "default_price": Decimal("90.00"),
@@ -2009,7 +2009,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Fluorización pediátrica",
                 "en": "Pediatric fluoride",
-                "fr": "Fluoruration pédiatrique",
+                "fr": "Fluoration pédiatrique",
             },
             "treatment_scope": "tooth",
             "default_price": Decimal("25.00"),
@@ -2022,7 +2022,7 @@ TREATMENTS: dict[str, list[dict[str, Any]]] = {
             "names": {
                 "es": "Sellador pediátrico",
                 "en": "Pediatric sealant",
-                "fr": "Sillonnage pédiatrique",
+                "fr": "Scellement de sillons pédiatrique",
             },
             "treatment_scope": "tooth",
             "requires_surfaces": True,
