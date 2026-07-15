@@ -1565,7 +1565,7 @@ _APPT_LOOK_BY_PREFIX: list[tuple[str, dict]] = [
     (
         "DX",
         {
-            "name": {"es": "Diagnóstico", "en": "Diagnosis", "fr": "Diagnostique"},
+            "name": {"es": "Diagnóstico", "en": "Diagnosis", "fr": "Diagnostic"},
             "duration": 30,
             "color": "#3B82F6",
         },

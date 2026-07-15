@@ -2,7 +2,7 @@
   "clinicalNotes": {
     "types": {
       "administrative": "Administratif",
-      "diagnosis": "Diagnostique",
+      "diagnosis": "Diagnostic",
       "treatment": "Traitement",
       "treatment_plan": "Plan",
       "appointment_clinical": "Clinique",
@@ -110,12 +110,12 @@
       }
     },
     "templateBodies": {
-      "endo_single_visit": "Diagnostique : \nAnesthésie : \nCanaux localisés : \nLongueur de travail : \nObturation : \nPost-op : ",
+      "endo_single_visit": "Diagnostic : \nAnesthésie : \nCanaux localisés : \nLongueur de travail : \nObturation : \nPost-op : ",
       "endo_multi_visit": "Séance : \nCanaux traités : \nMédicament intracanalaire : \nProchain rendez-vous : ",
       "perio_scaling": "Quadrants traités : \nProfondeur de sondage : \nSangrado au sondage : \nConsignes d'hygiène : ",
       "implant_placement": "Implant (marque / diamètre / longueur) : \nCouple final (Ncm) : \nStabilité primaire : \nGreffe : \nPost-op : ",
       "diagnosis_caries": "Observation : carie \nProfondeur : \nSymptômes : \nTest de vitalité : \nTraitement suggéré : ",
-      "diagnosis_periapical": "Lésion périapicale \nDent : \nRadiographie : \nPercussion, palpation : \nDiagnostique : ",
+      "diagnosis_periapical": "Lésion périapicale \nDent : \nRadiographie : \nPercussion, palpation : \nDiagnostic : ",
       "admin_phone_call": "Appel du patient : \nMotif : \nAction entreprise : \nSuivi : ",
       "admin_reschedule": "Demande de report : \nDate actuelle : \nNouvelle proposition : ",
       "general_follow_up": "Observations : \nProcédure réalisée : \nConsignes au patient : "
