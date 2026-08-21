@@ -16,7 +16,8 @@
     "/module_layers/recalls/frontend",
     "/module_layers/notifications/frontend",
     "/module_layers/patient_timeline/frontend",
-    "/module_layers/reports/frontend"
+    "/module_layers/reports/frontend",
+    "/module_layers/medical_reference/frontend"
   ],
   "modules": [
     {
@@ -86,6 +87,10 @@
     {
       "name": "reports",
       "path": "/module_layers/reports/frontend"
+    },
+    {
+      "name": "medical_reference",
+      "path": "/module_layers/medical_reference/frontend"
     }
   ],
   "version": 1
