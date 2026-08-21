@@ -76,6 +76,7 @@ recalls = "app.modules.recalls:RecallsModule"
 verifactu = "app.modules.verifactu:VerifactuModule"
 migration_import = "app.modules.migration_import:MigrationImportModule"
 copilot = "app.modules.copilot:CopilotModule"
+medical_reference = "app.modules.medical_reference:MedicalReferenceModule"
 
 [tool.setuptools.packages.find]
 where = ["."]
