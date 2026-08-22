@@ -148,5 +148,9 @@ export const PERMISSIONS = {
   patientRelationships: {
     read: 'patient_relationships.read',
     write: 'patient_relationships.write'
+  },
+  expenses: {
+    read: 'expenses.read',
+    write: 'expenses.write'
   }
 } as const

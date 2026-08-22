@@ -1,0 +1,21 @@
+{
+  "expenses": {
+    "title": "செலவுகள்",
+    "add": "செலவு சேர்க்க",
+    "date": "தேதி",
+    "category": "வகை",
+    "amount": "தொகை",
+    "description": "விவரம்",
+    "filterByCategory": "வகை வாரியாக வடிகட்டு",
+    "categories": {
+      "rent": "வாடகை",
+      "utilities": "பயன்பாட்டு கட்டணங்கள்",
+      "salaries": "சம்பளங்கள்",
+      "supplies": "பொருட்கள்",
+      "equipment": "உபகரணங்கள்",
+      "insurance": "காப்பீடு",
+      "maintenance": "பராமரிப்பு",
+      "other": "மற்றவை"
+    }
+  }
+}
