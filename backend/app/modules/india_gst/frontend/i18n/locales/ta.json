@@ -1,0 +1,109 @@
+{
+  "nav": {
+    "indiaGst": "இந்திய GST"
+  },
+  "indiaGst": {
+    "badge": {
+      "gst": "GST",
+      "irnGenerated": "IRN உருவாக்கப்பட்டது",
+      "einvoiceIssue": "e-invoice சிக்கல்",
+      "needsAttention": "கவனம் தேவை",
+      "missingGst": "GST தரவு இல்லை — GST விவரங்களை உருவாக்க இந்த விலைப்பட்டியலை மீண்டும் வெளியிடவும்"
+    },
+    "banner": {
+      "unregisteredTitle": "GSTIN கட்டமைக்கப்படவில்லை",
+      "unregisteredDescription": "இதற்கிடையில் நோயாளிகளுக்கு பில் செய்யலாம் — GSTIN இல்லாமல் நிலையான விலைப்பட்டியல்கள் வேலை செய்யும்.",
+      "configureAction": "GST கட்டமைக்கவும்"
+    },
+    "listFilter": {
+      "needsAttention": "கவனம் தேவை"
+    },
+    "panel": {
+      "title": "GST மற்றும் e-invoice",
+      "correctsDocument": "ஆவணத்தை திருத்துகிறது",
+      "documentNumber": "GST ஆவண எண்",
+      "placeOfSupply": "வழங்கல் இடம்",
+      "gstinOnInvoice": "விலைப்பட்டியலில் GSTIN",
+      "notProvided": "வழங்கப்படவில்லை",
+      "calculation": "GST கணக்கீடு",
+      "intraState": "மாநிலத்திற்குள் · CGST + SGST",
+      "interState": "மாநிலங்களுக்கு இடையே · IGST",
+      "einvoiceStatus": "e-invoice நிலை"
+    },
+    "einvoice": {
+      "notRequired": "தேவையில்லை",
+      "notConfigured": "கட்டமைக்கப்படவில்லை",
+      "pending": "நிலுவையில்",
+      "generated": "IRN உருவாக்கப்பட்டது",
+      "rejected": "நிராகரிக்கப்பட்டது",
+      "error": "இணைப்புப் பிழை",
+      "notRequiredHint": "உங்கள் கிளினிக் அமைப்புகளில் கட்டமைக்கப்பட்ட வருவாய் வரம்புக்குக் கீழே உள்ளது, எனவே இந்த விலைப்பட்டியல் e-invoice போர்ட்டலுக்கு சமர்ப்பிக்கப்படவில்லை.",
+      "notConfiguredHint": "India GST அமைப்புகளில் அமைக்கப்பட்ட வருவாய் வரம்புக்கு மேல் உள்ள கிளினிக்குகளுக்கு e-invoicing பொருந்தும். இந்த விலைப்பட்டியலுக்கு எதுவும் அனுப்பப்படவில்லை.",
+      "reviewSettings": "e-invoice அமைப்புகளை மதிப்பாய்வு செய்யவும்"
+    },
+    "form": {
+      "title": "விலைப்பட்டியல் GST விவரங்கள்",
+      "clinicGstDetails": "கிளினிக்கின் GST விவரங்கள்",
+      "placeOfSupply": "வழங்கல் இடம்",
+      "placeOfSupplyHint": "CGST+SGST அல்லது IGST பொருந்துமா என்பதை தீர்மானிக்கிறது",
+      "selectState": "மாநிலத்தைத் தேர்ந்தெடுக்கவும்",
+      "selectPlaceOfSupplyHint": "GST கணக்கிட வழங்கல் இடத்தைத் தேர்ந்தெடுக்கவும்",
+      "sacCodes": "SAC குறியீடுகள்",
+      "sacCode": "SAC குறியீடு",
+      "sacOverrideHint": "SAC குறியீடுகள் உங்கள் சிகிச்சைப் பட்டியலிலிருந்து வருகின்றன. உங்கள் கணக்காளர் அறிவுறுத்தினால் மட்டும் மாற்றவும்.",
+      "save": "GST விவரங்களைச் சேமிக்கவும்",
+      "saved": "GST விவரங்கள் சேமிக்கப்பட்டன",
+      "saveError": "GST விவரங்களைச் சேமிக்க முடியவில்லை"
+    },
+    "settingsCards": {
+      "title": "இந்திய GST",
+      "description": "இந்தியாவில் உள்ள கிளினிக்குகளுக்கு GSTIN, வழங்கல் இட இயல்புநிலைகள் மற்றும் SAC குறியீடுகளை கட்டமைக்கவும்.",
+      "open": "அமைப்புகளைத் திறக்கவும்"
+    },
+    "settings": {
+      "title": "இந்திய GST அமைப்புகள்",
+      "description": "இந்த கிளினிக்கிற்கான GST விவரங்கள் மற்றும் விலைப்பட்டியல் இயல்புநிலைகளை கட்டமைக்கவும்.",
+      "loadError": "GST அமைப்புகளை ஏற்ற முடியவில்லை",
+      "saved": "அமைப்புகள் சேமிக்கப்பட்டன",
+      "saveError": "அமைப்புகளைச் சேமிக்க முடியவில்லை",
+      "clinicDetails": "கிளினிக்கின் GST விவரங்கள்",
+      "nonRegularNotice": "இந்த பதிவு வகையின் கீழ் விலைப்பட்டியலுக்கு GST கணக்கீடு செயலிழக்கப்பட்டுள்ளது.",
+      "tradeName": "வர்த்தகப் பெயர்",
+      "gstin": "GSTIN",
+      "gstinHint": "கிளினிக்கின் சொந்த (வழங்குநர்) GSTIN — பெறுநரின் அல்ல",
+      "registrationType": "பதிவு வகை",
+      "registrationRegular": "வழக்கமான",
+      "registrationComposition": "கலவை",
+      "registrationUnregistered": "பதிவு செய்யப்படாதது",
+      "registrationExempt": "விலக்கு அளிக்கப்பட்டது",
+      "clinicState": "கிளினிக் மாநிலம்",
+      "catalogDefaults": "பட்டியல் GST இயல்புநிலைகள்",
+      "allSacConfigured": "அனைத்து சிகிச்சைகளுக்கும் SAC குறியீடு கட்டமைக்கப்பட்டுள்ளது.",
+      "missingSacCount": "{count} சிகிச்சை(கள்) SAC குறியீடு மற்றும் விகிதம் தேவை.",
+      "autoconfigure": "தானாக அமைக்கவும்",
+      "autoconfigureHint": "தானாக அமைத்தல் மேலே உள்ள ஒவ்வொரு சிகிச்சைக்கும் SAC 999312 (மனித சுகாதார சேவைகள்) ஒதுக்குகிறது; GST விகிதம் ஒவ்வொரு சிகிச்சையின் வரி வகையிலிருந்தே வரும். ஏற்கெனவே SAC உள்ள சிகிச்சைகள் மாற்றப்படாது.",
+      "autoconfigureDone": "{count} சிகிச்சை(கள்) SAC {sac} ஆக அமைக்கப்பட்டன.",
+      "autoconfigureError": "SAC குறியீடுகளை தானாக அமைக்க முடியவில்லை",
+      "einvoiceIntegration": "e-invoice ஒருங்கிணைப்பு",
+      "einvoiceProfessionalNotice": "e-invoicing-ஐ இயக்கும் முன் தகுதி மற்றும் ஒழுங்குமுறை கடமைகளை தகுதிவாய்ந்த இந்திய வரி நிபுணருடன் உறுதிப்படுத்தவும். இந்த கிளினிக்கிற்கு e-invoicing பொருந்துமா என்பதை Dentalpin தீர்மானிக்காது.",
+      "turnoverThreshold": "வருவாய் வரம்பு",
+      "turnoverThresholdHint": "இந்த வரம்புக்கு மேல் உள்ள கிளினிக்குகளுக்கு e-invoicing தேவை",
+      "einvoiceNotConfigured": "கட்டமைக்கப்படவில்லை",
+      "displayOptions": "காட்சி விருப்பங்கள்",
+      "showGstin": "விலைப்பட்டியலில் GSTIN-ஐக் காட்டு",
+      "showSac": "விலைப்பட்டியலில் SAC குறியீடுகளைக் காட்டு",
+      "creditNoteWorkflow": "கடன் குறிப்பு பணிப்பாய்வு",
+      "creditNoteWorkflowDescription": "வழங்கப்பட்ட விலைப்பட்டியலுக்கான எந்தவொரு திருத்தமும் ரத்து அல்லது கடன் குறிப்பு மூலம் நடைபெறும், மேலும் அதைச் செய்த பயனருக்குக் கண்டறியக்கூடியதாக இருக்கும்."
+    },
+    "reports": {
+      "title": "GST அறிக்கைகள்",
+      "description": "சரிசெய்தல் மற்றும் தாக்கல் ஆதரவிற்கான மொத்தங்கள் மற்றும் பரிவர்த்தனை விவரங்கள்.",
+      "export": "CSV ஏற்றுமதி செய்யவும்",
+      "creditNotes": "கடன் குறிப்புகள்",
+      "byPlaceOfSupply": "வழங்கல் இடத்தால்",
+      "transactions": "பரிவர்த்தனைகள்",
+      "taxableValue": "வரி விதிக்கக்கூடிய மதிப்பு",
+      "empty": "இந்த காலகட்டத்தில் பரிவர்த்தனைகள் இல்லை."
+    }
+  }
+}

@@ -76,6 +76,7 @@ recalls = "app.modules.recalls:RecallsModule"
 verifactu = "app.modules.verifactu:VerifactuModule"
 migration_import = "app.modules.migration_import:MigrationImportModule"
 copilot = "app.modules.copilot:CopilotModule"
+india_gst = "app.modules.india_gst:IndiaGstModule"
 patient_relationships = "app.modules.patient_relationships:PatientRelationshipsModule"
 recall_reminders = "app.modules.recall_reminders:RecallRemindersModule"
 

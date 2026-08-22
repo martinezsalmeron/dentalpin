@@ -35,4 +35,4 @@ if [[ ! -t 0 || ! -t 1 ]]; then
     EXEC_FLAGS+=("-T")
 fi
 
-exec "${COMPOSE[@]}" exec "${EXEC_FLAGS[@]}" backend python -m app.cli "$@"
+exec "${COMPOSE[@]}" exec ${EXEC_FLAGS[@]+"${EXEC_FLAGS[@]}"} backend python -m app.cli "$@"

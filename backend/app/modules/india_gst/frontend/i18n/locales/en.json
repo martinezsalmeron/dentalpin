@@ -1,0 +1,109 @@
+{
+  "nav": {
+    "indiaGst": "India GST"
+  },
+  "indiaGst": {
+    "badge": {
+      "gst": "GST",
+      "irnGenerated": "IRN generated",
+      "einvoiceIssue": "E-invoice issue",
+      "needsAttention": "Needs attention",
+      "missingGst": "GST data missing — re-issue this invoice to generate GST details"
+    },
+    "banner": {
+      "unregisteredTitle": "GSTIN not configured",
+      "unregisteredDescription": "You can keep billing patients in the meantime — standard invoices work without GSTIN.",
+      "configureAction": "Configure GST"
+    },
+    "listFilter": {
+      "needsAttention": "Needs attention"
+    },
+    "panel": {
+      "title": "GST and e-invoice",
+      "correctsDocument": "Corrects document",
+      "documentNumber": "GST document number",
+      "placeOfSupply": "Place of supply",
+      "gstinOnInvoice": "GSTIN on invoice",
+      "notProvided": "Not provided",
+      "calculation": "GST calculation",
+      "intraState": "Intra-state · CGST + SGST",
+      "interState": "Inter-state · IGST",
+      "einvoiceStatus": "E-invoice status"
+    },
+    "einvoice": {
+      "notRequired": "Not required",
+      "notConfigured": "Not configured",
+      "pending": "Pending",
+      "generated": "IRN generated",
+      "rejected": "Rejected",
+      "error": "Connection error",
+      "notRequiredHint": "Your clinic is below the turnover threshold configured in settings, so this invoice is not submitted to the e-invoice portal.",
+      "notConfiguredHint": "E-invoicing applies to clinics above the turnover threshold set in India GST settings. Nothing is sent for this invoice.",
+      "reviewSettings": "Review e-invoice settings"
+    },
+    "form": {
+      "title": "Invoice GST details",
+      "clinicGstDetails": "Clinic GST details",
+      "placeOfSupply": "Place of supply",
+      "placeOfSupplyHint": "Determines whether CGST+SGST or IGST applies",
+      "selectState": "Select a state",
+      "selectPlaceOfSupplyHint": "Select a place of supply to calculate GST",
+      "sacCodes": "SAC codes",
+      "sacCode": "SAC code",
+      "sacOverrideHint": "SAC codes come from your treatment catalog. Change one only if your accountant advises it.",
+      "save": "Save GST details",
+      "saved": "GST details saved",
+      "saveError": "Could not save GST details"
+    },
+    "settingsCards": {
+      "title": "India GST",
+      "description": "Configure GSTIN, place of supply defaults and SAC codes for clinics in India.",
+      "open": "Open settings"
+    },
+    "settings": {
+      "title": "India GST settings",
+      "description": "Configure GST details and invoice defaults for this clinic.",
+      "loadError": "Could not load GST settings",
+      "saved": "Settings saved",
+      "saveError": "Could not save settings",
+      "clinicDetails": "Clinic GST details",
+      "nonRegularNotice": "GST calculation is inactive for invoicing under this registration type.",
+      "tradeName": "Trade name",
+      "gstin": "GSTIN",
+      "gstinHint": "The clinic's own (supplier) GSTIN — never the recipient's",
+      "registrationType": "Registration type",
+      "registrationRegular": "Regular",
+      "registrationComposition": "Composition",
+      "registrationUnregistered": "Unregistered",
+      "registrationExempt": "Exempt",
+      "clinicState": "Clinic state",
+      "catalogDefaults": "Catalog GST defaults",
+      "allSacConfigured": "All treatments have a SAC code configured.",
+      "missingSacCount": "{count} treatment(s) need a SAC code and rate.",
+      "autoconfigure": "Auto-configure",
+      "autoconfigureHint": "Auto-configure assigns SAC 999312 (human health services) to every treatment above, leaving the GST rate to each treatment's tax type. Treatments that already have a SAC are untouched.",
+      "autoconfigureDone": "{count} treatment(s) set to SAC {sac}.",
+      "autoconfigureError": "Could not auto-configure SAC codes",
+      "einvoiceIntegration": "E-invoice integration",
+      "einvoiceProfessionalNotice": "Confirm eligibility and regulatory obligations with a qualified Indian tax professional before enabling e-invoicing. Dentalpin does not determine whether e-invoicing applies to your clinic.",
+      "turnoverThreshold": "Turnover threshold",
+      "turnoverThresholdHint": "Clinics above this threshold require e-invoicing",
+      "einvoiceNotConfigured": "Not configured",
+      "displayOptions": "Display options",
+      "showGstin": "Show GSTIN on invoice",
+      "showSac": "Show SAC codes on invoice",
+      "creditNoteWorkflow": "Credit note workflow",
+      "creditNoteWorkflowDescription": "Any correction to an issued invoice happens through cancellation or a credit note, and stays traceable to the user who made it."
+    },
+    "reports": {
+      "title": "GST reports",
+      "description": "Totals and transaction detail for reconciliation and filing support.",
+      "export": "Export CSV",
+      "creditNotes": "Credit notes",
+      "byPlaceOfSupply": "By place of supply",
+      "transactions": "Transactions",
+      "taxableValue": "Taxable value",
+      "empty": "No transactions in this period."
+    }
+  }
+}

@@ -360,10 +360,21 @@ function isActive(to: string): boolean {
           about them.
         -->
         <OnboardingGuideBar />
-        <ModuleSlot
-          name="app.banners"
-          :ctx="{}"
-        />
+        <!--
+          ClientOnly is load-bearing: slot registrations happen in
+          `plugins/slots.client.ts` files, so during SSR this slot is
+          empty while the client renders one wrapper per registered
+          banner — a layout-level hydration mismatch that blows away
+          the page content in <main> (surfaced by india_gst, #210).
+          Banners self-reveal after an onMounted fetch anyway, so
+          client-only rendering loses nothing.
+        -->
+        <ClientOnly>
+          <ModuleSlot
+            name="app.banners"
+            :ctx="{}"
+          />
+        </ClientOnly>
         <slot />
       </main>
 

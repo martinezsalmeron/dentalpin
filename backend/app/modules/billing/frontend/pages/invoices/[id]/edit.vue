@@ -17,6 +17,7 @@ const {
   canEdit,
   formatCurrency
 } = useInvoices()
+const { currentClinic } = useClinic()
 
 const invoiceId = computed(() => route.params.id as string)
 
@@ -511,6 +512,14 @@ function goBack() {
               </div>
             </div>
           </UCard>
+
+          <!-- Compliance modules (Verifactu-ES, India GST, ...) plug into
+               this slot via `useModuleSlots`. Billing has no compile-time
+               dependency on any of them. -->
+          <ModuleSlot
+            name="invoice.form.compliance"
+            :ctx="{ invoice: currentInvoice, clinic: currentClinic }"
+          />
 
           <!-- Notes -->
           <UCard>

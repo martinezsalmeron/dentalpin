@@ -7,6 +7,7 @@ This directory contains developer documentation for each DentalPin module.
 | Module | Description | Documentation |
 |--------|-------------|---------------|
 | **budget** | Treatment quotes with versioning, signatures, and PDF | [budget.md](./budget.md) |
+| **india_gst** | India GST compliance (CGST/SGST/IGST billing, SAC codes, reconciliation) — installation & operation manual | [india_gst.md](./india_gst.md) |
 | **verifactu** | Spanish AEAT Veri\*Factu compliance (mandatory 2027) — installation & operation manual | [verifactu.md](./verifactu.md) |
 
 ## Module Documentation Structure

@@ -17,6 +17,7 @@ Maintained by `backend/scripts/generate_catalogs.py`. CI fails if a manifest cha
 | `catalog` | 0.1.0 | official | — | auto | no | 3 | 0 | 1 | yes |
 | `clinical_notes` | 0.2.0 | official | patients, odontogram, treatment_plan, media, agenda | auto | no | 2 | 6 | 0 | yes |
 | `copilot` | 0.1.0 | official | — | auto | yes | 5 | 3 | 1 | yes |
+| `india_gst` | 0.1.0 | official | billing, catalog | manual | yes | 4 | 0 | 0 | yes |
 | `media` | 0.2.0 | official | patients | auto | no | 4 | 7 | 1 | yes |
 | `migration_import` | 0.1.0 | official | patients, patients_clinical, clinical_notes, agenda, schedules, recalls, catalog, budget, odontogram, treatment_plan, billing, payments, media | manual | yes | 4 | 5 | 0 | yes |
 | `notifications` | 0.1.0 | official | patients, agenda, budget, billing, catalog | auto | no | 8 | 7 | 6 | yes |
@@ -206,6 +207,25 @@ Conversational AI agent over DentalPin, scoped to the caller's permissions.
 - **Events consumed:**
   - `appointment.cancelled`
 - **Module CLAUDE.md:** [`backend/app/modules/copilot/CLAUDE.md`](../backend/app/modules/copilot/CLAUDE.md)
+
+### `india_gst` — v0.1.0
+
+CGST/SGST/IGST GST billing compliance for Indian clinics.
+
+- **Author:** tresundios
+- **License:** BSL-1.1
+- **Category:** official
+- **Install policy:** installable=True · auto_install=False · removable=True
+- **Depends:** `billing`, `catalog`
+- **Frontend layer:** `frontend`
+- **Permissions:**
+  - `india_gst.catalog.manage`
+  - `india_gst.reports.read`
+  - `india_gst.settings.configure`
+  - `india_gst.settings.read`
+- **Events emitted:** —
+- **Events consumed:** —
+- **Module CLAUDE.md:** [`backend/app/modules/india_gst/CLAUDE.md`](../backend/app/modules/india_gst/CLAUDE.md)
 
 ### `media` — v0.2.0
 
