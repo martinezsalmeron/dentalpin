@@ -79,7 +79,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 | `odontogram.treatment.performed` | `EventType.ODONTOGRAM_TREATMENT_PERFORMED` | `odontogram` | `patient_timeline`, `payments`, `periodontogram`, `treatment_plan` |
 | `odontogram.treatment.status_changed` | `EventType.ODONTOGRAM_TREATMENT_STATUS_CHANGED` | `odontogram` | — |
 | `patient.archived` | `EventType.PATIENT_ARCHIVED` | `patients` | `media`, `periodontogram`, `recalls` |
-| `patient.created` | `EventType.PATIENT_CREATED` | `patients` | `notifications` |
+| `patient.created` | `EventType.PATIENT_CREATED` | `patients` | `integrations`, `notifications` |
 | `patient.medical_updated` | `EventType.PATIENT_MEDICAL_UPDATED` | `patients_clinical` | `patient_timeline` |
 | `patient.updated` | `EventType.PATIENT_UPDATED` | `patients` | — |
 | `payment.allocated` | `EventType.PAYMENT_ALLOCATED` | `payments` | `billing` |
@@ -647,6 +647,7 @@ Maintained by `backend/scripts/generate_catalogs.py`.
 - **Publishers:**
   - `patients` — `backend/app/modules/patients/service.py:256`
 - **Subscribers:**
+  - `integrations`
   - `notifications`
 
 ### `patient.medical_updated`
